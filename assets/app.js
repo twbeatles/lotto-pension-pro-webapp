@@ -173,6 +173,11 @@ class DataManager {
       this.state.history = JSON.parse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]');
       const settings = JSON.parse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}');
       this.state.theme = settings.theme || 'dark';
+      this.state.customProxy = settings.customProxy || '';
+
+      // UI sync if input exists
+      const proxyInput = $('#customProxyUrl');
+      if (proxyInput) proxyInput.value = this.state.customProxy;
     } catch (e) {
       console.error('Data load failed', e);
       UIManager.toast('데이터 로드 실패', 'error');
@@ -183,7 +188,13 @@ class DataManager {
     try {
       localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
       localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
-      localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify({ theme: this.state.theme }));
+      const proxyInput = $('#customProxyUrl');
+      if (proxyInput) this.state.customProxy = proxyInput.value.trim();
+
+      localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify({
+        theme: this.state.theme,
+        customProxy: this.state.customProxy
+      }));
     } catch (e) {
       console.error('Data save failed', e);
     }
@@ -199,39 +210,149 @@ class DataManager {
     };
 
     try {
-      updateStatus('Loading...', 'var(--warning)');
+      updateStatus('Check Local', 'var(--warning)');
+
+      // 1. Load from Static JSON (Basline)
       const res = await fetch('data/winning_stats.json');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const json = await res.json();
-      const rawData = json.data || json || [];
+      const staticData = json.data || json || [];
 
-      this.state.winningStats = rawData.map(r => ({
+      // 2. Load from LocalStorage (Updates)
+      const localUpdates = JSON.parse(localStorage.getItem('lotto_pro_updates_v2') || '[]');
+
+      // 3. Merge: Local Updates take precedence
+      const mergedMap = new Map();
+      staticData.forEach(d => mergedMap.set(Number(d.draw_no), d));
+      localUpdates.forEach(d => mergedMap.set(Number(d.draw_no), d));
+
+      this.state.winningStats = Array.from(mergedMap.values()).map(r => ({
         draw_no: Number(r.draw_no),
         numbers: (r.numbers || []).map(Number).sort((a, b) => a - b),
         bonus: Number(r.bonus),
         date: r.date,
-        // Optional fields (kept for future extensions)
-        prize_amount: r.prize_amount != null ? Number(r.prize_amount) : undefined,
-        winners_count: r.winners_count != null ? Number(r.winners_count) : undefined,
-        total_sales: r.total_sales != null ? Number(r.total_sales) : undefined
+        prize_amount: r.prize_amount ? Number(r.prize_amount) : 0,
+        winners_count: r.winners_count ? Number(r.winners_count) : 0,
+        total_sales: r.total_sales ? Number(r.total_sales) : 0
       })).sort((a, b) => b.draw_no - a.draw_no);
 
       const latestNo = this.state.winningStats[0]?.draw_no || 0;
       const estNo = estimateLatestDrawKST();
+
       if (latestNo > 0 && estNo > 0 && latestNo < estNo) {
-        updateStatus(`Loaded (outdated +${estNo - latestNo})`, 'var(--warning)');
+        updateStatus(`Update Avail (+${estNo - latestNo})`, 'var(--warning)');
       } else {
-        updateStatus('Loaded', 'var(--success)');
+        updateStatus('Latest', 'var(--success)');
       }
       return true;
     } catch (e) {
       console.warn('Winning stats fetch failed', e);
       updateStatus('Offline', 'var(--danger)');
-      if (location.protocol === 'file:') {
-        UIManager.toast('로컬에서는 파일 더블클릭(file://) 대신 HTTP 서버로 열어주세요.', 'warning', 3500);
-      }
       return false;
+    }
+  }
+
+  async fetchLatestFromAPI() {
+    const logEl = $('#syncLog');
+    const btn = $('#syncDataBtn');
+    if (logEl) { logEl.style.display = 'block'; logEl.innerHTML = ''; }
+
+    const log = (msg) => {
+      if (logEl) {
+        logEl.innerHTML += `<div>${msg}</div>`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      console.log(`[Sync] ${msg}`);
+    };
+
+    if (btn) btn.disabled = true;
+
+    try {
+      const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
+      const estNo = estimateLatestDrawKST();
+
+      if (latestKnown >= estNo) {
+        log('✅ 이미 최신 데이터입니다.');
+        return;
+      }
+
+      log(`🔍 최신 회차 검색: ${latestKnown + 1} ~ ${estNo}`);
+
+      let updatedCount = 0;
+      const newItems = [];
+
+      for (let no = latestKnown + 1; no <= estNo; no++) {
+        log(`📡 ${no}회차 데이터 요청 중...`);
+
+        // Proxy Selection
+        const customProxy = $('#customProxyUrl')?.value?.trim();
+        const targetUrl = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${no}`;
+
+        // If custom proxy has ?url= or similar, use it. Otherwise default to allorigins
+        let fetchUrl;
+        if (customProxy) {
+          // Simple robust check: does it end with '='? if so append. else if it has no query, append param.
+          // But let's assume user provides "https://.../?url=" prefix style for simplicity or we just append
+          fetchUrl = customProxy + encodeURIComponent(targetUrl);
+        } else {
+          fetchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        }
+
+        const res = await fetch(fetchUrl);
+        if (!res.ok) throw new Error(`Proxy Error ${res.status}`);
+
+        const wrapper = await res.json();
+        // Handle different proxies: AllOrigins returns { contents: "..." }, others might return direct JSON
+        let data;
+        if (wrapper.contents && typeof wrapper.contents === 'string') {
+          // AllOrigins style
+          data = JSON.parse(wrapper.contents);
+        } else {
+          // Direct style
+          data = wrapper;
+        }
+
+        if (data.returnValue === 'success') {
+          const item = {
+            draw_no: data.drwNo,
+            date: data.drwNoDate,
+            numbers: [data.drwtNo1, data.drwtNo2, data.drwtNo3, data.drwtNo4, data.drwtNo5, data.drwtNo6],
+            bonus: data.bnusNo,
+            prize_amount: data.firstWinamnt,
+            winners_count: data.firstPrzwnerCo,
+            total_sales: data.totSellamnt
+          };
+          newItems.push(item);
+          log(`✨ ${no}회차 확보 완료! (${item.date})`);
+          updatedCount++;
+          await sleep(500); // polite delay
+        } else {
+          log(`⚠️ ${no}회차 데이터 없음 (아직 추첨 전일 수 있음)`);
+          break;
+        }
+      }
+
+      if (updatedCount > 0) {
+        // Save to LocalStorage
+        const currentUpdates = JSON.parse(localStorage.getItem('lotto_pro_updates_v2') || '[]');
+        const merged = [...currentUpdates, ...newItems];
+        // Dedupe
+        const unique = Array.from(new Map(merged.map(item => [item.draw_no, item])).values());
+        localStorage.setItem('lotto_pro_updates_v2', JSON.stringify(unique));
+
+        log(`💾 ${updatedCount}개 회차 정보 저장 완료.`);
+        await this.fetchWinningStats(); // Reload to update memory & UI
+        this.app?.refreshCurrentRoute();
+        UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
+      } else {
+        log('ℹ️ 업데이트된 데이터가 없습니다.');
+      }
+
+    } catch (e) {
+      log(`❌ 오류 발생: ${e.message}`);
+      UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -459,6 +580,7 @@ class StatsModule {
     if (!this.data.state.winningStats.length) return;
     this.renderCharts();
     this.renderHotCold();
+    this.renderPairs();
   }
 
   renderCharts() {
@@ -543,113 +665,151 @@ class StatsModule {
     container.appendChild(mkCol('🔥 Hot Numbers', hot, 'hot'));
     container.appendChild(mkCol('❄️ Cold Numbers', cold, 'cold'));
   }
+
+  renderPairs() {
+    const container = $('#pairContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const pairCounts = {};
+
+    // Analyze all history
+    this.data.state.winningStats.forEach(d => {
+      const nums = d.numbers;
+      for (let i = 0; i < nums.length; i++) {
+        for (let j = i + 1; j < nums.length; j++) {
+          const pair = `${nums[i]}-${nums[j]}`;
+          pairCounts[pair] = (pairCounts[pair] || 0) + 1;
+        }
+      }
+    });
+
+    // Sort by frequency
+    const sorted = Object.entries(pairCounts)
+      .map(([k, v]) => ({ pair: k.split('-').map(Number), count: v }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10
+
+    sorted.forEach(({ pair, count }) => {
+      const el = document.createElement('div');
+      el.className = 'pair-card';
+      el.innerHTML = `
+        <div class="balls">
+          <span class="ball sm ${UIManager.getBallColor(pair[0])}">${pair[0]}</span>
+          <span class="ball sm ${UIManager.getBallColor(pair[1])}">${pair[1]}</span>
+        </div>
+        <div class="count"><strong>${count}회</strong> 출현</div>
+      `;
+      container.appendChild(el);
+    });
+  }
 }
 
-class LegacyPredictor {
-  constructor(winningAsc) {
-    this.data = Array.isArray(winningAsc) ? winningAsc : [];
+// --- Advanced AI Prediction (Ensemble Monte Carlo) ---
+class AdvancedMonteCarlo {
+  constructor(winningStats) {
+    this.data = [...winningStats].sort((a, b) => a.draw_no - b.draw_no);
+    this.totalDraws = this.data.length;
   }
 
-  computeScores({ uptoIndexExclusive = null, recencyWindow = 20 } = {}) {
-    const upto = (uptoIndexExclusive == null) ? this.data.length : Math.max(0, Math.min(this.data.length, uptoIndexExclusive));
-    if (upto <= 0) return Array(46).fill(1.0);
+  // Model 1: Frequency Weights (Hot/Cold)
+  getModelFrequency() {
+    const scores = Array(46).fill(0);
+    const recentWindow = 10;
 
+    // Global freq
     const freq = Array(46).fill(0);
-    for (let i = 0; i < upto; i++) {
-      for (const n of this.data[i].numbers) freq[n] += 1;
-    }
+    this.data.forEach(d => d.numbers.forEach(n => freq[n]++));
 
-    const recentStart = Math.max(0, upto - recencyWindow);
+    // Recent freq
     const recentFreq = Array(46).fill(0);
-    for (let i = recentStart; i < upto; i++) {
-      for (const n of this.data[i].numbers) recentFreq[n] += 1;
-    }
-
-    const lastSeen = Array(46).fill(0);
-    for (let i = 0; i < upto; i++) {
-      for (const n of this.data[i].numbers) lastSeen[n] = i;
-    }
-
-    const totalDraws = upto;
-    const recentCount = Math.max(1, upto - recentStart);
-    const scores = Array(46).fill(1.0);
+    this.data.slice(-recentWindow).forEach(d => d.numbers.forEach(n => recentFreq[n]++));
 
     for (let n = 1; n <= 45; n++) {
-      const sFreq = freq[n] / Math.max(totalDraws, 1);
-      const sRecent = (recentFreq[n] / recentCount) * 2.0;
-      const gap = totalDraws - (lastSeen[n] || 0);
-      const sGap = Math.min(gap / Math.max(totalDraws, 1), 0.3);
-      scores[n] = Math.max(sFreq + sRecent + sGap, 0.01);
+      // Balance: 40% Global, 60% Recent Trend
+      const sGlobal = freq[n] / this.totalDraws;
+      const sRecent = recentFreq[n] / recentWindow;
+      scores[n] = (sGlobal * 0.4) + (sRecent * 0.6);
     }
-
     return scores;
   }
 
-  static weightedSample(scores, k = 6) {
-    const pool = [];
-    const weights = [];
-    for (let n = 1; n <= 45; n++) {
-      pool.push(n);
-      weights.push(Math.max(0, scores[n] || 0));
-    }
+  // Model 2: Pattern/Recency (Skipped Draws)
+  getModelRecency() {
+    const lastSeen = Array(46).fill(-1);
+    this.data.forEach((d, i) => d.numbers.forEach(n => lastSeen[n] = i));
 
-    const chosen = [];
-    for (let i = 0; i < k; i++) {
-      if (!pool.length) break;
-      const total = weights.reduce((a, b) => a + b, 0);
-      let idx = 0;
-      if (total <= 0) {
-        idx = Math.floor(Math.random() * pool.length);
-      } else {
-        const r = Math.random() * total;
-        let cumulative = 0;
-        for (let j = 0; j < weights.length; j++) {
-          cumulative += weights[j];
-          if (cumulative >= r) {
-            idx = j;
-            break;
-          }
+    const scores = Array(46).fill(0);
+    const avgCycle = 8;
+
+    for (let n = 1; n <= 45; n++) {
+      const skipped = this.totalDraws - 1 - lastSeen[n];
+      const cycleScore = Math.exp(-Math.pow(skipped - avgCycle, 2) / 20);
+      const coldBoost = skipped > 20 ? 0.5 : 0;
+      scores[n] = cycleScore + coldBoost + 0.1;
+    }
+    return scores;
+  }
+
+  // Model 3: Adjacency/Consecutive Proximity
+  getModelAdjacency() {
+    const scores = Array(46).fill(0.1);
+    if (this.totalDraws < 1) return scores;
+
+    const lastDraw = this.data[this.totalDraws - 1].numbers;
+    lastDraw.forEach(n => {
+      if (n > 1) scores[n - 1] += 0.5;
+      if (n < 45) scores[n + 1] += 0.5;
+      scores[n] += 0.2;
+    });
+    return scores;
+  }
+
+  static weightedSample(weights, k = 6) {
+    const chosen = new Set();
+    const pool = weights.map((w, i) => ({ n: i, w }));
+
+    let limit = 0;
+    while (chosen.size < k && limit++ < 100) {
+      const total = pool.reduce((acc, p) => acc + (chosen.has(p.n) || p.n === 0 ? 0 : p.w), 0);
+      let r = Math.random() * total;
+      for (let i = 1; i <= 45; i++) {
+        if (chosen.has(i)) continue;
+        r -= pool[i].w;
+        if (r <= 0) {
+          chosen.add(i);
+          break;
         }
       }
-      chosen.push(pool[idx]);
-      pool.splice(idx, 1);
-      weights.splice(idx, 1);
     }
-
-    return chosen.sort((a, b) => a - b);
+    return [...chosen].sort((a, b) => a - b);
   }
 
-  predictNext({ referenceDrawNo = null } = {}) {
-    if (!this.data.length) return Array.from({ length: 6 }, () => 0);
+  runSimulation() {
+    // 1. Compute Base Weights from 3 Models
+    const wFreq = this.getModelFrequency();
+    const wRecency = this.getModelRecency();
+    const wAdj = this.getModelAdjacency();
 
-    let upto = this.data.length;
-    if (referenceDrawNo != null) {
-      // Use only draws strictly before referenceDrawNo
-      upto = 0;
-      for (let i = 0; i < this.data.length; i++) {
-        if (this.data[i].draw_no < referenceDrawNo) upto = i + 1;
-        else break;
-      }
+    // 2. Combine Weights (Ensemble)
+    const ensembleWeights = Array(46).fill(0);
+    for (let n = 1; n <= 45; n++) {
+      // 50% Frequency, 30% Recency, 20% Adjacency
+      ensembleWeights[n] = (wFreq[n] * 0.5) + (wRecency[n] * 0.3) + (wAdj[n] * 0.2);
     }
 
-    if (upto <= 0) return LegacyPredictor.weightedSample(Array(46).fill(1.0), 6);
-    const scores = this.computeScores({ uptoIndexExclusive: upto });
-    return LegacyPredictor.weightedSample(scores, 6);
-  }
+    // 3. Monte Carlo Simulation
+    // Simulate 2000 future draws using the ensemble probabilities
+    const simCounts = Array(46).fill(0);
+    const SIMULATIONS = 2000;
 
-  recommendNumbers(count = 5) {
-    const seen = new Set();
-    const out = [];
-    for (let i = 0; i < count * 3; i++) {
-      const nums = this.predictNext();
-      const key = nums.join(',');
-      if (!seen.has(key)) {
-        seen.add(key);
-        out.push(nums);
-      }
-      if (out.length >= count) break;
+    for (let i = 0; i < SIMULATIONS; i++) {
+      const simSet = AdvancedMonteCarlo.weightedSample(ensembleWeights, 6);
+      simSet.forEach(n => simCounts[n]++);
     }
-    return out;
+
+    // 4. Final Selection
+    return simCounts;
   }
 }
 
@@ -675,33 +835,52 @@ class AiModule {
     out.innerHTML = '';
     log.innerHTML = '';
 
-    const logs = [
-      '데이터베이스 연결 확인...',
-      '최근 50회차 패턴 추출 중...',
-      '회귀 분석 모델 초기화...',
-      '몬테카를로 시뮬레이션 실행 (Iter: 1000)...',
-      '최적 가중치 산출 완료.'
+    const LOGS = [
+      '데이터 패턴 학습 (Frequency, Recency, Pattern)...',
+      '앙상블 모델 가중치 병합...',
+      '몬테카를로 시뮬레이션 (2,000회 수행)...',
+      '최적 번호 조합 추출 중...'
     ];
 
-    for (const msg of logs) {
+    for (const msg of LOGS) {
       log.innerHTML += `<div>> ${msg}</div>`;
+      await sleep(400);
       log.scrollTop = log.scrollHeight;
-      await sleep(600);
     }
 
-    const asc = [...this.app.data.state.winningStats].sort((a, b) => a.draw_no - b.draw_no);
-    const predictor = new LegacyPredictor(asc);
-    const results = predictor.recommendNumbers(5);
+    const mc = new AdvancedMonteCarlo(this.app.data.state.winningStats);
+    await sleep(100);
+    const finalWeights = mc.runSimulation();
 
-    log.innerHTML += `<div style="color:var(--success)">> 분석 완료! 5개 조합을 제안합니다.</div>`;
+    log.innerHTML += `<div style="color:var(--success)">> 분석 완료! 5개 추천 조합 생성.</div>`;
+    log.scrollTop = log.scrollHeight;
+
+    const results = [];
+
+    // Set 1: Best
+    const top6 = finalWeights
+      .map((c, n) => ({ n, c }))
+      .sort((a, b) => b.c - a.c)
+      .slice(0, 6)
+      .map(x => x.n)
+      .sort((a, b) => a - b);
+    results.push(top6);
+
+    // Set 2-5: Variation
+    for (let k = 0; k < 4; k++) {
+      results.push(AdvancedMonteCarlo.weightedSample(finalWeights, 6));
+    }
 
     results.forEach((nums, i) => {
       setTimeout(() => {
         const el = document.createElement('div');
         el.className = 'result-item glass';
-        el.innerHTML = `<div class="ball-container">${UIManager.renderBalls(nums)}</div>`;
+        el.innerHTML = `
+          <div class="result-label">Set ${i + 1} ${i === 0 ? '<span class="badge ok">Best</span>' : ''}</div>
+          <div class="ball-container">${UIManager.renderBalls(nums)}</div>
+        `;
         out.appendChild(el);
-      }, i * 200);
+      }, i * 150);
     });
 
     btn.disabled = false;
@@ -1077,8 +1256,8 @@ class BacktestModule {
   constructor(app) {
     this.app = app;
     this.data = app.data;
-    this.MAX_QTY = 200;
-    this.RECENCY_WINDOW = 20;
+    this.MAX_QTY = 1000;
+    this.worker = null;
     this.bindEvents();
   }
 
@@ -1097,37 +1276,6 @@ class BacktestModule {
     if (tbody) tbody.innerHTML = '';
   }
 
-  getWinningAsc() {
-    return [...this.data.state.winningStats].sort((a, b) => a.draw_no - b.draw_no);
-  }
-
-  calcRank(ticketNums, winNums, bonus) {
-    const winSet = new Set(winNums);
-    const matchCount = ticketNums.filter(n => winSet.has(n)).length;
-    const bonusHit = ticketNums.includes(bonus);
-
-    const rank = (() => {
-      if (matchCount === 6) return 1;
-      if (matchCount === 5 && bonusHit) return 2;
-      if (matchCount === 5) return 3;
-      if (matchCount === 4) return 4;
-      if (matchCount === 3) return 5;
-      return 0;
-    })();
-
-    const hitText = (rank === 2) ? '5+B' : String(matchCount);
-    return { rank, matchCount, bonusHit, hitText };
-  }
-
-  getEstimatedPrize(rank) {
-    if (rank === 1) return 2_000_000_000;
-    if (rank === 2) return 50_000_000;
-    if (rank === 3) return 1_500_000;
-    if (rank === 4) return 50_000;
-    if (rank === 5) return 5_000;
-    return 0;
-  }
-
   renderSummary(stats) {
     const el = $('#btSummaryList');
     if (!el) return;
@@ -1143,8 +1291,6 @@ class BacktestModule {
       <li><b>ROI</b>: ${roi.toFixed(2)}%</li>
       <li><b>1등</b>: ${stats.counts[1]} / <b>2등</b>: ${stats.counts[2]} / <b>3등</b>: ${stats.counts[3]}</li>
       <li><b>4등</b>: ${stats.counts[4]} / <b>5등</b>: ${stats.counts[5]} / <b>낙첨</b>: ${stats.counts[0]}</li>
-      <li><b>당첨률(3등+)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3], stats.tickets)}%</li>
-      <li><b>당첨률(4등+)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4], stats.tickets)}%</li>
       <li><b>당첨률(5등+)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
     `;
   }
@@ -1162,49 +1308,9 @@ class BacktestModule {
     tbody.appendChild(tr);
   }
 
-  _makeRollingState() {
-    return {
-      total: 0,
-      freq: Array(46).fill(0),
-      recentFreq: Array(46).fill(0),
-      lastSeen: Array(46).fill(0),
-      recentQueue: []
-    };
-  }
-
-  _ingest(state, numbers) {
-    const idx = state.total;
-    state.total += 1;
-    numbers.forEach(n => {
-      state.freq[n] += 1;
-      state.recentFreq[n] += 1;
-      state.lastSeen[n] = idx;
-    });
-    state.recentQueue.push(numbers);
-    if (state.recentQueue.length > this.RECENCY_WINDOW) {
-      const old = state.recentQueue.shift();
-      old.forEach(n => { state.recentFreq[n] -= 1; });
-    }
-  }
-
-  _computeScoresFromState(state) {
-    if (state.total <= 0) return Array(46).fill(1.0);
-    const total = state.total;
-    const recentCount = Math.max(1, state.recentQueue.length);
-    const scores = Array(46).fill(1.0);
-    for (let n = 1; n <= 45; n++) {
-      const sFreq = state.freq[n] / total;
-      const sRecent = (state.recentFreq[n] / recentCount) * 2.0;
-      const gap = total - (state.lastSeen[n] || 0);
-      const sGap = Math.min(gap / total, 0.3);
-      scores[n] = Math.max(sFreq + sRecent + sGap, 0.01);
-    }
-    return scores;
-  }
-
   async run() {
     if (!this.data.state.winningStats.length) {
-      return UIManager.toast('당첨 데이터를 불러오지 못했습니다. (data/winning_stats.json)', 'error', 3500);
+      return UIManager.toast('당첨 데이터를 불러오지 못했습니다.', 'error', 3500);
     }
 
     const start = Number($('#btStart')?.value);
@@ -1227,58 +1333,51 @@ class BacktestModule {
 
     this.resetUI();
 
-    const asc = this.getWinningAsc();
-    const valid = asc.filter(d => d.draw_no >= start && d.draw_no <= end).sort((a, b) => a.draw_no - b.draw_no);
+    if (this.worker) this.worker.terminate();
+    this.worker = new Worker('assets/backtest.worker.js');
 
-    const counts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let totalTickets = 0;
-    let drawsUsed = 0;
-    const costPerTicket = 1000;
-    let totalPrize = 0;
-    let ticketCounter = 0;
-
-    const rolling = this._makeRollingState();
-
-    for (const win of valid) {
-      drawsUsed++;
-
-      const isAi = strategy === 'ai';
-      const scores = isAi ? this._computeScoresFromState(rolling) : null;
-
-      for (let k = 0; k < qty; k++) {
-        const nums = isAi
-          ? LegacyPredictor.weightedSample(scores, 6)
-          : (Array.from({ length: 45 }, (_, i) => i + 1).sort(() => Math.random() - 0.5).slice(0, 6).sort((a, b) => a - b));
-        const r = this.calcRank(nums, win.numbers, win.bonus);
-        counts[r.rank]++;
-        totalPrize += this.getEstimatedPrize(r.rank);
-        totalTickets++;
-        ticketCounter++;
-
-        if (r.rank > 0) {
-          this.appendWinRow({ drawNo: win.draw_no, rank: r.rank, hitText: r.hitText, nums });
-        }
-
-        if (ticketCounter % 200 === 0) await sleep(0);
+    this.worker.onmessage = (e) => {
+      const { type, payload } = e.data;
+      if (type === 'PROGRESS' || type === 'DONE') {
+        this.renderSummary(payload);
       }
-
-      // After using "past" data for this draw, ingest this draw into the rolling state
-      this._ingest(rolling, win.numbers);
-    }
-
-    const stats = {
-      draws: drawsUsed,
-      tickets: totalTickets,
-      cost: totalTickets * costPerTicket,
-      totalPrize,
-      counts
+      if (type === 'WINS') {
+        payload.forEach(w => this.appendWinRow(w));
+      }
+      if (type === 'DONE') {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = original;
+        }
+        UIManager.toast('백테스팅 완료', 'success');
+        this.worker.terminate();
+        this.worker = null;
+      }
     };
-    this.renderSummary(stats);
 
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = original || '<i class="ph-bold ph-play"></i> 시뮬레이션 실행';
-    }
+    this.worker.onerror = (err) => {
+      console.error(err);
+      UIManager.toast('오류 발생', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+      this.worker.terminate();
+      this.worker = null;
+    };
+
+    this.worker.postMessage({
+      type: 'START',
+      payload: {
+        statsData: this.data.state.winningStats,
+        startDraw: start,
+        endDraw: end,
+        qty,
+        strategy
+      }
+    });
+
+    UIManager.toast('백그라운드에서 실행 중...');
   }
 }
 
@@ -1350,11 +1449,16 @@ class LottoApp {
         this.renderDataLists();
       }
     });
+
     $('#clearHistory')?.addEventListener('click', () => {
       if (confirm('히스토리를 모두 삭제하시겠습니까?')) {
         this.data.clearHistory();
         this.renderDataLists();
       }
+    });
+
+    $('#syncDataBtn')?.addEventListener('click', () => {
+      this.data.fetchLatestFromAPI();
     });
   }
 

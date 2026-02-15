@@ -1,14 +1,17 @@
 ﻿<!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description" content="Lotto 6/45 Generator Pro Web App">
     <meta name="theme-color" content="#0f172a">
     <title>Lotto 6/45 Pro</title>
     <link rel="stylesheet" href="assets/app.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
+
 <body data-theme="dark">
     <div id="app">
         <!-- Sidebar (Desktop) -->
@@ -17,7 +20,7 @@
                 <i class="ph-fill ph-clover"></i>
                 <h1>Lotto Pro</h1>
             </div>
-            
+
             <div class="nav-menu">
                 <button class="nav-item active" data-target="gen">
                     <i class="ph ph-magic-wand"></i>
@@ -76,7 +79,7 @@
                     <h2>번호 생성</h2>
                     <p class="subtitle">나만의 행운 번호를 조합해보세요.</p>
                 </header>
-                
+
                 <div class="dashboard-grid">
                     <!-- Generator Card -->
                     <div class="card glass">
@@ -94,7 +97,8 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label>연속수 제한 <i class="ph ph-info" title="연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한"></i></label>
+                                <label>연속수 제한 <i class="ph ph-info"
+                                        title="연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한"></i></label>
                                 <label class="switch">
                                     <input type="checkbox" id="limitConsecutive" checked>
                                     <span class="slider"></span>
@@ -189,6 +193,12 @@
                             <!-- Injected JS -->
                         </div>
                     </div>
+                    <div class="card glass full-width">
+                        <h3>연속 동시 출현 (Top Pairs)</h3>
+                        <div id="pairContainer" class="pairs-grid">
+                            <!-- Injected JS -->
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -261,7 +271,12 @@
                     <div class="table-container">
                         <table id="btResultTable">
                             <thead>
-                                <tr><th>회차</th><th>등수</th><th>적중</th><th>번호</th></tr>
+                                <tr>
+                                    <th>회차</th>
+                                    <th>등수</th>
+                                    <th>적중</th>
+                                    <th>번호</th>
+                                </tr>
                             </thead>
                             <tbody></tbody>
                         </table>
@@ -321,6 +336,25 @@
                         <div id="historyList" class="data-list"></div>
                     </div>
                 </div>
+
+                <div class="card glass mt-4">
+                    <h3>데이터 동기화</h3>
+                    <p class="subtitle" style="margin-bottom:15px">최신 회차 정보를 비동기로 가져옵니다.</p>
+
+                    <div class="input-group" style="margin-bottom:15px">
+                        <label>Custom Proxy URL (Optional)</label>
+                        <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
+                            style="font-size:14px">
+                        <p class="subtitle" style="font-size:12px; margin-top:5px;">기본값: api.allorigins.win (공용)</p>
+                    </div>
+
+                    <button id="syncDataBtn" class="btn primary">
+                        <i class="ph-bold ph-arrows-clockwise"></i> 최신 데이터 동기화
+                    </button>
+                    <div id="syncLog" class="log-content" style="margin-top:10px; max-height:100px; display:none;">
+                    </div>
+                </div>
+
                 <div class="card glass mt-4">
                     <h3>데이터 백업/복원</h3>
                     <div class="button-group">
@@ -369,11 +403,13 @@
         <div class="modal-content center-content">
             <h3>QR Code</h3>
             <div id="qrCanvasContainer"></div>
-            <button class="btn ghost" onclick="document.getElementById('qrModal').classList.remove('active')">닫기</button>
+            <button class="btn ghost"
+                onclick="document.getElementById('qrModal').classList.remove('active')">닫기</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="assets/app.js" type="module"></script>
 </body>
+
 </html>

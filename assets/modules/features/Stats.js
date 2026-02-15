@@ -64,11 +64,11 @@ export class StatsModule {
         });
 
         this.drawBarChart('#chartRange', [
-            { l: '1-10', v: rangeCounts[0] },
-            { l: '11-20', v: rangeCounts[1] },
-            { l: '21-30', v: rangeCounts[2] },
-            { l: '31-40', v: rangeCounts[3] },
-            { l: '41-45', v: rangeCounts[4] }
+            { l: '1-10', v: rangeCounts[0], c: 'y' },
+            { l: '11-20', v: rangeCounts[1], c: 'b' },
+            { l: '21-30', v: rangeCounts[2], c: 'r' },
+            { l: '31-40', v: rangeCounts[3], c: 'g' },
+            { l: '41-45', v: rangeCounts[4], c: 'g2' }
         ]);
 
         this.renderOddEvenPie(oddEven);
@@ -111,17 +111,23 @@ export class StatsModule {
         const el = $(selector);
         if (!el) return;
         el.innerHTML = '';
+
+        // Calculate total for percentages
+        const total = data.reduce((sum, d) => sum + d.v, 0);
         const max = Math.max(...data.map(d => d.v), 1);
 
         data.forEach(d => {
             const pct = (d.v / max) * 100;
+            const share = total > 0 ? ((d.v / total) * 100).toFixed(1) : 0;
+            const colorClass = d.c ? `nd-fill ${d.c}` : 'bar-fill';
+
             el.innerHTML += `
                 <div class="bar-row">
                     <span class="label">${d.l}</span>
                     <div class="bar-track">
-                        <div class="bar-fill" style="width: ${pct}%"></div>
+                        <div class="${colorClass}" style="width: ${pct}%; height: 100%; border-radius: 4px;"></div>
                     </div>
-                    <span class="val">${d.v}</span>
+                    <span class="val">${share}% <small>(${d.v})</small></span>
                 </div>
             `;
         });

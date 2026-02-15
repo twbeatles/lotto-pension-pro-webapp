@@ -142,7 +142,7 @@
                         </div>
                         <div class="options-grid">
                             <div class="input-group">
-                                <label>생성 개수</label>
+                                <label for="setCount">생성 개수</label>
                                 <div class="stepper">
                                     <button class="step-btn" onclick="this.nextElementSibling.stepDown()">-</button>
                                     <input type="number" id="setCount" value="5" min="1" max="20" readonly>
@@ -150,7 +150,7 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label>연속수 제한
+                                <label for="limitConsecutive">연속수 제한
                                     <span class="tooltip-container">
                                         <i class="ph ph-info"></i>
                                         <span class="tooltip-text">연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한합니다.</span>
@@ -165,11 +165,11 @@
 
                         <div class="advanced-options">
                             <div class="input-group">
-                                <label>고정수 (최대 5개)</label>
+                                <label for="fixedNums">고정수 (최대 5개)</label>
                                 <input type="text" id="fixedNums" placeholder="예: 1, 8, 23" class="input-field">
                             </div>
                             <div class="input-group">
-                                <label>제외수</label>
+                                <label for="excludeNums">제외수</label>
                                 <input type="text" id="excludeNums" placeholder="예: 14, 29, 45" class="input-field">
                             </div>
                         </div>
@@ -303,19 +303,19 @@
                         <h3>시뮬레이션 설정</h3>
                         <div class="options-grid">
                             <div class="input-group">
-                                <label>시작 회차</label>
+                                <label for="btStart">시작 회차</label>
                                 <input type="number" id="btStart" value="1000">
                             </div>
                             <div class="input-group">
-                                <label>종료 회차</label>
+                                <label for="btEnd">종료 회차</label>
                                 <input type="number" id="btEnd" value="1100">
                             </div>
                             <div class="input-group">
-                                <label>회차당 구매 수</label>
+                                <label for="btQty">회차당 구매 수</label>
                                 <input type="number" id="btQty" value="5">
                             </div>
                             <div class="input-group">
-                                <label>전략</label>
+                                <label for="btStrategy">전략</label>
                                 <select id="btStrategy" class="input-field">
                                     <option value="random">완전 랜덤</option>
                                     <option value="ai">AI 예측</option>
@@ -414,7 +414,7 @@
                     <p class="subtitle" style="margin-bottom:15px">최신 회차 정보를 비동기로 가져옵니다.</p>
 
                     <div class="input-group" style="margin-bottom:15px">
-                        <label>Custom Proxy URL (Optional)</label>
+                        <label for="customProxyUrl">Custom Proxy URL (Optional)</label>
                         <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
                             style="font-size:14px">
                         <p class="subtitle" style="font-size:12px; margin-top:5px;">기본값: api.allorigins.win (공용)</p>

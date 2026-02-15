@@ -1,7 +1,7 @@
 import { $, sleep } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 
-export { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
+import { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
 
 export class AiModule {
     constructor(app) {

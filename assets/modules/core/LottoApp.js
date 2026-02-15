@@ -155,7 +155,8 @@ export class LottoApp {
 
         $('#latestDrawNo').textContent = `${latest.draw_no}회`;
         $('#latestWinBalls').innerHTML = UIManager.renderBalls(latest.numbers) +
-            `<span class="ball ${UIManager.getBallColor(latest.bonus)}" style="margin-left:8px; opacity:0.8; transform:scale(0.9)">+${latest.bonus}</span>`;
+            `<span style="margin:0 8px; color:var(--text-muted); font-weight:bold; font-size:1.2em;">+</span>` +
+            `<span class="ball ${UIManager.getBallColor(latest.bonus)}">${latest.bonus}</span>`;
 
         // Format Currency
         const fmtMoney = (n) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(n);

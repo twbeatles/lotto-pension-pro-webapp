@@ -1168,27 +1168,32 @@ input:checked+.slider:before {
 }
 
 /* Colors with Glow */
-.nd-fill.y {
+.nd-fill.y,
+.nd-fill.yellow {
   background: #fbbf24;
   color: rgba(251, 191, 36, 0.4);
 }
 
-.nd-fill.b {
+.nd-fill.b,
+.nd-fill.blue {
   background: #60a5fa;
   color: rgba(96, 165, 250, 0.4);
 }
 
-.nd-fill.r {
+.nd-fill.r,
+.nd-fill.red {
   background: #f87171;
   color: rgba(248, 113, 113, 0.4);
 }
 
-.nd-fill.g {
+.nd-fill.g,
+.nd-fill.gray {
   background: #94a3b8;
   color: rgba(148, 163, 184, 0.4);
 }
 
-.nd-fill.g2 {
+.nd-fill.g2,
+.nd-fill.green {
   background: #34d399;
   color: rgba(52, 211, 153, 0.4);
 }
@@ -1665,5 +1670,11 @@ input:checked+.slider:before {
 
   .pair-card {
     padding: 10px;
+  }
+
+  /* Check/Stats Layout Adjustments */
+  .pie-chart-container {
+    flex-direction: column;
+    gap: 16px;
   }
 }

@@ -77,42 +77,60 @@ export class AdvancedMonteCarlo {
         return [...chosen].sort((a, b) => a - b);
     }
 
-    runSimulation() {
+    runSimulation(strategy = 'ensemble') {
         // 1. Compute Base Weights from 3 Models
         const wFreq = this.getModelFrequency();
         const wRecency = this.getModelRecency();
         const wAdj = this.getModelAdjacency();
 
-        // 2. Combine Weights (Ensemble)
-        const ensembleWeights = Array(46).fill(0);
-        for (let n = 1; n <= 45; n++) {
-            // 50% Frequency, 30% Recency, 20% Adjacency
-            ensembleWeights[n] = (wFreq[n] * 0.5) + (wRecency[n] * 0.3) + (wAdj[n] * 0.2);
+        // 2. Combine Weights based on Strategy
+        const finalWeights = Array(46).fill(0);
+
+        if (strategy === 'cold') {
+            // Cold Focus: 100% Recency
+            for (let n = 1; n <= 45; n++) finalWeights[n] = wRecency[n];
+        } else if (strategy === 'hot') {
+            // Hot Focus: 100% Frequency
+            for (let n = 1; n <= 45; n++) finalWeights[n] = wFreq[n];
+        } else {
+            // Ensemble & Balance: Balanced Mix
+            for (let n = 1; n <= 45; n++) {
+                finalWeights[n] = (wFreq[n] * 0.5) + (wRecency[n] * 0.3) + (wAdj[n] * 0.2);
+            }
         }
 
         // 3. Monte Carlo Simulation
-        // Simulate 2000 future draws using the ensemble probabilities
         const simCounts = Array(46).fill(0);
         const SIMULATIONS = 2000;
+        const collectedSets = [];
 
-        // Safety check for weights
-        const totalWeight = ensembleWeights.reduce((a, b) => a + b, 0);
-        if (totalWeight <= 0) {
-            console.warn('Invalid weights, using uniform distribution');
-            ensembleWeights.fill(1);
-        }
+        // Safety check
+        const totalWeight = finalWeights.reduce((a, b) => a + b, 0);
+        if (totalWeight <= 0) finalWeights.fill(1);
 
         for (let i = 0; i < SIMULATIONS; i++) {
             try {
-                const simSet = AdvancedMonteCarlo.weightedSample(ensembleWeights, 6);
+                const simSet = AdvancedMonteCarlo.weightedSample(finalWeights, 6);
+
+                // Strategy Filtering
+                if (strategy === 'balance') {
+                    // Filter: Odd/Even Ratio (2:4 ~ 4:2)
+                    const oddCount = simSet.filter(n => n % 2 !== 0).length;
+                    if (oddCount < 2 || oddCount > 4) continue; // Skip extreme ratios
+
+                    // Filter: Sum (100 ~ 170)
+                    const sum = simSet.reduce((a, b) => a + b, 0);
+                    if (sum < 100 || sum > 170) continue; // Skip extreme sums
+                }
+
                 simSet.forEach(n => simCounts[n]++);
+                collectedSets.push(simSet); // Keep valid sets
             } catch (e) {
-                console.warn('Simulation step failed', e);
                 continue;
             }
         }
 
-        // 4. Final Selection
+        // Return counts directly for now (could return sets for more advanced logic)
         return simCounts;
     }
 }

@@ -25,9 +25,19 @@ export class AiModule {
         out.innerHTML = '';
         log.innerHTML = '';
 
+        const strategy = $('#aiModelSelect').value || 'ensemble';
+
+        const strategyNames = {
+            'ensemble': '앙상블 (Ensemble)',
+            'balance': '패턴 밸런스 (Balanced)',
+            'cold': '콜드 포커스 (Cold Focus)',
+            'hot': '핫 포커스 (Hot Focus)'
+        };
+
         const LOGS = [
+            `선택된 모델: ${strategyNames[strategy]}`,
             '데이터 패턴 학습 (Frequency, Recency, Pattern)...',
-            '앙상블 모델 가중치 병합...',
+            '전략별 가중치 재조정...',
             '몬테카를로 시뮬레이션 (2,000회 수행)...',
             '최적 번호 조합 추출 중...'
         ];
@@ -43,7 +53,7 @@ export class AiModule {
             await sleep(100);
 
             // Run Simulation with Safety
-            const finalWeights = mc.runSimulation();
+            const finalWeights = mc.runSimulation(strategy);
             if (!finalWeights || finalWeights.length === 0) {
                 throw new Error('Simulation returned empty results');
             }

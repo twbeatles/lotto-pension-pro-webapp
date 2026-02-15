@@ -203,7 +203,13 @@
                     <div class="card glass highlight-card">
                         <div class="card-header">
                             <h3>최신 당첨결과</h3>
-                            <span id="latestDrawNo" class="badge">Loading...</span>
+                            <div class="row-center">
+                                <span id="latestDrawNo" class="badge">Loading...</span>
+                                <button id="refreshDataBtn" class="icon-btn sm" aria-label="새로고침"
+                                    style="margin-left: 8px;">
+                                    <i class="ph-bold ph-arrows-clockwise"></i>
+                                </button>
+                            </div>
                         </div>
                         <div id="latestWinBalls" class="ball-container center">
                             <!-- Balls will be injected here -->

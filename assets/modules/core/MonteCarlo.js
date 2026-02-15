@@ -95,9 +95,21 @@ export class AdvancedMonteCarlo {
         const simCounts = Array(46).fill(0);
         const SIMULATIONS = 2000;
 
+        // Safety check for weights
+        const totalWeight = ensembleWeights.reduce((a, b) => a + b, 0);
+        if (totalWeight <= 0) {
+            console.warn('Invalid weights, using uniform distribution');
+            ensembleWeights.fill(1);
+        }
+
         for (let i = 0; i < SIMULATIONS; i++) {
-            const simSet = AdvancedMonteCarlo.weightedSample(ensembleWeights, 6);
-            simSet.forEach(n => simCounts[n]++);
+            try {
+                const simSet = AdvancedMonteCarlo.weightedSample(ensembleWeights, 6);
+                simSet.forEach(n => simCounts[n]++);
+            } catch (e) {
+                console.warn('Simulation step failed', e);
+                continue;
+            }
         }
 
         // 4. Final Selection

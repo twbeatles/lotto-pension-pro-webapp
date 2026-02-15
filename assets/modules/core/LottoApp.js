@@ -103,6 +103,15 @@ export class LottoApp {
         $('#syncDataBtn')?.addEventListener('click', () => {
             this.data.fetchLatestFromAPI();
         });
+
+        // Main Refresh Button
+        $('#refreshDataBtn')?.addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            const icon = btn.querySelector('i');
+            icon.classList.add('ph-spin');
+            await this.data.fetchLatestFromAPI(false); // Not silent, show toasts
+            icon.classList.remove('ph-spin');
+        });
     }
 
     applyTheme() {
@@ -147,8 +156,16 @@ export class LottoApp {
         $('#latestDrawNo').textContent = `${latest.draw_no}회`;
         $('#latestWinBalls').innerHTML = UIManager.renderBalls(latest.numbers) +
             `<span class="ball ${UIManager.getBallColor(latest.bonus)}" style="margin-left:8px; opacity:0.8; transform:scale(0.9)">+${latest.bonus}</span>`;
+
+        // Format Currency
+        const fmtMoney = (n) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(n);
+        const fmtCount = (n) => new Intl.NumberFormat('ko-KR').format(n);
+
         $('#latestWinMeta').innerHTML = `
-            <span>${latest.date} 추첨</span>
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+                <span>${latest.date} 추첨</span>
+                ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
+            </div>
         `;
     }
 

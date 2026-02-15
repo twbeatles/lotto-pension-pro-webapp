@@ -104,13 +104,13 @@ export class DataManager {
         }
     }
 
-    async fetchLatestFromAPI() {
+    async fetchLatestFromAPI(silent = false) {
         const logEl = $('#syncLog');
         const btn = $('#syncDataBtn');
-        if (logEl) { logEl.style.display = 'block'; logEl.innerHTML = ''; }
+        if (logEl && !silent) { logEl.style.display = 'block'; logEl.innerHTML = ''; }
 
         const log = (msg) => {
-            if (logEl) {
+            if (logEl && !silent) {
                 logEl.innerHTML += `<div>${msg}</div>`;
                 logEl.scrollTop = logEl.scrollHeight;
             }
@@ -125,6 +125,7 @@ export class DataManager {
 
             if (latestKnown >= estNo) {
                 log('✅ 이미 최신 데이터입니다.');
+                if (!silent) UIManager.toast('이미 최신 데이터입니다.', 'info');
                 return;
             }
 
@@ -143,9 +144,10 @@ export class DataManager {
             const newItems = [];
 
             for (let no = latestKnown + 1; no <= estNo; no++) {
-                log(`📡 ${no}회차 데이터 요청 중...`);
+                log(`📡 ${no}회차 데이터 요청 중... (Internal API)`);
 
-                const targetUrl = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${no}`;
+                // Use the Internal API (same as legacy Python app) for faster updates
+                const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${no}`;
                 const customProxy = $('#customProxyUrl')?.value?.trim();
 
                 let success = false;
@@ -166,18 +168,18 @@ export class DataManager {
 
                         const wrapper = await res.json();
 
-                        // Unpack AllOrigins style if needed
+                        // Unpack Proxy Wrappers
+                        let inner = wrapper;
                         if (wrapper.contents && typeof wrapper.contents === 'string') {
-                            data = JSON.parse(wrapper.contents);
+                            inner = JSON.parse(wrapper.contents);
                         } else if (wrapper.contents) {
-                            // Sometimes it parses JSON automatically
-                            data = wrapper.contents;
-                        } else {
-                            // Direct or generic proxy
-                            data = wrapper;
+                            inner = wrapper.contents;
                         }
 
-                        if (data && data.returnValue) {
+                        // Validate Internal API Structure
+                        // Python: if 'data' in result and 'list' in result['data']:
+                        if (inner.data && inner.data.list && inner.data.list.length > 0) {
+                            data = inner.data.list[0];
                             success = true;
                             break;
                         }
@@ -187,23 +189,33 @@ export class DataManager {
                     }
                 }
 
-                if (success && data.returnValue === 'success') {
+                if (success && data) {
+                    // Map Internal API fields to our schema
+                    // Python: ltEpsd, ltRflYmd, tm1WnNo...
+                    const dateRaw = String(data.ltRflYmd || '');
+                    const dateStr = dateRaw.length === 8
+                        ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
+                        : dateRaw;
+
                     const item = {
-                        draw_no: data.drwNo,
-                        date: data.drwNoDate,
-                        numbers: [data.drwtNo1, data.drwtNo2, data.drwtNo3, data.drwtNo4, data.drwtNo5, data.drwtNo6],
-                        bonus: data.bnusNo,
-                        prize_amount: data.firstWinamnt,
-                        winners_count: data.firstPrzwnerCo,
-                        total_sales: data.totSellamnt
+                        draw_no: data.ltEpsd,
+                        date: dateStr,
+                        numbers: [
+                            data.tm1WnNo, data.tm2WnNo, data.tm3WnNo,
+                            data.tm4WnNo, data.tm5WnNo, data.tm6WnNo
+                        ].map(Number),
+                        bonus: Number(data.bnsWnNo),
+                        prize_amount: Number(data.rnk1WnAmt || 0),
+                        winners_count: Number(data.rnk1WnNope || 0),
+                        total_sales: Number(data.rlvtEpsdSumNtslAmt || 0)
                     };
+
                     newItems.push(item);
                     log(`✨ ${no}회차 확보 완료! (${item.date})`);
                     updatedCount++;
                     await sleep(200);
                 } else {
                     log(`⚠️ ${no}회차 데이터 확인 실패 (서버 응답 없음 or 아직 추첨 전)`);
-                    // If we failed to get data for a specific draw, stop trying further to prevent gaps
                     break;
                 }
             }

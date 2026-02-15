@@ -48,8 +48,18 @@ export class LottoApp {
         this.route('gen');
 
         // Async Load
-        await this.data.fetchWinningStats();
-        this.updateLatestWin();
+        try {
+            await this.data.fetchWinningStats();
+            this.updateLatestWin();
+
+            // Auto-Sync in background (silent)
+            this.data.fetchLatestFromAPI(true);
+        } catch (error) {
+            console.error('Failed to fetch winning stats:', error);
+            // Fallback for offline mode or error
+            $('#latestWinMeta').innerHTML = `<span class="error-msg">데이터 동기화 실패 (오프라인)</span>`;
+        }
+
         this.refreshCurrentRoute();
 
         console.log('LottoApp Initialized');

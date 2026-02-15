@@ -148,6 +148,7 @@ body {
 .brand span {
   background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -260,6 +261,7 @@ body {
   letter-spacing: -0.02em;
   background: linear-gradient(to right, var(--text-main), var(--text-muted));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1460,4 +1462,164 @@ input:checked+.slider:before {
 .tooltip-container:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
+}
+
+/* --- Hot & Cold Analysis Grid --- */
+.hot-cold-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.stat-col h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.stat-col.hot h4 {
+  color: var(--accent);
+}
+
+.stat-col.cold h4 {
+  color: var(--secondary);
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .count {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* --- Mobile Optimization (Phase 5) --- */
+@media (max-width: 768px) {
+  .page {
+    padding: 24px 16px;
+    padding-bottom: 100px;
+    max-width: 100%;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-header h2 {
+    font-size: 26px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .dashboard-grid {
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+
+  /* Stats Tab Density */
+  #page-stats .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  #page-stats .card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  /* Num Dist Chart - Spans Full Width */
+  #page-stats .card:nth-child(1) {
+    grid-column: 1 / -1;
+  }
+
+  #page-stats .card-header {
+    margin-bottom: 12px;
+  }
+
+  #page-stats .card-header h3 {
+    font-size: 15px;
+  }
+
+  /* Hot/Cold Mobile */
+  .hot-cold-grid {
+    gap: 12px;
+  }
+
+  .stat-col h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .stat-row {
+    padding: 4px 0;
+  }
+
+  .stat-row .count {
+    font-size: 12px;
+  }
+
+  /* Ultra Small Screens < 360px */
+  @media (max-width: 360px) {
+    #page-stats .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Main Generator Fixes */
+  .card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  /* Fix clipping/boxing in Generator */
+  #page-gen .card {
+    overflow: visible;
+  }
+
+  .ball-container {
+    gap: 8px;
+    justify-content: center;
+    margin: 10px 0;
+  }
+
+  .ball {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .ball.sm {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+
+  .action-area .btn {
+    padding: 16px;
+  }
+
+  /* Pairs Grid Gap Reduction */
+  .pairs-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pair-card {
+    padding: 10px;
+  }
 }

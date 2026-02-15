@@ -83,7 +83,7 @@ export class BacktestModule {
         this.resetUI();
 
         if (this.worker) this.worker.terminate();
-        this.worker = new Worker('assets/backtest.worker.js');
+        this.worker = new Worker('assets/backtest.worker.js', { type: "module" });
 
         this.worker.onmessage = (e) => {
             const { type, payload } = e.data;

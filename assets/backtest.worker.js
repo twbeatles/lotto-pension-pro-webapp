@@ -1,250 +1,149 @@
-/**
- * Lotto Pro Backtest Worker
- * Handles heavy simulation tasks in a background thread.
- */
+import { AdvancedMonteCarlo } from './modules/core/MonteCarlo.js';
 
-class LegacyPredictor {
-    constructor(winningAsc) {
-        this.data = Array.isArray(winningAsc) ? winningAsc : [];
-    }
-
-    computeScores({ uptoIndexExclusive = null, recencyWindow = 20 } = {}) {
-        const upto = (uptoIndexExclusive == null) ? this.data.length : Math.max(0, Math.min(this.data.length, uptoIndexExclusive));
-        if (upto <= 0) return Array(46).fill(1.0);
-
-        const freq = Array(46).fill(0);
-        // Optimization: Calculate freq only once if possible, but here we scan
-        // For performance in rolling simulation, we should use rolling state instead of full scan
-        // But for LegacyPredictor 'predictNext' called in loop, we stick to the logic.
-        // actually, the backtest loop uses _computeScoresFromState which is different.
-        // detailed check: LegacyPredictor is used for "AI" strategy in backtest?
-
-        // In `app.js`, `processBatch` uses `_computeScoresFromState(rolling)` for AI strategy.
-        // So we need that logic here.
-        return [];
-    }
-
-    // Static helper for weighted sampling
-    static weightedSample(scores, k = 6) {
-        const pool = [];
-        const weights = [];
-        for (let n = 1; n <= 45; n++) {
-            pool.push(n);
-            weights.push(Math.max(0, scores[n] || 0));
-        }
-
-        const chosen = [];
-        for (let i = 0; i < k; i++) {
-            if (!pool.length) break;
-            const total = weights.reduce((a, b) => a + b, 0);
-            let idx = 0;
-            if (total <= 0) {
-                idx = Math.floor(Math.random() * pool.length);
-            } else {
-                const r = Math.random() * total;
-                let cumulative = 0;
-                for (let j = 0; j < weights.length; j++) {
-                    cumulative += weights[j];
-                    if (cumulative >= r) {
-                        idx = j;
-                        break;
-                    }
-                }
-            }
-            chosen.push(pool[idx]);
-            pool.splice(idx, 1);
-            weights.splice(idx, 1);
-        }
-
-        return chosen.sort((a, b) => a - b);
-    }
-}
-
-// Internal Rolling State Manager for "AI" Strategy in Backtest
-function makeRollingState() {
-    return {
-        total: 0,
-        freq: Array(46).fill(0),
-        recentFreq: Array(46).fill(0),
-        lastSeen: Array(46).fill(0),
-        recentQueue: [] // Array of [numbers...]
-    };
-}
-
-function ingest(state, numbers, recencyWindow = 20) {
-    const idx = state.total;
-    state.total += 1;
-    numbers.forEach(n => {
-        state.freq[n] += 1;
-        state.recentFreq[n] += 1;
-        state.lastSeen[n] = idx;
-    });
-    state.recentQueue.push(numbers);
-    if (state.recentQueue.length > recencyWindow) {
-        const old = state.recentQueue.shift();
-        old.forEach(n => { state.recentFreq[n] -= 1; });
-    }
-}
-
-function computeScoresFromState(state) {
-    if (state.total <= 0) return Array(46).fill(1.0);
-    const total = state.total;
-    const recentCount = Math.max(1, state.recentQueue.length);
-    const scores = Array(46).fill(1.0);
-
-    for (let n = 1; n <= 45; n++) {
-        const sFreq = state.freq[n] / total;
-        const sRecent = (state.recentFreq[n] / recentCount) * 2.0;
-        const gap = total - (state.lastSeen[n] || 0);
-        const sGap = Math.min(gap / total, 0.3);
-        scores[n] = Math.max(sFreq + sRecent + sGap, 0.01);
-    }
-    return scores;
-}
-
-function calcRank(ticketNums, winNums, bonus) {
-    const winSet = new Set(winNums);
-    const matchCount = ticketNums.filter(n => winSet.has(n)).length;
-    const bonusHit = ticketNums.includes(bonus);
-
-    let rank = 0;
-    if (matchCount === 6) rank = 1;
-    else if (matchCount === 5 && bonusHit) rank = 2;
-    else if (matchCount === 5) rank = 3;
-    else if (matchCount === 4) rank = 4;
-    else if (matchCount === 3) rank = 5;
-
-    const hitText = (rank === 2) ? '5+B' : String(matchCount);
-    return { rank, matchCount, bonusHit, hitText };
-}
-
-function getEstimatedPrize(rank) {
-    if (rank === 1) return 2_000_000_000;
-    if (rank === 2) return 50_000_000;
-    if (rank === 3) return 1_500_000;
-    if (rank === 4) return 50_000;
-    if (rank === 5) return 5_000;
-    return 0;
-}
-
-// Message Handler
-self.onmessage = function (e) {
+self.onmessage = async (e) => {
     const { type, payload } = e.data;
+
     if (type === 'START') {
-        runBacktest(payload);
+        try {
+            await runBacktest(payload);
+        } catch (err) {
+            console.error(err);
+            self.postMessage({ type: 'ERROR', payload: err.message });
+        }
     }
 };
 
-async function runBacktest(params) {
-    const {
-        statsData, // Full winning stats array
-        startDraw,
-        endDraw,
-        qty,
-        strategy // 'random' | 'ai'
-    } = params;
+async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
+    const totalDraws = endDraw - startDraw + 1;
+    let processed = 0;
 
-    // Sort asc
-    const asc = statsData.sort((a, b) => a.draw_no - b.draw_no);
+    // Sort data just in case
+    const allStats = [...statsData].sort((a, b) => a.draw_no - b.draw_no);
 
-    // Filter range
-    const valid = asc.filter(d => d.draw_no >= startDraw && d.draw_no <= endDraw);
+    // Quick lookup for actual results
+    const drawMap = new Map();
+    allStats.forEach(d => drawMap.set(d.draw_no, d));
 
-    // Initialize Simulation State
-    const rolling = makeRollingState();
+    const report = {
+        draws: 0,
+        tickets: 0,
+        cost: 0,
+        totalPrize: 0,
+        counts: [0, 0, 0, 0, 0, 0] // 0:Fail, 1:1st, 2:2nd ...
+    };
 
-    // Pre-fill rolling state with data BEFORE startDraw to warm up the model
-    // (Optional but good for accuracy: ingest everything up to startDraw)
-    for (const d of asc) {
-        if (d.draw_no < startDraw) {
-            ingest(rolling, d.numbers);
-        } else {
-            break;
+    const wins = [];
+
+    for (let currentDraw = startDraw; currentDraw <= endDraw; currentDraw++) {
+        // 1. Prepare historical data (up to currentDraw - 1)
+        // We need data strictly BEFORE the current draw to simulate prediction
+        const historyData = allStats.filter(d => d.draw_no < currentDraw);
+
+        // If we don't have enough history, maybe skip or use what we have?
+        // Ideally we need at least some history.
+
+        const actualResult = drawMap.get(currentDraw);
+        if (!actualResult) {
+            // Data missing for this draw? Skip.
+            processed++;
+            continue;
         }
-    }
 
-    const counts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let totalTickets = 0;
-    let drawsUsed = 0;
-    const costPerTicket = 1000;
-    let totalPrize = 0;
+        // 2. Generate Numbers
+        const tickets = [];
 
-    for (const win of valid) {
-        drawsUsed++;
-
-        // AI Strategy Calculation
-        let scores = null;
         if (strategy === 'ai') {
-            scores = computeScoresFromState(rolling);
+            const ai = new AdvancedMonteCarlo(historyData);
+            // Run simulation 10 times to pick 'qty' sets? 
+            // Or run it once and sample 'qty' times from weights?
+            // "getModel..." returns weights. "runSimulation" returns counts (simulated future).
+            // We can use runSimulation() to get the "hot" numbers map, then sample from it.
+
+            // AdvancedMonteCarlo.runSimulation() returns simCounts (frequency of 1-45 in 2000 sims).
+            // We can treat these simCounts as the weights for our ticket generation.
+
+            const simCounts = ai.runSimulation();
+            // simCounts is Array(46) where index is ball number, value is count.
+
+            for (let i = 0; i < qty; i++) {
+                // We use weighted sample based on the simulation results
+                const nums = AdvancedMonteCarlo.weightedSample(simCounts, 6);
+                tickets.push(nums);
+            }
+        } else {
+            // Random
+            for (let i = 0; i < qty; i++) {
+                tickets.push(generateRandomNums());
+            }
         }
 
-        const winList = []; // Buffer for wins in this draw to send back
+        // 3. Check Wins
+        const winNums = actualResult.numbers; // [1,2,3,4,5,6]
+        const bonus = actualResult.bonus;     // 7
 
-        for (let k = 0; k < qty; k++) {
-            let nums;
-            if (strategy === 'ai') {
-                nums = LegacyPredictor.weightedSample(scores, 6);
-            } else {
-                // Random
-                const pool = Array.from({ length: 45 }, (_, i) => i + 1);
-                // Simple shuffle
-                for (let i = pool.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [pool[i], pool[j]] = [pool[j], pool[i]];
-                }
-                nums = pool.slice(0, 6).sort((a, b) => a - b);
-            }
+        tickets.forEach(ticket => {
+            const { rank, prize } = checkRank(ticket, winNums, bonus);
 
-            const r = calcRank(nums, win.numbers, win.bonus);
-            counts[r.rank]++;
-            totalPrize += getEstimatedPrize(r.rank);
-            totalTickets++;
+            report.tickets++;
+            report.cost += 1000;
+            report.totalPrize += prize;
+            report.counts[rank]++; // rank 0 is fail
 
-            if (r.rank > 0) {
-                winList.push({
-                    drawNo: win.draw_no,
-                    rank: r.rank,
-                    hitText: r.hitText,
-                    nums
+            if (rank >= 1 && rank <= 5) { // Track 5th place or better
+                wins.push({
+                    drawNo: currentDraw,
+                    rank,
+                    prize,
+                    nums: ticket,
+                    hitText: '' // Can be generated in UI
                 });
             }
-        }
+        });
 
-        // Update rolling state for next draw
-        ingest(rolling, win.numbers);
+        report.draws++;
+        processed++;
 
-        // Send Progress
-        if (drawsUsed % 5 === 0 || drawsUsed === valid.length) {
+        // Progress Update every 10 draws or last one
+        if (processed % 10 === 0 || processed === totalDraws) {
             self.postMessage({
                 type: 'PROGRESS',
-                payload: {
-                    draws: drawsUsed,
-                    tickets: totalTickets,
-                    cost: totalTickets * costPerTicket,
-                    totalPrize,
-                    counts,
-                    recentWins: winList.length > 0 ? winList : null
-                }
+                payload: report
             });
-            // Sleep a tiny bit to allow message posting? Not needed in worker usually, but prevents main thread choke if msg flooding
-            // await new Promise(r => setTimeout(r, 0));
-        } else if (winList.length > 0) {
-            // Send wins immediately if any (for better UX)
-            self.postMessage({
-                type: 'WINS',
-                payload: winList
-            });
+            // Send batch of wins to avoid spamming
+            if (wins.length > 0) {
+                // For performance, we might want to send wins only occasionally or all at once?
+                // UI appends rows. Let's send them.
+                self.postMessage({ type: 'WINS', payload: [...wins] });
+                wins.length = 0; // Clear buffer
+            }
         }
     }
 
-    self.postMessage({
-        type: 'DONE',
-        payload: {
-            draws: drawsUsed,
-            tickets: totalTickets,
-            cost: totalTickets * costPerTicket,
-            totalPrize,
-            counts
-        }
+    // Final Done message
+    self.postMessage({ type: 'DONE', payload: report });
+}
+
+function generateRandomNums() {
+    const nums = new Set();
+    while (nums.size < 6) {
+        nums.add(Math.floor(Math.random() * 45) + 1);
+    }
+    return [...nums].sort((a, b) => a - b);
+}
+
+function checkRank(myNums, winNums, bonus) {
+    let hit = 0;
+    let hasBonus = false;
+
+    myNums.forEach(n => {
+        if (winNums.includes(n)) hit++;
+        if (n === bonus) hasBonus = true;
     });
+
+    if (hit === 6) return { rank: 1, prize: 2000000000 }; // Est. 2B
+    if (hit === 5 && hasBonus) return { rank: 2, prize: 50000000 }; // Est. 50M
+    if (hit === 5) return { rank: 3, prize: 1500000 }; // Est. 1.5M
+    if (hit === 4) return { rank: 4, prize: 50000 };
+    if (hit === 3) return { rank: 5, prize: 5000 };
+    return { rank: 0, prize: 0 };
 }

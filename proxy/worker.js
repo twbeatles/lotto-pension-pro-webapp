@@ -38,37 +38,45 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return toJsonResponse("{}");
+      return toJsonResponse("{}", { headers: CORS });
     }
 
-    if (url.pathname !== "/proxy/latest") {
-      return toJsonResponse(JSON.stringify({ error: "not found" }), { status: 404 });
-    }
+    // Support ?url= parameter (like AllOrigins)
+    const targetUrlStr = url.searchParams.get("url");
 
-    const drawNo = Number(url.searchParams.get("draw_no") || 0);
-    const target = drawNo > 0 ? drawNo : 0;
+    if (targetUrlStr) {
+      try {
+        const targetUrl = new URL(targetUrlStr);
+        // Security: Only allow dhlottery.co.kr
+        if (targetUrl.hostname !== "www.dhlottery.co.kr") {
+          return toJsonResponse(JSON.stringify({ error: "Forbidden domain" }), { status: 403 });
+        }
 
-    if (!target) {
-      return toJsonResponse(
-        JSON.stringify({
-          error: "draw_no query parameter required",
-          message: "proxy requires draw_no in query until API output is confirmed",
-        }),
-        { status: 400 }
-      );
-    }
+        const res = await fetch(targetUrl.toString(), {
+          headers: {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://www.dhlottery.co.kr/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
 
-    try {
-      const { ok, text } = await getLatestProxy(target);
-      if (!ok) {
-        return toJsonResponse(JSON.stringify({
-          error: "upstream_failed",
-          status: "upstream_error",
-        }), { status: 502 });
+        const text = await res.text();
+        return toJsonResponse(text);
+      } catch (e) {
+        return toJsonResponse(JSON.stringify({ error: "Invalid URL" }), { status: 400 });
       }
-      return toJsonResponse(text);
-    } catch (err) {
-      return toJsonResponse(JSON.stringify({ error: String(err) }), { status: 502 });
     }
+
+    // Fallback/Legacy: /proxy/latest?draw_no=1000
+    if (url.pathname === "/proxy/latest") {
+      const drawNo = Number(url.searchParams.get("draw_no") || 0);
+      if (!drawNo) return toJsonResponse(JSON.stringify({ error: "missing draw_no" }), { status: 400 });
+
+      const { ok, text } = await getLatestProxy(drawNo);
+      if (!ok) return toJsonResponse(JSON.stringify({ error: "upstream error" }), { status: 502 });
+      return toJsonResponse(text);
+    }
+
+    return toJsonResponse(JSON.stringify({ error: "Not Found" }), { status: 404 });
   },
 };

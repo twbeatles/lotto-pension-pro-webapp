@@ -97,8 +97,12 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label>연속수 제한 <i class="ph ph-info"
-                                        title="연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한"></i></label>
+                                <label>연속수 제한
+                                    <span class="tooltip-container">
+                                        <i class="ph ph-info"></i>
+                                        <span class="tooltip-text">연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한합니다.</span>
+                                    </span>
+                                </label>
                                 <label class="switch">
                                     <input type="checkbox" id="limitConsecutive" checked>
                                     <span class="slider"></span>
@@ -179,8 +183,12 @@
                     <p class="subtitle">역대 데이터를 분석하여 인사이트를 얻으세요.</p>
                 </header>
                 <div class="dashboard-grid">
+                    <div class="card glass full-width">
+                        <h3>번호별 출현 빈도 (1~45)</h3>
+                        <div id="chartNumDist" class="chart-container" style="height: 200px; overflow-x: auto;"></div>
+                    </div>
                     <div class="card glass">
-                        <h3>번호대별 분포</h3>
+                        <h3>구간별 분포</h3>
                         <div id="chartRange" class="chart-container"></div>
                     </div>
                     <div class="card glass">
@@ -293,10 +301,15 @@
                 <div class="dashboard-grid">
                     <div class="card glass">
                         <h3>비교 대상 선택</h3>
-                        <div class="tabs-segmented">
+                        <div class="segment-control">
                             <button class="seg-btn active" data-source="favorites">즐겨찾기</button>
                             <button class="seg-btn" data-source="history">히스토리</button>
+                            <button class="seg-btn" data-source="scanned" style="display:none">스캔결과</button>
                         </div>
+                        <button class="btn ghost sm" id="openQrScannerBtn"
+                            style="position: absolute; right: 0; top: 0;">
+                            <i class="ph ph-qr-code"></i> 스캔
+                        </button>
                         <div class="tabs-segmented" style="margin-top:10px;">
                             <button class="seg-btn active" data-checkmode="latest">최신 회차</button>
                             <button class="seg-btn" data-checkmode="all">전체 회차</button>
@@ -408,8 +421,21 @@
         </div>
     </div>
 
+    <div id="qrScanModal" class="modal">
+        <div class="modal-content center-content" style="max-width: 500px; width: 95%;">
+            <h3>로또 QR 스캔</h3>
+            <div id="qr-reader"
+                style="width: 100%; min-height: 300px; background: #000; border-radius: 12px; overflow: hidden;"></div>
+            <p class="subtitle" style="margin-top: 15px;">카메라로 로또 QR코드를 비춰주세요.</p>
+            <button class="btn ghost" id="closeScanBtn">닫기</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="assets/app.js" type="module"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- Main Logic (Module) -->
+    <script type="module" src="assets/modules/index.js"></script>
 </body>
 
 </html>

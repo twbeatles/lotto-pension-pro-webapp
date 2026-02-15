@@ -1,0 +1,379 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="Lotto 6/45 Generator Pro Web App">
+    <meta name="theme-color" content="#0f172a">
+    <title>Lotto 6/45 Pro</title>
+    <link rel="stylesheet" href="assets/app.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body data-theme="dark">
+    <div id="app">
+        <!-- Sidebar (Desktop) -->
+        <nav class="sidebar">
+            <div class="brand">
+                <i class="ph-fill ph-clover"></i>
+                <h1>Lotto Pro</h1>
+            </div>
+            
+            <div class="nav-menu">
+                <button class="nav-item active" data-target="gen">
+                    <i class="ph ph-magic-wand"></i>
+                    <span>번호 생성</span>
+                </button>
+                <button class="nav-item" data-target="stats">
+                    <i class="ph ph-chart-bar"></i>
+                    <span>당첨 통계</span>
+                </button>
+                <button class="nav-item" data-target="ai">
+                    <i class="ph ph-brain"></i>
+                    <span>AI 예측</span>
+                </button>
+                <button class="nav-item" data-target="bt">
+                    <i class="ph ph-flask"></i>
+                    <span>시뮬레이션</span>
+                </button>
+                <button class="nav-item" data-target="check">
+                    <i class="ph ph-check-circle"></i>
+                    <span>당첨 확인</span>
+                </button>
+                <button class="nav-item" data-target="data">
+                    <i class="ph ph-database"></i>
+                    <span>데이터 관리</span>
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <button id="themeToggle" class="icon-btn" aria-label="Toggle Theme">
+                    <i class="ph ph-moon"></i>
+                </button>
+                <div class="sync-status" id="syncStatus">
+                    <span class="dot"></span>
+                    <span class="text">Ready</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="main">
+            <!-- Mobile Header -->
+            <header class="mobile-header">
+                <div class="brand">
+                    <i class="ph-fill ph-clover"></i>
+                    <span>Lotto Pro</span>
+                </div>
+                <button id="mobileThemeToggle" class="icon-btn">
+                    <i class="ph ph-moon"></i>
+                </button>
+            </header>
+
+            <!-- Pages -->
+            <!-- 1. Generate -->
+            <section id="page-gen" class="page active">
+                <header class="page-header">
+                    <h2>번호 생성</h2>
+                    <p class="subtitle">나만의 행운 번호를 조합해보세요.</p>
+                </header>
+                
+                <div class="dashboard-grid">
+                    <!-- Generator Card -->
+                    <div class="card glass">
+                        <div class="card-header">
+                            <h3>옵션 설정</h3>
+                            <button id="resetOptions" class="text-btn">초기화</button>
+                        </div>
+                        <div class="options-grid">
+                            <div class="input-group">
+                                <label>생성 개수</label>
+                                <div class="stepper">
+                                    <button class="step-btn" onclick="this.nextElementSibling.stepDown()">-</button>
+                                    <input type="number" id="setCount" value="5" min="1" max="20" readonly>
+                                    <button class="step-btn" onclick="this.previousElementSibling.stepUp()">+</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>연속수 제한 <i class="ph ph-info" title="연속된 숫자(예: 11,12)가 3개 이상 나오지 않게 제한"></i></label>
+                                <label class="switch">
+                                    <input type="checkbox" id="limitConsecutive" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="advanced-options">
+                            <div class="input-group">
+                                <label>고정수 (최대 5개)</label>
+                                <input type="text" id="fixedNums" placeholder="예: 1, 8, 23" class="input-field">
+                            </div>
+                            <div class="input-group">
+                                <label>제외수</label>
+                                <input type="text" id="excludeNums" placeholder="예: 14, 29, 45" class="input-field">
+                            </div>
+                        </div>
+
+                        <div class="toggles">
+                            <label class="check-box">
+                                <input type="checkbox" id="smartMode" checked>
+                                <span class="checkmark"></span>
+                                <span>스마트 모드 (비율/합계 최적화)</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="preferHot" checked>
+                                <span class="checkmark"></span>
+                                <span>최빈수 우선 추천</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="balanceMode" checked>
+                                <span class="checkmark"></span>
+                                <span>홀짝/고저 밸런스</span>
+                            </label>
+                        </div>
+
+                        <div class="action-area">
+                            <button id="generateBtn" class="btn primary full-width">
+                                <i class="ph-bold ph-sparkle"></i> 번호 생성하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Latest Win -->
+                    <div class="card glass highlight-card">
+                        <div class="card-header">
+                            <h3>최신 당첨결과</h3>
+                            <span id="latestDrawNo" class="badge">Loading...</span>
+                        </div>
+                        <div id="latestWinBalls" class="ball-container center">
+                            <!-- Balls will be injected here -->
+                            <div class="skeleton-balls"></div>
+                        </div>
+                        <div class="win-meta" id="latestWinMeta">
+                            <!-- Meta info -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <div class="section-header">
+                        <h3>생성 결과</h3>
+                        <div class="actions">
+                            <button id="clearResults" class="btn ghost sm">비우기</button>
+                            <button id="saveAllBtn" class="btn ghost sm">전체 저장</button>
+                        </div>
+                    </div>
+                    <div id="genResultList" class="result-list">
+                        <!-- Results injected here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Stats -->
+            <section id="page-stats" class="page">
+                <header class="page-header">
+                    <h2>당첨 통계</h2>
+                    <p class="subtitle">역대 데이터를 분석하여 인사이트를 얻으세요.</p>
+                </header>
+                <div class="dashboard-grid">
+                    <div class="card glass">
+                        <h3>번호대별 분포</h3>
+                        <div id="chartRange" class="chart-container"></div>
+                    </div>
+                    <div class="card glass">
+                        <h3>홀짝 비율</h3>
+                        <div id="chartOddEven" class="chart-container"></div>
+                    </div>
+                    <div class="card glass full-width">
+                        <h3>자주 나오는 번호 (Hot & Cold)</h3>
+                        <div id="hotColdContainer" class="hot-cold-grid">
+                            <!-- Injected JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. AI -->
+            <section id="page-ai" class="page">
+                <header class="page-header">
+                    <h2>AI 예측</h2>
+                    <p class="subtitle">통계적 알고리즘이 다음 회차 번호를 예측합니다.</p>
+                </header>
+                <div class="ai-container">
+                    <div class="ai-orb">
+                        <div class="orb-visual"></div>
+                        <button id="aiPredictBtn" class="btn primary lg">
+                            <i class="ph-bold ph-brain"></i> 예측 시작
+                        </button>
+                    </div>
+                    <div id="aiOutput" class="ai-output">
+                        <!-- AI Cards -->
+                    </div>
+                    <div class="card glass console-log">
+                        <h3>분석 로그</h3>
+                        <div id="aiLogArea" class="log-content"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Backtest -->
+            <section id="page-bt" class="page">
+                <header class="page-header">
+                    <h2>전략 시뮬레이션</h2>
+                    <p class="subtitle">내 전략이 과거에 얼마나 효과적이었는지 검증해보세요.</p>
+                </header>
+                <div class="dashboard-grid">
+                    <div class="card glass">
+                        <h3>시뮬레이션 설정</h3>
+                        <div class="options-grid">
+                            <div class="input-group">
+                                <label>시작 회차</label>
+                                <input type="number" id="btStart" value="1000">
+                            </div>
+                            <div class="input-group">
+                                <label>종료 회차</label>
+                                <input type="number" id="btEnd" value="1100">
+                            </div>
+                            <div class="input-group">
+                                <label>회차당 구매 수</label>
+                                <input type="number" id="btQty" value="5">
+                            </div>
+                            <div class="input-group">
+                                <label>전략</label>
+                                <select id="btStrategy" class="input-field">
+                                    <option value="random">완전 랜덤</option>
+                                    <option value="ai">AI 예측</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="runBacktest" class="btn primary full-width">
+                            <i class="ph-bold ph-play"></i> 시뮬레이션 실행
+                        </button>
+                    </div>
+                    <div class="card glass">
+                        <h3>결과 요약</h3>
+                        <ul id="btSummaryList" class="stat-list">
+                            <li>실행 대기중...</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card glass mt-4">
+                    <h3>당첨 상세 내역</h3>
+                    <div class="table-container">
+                        <table id="btResultTable">
+                            <thead>
+                                <tr><th>회차</th><th>등수</th><th>적중</th><th>번호</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Check -->
+            <section id="page-check" class="page">
+                <header class="page-header">
+                    <h2>당첨 확인</h2>
+                    <p class="subtitle">저장된 번호나 히스토리를 최신 결과와 비교합니다.</p>
+                </header>
+                <div class="dashboard-grid">
+                    <div class="card glass">
+                        <h3>비교 대상 선택</h3>
+                        <div class="tabs-segmented">
+                            <button class="seg-btn active" data-source="favorites">즐겨찾기</button>
+                            <button class="seg-btn" data-source="history">히스토리</button>
+                        </div>
+                        <div class="tabs-segmented" style="margin-top:10px;">
+                            <button class="seg-btn active" data-checkmode="latest">최신 회차</button>
+                            <button class="seg-btn" data-checkmode="all">전체 회차</button>
+                        </div>
+                        <select id="checkTargetList" class="input-field list-select" size="10"></select>
+                        <button id="doCheckBtn" class="btn primary full-width mt-4">확인하기</button>
+                    </div>
+                    <div class="card glass">
+                        <h3>확인 결과</h3>
+                        <div id="checkResultArea" class="check-result-placeholder">
+                            <i class="ph ph-magnifying-glass" style="font-size: 48px; color: var(--muted);"></i>
+                            <p>좌측에서 번호를 선택하고 확인 버튼을 누르세요.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Data -->
+            <section id="page-data" class="page">
+                <header class="page-header">
+                    <h2>데이터 관리</h2>
+                    <p class="subtitle">즐겨찾기, 생성 기록 및 데이터를 관리합니다.</p>
+                </header>
+                <div class="dashboard-grid">
+                    <div class="card glass">
+                        <div class="card-header">
+                            <h3>⭐ 즐겨찾기</h3>
+                            <button id="clearFavorites" class="btn text-danger">전체 삭제</button>
+                        </div>
+                        <div id="favList" class="data-list"></div>
+                    </div>
+                    <div class="card glass">
+                        <div class="card-header">
+                            <h3>📜 생성 히스토리</h3>
+                            <button id="clearHistory" class="btn text-danger">전체 삭제</button>
+                        </div>
+                        <div id="historyList" class="data-list"></div>
+                    </div>
+                </div>
+                <div class="card glass mt-4">
+                    <h3>데이터 백업/복원</h3>
+                    <div class="button-group">
+                        <button id="exportAll" class="btn ghost">
+                            <i class="ph ph-export"></i> 전체 데이터 내보내기 (JSON)
+                        </button>
+                        <button id="importAllTrigger" class="btn ghost">
+                            <i class="ph ph-import"></i> 가져오기
+                        </button>
+                        <input type="file" id="importInput" hidden accept=".json">
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Mobile Bottom Nav -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="gen">
+                <i class="ph ph-magic-wand"></i>
+                <span>생성</span>
+            </button>
+            <button class="nav-item" data-target="stats">
+                <i class="ph ph-chart-bar"></i>
+                <span>통계</span>
+            </button>
+            <button class="nav-item" data-target="ai">
+                <i class="ph ph-brain"></i>
+                <span>AI</span>
+            </button>
+            <button class="nav-item" data-target="bt">
+                <i class="ph ph-flask"></i>
+                <span>실험</span>
+            </button>
+            <button class="nav-item" data-target="check">
+                <i class="ph ph-check-circle"></i>
+                <span>확인</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modals -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content center-content">
+            <h3>QR Code</h3>
+            <div id="qrCanvasContainer"></div>
+            <button class="btn ghost" onclick="document.getElementById('qrModal').classList.remove('active')">닫기</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="assets/app.js" type="module"></script>
+</body>
+</html>

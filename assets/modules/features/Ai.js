@@ -147,13 +147,13 @@ export class AiModule {
 
             // Ball HTML
             const ballsHtml = set.map(n => {
-                let colorClass = 'ball-y';
-                if (n <= 10) colorClass = 'ball-y';
-                else if (n <= 20) colorClass = 'ball-b';
-                else if (n <= 30) colorClass = 'ball-r';
-                else if (n <= 40) colorClass = 'ball-g';
-                else colorClass = 'ball-p';
-                return `<span class="ball ${colorClass} sm">${n}</span>`;
+                let colorClass = 'yellow';
+                if (n <= 10) colorClass = 'yellow';
+                else if (n <= 20) colorClass = 'blue';
+                else if (n <= 30) colorClass = 'red';
+                else if (n <= 40) colorClass = 'gray';
+                else colorClass = 'green';
+                return `<span class="ball ${colorClass}">${n}</span>`;
             }).join('');
 
             row.innerHTML = `

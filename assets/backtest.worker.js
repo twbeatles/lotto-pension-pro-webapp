@@ -52,21 +52,20 @@ async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
         // 2. Generate Numbers
         const tickets = [];
 
-        if (strategy === 'ai') {
+        if (strategy !== 'random') {
             const ai = new AdvancedMonteCarlo(historyData);
-            // Run simulation 10 times to pick 'qty' sets? 
-            // Or run it once and sample 'qty' times from weights?
-            // "getModel..." returns weights. "runSimulation" returns counts (simulated future).
-            // We can use runSimulation() to get the "hot" numbers map, then sample from it.
 
-            // AdvancedMonteCarlo.runSimulation() returns simCounts (frequency of 1-45 in 2000 sims).
-            // We can treat these simCounts as the weights for our ticket generation.
-
-            const simCounts = ai.runSimulation();
-            // simCounts is Array(46) where index is ball number, value is count.
+            // Generate weights based on specific strategy
+            let simCounts = [];
+            try {
+                simCounts = ai.runSimulation(strategy);
+            } catch (e) {
+                // Fallback if simulation fails
+                simCounts = ai.runSimulation('ensemble');
+            }
 
             for (let i = 0; i < qty; i++) {
-                // We use weighted sample based on the simulation results
+                // Use weighted sample based on the simulation results
                 const nums = AdvancedMonteCarlo.weightedSample(simCounts, 6);
                 tickets.push(nums);
             }

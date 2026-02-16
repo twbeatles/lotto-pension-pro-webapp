@@ -77,6 +77,31 @@ export class AdvancedMonteCarlo {
         return [...chosen].sort((a, b) => a - b);
     }
 
+    // --- Helpers for Advanced Features ---
+    static calculateSum(numbers) {
+        return numbers.reduce((a, b) => a + b, 0);
+    }
+
+    static calculateAC(numbers) {
+        // AC = D - (r - 1)
+        // D: Count of unique differences between all pairs
+        // r: Count of numbers (6)
+        if (!numbers || numbers.length < 6) return 0;
+
+        const diffs = new Set();
+        for (let i = 0; i < numbers.length; i++) {
+            for (let j = i + 1; j < numbers.length; j++) {
+                const d = Math.abs(numbers[i] - numbers[j]);
+                diffs.add(d);
+            }
+        }
+        return diffs.size - (6 - 1);
+    }
+
+    static getEndDigits(numbers) {
+        return numbers.map(n => n % 10);
+    }
+
     runSimulation(strategy = 'ensemble') {
         // 1. Compute Base Weights from 3 Models
         const wFreq = this.getModelFrequency();
@@ -92,6 +117,11 @@ export class AdvancedMonteCarlo {
         } else if (strategy === 'hot') {
             // Hot Focus: 100% Frequency
             for (let n = 1; n <= 45; n++) finalWeights[n] = wFreq[n];
+        } else if (strategy === 'statistical') {
+            // Statistical: Heavy weight on Adjacency & Frequency
+            for (let n = 1; n <= 45; n++) {
+                finalWeights[n] = (wFreq[n] * 0.4) + (wRecency[n] * 0.2) + (wAdj[n] * 0.4);
+            }
         } else {
             // Ensemble & Balance: Balanced Mix
             for (let n = 1; n <= 45; n++) {
@@ -101,7 +131,7 @@ export class AdvancedMonteCarlo {
 
         // 3. Monte Carlo Simulation
         const simCounts = Array(46).fill(0);
-        const SIMULATIONS = 2000;
+        const SIMULATIONS = 5000;
         const collectedSets = [];
 
         // Safety check
@@ -119,8 +149,19 @@ export class AdvancedMonteCarlo {
                     if (oddCount < 2 || oddCount > 4) continue; // Skip extreme ratios
 
                     // Filter: Sum (100 ~ 170)
-                    const sum = simSet.reduce((a, b) => a + b, 0);
+                    const sum = AdvancedMonteCarlo.calculateSum(simSet);
                     if (sum < 100 || sum > 170) continue; // Skip extreme sums
+                }
+
+                if (strategy === 'statistical') {
+                    // Strict Filter for "Statistical" Model
+                    // 1. AC Value: 7 ~ 10 (Most common winning range)
+                    const ac = AdvancedMonteCarlo.calculateAC(simSet);
+                    if (ac < 7) continue;
+
+                    // 2. Sum: 100 ~ 175
+                    const sum = AdvancedMonteCarlo.calculateSum(simSet);
+                    if (sum < 100 || sum > 175) continue;
                 }
 
                 simSet.forEach(n => simCounts[n]++);
@@ -130,7 +171,7 @@ export class AdvancedMonteCarlo {
             }
         }
 
-        // Return counts directly for now (could return sets for more advanced logic)
+        // Return counts directly for now
         return simCounts;
     }
 }

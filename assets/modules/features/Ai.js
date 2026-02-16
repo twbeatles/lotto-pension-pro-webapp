@@ -34,6 +34,7 @@ export class AiModule {
 
         const strategyNames = {
             'ensemble': '앙상블 (Ensemble)',
+            'statistical': '정밀 통계 (Statistical)',
             'balance': '패턴 밸런스 (Balanced)',
             'cold': '콜드 포커스 (Cold Focus)',
             'hot': '핫 포커스 (Hot Focus)'
@@ -43,7 +44,7 @@ export class AiModule {
             `선택된 모델: ${strategyNames[strategy]}`,
             '데이터 패턴 학습 (Frequency, Recency, Pattern)...',
             '전략별 가중치 재조정...',
-            '몬테카를로 시뮬레이션 (2,000회 수행)...',
+            '몬테카를로 시뮬레이션 (5,000회 수행)...',
             '최적 번호 조합 추출 중...'
         ];
 
@@ -85,8 +86,20 @@ export class AiModule {
 
             // Set 2-5: Variation
             let safety = 0;
-            while (results.length < 5 && safety++ < 20) {
+            // Increase safety limit for strict filtering
+            const maxAttempts = strategy === 'statistical' ? 200 : 50;
+
+            while (results.length < 5 && safety++ < maxAttempts) {
                 const set = AdvancedMonteCarlo.weightedSample(finalWeights, 6);
+
+                // Strict Validation for Statistical Model
+                if (strategy === 'statistical') {
+                    const ac = AdvancedMonteCarlo.calculateAC(set);
+                    const sum = AdvancedMonteCarlo.calculateSum(set);
+                    // Filter: AC 7~10 AND Sum 100~175
+                    if (ac < 7 || sum < 100 || sum > 175) continue;
+                }
+
                 const k = set.join(',');
                 if (!keys.has(k)) {
                     keys.add(k);
@@ -107,5 +120,62 @@ export class AiModule {
             btn.disabled = false;
             btn.innerHTML = '<i class="ph-bold ph-brain"></i> 재분석';
         }
+    }
+
+    renderResults(results) {
+        const out = $('#aiOutput');
+        if (!out) return;
+
+        out.innerHTML = '';
+        results.forEach((set, idx) => {
+            const sum = AdvancedMonteCarlo.calculateSum(set);
+            const ac = AdvancedMonteCarlo.calculateAC(set);
+
+            const row = document.createElement('div');
+            row.className = 'ai-card-row';
+            row.style.animationDelay = `${idx * 0.1}s`;
+
+            // Badges
+            let badgHtml = `
+                <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
+                    합계: ${sum}
+                </span>
+                <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
+                    AC: ${ac}
+                </span>
+            `;
+
+            // Ball HTML
+            const ballsHtml = set.map(n => {
+                let colorClass = 'ball-y';
+                if (n <= 10) colorClass = 'ball-y';
+                else if (n <= 20) colorClass = 'ball-b';
+                else if (n <= 30) colorClass = 'ball-r';
+                else if (n <= 40) colorClass = 'ball-g';
+                else colorClass = 'ball-p';
+                return `<span class="ball ${colorClass} sm">${n}</span>`;
+            }).join('');
+
+            row.innerHTML = `
+                <div class="ai-card-header" style="justify-content:space-between; display:flex; margin-bottom:8px;">
+                     <span class="rank-badge">#${idx + 1}</span>
+                     <div class="meta-badges" style="display:flex; gap:4px;">${badgHtml}</div>
+                </div>
+                <div class="ball-container left">${ballsHtml}</div>
+                <div class="row-actions" style="margin-top:8px; display:flex; justify-content:flex-end;">
+                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">선택</button>
+                </div>
+            `;
+
+            out.appendChild(row);
+        });
+
+        // Bind events
+        out.querySelectorAll('.pick-btn').forEach(b => {
+            b.addEventListener('click', (e) => {
+                const nums = e.target.dataset.nums.split(',').map(Number);
+                this.app.requestNumbers(nums);
+            });
+        });
     }
 }

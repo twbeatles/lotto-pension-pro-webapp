@@ -1679,3 +1679,52 @@ input:checked+.slider:before {
     gap: 16px;
   }
 }
+
+/* Model Guide Section */
+.model-guide-section {
+  margin-top: 40px;
+  text-align: left;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.guide-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.guide-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+}
+
+.guide-item h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.guide-item p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.guide-item strong {
+  color: var(--text-main);
+  font-weight: 600;
+}

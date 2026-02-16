@@ -9,10 +9,14 @@ export class StatsModule {
 
     render() {
         if (!this.data.state.winningStats.length) return;
-        this.renderCharts();
-        this.renderNumberDist();
-        this.renderHotCold();
-        this.renderPairs();
+
+        // Optimize rendering to prevent UI blocking
+        requestAnimationFrame(() => {
+            this.renderCharts();
+            this.renderNumberDist();
+            this.renderHotCold();
+            this.renderPairs();
+        });
     }
 
     renderNumberDist() {

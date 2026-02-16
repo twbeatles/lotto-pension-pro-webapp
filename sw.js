@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lotto-pro-v1';
+const CACHE_NAME = 'lotto-pro-v3.1';
 const ASSETS = [
     './',
     './index.html',
@@ -10,7 +10,9 @@ const ASSETS = [
     './assets/modules/core/LottoApp.js',
     './assets/modules/core/DataManager.js',
     './assets/modules/core/UIManager.js',
+    './assets/modules/core/MonteCarlo.js',
     './assets/modules/utils/utils.js',
+    './assets/modules/utils/config.js',
     './assets/modules/features/Generator.js',
     './assets/modules/features/Stats.js',
     './assets/modules/features/Ai.js',
@@ -19,7 +21,12 @@ const ASSETS = [
     './assets/modules/features/Backtest.js',
     './assets/modules/features/QrScanner.js',
     './assets/backtest.worker.js',
-    './data/winning_stats.json'
+    './data/winning_stats.json',
+    // External Libraries (CDN)
+    'https://unpkg.com/@phosphor-icons/web',
+    'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+    'https://unpkg.com/html5-qrcode',
+    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
 ];
 
 self.addEventListener('message', (event) => {
@@ -39,11 +46,35 @@ self.addEventListener('install', (event) => {
 
 // Fetch Event
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
-    );
+    const url = new URL(event.request.url);
+
+    // Strategy: Network First for Data (JSON) & API
+    if (url.pathname.endsWith('.json') || url.searchParams.has('url')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Update cache with fresh data if successful
+                    if (response && response.status === 200) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Fallback to cache if offline
+                    return caches.match(event.request);
+                })
+        );
+    } else {
+        // Strategy: Cache First for Static Assets (CSS, JS, Images)
+        event.respondWith(
+            caches.match(event.request).then((response) => {
+                return response || fetch(event.request);
+            })
+        );
+    }
 });
 
 // Activate Event (Cleanup old caches)

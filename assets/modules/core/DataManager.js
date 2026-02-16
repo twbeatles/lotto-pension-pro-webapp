@@ -11,7 +11,8 @@ export class DataManager {
             history: [],
             winningStats: [],
             generated: [],
-            customProxy: '' // Explicitly init
+            customProxy: '', // Explicitly init
+            aiResults: [] // Session persistence for AI tab
         };
     }
 
@@ -65,7 +66,7 @@ export class DataManager {
             updateStatus('Check Local', 'var(--warning)');
 
             // 1. Load from Static JSON (Basline)
-            const res = await fetch('data/winning_stats.json');
+            const res = await fetch(`data/winning_stats.json?t=${new Date().getTime()}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
             const staticData = json.data || json || [];

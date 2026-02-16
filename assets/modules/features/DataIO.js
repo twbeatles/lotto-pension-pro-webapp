@@ -81,16 +81,28 @@ export class DataIOModule {
             const incomingHist = this.normalizeItems(json.history);
             const incomingTheme = json.settings?.theme === 'light' ? 'light' : 'dark';
 
-            const merge = confirm('기존 데이터를 유지하고 병합할까요? (확인=병합 / 취소=덮어쓰기)');
+            if (!Array.isArray(incomingFav) || !Array.isArray(incomingHist)) {
+                throw new Error('Invalid data structure');
+            }
+
+            const merge = confirm(`데이터를 가져옵니다.\n- 즐겨찾기: ${incomingFav.length}개\n- 히스토리: ${incomingHist.length}개\n\n기존 데이터와 병합하시겠습니까? (확인=병합, 취소=덮어쓰기)`);
+
             if (merge) {
+                const beforeFav = this.data.state.favorites.length;
+                const beforeHist = this.data.state.history.length;
+
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
                 this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
-                // Keep current theme on merge
+
+                const newFav = this.data.state.favorites.length - beforeFav;
+                const newHist = this.data.state.history.length - beforeHist;
+                UIManager.toast(`병합 완료 (신규: 즐겨찾기 ${newFav}, 히스토리 ${newHist})`, 'success');
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
                 this.data.state.theme = incomingTheme;
                 this.app.applyTheme();
+                UIManager.toast(`덮어쓰기 완료 (즐겨찾기 ${incomingFav.length}, 히스토리 ${incomingHist.length})`, 'success');
             }
 
             // Clamp history size
@@ -100,7 +112,6 @@ export class DataIOModule {
 
             this.data.save();
             this.app.renderDataLists();
-            UIManager.toast('가져오기 완료', 'success');
         } catch (err) {
             console.error('Import failed', err);
             UIManager.toast('가져오기 실패: JSON 파싱 오류', 'error', 3500);

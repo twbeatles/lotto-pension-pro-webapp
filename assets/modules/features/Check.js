@@ -77,6 +77,7 @@ export class CheckModule {
   }
 
   getList() {
+    if (this.source === 'scanned') return this.scanned;
     return this.source === 'history' ? this.data.state.history : this.data.state.favorites;
   }
 
@@ -89,7 +90,9 @@ export class CheckModule {
     items.forEach((item, i) => {
       const opt = document.createElement('option');
       opt.value = String(i);
-      const label = this.source === 'history' ? '히스토리' : '즐겨찾기';
+      let label = '즐겨찾기';
+      if (this.source === 'history') label = '히스토리';
+      if (this.source === 'scanned') label = '스캔결과';
       opt.textContent = `[${label}] ${item.numbers.join(', ')}`;
       listEl.appendChild(opt);
     });

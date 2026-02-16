@@ -66,7 +66,8 @@ export class QrScannerModule {
     onScanSuccess(decodedText, decodedResult) {
         // Example format: http://m.dhlottery.co.kr/?v=0861q020612162843q030614182235q121330363842q172930333738q1123283236441316130938
         // Parse logic here
-        console.log(`Scan result: ${decodedText}`);
+        // Parse logic here
+        // console.log(`Scan result: ${decodedText}`);
 
         try {
             const numbers = this.parseLottoQr(decodedText);
@@ -94,57 +95,56 @@ export class QrScannerModule {
     }
 
     parseLottoQr(url) {
-        // dhlottery URL format: .../?v=TIMEOUT_NUMBERS...
-        // Numbers section: "q" + 12 digits per game (6 nums * 2 digits)
-        // Actually the format is complicated.
-        // Example: http://m.dhlottery.co.kr/?v=0861q020612162843q...
-        // 0861 = draw no?
-        // q = separator
-        // 020612162843 = 02 06 12 16 28 43
+        // Expected format: http://m.dhlottery.co.kr/?v=0861q020612162843q...
 
-        if (!url.includes('dhlottery.co.kr')) {
-            throw new Error('Not a generic Lotto URL');
+        if (!url || typeof url !== 'string') throw new Error('Invalid URL');
+
+        // Loose check for dhlottery domain
+        if (!url.includes('dhlottery')) {
+            throw new Error('Not a Lotto 6/45 QR code');
         }
 
-        const params = new URLSearchParams(new URL(url).search);
-        const v = params.get('v');
-        if (!v) throw new Error('No data found');
+        // Extract 'v' parameter
+        let vParam = '';
+        try {
+            const urlObj = new URL(url);
+            vParam = urlObj.searchParams.get('v');
+        } catch (e) {
+            // Fallback for partial URLs or weird formats
+            const match = url.match(/[?&]v=([^&]+)/);
+            if (match) vParam = match[1];
+        }
 
-        const parts = v.split('q');
-        // parts[0] contains draw number mixed with other things?
-        // Actually parts[0] is usually DrawNo + "m" + something?
-        // Let's assume standard format v=DRWNOqNUMS...
-        // Actually, looking at examples online: v=0861q020612162843...
-        // The first part `0861` is the draw number.
-        // Subsequent parts starting with `q` are games.
+        if (!vParam) throw new Error('QR code missing lottery data (v param)');
 
-        // Let's extract all games.
+        // Parse games (separated by 'q')
+        // Format: [DrawNo]q[Game1]q[Game2]...
+        const parts = vParam.split('q');
+        if (parts.length < 2) throw new Error('Invalid data format');
+
         const games = [];
-        // Skip the first part (draw info)
         for (let i = 1; i < parts.length; i++) {
-            const gameStr = parts[i];
-            // Take first 12 chars
+            const gameStr = parts[i].trim();
+            // Need at least 12 digits (6 numbers * 2 chars)
+            if (gameStr.length < 12) continue;
+
             const numsStr = gameStr.substring(0, 12);
             const nums = [];
+            // Parse pairs
             for (let j = 0; j < 12; j += 2) {
-                nums.push(Number(numsStr.substring(j, j + 2)));
+                const n = parseInt(numsStr.substring(j, j + 2), 10);
+                if (!isNaN(n) && n >= 1 && n <= 45) {
+                    nums.push(n);
+                }
             }
-            games.push(nums);
+
+            if (nums.length === 6) {
+                nums.sort((a, b) => a - b);
+                games.push(nums);
+            }
         }
 
-        if (games.length === 0) throw new Error('No games found');
-
-        // For now, let's just use the first game or ask user?
-        // Or return all games?
-        // The CheckModule usually checks ONE ticket (set of 6 numbers).
-        // If the QR has multiple games, we might want to check them all.
-        // But CheckModule currently UI compares one set.
-        // Let's return the first set for now, or handle multiple.
-
-        // Better: Allow CheckModule to handle a list of sets.
-        // But `CheckModule` logic `run()` compares `this.getList()[idx]`.
-        // I should probably modify `CheckModule` to allow "Scanned Ticket" mode.
-
+        if (games.length === 0) throw new Error('No valid games found in QR');
         return games;
     }
 }

@@ -148,17 +148,32 @@ export class GeneratorModule {
         el.innerHTML = `
             <div class="result-balls ball-container">${UIManager.renderBalls(nums)}</div>
             <div class="result-actions">
-                <button class="icon-btn copy-btn" title="복사"><i class="ph ph-copy"></i></button>
-                <button class="icon-btn qr-btn" title="QR"><i class="ph ph-qr-code"></i></button>
-                <button class="icon-btn share-btn" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
-                <button class="icon-btn fav-btn" title="즐겨찾기"><i class="ph ph-star"></i></button>
+                <button class="icon-btn copy-btn" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
+                <button class="icon-btn qr-btn" aria-label="QR 코드 보기" title="QR"><i class="ph ph-qr-code"></i></button>
+                <button class="icon-btn share-btn" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
+                <button class="icon-btn fav-btn" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
             </div>
         `;
 
         // Event Delegation friendly, or direct bind
         el.querySelector('.copy-btn').onclick = () => UIManager.copyNumbers(nums);
         el.querySelector('.qr-btn').onclick = () => UIManager.showQR(nums);
-        el.querySelector('.share-btn').onclick = () => UIManager.saveAsImage(el, `lotto_gen_${index + 1}.png`);
+        el.querySelector('.qr-btn').onclick = () => UIManager.showQR(nums);
+        el.querySelector('.share-btn').onclick = async (e) => {
+            const btn = e.currentTarget;
+            const originalHTML = btn.innerHTML;
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
+                await UIManager.saveAsImage(el, `lotto_gen_${index + 1}.png`);
+            } catch (err) {
+                console.error(err);
+                UIManager.toast('이미지 저장 실패', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        };
         el.querySelector('.fav-btn').onclick = () => {
             this.app.data.addToFavorites(nums);
             // We might need to refresh data lists if the app is exposed or if we trigger an event

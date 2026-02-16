@@ -8,6 +8,11 @@ export class AiModule {
         this.app = app;
         const btn = $('#aiPredictBtn');
         if (btn) btn.addEventListener('click', () => this.run());
+
+        // Restore state if available
+        if (this.app.data.state.aiResults && this.app.data.state.aiResults.length > 0) {
+            this.renderResults(this.app.data.state.aiResults);
+        }
     }
 
     async run() {
@@ -71,25 +76,27 @@ export class AiModule {
                 .map(x => x.n)
                 .sort((a, b) => a - b);
 
-            if (top6.length < 6) throw new Error('Not enough data to generate patterns');
-            results.push(top6);
-
-            // Set 2-5: Variation
-            for (let k = 0; k < 4; k++) {
-                results.push(AdvancedMonteCarlo.weightedSample(finalWeights, 6));
+            // Ensure uniqueness
+            const keys = new Set();
+            if (top6.length === 6) {
+                keys.add(top6.join(','));
+                results.push(top6);
             }
 
-            results.forEach((nums, i) => {
-                setTimeout(() => {
-                    const el = document.createElement('div');
-                    el.className = 'result-item glass';
-                    el.innerHTML = `
-              <div class="result-label">Set ${i + 1} ${i === 0 ? '<span class="badge ok">Best</span>' : ''}</div>
-              <div class="ball-container">${UIManager.renderBalls(nums)}</div>
-            `;
-                    out.appendChild(el);
-                }, i * 150);
-            });
+            // Set 2-5: Variation
+            let safety = 0;
+            while (results.length < 5 && safety++ < 20) {
+                const set = AdvancedMonteCarlo.weightedSample(finalWeights, 6);
+                const k = set.join(',');
+                if (!keys.has(k)) {
+                    keys.add(k);
+                    results.push(set);
+                }
+            }
+
+            // Save state
+            this.app.data.state.aiResults = results;
+            this.renderResults(results);
 
         } catch (e) {
             console.error('AI Error:', e);

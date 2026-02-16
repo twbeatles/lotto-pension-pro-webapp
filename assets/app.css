@@ -112,6 +112,7 @@ body {
 #app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 
@@ -1029,7 +1030,7 @@ input:checked+.slider:before {
 
   .page {
     padding: 24px 16px;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px));
   }
 
   .dashboard-grid {
@@ -1558,7 +1559,7 @@ input:checked+.slider:before {
 @media (max-width: 768px) {
   .page {
     padding: 24px 16px;
-    padding-bottom: 100px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px));
     max-width: 100%;
   }
 

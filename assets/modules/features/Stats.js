@@ -5,27 +5,31 @@ export class StatsModule {
     constructor(app) {
         this.app = app;
         this.data = app.data;
+        this.lastAnalyticsId = '';
+        this.hasRendered = false;
     }
 
-    render() {
+    render(force = false) {
         if (!this.data.state.winningStats.length) return;
+        const analytics = this.data.getAnalytics();
+        if (!analytics) return;
+        if (!force && this.hasRendered && analytics.id === this.lastAnalyticsId) return;
+        this.lastAnalyticsId = analytics.id;
+        this.hasRendered = true;
 
         // Optimize rendering to prevent UI blocking
         requestAnimationFrame(() => {
-            this.renderCharts();
-            this.renderNumberDist();
-            this.renderHotCold();
-            this.renderPairs();
+            this.renderCharts(analytics);
+            this.renderNumberDist(analytics);
+            this.renderHotCold(analytics);
+            this.renderPairs(analytics);
         });
     }
 
-    renderNumberDist() {
+    renderNumberDist(analytics) {
         const container = $('#chartNumDist');
         if (!container) return;
-        container.innerHTML = '';
-
-        const freq = Array(46).fill(0);
-        this.data.state.winningStats.forEach(d => d.numbers.forEach(n => freq[n]++));
+        const freq = analytics.freq || Array(46).fill(0);
 
         // Find max for scaling
         const max = Math.max(...freq.slice(1));
@@ -48,25 +52,9 @@ export class StatsModule {
         container.innerHTML = html;
     }
 
-    renderCharts() {
-        // Range Chart
-        const rangeCounts = [0, 0, 0, 0, 0];
-        const oddEven = [0, 0]; // Even, Odd
-
-        this.data.state.winningStats.forEach(d => {
-            d.numbers.forEach(n => {
-                // Range
-                if (n <= 10) rangeCounts[0]++;
-                else if (n <= 20) rangeCounts[1]++;
-                else if (n <= 30) rangeCounts[2]++;
-                else if (n <= 40) rangeCounts[3]++;
-                else rangeCounts[4]++;
-
-                // OddEven
-                if (n % 2 === 0) oddEven[0]++; else oddEven[1]++;
-            });
-        });
-
+    renderCharts(analytics) {
+        const rangeCounts = analytics.rangeCounts || [0, 0, 0, 0, 0];
+        const oddEven = analytics.oddEven || [0, 0];
         this.drawBarChart('#chartRange', [
             { l: '1-10', v: rangeCounts[0], c: 'y' },
             { l: '11-20', v: rangeCounts[1], c: 'b' },
@@ -114,18 +102,16 @@ export class StatsModule {
     drawBarChart(selector, data) {
         const el = $(selector);
         if (!el) return;
-        el.innerHTML = '';
 
         // Calculate total for percentages
         const total = data.reduce((sum, d) => sum + d.v, 0);
         const max = Math.max(...data.map(d => d.v), 1);
-
+        let html = '';
         data.forEach(d => {
             const pct = (d.v / max) * 100;
             const share = total > 0 ? ((d.v / total) * 100).toFixed(1) : 0;
             const colorClass = d.c ? `nd-fill ${d.c}` : 'bar-fill';
-
-            el.innerHTML += `
+            html += `
                 <div class="bar-row">
                     <span class="label">${d.l}</span>
                     <div class="bar-track">
@@ -135,31 +121,25 @@ export class StatsModule {
                 </div>
             `;
         });
+        el.innerHTML = html;
     }
 
-    renderHotCold() {
+    renderHotCold(analytics) {
         const container = $('#hotColdContainer');
         if (!container) return;
         container.innerHTML = '';
-
-        const freq = Array(46).fill(0);
-        this.data.state.winningStats.forEach(d => d.numbers.forEach(n => freq[n]++));
-
-        const indexed = freq.map((c, i) => ({ n: i, c })).slice(1).sort((a, b) => b.c - a.c);
-        const hot = indexed.slice(0, 5);
-        const cold = indexed.slice(-5).reverse();
+        const hot = analytics.hot || [];
+        const cold = analytics.cold || [];
 
         const mkCol = (title, items, cls) => {
             const div = document.createElement('div');
             div.className = `stat-col ${cls}`;
-            div.innerHTML = `<h4>${title}</h4>`;
-            items.forEach(({ n, c }) => {
-                div.innerHTML += `
+            const rows = items.map(({ n, c }) => `
                     <div class="stat-row">
                         <span class="ball ${UIManager.getBallColor(n)} sm">${n}</span>
                         <span class="count">${c}회</span>
-                    </div>`;
-            });
+                    </div>`).join('');
+            div.innerHTML = `<h4>${title}</h4>${rows}`;
             return div;
         };
 
@@ -167,29 +147,11 @@ export class StatsModule {
         container.appendChild(mkCol('❄️ Cold Numbers', cold, 'cold'));
     }
 
-    renderPairs() {
+    renderPairs(analytics) {
         const container = $('#pairContainer');
         if (!container) return;
         container.innerHTML = '';
-
-        const pairCounts = {};
-
-        // Analyze all history
-        this.data.state.winningStats.forEach(d => {
-            const nums = d.numbers;
-            for (let i = 0; i < nums.length; i++) {
-                for (let j = i + 1; j < nums.length; j++) {
-                    const pair = `${nums[i]}-${nums[j]}`;
-                    pairCounts[pair] = (pairCounts[pair] || 0) + 1;
-                }
-            }
-        });
-
-        // Sort by frequency
-        const sorted = Object.entries(pairCounts)
-            .map(([k, v]) => ({ pair: k.split('-').map(Number), count: v }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 10); // Top 10
+        const sorted = analytics.topPairs || [];
 
         sorted.forEach(({ pair, count }) => {
             const el = document.createElement('div');

@@ -8,6 +8,8 @@ export class CheckModule {
     this.source = 'favorites'; // 'favorites' | 'history' | 'scanned'
     this.mode = 'latest'; // 'latest' | 'all'
     this.scanned = [];
+    this.currentTicket = null;
+    this.currentDrawNo = null;
     this.bindEvents();
   }
 
@@ -34,6 +36,18 @@ export class CheckModule {
 
     $('#doCheckBtn')?.addEventListener('click', () => this.run());
     $('#openQrScannerBtn')?.addEventListener('click', () => this.app.qr.start());
+
+    $('#checkResultArea')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn || !this.currentTicket) return;
+      const action = btn.dataset.action;
+      if (action === 'copy') UIManager.copyNumbers(this.currentTicket);
+      if (action === 'qr') UIManager.showQR(this.currentTicket);
+      if (action === 'save') {
+        const resultEl = $('#checkResultArea .check-result');
+        UIManager.saveAsImage(resultEl, `lotto_check_${this.currentDrawNo || 'latest'}.png`);
+      }
+    });
   }
 
   setSource(src) {
@@ -143,6 +157,8 @@ export class CheckModule {
 
   runLatest(ticket) {
     const latest = this.data.state.winningStats[0];
+    this.currentTicket = ticket.numbers;
+    this.currentDrawNo = latest.draw_no;
     const winSet = new Set(latest.numbers);
     const matchCount = ticket.numbers.filter(n => winSet.has(n)).length;
     const bonusHit = ticket.numbers.includes(latest.bonus);
@@ -162,9 +178,9 @@ export class CheckModule {
           <div class="badge ${rank ? 'ok' : 'no'}">${rankText}</div>
         </div>
         <div class="check-actions">
-          <button class="btn ghost sm check-copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm check-qr"><i class="ph ph-qr-code"></i> QR</button>
-          <button class="btn ghost sm check-save"><i class="ph ph-download-simple"></i> 저장</button>
+          <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
+          <button class="btn ghost sm" data-action="save"><i class="ph ph-download-simple"></i> 저장</button>
         </div>
         <div class="check-section">
           <div class="label">당첨 번호</div>
@@ -180,13 +196,11 @@ export class CheckModule {
         </div>
       </div>
     `;
-
-    area.querySelector('.check-copy')?.addEventListener('click', () => UIManager.copyNumbers(ticket.numbers));
-    area.querySelector('.check-qr')?.addEventListener('click', () => UIManager.showQR(ticket.numbers));
-    area.querySelector('.check-save')?.addEventListener('click', () => UIManager.saveAsImage(area.querySelector('.check-result'), `lotto_check_${latest.draw_no}.png`));
   }
 
   runAll(ticket) {
+    this.currentTicket = ticket.numbers;
+    this.currentDrawNo = null;
     const results = [];
     for (const win of this.data.state.winningStats) {
       const winSet = new Set(win.numbers);
@@ -221,8 +235,8 @@ export class CheckModule {
             <div class="badge no">결과 없음</div>
           </div>
           <div class="check-actions">
-            <button class="btn ghost sm check-copy"><i class="ph ph-copy"></i> 복사</button>
-            <button class="btn ghost sm check-qr"><i class="ph ph-qr-code"></i> QR</button>
+            <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
+            <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
           </div>
           <div class="check-section">
             <div class="label">내 번호</div>
@@ -231,8 +245,6 @@ export class CheckModule {
           </div>
         </div>
       `;
-      area.querySelector('.check-copy')?.addEventListener('click', () => UIManager.copyNumbers(ticket.numbers));
-      area.querySelector('.check-qr')?.addEventListener('click', () => UIManager.showQR(ticket.numbers));
       return;
     }
 
@@ -271,8 +283,8 @@ export class CheckModule {
           <div class="badge ok">${limited.length}개 표시</div>
         </div>
         <div class="check-actions">
-          <button class="btn ghost sm check-copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm check-qr"><i class="ph ph-qr-code"></i> QR</button>
+          <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
         </div>
         <div class="check-section">
           <div class="label">내 번호</div>
@@ -282,8 +294,5 @@ export class CheckModule {
         <div class="check-cards">${cards}</div>
       </div>
     `;
-
-    area.querySelector('.check-copy')?.addEventListener('click', () => UIManager.copyNumbers(ticket.numbers));
-    area.querySelector('.check-qr')?.addEventListener('click', () => UIManager.showQR(ticket.numbers));
   }
 }

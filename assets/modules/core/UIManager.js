@@ -1,4 +1,5 @@
 import { $ } from '../utils/utils.js';
+import { EXTERNAL_ASSETS, loadScriptOnce } from '../utils/loader.js';
 
 export class UIManager {
     static toast(msg, type = 'info', duration = 2000) {
@@ -63,7 +64,7 @@ export class UIManager {
         }
     }
 
-    static showQR(nums) {
+    static async showQR(nums) {
         const modal = $('#qrModal');
         const container = $('#qrCanvasContainer');
         if (!modal || !container) return;
@@ -71,6 +72,9 @@ export class UIManager {
 
         const payload = `Lotto 6/45\nNumbers: ${this.formatNumbers(nums)}`;
         try {
+            if (!window.QRCode?.toCanvas) {
+                await loadScriptOnce(EXTERNAL_ASSETS.qrcode);
+            }
             if (!window.QRCode?.toCanvas) throw new Error('QRCode library not loaded');
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
@@ -91,6 +95,9 @@ export class UIManager {
     static async saveAsImage(element, filename = 'lotto_result.png') {
         if (!element) return;
         try {
+            if (!window.html2canvas) {
+                await loadScriptOnce(EXTERNAL_ASSETS.html2canvas);
+            }
             if (!window.html2canvas) throw new Error('html2canvas library not loaded');
 
             // Visual feedback

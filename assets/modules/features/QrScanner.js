@@ -1,5 +1,6 @@
 import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
+import { EXTERNAL_ASSETS, loadScriptOnce } from '../utils/loader.js';
 
 export class QrScannerModule {
     constructor(app) {
@@ -10,9 +11,31 @@ export class QrScannerModule {
     }
 
     bindEvents() {
-        // Button to open scanner (add this button ID to index.html or CheckModule)
-        $('#openQrScannerBtn')?.addEventListener('click', () => this.start());
         $('#closeScanBtn')?.addEventListener('click', () => this.stop());
+    }
+
+    async destroyScanner() {
+        if (!this.scanner) {
+            this.isScanning = false;
+            return;
+        }
+
+        const current = this.scanner;
+        this.scanner = null;
+        this.isScanning = false;
+
+        try {
+            // stop() may throw when scanner wasn't fully started.
+            await current.stop();
+        } catch (e) {
+            // noop
+        }
+
+        try {
+            current.clear();
+        } catch (e) {
+            // noop
+        }
     }
 
     async start() {
@@ -26,6 +49,11 @@ export class QrScannerModule {
         }
 
         try {
+            if (!window.Html5Qrcode) {
+                await loadScriptOnce(EXTERNAL_ASSETS.html5QrCode);
+            }
+            if (!window.Html5Qrcode) throw new Error('Html5Qrcode library not loaded');
+
             this.scanner = new Html5Qrcode("qr-reader");
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
@@ -44,26 +72,18 @@ export class QrScannerModule {
         } catch (err) {
             console.error("Error starting scanner", err);
             UIManager.toast("카메라를 시작할 수 없습니다. 권한을 확인해주세요.", "error");
-            this.stop();
+            await this.destroyScanner();
+            modal.classList.remove('active');
         }
     }
 
-    stop() {
+    async stop() {
         const modal = $('#qrScanModal');
         if (modal) modal.classList.remove('active');
-
-        if (this.scanner && this.isScanning) {
-            this.scanner.stop().then(() => {
-                this.scanner.clear();
-                this.scanner = null;
-                this.isScanning = false;
-            }).catch(err => {
-                console.error("Failed to stop scanner", err);
-            });
-        }
+        await this.destroyScanner();
     }
 
-    onScanSuccess(decodedText, decodedResult) {
+    async onScanSuccess(decodedText, decodedResult) {
         // Example format: http://m.dhlottery.co.kr/?v=0861q020612162843q030614182235q121330363842q172930333738q1123283236441316130938
         // Parse logic here
         // Parse logic here
@@ -72,12 +92,12 @@ export class QrScannerModule {
         try {
             const numbers = this.parseLottoQr(decodedText);
             if (numbers && numbers.length > 0) {
-                this.stop();
+                await this.stop();
                 UIManager.toast('QR 스캔 성공!', 'success');
 
                 // Pass to CheckModule
                 // Switch to check tab
-                this.app.route('check');
+                await this.app.route('check');
 
                 // We need a way to pass these numbers to CheckModule.
                 // Option 1: Call a method on CheckModule

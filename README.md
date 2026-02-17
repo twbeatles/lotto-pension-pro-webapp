@@ -25,6 +25,7 @@
     - **설치 지원**: 홈 화면 추가 및 네이티브 앱과 동일한 사용성
 - **데이터 관리**: JSON 파일 백업/복구, 중복 제거 알고리즘 적용
 - **스마트 프록시**: `dhlottery.co.kr` 우회 및 커스텀 프록시 설정 지원
+  - 우선순위: `?proxyUrl/?proxy` → `lotto_webapp_settings_v1.proxyLatestUrl` → `lotto_pro_settings_v2.customProxy` → public fallback
 
 ## 🏗️ 아키텍처
 
@@ -38,6 +39,7 @@ graph LR
 - **Frontend**: Vanilla JS (ES Modules) + CSS Variables (No Build Step)
 - **Deployment**: GitHub Actions -> GitHub Pages
 - **Data**: 정적 JSON (`data/winning_stats.json`) + 로컬 스토리지
+- **Service Worker**: same-origin 리소스만 캐시 전략 적용 (cross-origin API 요청은 우회)
 
 ## 📁 프로젝트 구조
 

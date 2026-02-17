@@ -18,12 +18,24 @@ wrangler deploy proxy/worker.js
 
 ## Query
 
-- Local default (latest): `https://<your-worker>.workers.dev/proxy/latest?draw_no=1180`  
-  (set `draw_no` as needed; if omitted, worker tries to fetch draw 1~1200 by default logic)
+- Latest (single draw): `https://<your-worker>.workers.dev/proxy/latest?draw_no=1180`
+- Range (batch): `https://<your-worker>.workers.dev/proxy/range?from=1175&to=1180`
+
+`/proxy/latest` response format:
+- default: `hybrid` (legacy + normalized 함께 제공)
+- `?format=legacy`: legacy 포맷 (`data.list[0]`)
+- `?format=normalized`: normalized 포맷 (`data: [{ draw_no, numbers, ... }]`)
+
+`/proxy/range` response format:
+- default: normalized 배열 (`data: []`)
+- `?format=legacy`: legacy 배열 (`data.list`)
+- `?format=hybrid`: normalized + legacy 동시 제공
 
 Use it in the app with:
-- localStorage key: `lotto_webapp_settings_v1.proxyLatestUrl`
-- query string: `?proxy=<worker_url>/proxy/latest?draw_no=...`
+- query string: `?proxyUrl=...` or `?proxy=...`
+- legacy localStorage key: `lotto_webapp_settings_v1.proxyLatestUrl`
+- v2 settings key: `lotto_pro_settings_v2.customProxy`
+- resolution priority: `query` > `v1` > `v2` > public fallback
 
 ## Notes
 

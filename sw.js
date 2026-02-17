@@ -1,5 +1,8 @@
-const CACHE_NAME = 'lotto-pro-v3.2';
-const ASSETS = [
+const CACHE_VERSION = 'v4';
+const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
+const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
+
+const APP_SHELL_ASSETS = [
     './',
     './index.html',
     './manifest.json',
@@ -10,82 +13,111 @@ const ASSETS = [
     './assets/modules/core/LottoApp.js',
     './assets/modules/core/DataManager.js',
     './assets/modules/core/UIManager.js',
-    './assets/modules/core/MonteCarlo.js',
     './assets/modules/utils/utils.js',
     './assets/modules/utils/config.js',
+    './assets/modules/utils/loader.js',
     './assets/modules/features/Generator.js',
-    './assets/modules/features/Stats.js',
-    './assets/modules/features/Ai.js',
-    './assets/modules/features/Check.js',
-    './assets/modules/features/DataIO.js',
-    './assets/modules/features/Backtest.js',
-    './assets/modules/features/QrScanner.js',
-    './assets/backtest.worker.js',
-    './data/winning_stats.json',
-    // External Libraries (CDN)
-    'https://unpkg.com/@phosphor-icons/web',
-    'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
-    'https://unpkg.com/html5-qrcode',
-    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+    './data/winning_stats.json'
 ];
 
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.action === 'skipWaiting') {
+    if (event.data?.action === 'skipWaiting') {
         self.skipWaiting();
     }
 });
 
-// Install Event
+async function safePrecache() {
+    const cache = await caches.open(CACHE_APP_SHELL);
+    const jobs = APP_SHELL_ASSETS.map(async (url) => {
+        try {
+            await cache.add(url);
+        } catch (e) {
+            // Ignore individual failures to avoid install rejection
+        }
+    });
+    await Promise.allSettled(jobs);
+}
+
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS);
-        })
-    );
+    event.waitUntil(safePrecache());
 });
 
-// Fetch Event
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
+async function putIfOk(cacheName, request, response) {
+    if (!response || (!response.ok && response.type !== 'opaque')) return;
+    const cache = await caches.open(cacheName);
+    cache.put(request, response.clone());
+}
 
-    // Strategy: Network First for Data (JSON) & API
-    if (url.pathname.endsWith('.json') || url.searchParams.has('url')) {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    // Update cache with fresh data if successful
-                    if (response && response.status === 200) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Fallback to cache if offline
-                    return caches.match(event.request);
-                })
-        );
-    } else {
-        // Strategy: Cache First for Static Assets (CSS, JS, Images)
-        event.respondWith(
-            caches.match(event.request).then((response) => {
-                return response || fetch(event.request);
-            })
-        );
+async function networkFirstWithTimeout(request, cacheName, timeoutMs = 3500) {
+    const cache = await caches.open(cacheName);
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('network-timeout')), timeoutMs);
+    });
+
+    try {
+        const networkRes = await Promise.race([fetch(request), timeoutPromise]);
+        await putIfOk(cacheName, request, networkRes);
+        return networkRes;
+    } catch (e) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        if (request.mode === 'navigate') {
+            return cache.match('./index.html');
+        }
+        throw e;
     }
+}
+
+async function staleWhileRevalidate(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
+    const networkPromise = fetch(request)
+        .then((res) => {
+            putIfOk(cacheName, request, res);
+            return res;
+        })
+        .catch(() => null);
+
+    if (cached) {
+        networkPromise.catch(() => null);
+        return cached;
+    }
+    const network = await networkPromise;
+    if (network) return network;
+    if (request.mode === 'navigate') {
+        const shell = await caches.open(CACHE_APP_SHELL);
+        return shell.match('./index.html');
+    }
+    return new Response('Offline', { status: 503, statusText: 'Offline' });
+}
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) return;
+
+    const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
+    if (isDataRequest) {
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 3000));
+        return;
+    }
+
+    if (event.request.mode === 'navigate') {
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
+        return;
+    }
+
+    event.respondWith(staleWhileRevalidate(event.request, CACHE_APP_SHELL));
 });
 
-// Activate Event (Cleanup old caches)
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.map((key) => {
-                    if (key !== CACHE_NAME) return caches.delete(key);
-                })
-            );
-        })
-    );
+    event.waitUntil((async () => {
+        const valid = new Set([CACHE_APP_SHELL, CACHE_DATA]);
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => {
+            if (!valid.has(key)) return caches.delete(key);
+            return Promise.resolve();
+        }));
+        await self.clients.claim();
+    })());
 });

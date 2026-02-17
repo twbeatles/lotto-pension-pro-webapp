@@ -37,7 +37,12 @@ python scripts/export_winning_stats_json.py
 우선순위:
 1) `?proxyUrl=...` 또는 `?proxy=...`
 2) `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
-3) 정적 JSON fallback (`./data/winning_stats.json`)
+3) `lotto_pro_settings_v2.customProxy`
+4) 정적 JSON fallback (`./data/winning_stats.json`)
+
+메모:
+- 앱 시작 시 v1 키가 있고 v2가 비어 있으면 v2로 자동 이관됩니다.
+- `sw.js`는 cross-origin API 요청을 가로채지 않으므로, 프록시/API 에러는 원래 fetch 에러 semantics를 유지합니다.
 
 ## 4) 확인 체크리스트
 

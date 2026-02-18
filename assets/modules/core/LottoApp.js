@@ -146,6 +146,32 @@ export class LottoApp {
             }
         });
 
+        $('#clearTickets')?.addEventListener('click', () => {
+            const filter = $('#ticketFilter')?.value || 'all';
+            if (!confirm(`티켓북에서 '${filter}' 항목을 삭제하시겠습니까?`)) return;
+            const removed = this.data.clearTicketBook(filter);
+            UIManager.toast(`${removed}개 티켓 삭제`, removed > 0 ? 'success' : 'info');
+            this.renderDataLists();
+        });
+
+        $('#clearCampaigns')?.addEventListener('click', () => {
+            if (!confirm('캠페인을 모두 삭제하시겠습니까?')) return;
+            this.data.clearCampaigns();
+            this.renderDataLists();
+        });
+
+        $('#ticketFilter')?.addEventListener('change', () => this.renderDataLists());
+
+        $('#alertEnableInApp')?.addEventListener('change', (e) => {
+            this.data.setAlertPrefs({ enableInApp: Boolean(e.target.checked) });
+        });
+        $('#alertEnableSystem')?.addEventListener('change', (e) => {
+            this.data.setAlertPrefs({ enableSystemNotification: Boolean(e.target.checked) });
+        });
+        $('#alertNotifyOnResult')?.addEventListener('change', (e) => {
+            this.data.setAlertPrefs({ notifyOnNewResult: Boolean(e.target.checked) });
+        });
+
         $('#syncDataBtn')?.addEventListener('click', () => {
             this.data.fetchLatestFromAPI({ silent: false, trigger: 'manual' });
         });
@@ -174,22 +200,45 @@ export class LottoApp {
             el.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-action]');
                 if (!btn) return;
-                const itemEl = e.target.closest('.result-item[data-idx]');
+                const itemEl = e.target.closest('.result-item[data-idx], .result-item[data-id]');
                 if (!itemEl) return;
 
-                const idx = Number(itemEl.dataset.idx);
-                const items = source === 'fav' ? this.data.state.favorites : this.data.state.history;
-                const item = items[idx];
+                const action = btn.dataset.action;
+                if (source === 'campaign') {
+                    const id = itemEl.dataset.id;
+                    const campaign = (this.data.state.campaigns || []).find((x) => x.id === id);
+                    if (!campaign) return;
+                    if (action === 'delete') {
+                        this.data.removeCampaign(campaign.id);
+                        this.renderDataLists();
+                    }
+                    return;
+                }
+
+                let item = null;
+                if (source === 'ticket') {
+                    const id = itemEl.dataset.id;
+                    item = (this.data.state.ticketBook || []).find((x) => x.id === id);
+                } else {
+                    const idx = Number(itemEl.dataset.idx);
+                    const items = source === 'fav' ? this.data.state.favorites : this.data.state.history;
+                    item = items[idx];
+                }
                 if (!item) return;
 
-                const action = btn.dataset.action;
                 if (action === 'copy') UIManager.copyNumbers(item.numbers);
                 if (action === 'qr') UIManager.showQR(item.numbers);
+                if (action === 'delete' && source === 'ticket') {
+                    this.data.removeTicket(item.id);
+                    this.renderDataLists();
+                }
             });
         };
 
         bindList('#favList', 'fav');
         bindList('#historyList', 'hist');
+        bindList('#ticketList', 'ticket');
+        bindList('#campaignList', 'campaign');
         this.dataListDelegationBound = true;
     }
 
@@ -280,6 +329,16 @@ export class LottoApp {
                 ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
             </div>
         `;
+
+        const nextDrawNo = Number(latest.draw_no) + 1;
+        ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'].forEach((id) => {
+            const el = $(`#${id}`);
+            if (!el) return;
+            const current = Number(el.value);
+            if (!Number.isFinite(current) || current <= 1) {
+                el.value = String(nextDrawNo);
+            }
+        });
     }
 
     renderDataLists() {
@@ -311,8 +370,79 @@ export class LottoApp {
             el.appendChild(frag);
         };
 
+        const fillTickets = () => {
+            const el = $('#ticketList');
+            if (!el) return;
+            const filter = $('#ticketFilter')?.value || 'all';
+            const raw = this.data.state.ticketBook || [];
+            const status = (item) => {
+                if (!item.checked) return 'pending';
+                if (item.checked.rank > 0) return 'win';
+                return 'lose';
+            };
+            const list = raw.filter((item) => filter === 'all' || status(item) === filter);
+            if (!list.length) {
+                el.innerHTML = '<div class="empty-state">조건에 맞는 티켓이 없습니다.</div>';
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            list.slice(0, 100).forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.dataset.id = item.id;
+                const rankText = !item.checked ? '미정산' : (item.checked.rank > 0 ? `${item.checked.rank}등` : '미당첨');
+                div.innerHTML = `
+                    <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
+                    <span class="result-meta">${item.targetDrawNo}회 · ${rankText}</span>
+                    <div class="result-actions">
+                      <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
+                      <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                      <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
+                    </div>
+                `;
+                frag.appendChild(div);
+            });
+            el.innerHTML = '';
+            el.appendChild(frag);
+        };
+
+        const fillCampaigns = () => {
+            const el = $('#campaignList');
+            if (!el) return;
+            const list = this.data.state.campaigns || [];
+            if (!list.length) {
+                el.innerHTML = '<div class="empty-state">저장된 캠페인이 없습니다.</div>';
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            list.slice(0, 50).forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.dataset.id = item.id;
+                div.innerHTML = `
+                    <div class="result-meta">${item.name}</div>
+                    <span class="result-meta">${item.startDrawNo}회 시작 · ${item.weeks}주 · 주당 ${item.setsPerWeek}세트</span>
+                    <div class="result-actions">
+                      <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
+                    </div>
+                `;
+                frag.appendChild(div);
+            });
+            el.innerHTML = '';
+            el.appendChild(frag);
+        };
+
         fill('#favList', this.data.state.favorites, '저장된 즐겨찾기가 없습니다.');
         fill('#historyList', this.data.state.history, '생성 기록이 없습니다.');
+        fillTickets();
+        fillCampaigns();
+
+        const inApp = $('#alertEnableInApp');
+        const system = $('#alertEnableSystem');
+        const notify = $('#alertNotifyOnResult');
+        if (inApp) inApp.checked = this.data.state.alertPrefs?.enableInApp !== false;
+        if (system) system.checked = Boolean(this.data.state.alertPrefs?.enableSystemNotification);
+        if (notify) notify.checked = this.data.state.alertPrefs?.notifyOnNewResult !== false;
     }
 
     async requestNumbers(nums) {

@@ -5,7 +5,7 @@ export class CheckModule {
   constructor(app) {
     this.app = app;
     this.data = app.data;
-    this.source = 'favorites'; // 'favorites' | 'history' | 'scanned'
+    this.source = 'favorites'; // 'favorites' | 'history' | 'scanned' | 'tickets'
     this.mode = 'latest'; // 'latest' | 'all'
     this.scanned = [];
     this.currentTicket = null;
@@ -17,7 +17,7 @@ export class CheckModule {
     $$('.seg-btn[data-source]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const src = e.currentTarget.dataset.source;
-        if (['favorites', 'history', 'scanned'].includes(src)) {
+        if (['favorites', 'history', 'scanned', 'tickets'].includes(src)) {
           this.setSource(src);
         }
       });
@@ -92,7 +92,14 @@ export class CheckModule {
 
   getList() {
     if (this.source === 'scanned') return this.scanned;
+    if (this.source === 'tickets') return this.data.state.ticketBook || [];
     return this.source === 'history' ? this.data.state.history : this.data.state.favorites;
+  }
+
+  getTicketStatusLabel(item) {
+    if (!item?.checked) return '미정산';
+    if (Number(item.checked.rank) > 0) return `${item.checked.rank}등`;
+    return '미당첨';
   }
 
   renderList() {
@@ -107,7 +114,12 @@ export class CheckModule {
       let label = '즐겨찾기';
       if (this.source === 'history') label = '히스토리';
       if (this.source === 'scanned') label = '스캔결과';
-      opt.textContent = `[${label}] ${item.numbers.join(', ')}`;
+      if (this.source === 'tickets') {
+        label = `티켓 ${item.targetDrawNo}회`;
+        opt.textContent = `[${label}][${this.getTicketStatusLabel(item)}] ${item.numbers.join(', ')}`;
+      } else {
+        opt.textContent = `[${label}] ${item.numbers.join(', ')}`;
+      }
       listEl.appendChild(opt);
     });
   }
@@ -156,7 +168,10 @@ export class CheckModule {
   }
 
   runLatest(ticket) {
-    const latest = this.data.state.winningStats[0];
+    const preferredDrawNo = Number(ticket?.targetDrawNo || 0);
+    const latest = (preferredDrawNo > 0
+      ? this.data.state.winningStats.find((x) => Number(x.draw_no) === preferredDrawNo)
+      : null) || this.data.state.winningStats[0];
     this.currentTicket = ticket.numbers;
     this.currentDrawNo = latest.draw_no;
     const winSet = new Set(latest.numbers);

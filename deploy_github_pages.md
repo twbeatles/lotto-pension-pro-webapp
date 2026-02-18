@@ -2,65 +2,49 @@
 
 ## 1) 정적 배포
 
-1. GitHub Pages 소스 폴더를 `docs/`로 설정
-2. 브랜치를 배포 브랜치(예: `main`)로 지정
-3. `/docs` 경로 접근 시
-   - `docs/index.html`
-   - `docs/assets/*`
-   - `docs/data/winning_stats.json`
-이 함께 제공되면 동작합니다.
+현재 저장소는 루트(`.`)를 그대로 GitHub Pages 아티팩트로 배포합니다.
 
-## 2) 정적 데이터 갱신 (GitHub Actions)
+- 워크플로: `.github/workflows/deploy.yml`
+- 트리거: `main` 또는 `master` 브랜치 푸시, 수동 실행(`workflow_dispatch`)
+- 배포 대상: `index.html`, `assets/`, `data/`, `manifest.json`, `sw.js` 등 루트 정적 파일
 
-워크플로: `.github/workflows/sync-winning-stats.yml`
+## 2) 데이터 운영
 
-- 스케줄: 매주 월요일 03:00 UTC
-- 수동 실행: `workflow_dispatch`
-- 동작:
-  1. `scripts/scrape_lotto_history.py`로 로컬 DB 갱신
-  2. `scripts/export_winning_stats_json.py`로 `docs/data/winning_stats.json` 재생성
-  3. 변경분이 있을 때만 커밋/푸시
+- 기본 데이터 소스: `data/winning_stats.json`
+- 런타임 동기화: 앱의 **최신 데이터 동기화** 버튼 또는 앱 시작 시 백그라운드 동기화
+- 로컬 업데이트 저장: `localStorage`의 `lotto_pro_updates_v2`
 
-로컬에서 동일 작업을 수동으로 실행할 때:
-```bash
-python scripts/scrape_lotto_history.py
-python scripts/export_winning_stats_json.py
-```
+메모:
+- 정적 JSON과 로컬 업데이트가 병합되어 최신 상태를 구성합니다.
+- 최신 회차 반영이 필요하면 `data/winning_stats.json`을 갱신 후 커밋/푸시하면 됩니다.
 
 ## 3) proxy 모드 (선택)
 
-정적 JSON이 충분하지 않다면 쿼리 파라미터로 프록시를 켭니다.
+정적 JSON 외 외부 API 동기화를 강화하려면 프록시를 사용합니다.
 
-예:  
+예:
 `https://<gh-pages>/index.html?proxyUrl=https://<worker>.workers.dev/proxy/latest?draw_no=1200`
 
 우선순위:
-1) `?proxyUrl=...` 또는 `?proxy=...`
-2) `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
-3) `lotto_pro_settings_v2.customProxy`
-4) 정적 JSON fallback (`./data/winning_stats.json`)
-
-메모:
-- 앱 시작 시 v1 키가 있고 v2가 비어 있으면 v2로 자동 이관됩니다.
-- `sw.js`는 cross-origin API 요청을 가로채지 않으므로, 프록시/API 에러는 원래 fetch 에러 semantics를 유지합니다.
+1. `?proxyUrl=...` 또는 `?proxy=...`
+2. `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
+3. `lotto_pro_settings_v2.customProxy`
+4. public fallback
 
 ## 4) 확인 체크리스트
 
-- 앱 실행 시 CORS 에러 없이 데이터가 노출되는지
-- proxy 실패 시 정적 JSON로 fallback 되는지
-- 새로고침해도 favorites/history가 유지되는지
-- `sync` 상태 문구(`GitHub Pages` 페이지 하단) 표시
+- 앱 실행 시 최신 당첨 정보가 표시되는지
+- proxy 실패 시에도 정적 JSON 기반 기능이 유지되는지
+- 새로고침 후 favorites/history/ticketBook이 유지되는지
+- 티켓북 미정산 항목이 동기화 후 자동 정산되는지
 
-## Local Run (HTTP server required)
+## 5) Local Run (HTTP server required)
 
-Opening `docs/index.html` via double click (`file://`) may break `fetch()` (browser origin restrictions) and make the app look like "UI works but features don't".
-
-Run locally like this:
+`file://` 직접 열기 대신 HTTP 서버로 실행하세요.
 
 ```bash
-cd docs
 python -m http.server 5173
 ```
 
-Then open:
+열기:
 - `http://localhost:5173/`

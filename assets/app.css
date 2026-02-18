@@ -1549,6 +1549,15 @@ input:checked+.slider:before {
     margin-top: 12px;
 }
 
+.compare-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 6px 12px;
+    max-height: 220px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
 .range-inputs {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1705,7 +1714,8 @@ input:checked+.slider:before {
   border-radius: 3px;
 }
 
-#btResultTable {
+#btResultTable,
+#btCompareTable {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -1714,7 +1724,9 @@ input:checked+.slider:before {
 }
 
 #btResultTable th,
-#btResultTable td {
+#btResultTable td,
+#btCompareTable th,
+#btCompareTable td {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -1722,12 +1734,15 @@ input:checked+.slider:before {
 }
 
 [data-theme="light"] #btResultTable th,
-[data-theme="light"] #btResultTable td {
+[data-theme="light"] #btResultTable td,
+[data-theme="light"] #btCompareTable th,
+[data-theme="light"] #btCompareTable td {
   border-bottom-color: #e2e8f0;
   color: #334155;
 }
 
-#btResultTable thead th {
+#btResultTable thead th,
+#btCompareTable thead th {
   position: sticky;
   top: 0;
   background: rgba(15, 23, 42, 0.95);
@@ -1742,29 +1757,35 @@ input:checked+.slider:before {
   border-bottom: 1px solid var(--border-light);
 }
 
-[data-theme="light"] #btResultTable thead th {
+[data-theme="light"] #btResultTable thead th,
+[data-theme="light"] #btCompareTable thead th {
   background: rgba(248, 250, 252, 0.95);
   color: #475569;
   border-bottom-color: #cbd5e1;
 }
 
-#btResultTable tbody tr {
+#btResultTable tbody tr,
+#btCompareTable tbody tr {
   transition: background 0.2s;
 }
 
-#btResultTable tbody tr:nth-child(even) {
+#btResultTable tbody tr:nth-child(even),
+#btCompareTable tbody tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.02);
 }
 
-[data-theme="light"] #btResultTable tbody tr:nth-child(even) {
+[data-theme="light"] #btResultTable tbody tr:nth-child(even),
+[data-theme="light"] #btCompareTable tbody tr:nth-child(even) {
   background: #f8fafc;
 }
 
-#btResultTable tbody tr:hover {
+#btResultTable tbody tr:hover,
+#btCompareTable tbody tr:hover {
   background: rgba(139, 92, 246, 0.08) !important;
 }
 
-[data-theme="light"] #btResultTable tbody tr:hover {
+[data-theme="light"] #btResultTable tbody tr:hover,
+[data-theme="light"] #btCompareTable tbody tr:hover {
   background: rgba(99, 102, 241, 0.08) !important;
 }
 

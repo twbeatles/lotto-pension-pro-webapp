@@ -8,6 +8,8 @@ export class AiModule {
     constructor(app) {
         this.app = app;
         this.engine = new StrategyEngine(this.app.data.state.winningStats);
+        this.lastRequest = null;
+        this.lastExplain = [];
         const btn = $('#aiPredictBtn');
         if (btn) btn.addEventListener('click', () => this.run());
         $('#aiShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
@@ -18,6 +20,12 @@ export class AiModule {
         if (this.app.data.state.aiResults && this.app.data.state.aiResults.length > 0) {
             this.renderResults(this.app.data.state.aiResults);
         }
+    }
+
+    getAiTargetDrawNo() {
+        const latest = Number(this.app.data.state.winningStats?.[0]?.draw_no || 0);
+        const input = this.readNumber('aiTargetDrawNo', latest + 1);
+        return Math.max(1, Math.floor(input || latest + 1));
     }
 
     populateStrategySelect() {
@@ -178,6 +186,7 @@ export class AiModule {
             const result = this.engine.recommendFromSimulation(request, { setCount: 5 });
             const results = result.sets;
             if (!results || results.length === 0) throw new Error('Simulation returned empty results');
+            const explanations = results.map((set) => this.engine.explainSet(set, request));
 
             log.innerHTML += `<div style="color:var(--success)">> 분석 완료! 5개 추천 조합 생성.</div>`;
             log.innerHTML += `<div>> 유효 샘플: ${result.simulation.diagnostics.accepted}/${result.simulation.diagnostics.simulationCount}</div>`;
@@ -185,7 +194,9 @@ export class AiModule {
 
             // Save state
             this.app.data.state.aiResults = results;
-            this.renderResults(results);
+            this.lastRequest = request;
+            this.lastExplain = explanations;
+            this.renderResults(results, explanations);
 
         } catch (e) {
             console.error('AI Error:', e);
@@ -198,7 +209,7 @@ export class AiModule {
         }
     }
 
-    renderResults(results) {
+    renderResults(results, explanations = []) {
         const out = $('#aiOutput');
         if (!out) return;
 
@@ -206,6 +217,7 @@ export class AiModule {
         results.forEach((set, idx) => {
             const sum = AdvancedMonteCarlo.calculateSum(set);
             const ac = AdvancedMonteCarlo.calculateAC(set);
+            const exp = explanations[idx];
 
             const row = document.createElement('div');
             row.className = 'ai-card-row';
@@ -240,7 +252,19 @@ export class AiModule {
                 <div class="ball-container left">${ballsHtml}</div>
                 <div class="row-actions" style="margin-top:8px; display:flex; justify-content:flex-end;">
                      <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">선택</button>
+                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓북</button>
                 </div>
+                ${exp ? `
+                <details class="ai-explain" style="margin-top:10px;">
+                    <summary style="cursor:pointer; color:var(--text-muted);">근거 보기</summary>
+                    <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
+                        <div>전략: <b>${exp.strategyId}</b> (Tier ${exp.evidenceTier})</div>
+                        <div>세트 점수: <b>${exp.summary.setWeight}</b>, 필터 통과: <b>${exp.filtersPass ? 'YES' : 'NO'}</b></div>
+                        <div style="margin-top:6px; display:grid; gap:4px;">
+                            ${exp.signals.map((s) => `<div>#${s.number} w:${s.weight} / f:${s.frequencyScore} / r:${s.recencyScore} / g:${s.gapScore} / p:${s.pairScore}</div>`).join('')}
+                        </div>
+                    </div>
+                </details>` : ''}
             `;
 
             out.appendChild(row);
@@ -251,6 +275,22 @@ export class AiModule {
             b.addEventListener('click', (e) => {
                 const nums = e.target.dataset.nums.split(',').map(Number);
                 this.app.requestNumbers(nums);
+            });
+        });
+        out.querySelectorAll('.ticket-btn').forEach((b) => {
+            b.addEventListener('click', (e) => {
+                const nums = e.target.dataset.nums.split(',').map(Number);
+                const targetDrawNo = this.getAiTargetDrawNo();
+                const added = this.app.data.addTicket(nums, {
+                    source: 'ai',
+                    targetDrawNo,
+                    strategyRequest: this.lastRequest || this.buildStrategyRequest()
+                });
+                if (!added) UIManager.toast('이미 티켓북에 있습니다.', 'warning');
+                else {
+                    UIManager.toast(`${targetDrawNo}회차 티켓북에 추가되었습니다.`, 'success');
+                    if (this.app.renderDataLists) this.app.renderDataLists();
+                }
             });
         });
     }

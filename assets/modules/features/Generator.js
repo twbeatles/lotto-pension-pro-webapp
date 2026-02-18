@@ -13,6 +13,7 @@ export class GeneratorModule {
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
+        this.resetCampaignOptions(false);
     }
 
     bindEvents() {
@@ -30,6 +31,10 @@ export class GeneratorModule {
 
         const saveAllBtn = $('#saveAllBtn');
         if (saveAllBtn) saveAllBtn.addEventListener('click', () => this.saveAll());
+        const genCampaignBtn = $('#generateCampaignBtn');
+        if (genCampaignBtn) genCampaignBtn.addEventListener('click', () => this.generateCampaign());
+        const genCampaignResetBtn = $('#resetCampaignBtn');
+        if (genCampaignResetBtn) genCampaignResetBtn.addEventListener('click', () => this.resetCampaignOptions());
 
         $('#genShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
         $('#genStrategySelect')?.addEventListener('change', () => this.syncLegacyTogglesFromStrategy());
@@ -63,6 +68,22 @@ export class GeneratorModule {
                     if (this.app.renderDataLists) this.app.renderDataLists();
                     return;
                 }
+                if (action === 'ticket') {
+                    const request = this.getStrategyRequestFromUI();
+                    const targetDrawNo = this.readNumberInput('genTargetDrawNo', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1);
+                    const added = this.app.data.addTicket(nums, {
+                        source: 'generator',
+                        targetDrawNo,
+                        strategyRequest: request
+                    });
+                    if (!added) {
+                        UIManager.toast('이미 티켓북에 있는 번호입니다.', 'warning');
+                    } else {
+                        UIManager.toast(`${targetDrawNo}회차 티켓북에 추가되었습니다.`, 'success');
+                        if (this.app.renderDataLists) this.app.renderDataLists();
+                    }
+                    return;
+                }
                 if (action === 'share') {
                     const originalHTML = btn.innerHTML;
                     try {
@@ -80,6 +101,20 @@ export class GeneratorModule {
             });
             this.boundDelegation = true;
         }
+    }
+
+    resetCampaignOptions(force = true) {
+        const defaults = {
+            genTargetDrawNo: (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1,
+            campStartDraw: (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1,
+            campWeeks: 4,
+            campSetsPerWeek: 3
+        };
+        Object.entries(defaults).forEach(([id, v]) => {
+            const el = $(`#${id}`);
+            if (!el) return;
+            if (force || !String(el.value || '').trim()) el.value = v;
+        });
     }
 
     resetOptions() {
@@ -272,6 +307,54 @@ export class GeneratorModule {
         });
     }
 
+    generateCampaign() {
+        const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
+        const weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
+        const setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
+        const fixed = this.parseInput($('#fixedNums').value);
+        const exclude = this.parseInput($('#excludeNums').value);
+        const request = this.getStrategyRequestFromUI();
+
+        this.engine = new StrategyEngine(this.data.state.winningStats);
+
+        let totalCreated = 0;
+        const tickets = [];
+        for (let i = 0; i < weeks; i++) {
+            const targetDrawNo = startDraw + i;
+            const sets = this.engine.generateMultipleSets(setsPerWeek, request, {
+                fixed,
+                exclude,
+                maxAttempts: Math.max(240, setsPerWeek * 120)
+            });
+            sets.forEach((numbers) => {
+                tickets.push({
+                    id: this.data.createId('ticket'),
+                    numbers,
+                    targetDrawNo,
+                    source: 'generator',
+                    strategyRequest: request,
+                    memo: `Campaign ${startDraw}-${startDraw + weeks - 1}`,
+                    createdAt: new Date().toISOString(),
+                    checked: null
+                });
+                totalCreated++;
+            });
+        }
+
+        const inserted = this.data.addTicketsBulk(tickets, { silent: true });
+        const campaign = this.data.addCampaign({
+            name: `${startDraw}회 시작 ${weeks}주`,
+            startDrawNo: startDraw,
+            weeks,
+            setsPerWeek,
+            strategyRequest: request
+        });
+        this.data.save();
+
+        UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
+        if (campaign && this.app.renderDataLists) this.app.renderDataLists();
+    }
+
     parseInput(val) {
         return [...new Set(val.split(/[^0-9]+/).filter(Boolean).map(Number).filter(n => n >= 1 && n <= 45))];
     }
@@ -285,6 +368,7 @@ export class GeneratorModule {
             <div class="result-actions">
                 <button class="icon-btn" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
                 <button class="icon-btn" data-action="qr" aria-label="QR 코드 보기" title="QR"><i class="ph ph-qr-code"></i></button>
+                <button class="icon-btn" data-action="ticket" aria-label="티켓북 추가" title="티켓북"><i class="ph ph-ticket"></i></button>
                 <button class="icon-btn" data-action="share" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
                 <button class="icon-btn" data-action="fav" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
             </div>

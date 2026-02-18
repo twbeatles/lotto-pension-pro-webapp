@@ -17,11 +17,18 @@ export class DataIOModule {
 
     exportAll() {
         const payload = {
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
             favorites: this.data.state.favorites,
             history: this.data.state.history,
-            settings: { theme: this.data.state.theme }
+            ticketBook: this.data.state.ticketBook,
+            campaigns: this.data.state.campaigns,
+            alertPrefs: this.data.state.alertPrefs,
+            settings: {
+                theme: this.data.state.theme,
+                customProxy: this.data.state.customProxy,
+                strategyPrefs: this.data.state.strategyPrefs
+            }
         };
 
         const json = JSON.stringify(payload, null, 2);
@@ -30,12 +37,12 @@ export class DataIOModule {
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        a.download = `lotto_pro_backup_v1_${ts}.json`;
+        a.download = `lotto_pro_backup_v2_${ts}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('백업 파일을 내보냈습니다.', 'success');
+        UIManager.toast('백업 파일(v2)을 내보냈습니다.', 'success');
     }
 
     normalizeItems(items) {
@@ -51,14 +58,41 @@ export class DataIOModule {
             .filter(x => x.numbers.length === 6);
     }
 
+    normalizeTicketItems(items) {
+        if (!Array.isArray(items)) return [];
+        return items
+            .map((x) => this.data.normalizeTicketEntry(x))
+            .filter(Boolean)
+            .map((x) => ({
+                ...x,
+                source: ['generator', 'ai', 'import'].includes(x.source) ? x.source : 'import'
+            }));
+    }
+
+    normalizeCampaignItems(items) {
+        if (!Array.isArray(items)) return [];
+        return items.map((x) => this.data.normalizeCampaignEntry(x)).filter(Boolean);
+    }
+
     mergeByNumbers(existing, incoming) {
         const seen = new Set(existing.map(x => x.numbers.join(',')));
         const merged = [...existing];
-        // Put new (non-duplicate) items on top
         incoming.forEach(x => {
             const k = x.numbers.join(',');
             if (seen.has(k)) return;
             seen.add(k);
+            merged.unshift(x);
+        });
+        return merged;
+    }
+
+    mergeTickets(existing, incoming) {
+        const merged = [...existing];
+        const seen = new Set(existing.map((x) => this.data.buildTicketKey(x)));
+        incoming.forEach((x) => {
+            const key = this.data.buildTicketKey(x);
+            if (seen.has(key)) return;
+            seen.add(key);
             merged.unshift(x);
         });
         return merged;
@@ -72,40 +106,71 @@ export class DataIOModule {
         try {
             const text = await file.text();
             const json = JSON.parse(text);
-            if (!json || typeof json !== 'object' || json.version !== 1) {
-                UIManager.toast('가져오기 실패: 지원하지 않는 백업 파일 형식입니다.', 'error', 3500);
+            if (!json || typeof json !== 'object') {
+                UIManager.toast('가져오기 실패: 지원하지 않는 파일 형식입니다.', 'error', 3500);
+                return;
+            }
+
+            const version = Number(json.version || 1);
+            if (version !== 1 && version !== 2) {
+                UIManager.toast('가져오기 실패: 지원하지 않는 백업 버전입니다.', 'error', 3500);
                 return;
             }
 
             const incomingFav = this.normalizeItems(json.favorites);
             const incomingHist = this.normalizeItems(json.history);
             const incomingTheme = json.settings?.theme === 'light' ? 'light' : 'dark';
+            const incomingProxy = typeof json.settings?.customProxy === 'string' ? json.settings.customProxy : '';
+            const incomingStrategyPrefs = json.settings?.strategyPrefs || null;
 
-            if (!Array.isArray(incomingFav) || !Array.isArray(incomingHist)) {
-                throw new Error('Invalid data structure');
-            }
+            const incomingTickets = version >= 2
+                ? this.normalizeTicketItems(json.ticketBook)
+                : [];
+            const incomingCampaigns = version >= 2
+                ? this.normalizeCampaignItems(json.campaigns)
+                : [];
+            const incomingAlertPrefs = version >= 2
+                ? this.data.mergeAlertPrefs(json.alertPrefs || {})
+                : this.data.getDefaultAlertPrefs();
 
-            const merge = confirm(`데이터를 가져옵니다.\n- 즐겨찾기: ${incomingFav.length}개\n- 히스토리: ${incomingHist.length}개\n\n기존 데이터와 병합하시겠습니까? (확인=병합, 취소=덮어쓰기)`);
+            const merge = confirm(`데이터를 가져옵니다.\n- 즐겨찾기: ${incomingFav.length}개\n- 히스토리: ${incomingHist.length}개\n- 티켓북: ${incomingTickets.length}개\n- 캠페인: ${incomingCampaigns.length}개\n\n기존 데이터와 병합하시겠습니까? (확인=병합, 취소=덮어쓰기)`);
 
             if (merge) {
                 const beforeFav = this.data.state.favorites.length;
                 const beforeHist = this.data.state.history.length;
+                const beforeTickets = this.data.state.ticketBook.length;
+                const beforeCampaigns = this.data.state.campaigns.length;
 
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
                 this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
+                this.data.state.ticketBook = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
+                this.data.state.campaigns = [...incomingCampaigns, ...this.data.state.campaigns]
+                    .filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
+                this.data.state.alertPrefs = this.data.mergeAlertPrefs({
+                    ...this.data.state.alertPrefs,
+                    ...incomingAlertPrefs
+                });
 
                 const newFav = this.data.state.favorites.length - beforeFav;
                 const newHist = this.data.state.history.length - beforeHist;
-                UIManager.toast(`병합 완료 (신규: 즐겨찾기 ${newFav}, 히스토리 ${newHist})`, 'success');
+                const newTickets = this.data.state.ticketBook.length - beforeTickets;
+                const newCampaigns = this.data.state.campaigns.length - beforeCampaigns;
+                UIManager.toast(`병합 완료 (신규: 즐겨찾기 ${newFav}, 히스토리 ${newHist}, 티켓 ${newTickets}, 캠페인 ${newCampaigns})`, 'success');
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
+                this.data.state.ticketBook = incomingTickets;
+                this.data.state.campaigns = incomingCampaigns;
+                this.data.state.alertPrefs = incomingAlertPrefs;
                 this.data.state.theme = incomingTheme;
+                this.data.state.customProxy = incomingProxy;
+                if (incomingStrategyPrefs) {
+                    this.data.state.strategyPrefs = this.data.mergeStrategyPrefs(incomingStrategyPrefs);
+                }
                 this.app.applyTheme();
-                UIManager.toast(`덮어쓰기 완료 (즐겨찾기 ${incomingFav.length}, 히스토리 ${incomingHist.length})`, 'success');
+                UIManager.toast(`덮어쓰기 완료 (즐겨찾기 ${incomingFav.length}, 히스토리 ${incomingHist.length}, 티켓 ${incomingTickets.length})`, 'success');
             }
 
-            // Clamp history size
             if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
                 this.data.state.history = this.data.state.history.slice(0, CONFIG.LIMITS.MAX_HIST);
             }
@@ -116,7 +181,6 @@ export class DataIOModule {
             console.error('Import failed', err);
             UIManager.toast('가져오기 실패: JSON 파싱 오류', 'error', 3500);
         } finally {
-            // allow re-importing same file
             input.value = '';
         }
     }

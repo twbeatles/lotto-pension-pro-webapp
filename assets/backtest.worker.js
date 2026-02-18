@@ -6,134 +6,189 @@ self.onmessage = async (e) => {
 
     if (type === 'START') {
         try {
-            await runBacktest(payload);
+            await runBacktest(payload || {});
         } catch (err) {
             console.error(err);
             self.postMessage({
                 type: 'ERROR',
                 payload: {
                     code: 'BACKTEST_RUNTIME_ERROR',
-                    message: err.message || 'Backtest runtime error',
-                    strategyId: resolveStrategyId(payload?.strategyRequest?.strategyId || payload?.strategy || 'random')
+                    message: err.message || 'Backtest runtime error'
                 }
             });
         }
     }
 };
 
-async function runBacktest({ statsData, startDraw, endDraw, qty, strategyRequest, strategy }) {
-    const totalDraws = endDraw - startDraw + 1;
-    let processed = 0;
-    const startAt = Date.now();
-    const canonicalStrategyRequest = strategyRequest || {
-        strategyId: resolveStrategyId(strategy || 'random'),
-        params: { simulationCount: 5000, lookbackWindow: 20, wheelPoolSize: null, wheelGuarantee: null, seed: null },
+function toCanonicalRequest(input) {
+    if (input && typeof input === 'object' && input.strategyId) {
+        return {
+            ...input,
+            strategyId: resolveStrategyId(input.strategyId),
+            params: {
+                simulationCount: 5000,
+                lookbackWindow: 20,
+                wheelPoolSize: null,
+                wheelGuarantee: null,
+                seed: null,
+                ...(input.params || {})
+            },
+            filters: {
+                ...(input.filters || {})
+            }
+        };
+    }
+
+    const strategyId = resolveStrategyId(typeof input === 'string' ? input : 'random');
+    return {
+        strategyId,
+        params: {
+            simulationCount: 5000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: null
+        },
         filters: {}
     };
-    const strategyId = resolveStrategyId(canonicalStrategyRequest.strategyId || strategy || 'random');
+}
 
-    // Sort data just in case
-    const allStats = [...statsData].sort((a, b) => a.draw_no - b.draw_no);
+function getStrategyRequests(payload = {}) {
+    if (Array.isArray(payload.strategyRequests) && payload.strategyRequests.length > 0) {
+        return payload.strategyRequests.map((x) => toCanonicalRequest(x));
+    }
+    if (payload.strategyRequest) {
+        return [toCanonicalRequest(payload.strategyRequest)];
+    }
+    return [toCanonicalRequest(payload.strategy || 'random')];
+}
 
-    // Quick lookup for actual results
-    const drawMap = new Map();
-    allStats.forEach(d => drawMap.set(d.draw_no, d));
-
-    const report = {
+function createReport(strategyId) {
+    return {
+        strategyId,
         draws: 0,
         tickets: 0,
         cost: 0,
         totalPrize: 0,
-        counts: [0, 0, 0, 0, 0, 0] // 0:Fail, 1:1st, 2:2nd ...
+        counts: [0, 0, 0, 0, 0, 0]
     };
+}
 
-    const wins = [];
+function summarizeReport(report) {
+    const winCount = report.counts[1] + report.counts[2] + report.counts[3] + report.counts[4] + report.counts[5];
+    const roi = report.cost > 0 ? ((report.totalPrize - report.cost) / report.cost) * 100 : 0;
+    const hitRate = report.tickets > 0 ? (winCount / report.tickets) * 100 : 0;
+    return {
+        ...report,
+        winCount,
+        roi,
+        hitRate
+    };
+}
 
-    for (let currentDraw = startDraw; currentDraw <= endDraw; currentDraw++) {
-        // 1. Prepare historical data (up to currentDraw - 1)
-        // We need data strictly BEFORE the current draw to simulate prediction
-        const historyData = allStats.filter(d => d.draw_no < currentDraw);
+async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests }) {
+    const allStats = [...statsData].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
+    const drawMap = new Map();
+    allStats.forEach((d) => drawMap.set(Number(d.draw_no), d));
 
-        // If we don't have enough history, maybe skip or use what we have?
-        // Ideally we need at least some history.
+    const requests = getStrategyRequests({ strategyRequest, strategy, strategyRequests });
+    const strategyDrawTotal = Math.max(0, Number(endDraw) - Number(startDraw) + 1);
+    const totalDraws = strategyDrawTotal * requests.length;
+    const ticketQty = Math.max(1, Math.floor(Number(qty) || 1));
 
-        const actualResult = drawMap.get(currentDraw);
-        if (!actualResult) {
-            // Data missing for this draw? Skip.
-            processed++;
-            continue;
-        }
+    const startAt = Date.now();
+    let processedTotal = 0;
+    const strategyProgress = requests.map((req) => ({ strategyId: req.strategyId, draws: 0 }));
+    const comparisons = [];
 
-        // 2. Generate Numbers (same rule as UI strategy engine)
-        const engine = new StrategyEngine(historyData);
-        let tickets = engine.generateMultipleSets(qty, canonicalStrategyRequest, { sourceData: historyData, maxAttempts: qty * 120 });
-        if (!Array.isArray(tickets) || tickets.length === 0) {
-            tickets = [];
-            for (let i = 0; i < qty; i++) tickets.push(generateRandomNums());
-        }
+    for (let reqIndex = 0; reqIndex < requests.length; reqIndex++) {
+        const req = requests[reqIndex];
+        const report = createReport(req.strategyId);
+        const winsBuffer = [];
 
-        // 3. Check Wins
-        const winNums = actualResult.numbers; // [1,2,3,4,5,6]
-        const bonus = actualResult.bonus;     // 7
-
-        tickets.forEach(ticket => {
-            const { rank, prize } = checkRank(ticket, winNums, bonus);
-
-            report.tickets++;
-            report.cost += 1000;
-            report.totalPrize += prize;
-            report.counts[rank]++; // rank 0 is fail
-
-            if (rank >= 1 && rank <= 5) { // Track 5th place or better
-                wins.push({
-                    drawNo: currentDraw,
-                    rank,
-                    prize,
-                    nums: ticket,
-                    hitText: '' // Can be generated in UI
-                });
+        for (let currentDraw = Number(startDraw); currentDraw <= Number(endDraw); currentDraw++) {
+            const historyData = allStats.filter((d) => Number(d.draw_no) < currentDraw);
+            const actualResult = drawMap.get(currentDraw);
+            if (!actualResult) {
+                processedTotal++;
+                strategyProgress[reqIndex].draws++;
+                continue;
             }
-        });
 
-        report.draws++;
-        processed++;
-
-        // Progress Update every 5 draws or last one
-        if (processed % 5 === 0 || processed === totalDraws) {
-            const elapsed = Date.now() - startAt;
-            const avg = processed > 0 ? (elapsed / processed) : 0;
-            const remaining = Math.max(totalDraws - processed, 0);
-            const etaMs = Math.max(Math.round(avg * remaining), 0);
-            self.postMessage({
-                type: 'PROGRESS',
-                payload: {
-                    summary: report,
-                    processedDraws: processed,
-                    totalDraws,
-                    etaMs,
-                    strategyId
-                }
+            const engine = new StrategyEngine(historyData);
+            let tickets = engine.generateMultipleSets(ticketQty, req, {
+                sourceData: historyData,
+                maxAttempts: ticketQty * 120
             });
-            // Send batch of wins to avoid spamming
-            if (wins.length > 0) {
-                // For performance, we might want to send wins only occasionally or all at once?
-                // UI appends rows. Let's send them.
-                self.postMessage({ type: 'WINS', payload: [...wins] });
-                wins.length = 0; // Clear buffer
+
+            if (!Array.isArray(tickets) || tickets.length === 0) {
+                tickets = [];
+                for (let i = 0; i < ticketQty; i++) tickets.push(generateRandomNums());
+            }
+
+            for (const ticket of tickets) {
+                const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult);
+                report.tickets++;
+                report.cost += 1000;
+                report.totalPrize += prize;
+                report.counts[rank]++;
+
+                if (rank >= 1 && rank <= 5) {
+                    winsBuffer.push({
+                        strategyId: req.strategyId,
+                        drawNo: currentDraw,
+                        rank,
+                        prize,
+                        nums: ticket,
+                        hitText: ''
+                    });
+                }
+            }
+
+            report.draws++;
+            processedTotal++;
+            strategyProgress[reqIndex].draws++;
+
+            if (processedTotal % 5 === 0 || processedTotal === totalDraws) {
+                const elapsed = Date.now() - startAt;
+                const avg = processedTotal > 0 ? elapsed / processedTotal : 0;
+                const remaining = Math.max(totalDraws - processedTotal, 0);
+                const etaMs = Math.max(Math.round(avg * remaining), 0);
+
+                self.postMessage({
+                    type: 'PROGRESS',
+                    payload: {
+                        summary: report,
+                        processedDraws: processedTotal,
+                        totalDraws,
+                        etaMs,
+                        strategyProgress: strategyProgress.map((x) => ({ ...x }))
+                    }
+                });
+
+                if (winsBuffer.length > 0) {
+                    self.postMessage({ type: 'WINS', payload: [...winsBuffer] });
+                    winsBuffer.length = 0;
+                }
             }
         }
+
+        comparisons.push(summarizeReport(report));
     }
 
-    // Final Done message
+    const sorted = [...comparisons].sort((a, b) => b.roi - a.roi);
+    const winner = sorted[0]?.strategyId || null;
+
     self.postMessage({
         type: 'DONE',
         payload: {
-            summary: report,
+            summary: comparisons[0] || createReport(requests[0]?.strategyId || 'random_baseline'),
+            comparisons,
             diagnostics: {
                 elapsedMs: Date.now() - startAt,
-                processedDraws: processed,
+                processedDraws: processedTotal,
                 totalDraws,
-                strategyId
+                winner
             }
         }
     });
@@ -145,21 +200,4 @@ function generateRandomNums() {
         nums.add(Math.floor(Math.random() * 45) + 1);
     }
     return [...nums].sort((a, b) => a - b);
-}
-
-function checkRank(myNums, winNums, bonus) {
-    let hit = 0;
-    let hasBonus = false;
-
-    myNums.forEach(n => {
-        if (winNums.includes(n)) hit++;
-        if (n === bonus) hasBonus = true;
-    });
-
-    if (hit === 6) return { rank: 1, prize: 2000000000 }; // Est. 2B
-    if (hit === 5 && hasBonus) return { rank: 2, prize: 50000000 }; // Est. 50M
-    if (hit === 5) return { rank: 3, prize: 1500000 }; // Est. 1.5M
-    if (hit === 4) return { rank: 4, prize: 50000 };
-    if (hit === 3) return { rank: 5, prize: 5000 };
-    return { rank: 0, prize: 0 };
 }

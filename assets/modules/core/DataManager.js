@@ -1,6 +1,7 @@
 import { CONFIG } from '../utils/config.js';
 import { $, sleep, estimateLatestDrawKST } from '../utils/utils.js';
 import { UIManager } from './UIManager.js';
+import { createDefaultStrategyRequest } from './StrategyCatalog.js';
 
 export class DataManager {
     constructor() {
@@ -13,7 +14,57 @@ export class DataManager {
             generated: [],
             customProxy: '', // Explicitly init
             aiResults: [], // Session persistence for AI tab
-            analytics: null
+            analytics: null,
+            strategyPrefs: this.getDefaultStrategyPrefs()
+        };
+    }
+
+    getDefaultStrategyPrefs() {
+        return {
+            generator: createDefaultStrategyRequest('ensemble_weighted'),
+            ai: createDefaultStrategyRequest('ensemble_weighted'),
+            backtest: createDefaultStrategyRequest('random_baseline')
+        };
+    }
+
+    mergeStrategyPrefs(raw) {
+        const defaults = this.getDefaultStrategyPrefs();
+        const input = raw && typeof raw === 'object' ? raw : {};
+        return {
+            generator: {
+                ...defaults.generator,
+                ...(input.generator || {}),
+                params: { ...defaults.generator.params, ...(input.generator?.params || {}) },
+                filters: { ...defaults.generator.filters, ...(input.generator?.filters || {}) }
+            },
+            ai: {
+                ...defaults.ai,
+                ...(input.ai || {}),
+                params: { ...defaults.ai.params, ...(input.ai?.params || {}) },
+                filters: { ...defaults.ai.filters, ...(input.ai?.filters || {}) }
+            },
+            backtest: {
+                ...defaults.backtest,
+                ...(input.backtest || {}),
+                params: { ...defaults.backtest.params, ...(input.backtest?.params || {}) },
+                filters: { ...defaults.backtest.filters, ...(input.backtest?.filters || {}) }
+            }
+        };
+    }
+
+    setStrategyPrefs(scope, request) {
+        if (!['generator', 'ai', 'backtest'].includes(scope)) return;
+        this.state.strategyPrefs[scope] = {
+            ...this.state.strategyPrefs[scope],
+            ...(request || {}),
+            params: {
+                ...(this.state.strategyPrefs[scope]?.params || {}),
+                ...(request?.params || {})
+            },
+            filters: {
+                ...(this.state.strategyPrefs[scope]?.filters || {}),
+                ...(request?.filters || {})
+            }
         };
     }
 
@@ -29,7 +80,8 @@ export class DataManager {
     persistSettings() {
         localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify({
             theme: this.state.theme,
-            customProxy: this.state.customProxy
+            customProxy: this.state.customProxy,
+            strategyPrefs: this.state.strategyPrefs
         }));
     }
 
@@ -81,6 +133,7 @@ export class DataManager {
             const settings = JSON.parse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}');
             this.state.theme = settings.theme || 'dark';
             this.state.customProxy = settings.customProxy || '';
+            this.state.strategyPrefs = this.mergeStrategyPrefs(settings.strategyPrefs);
 
             // Legacy proxy settings migration (v1 -> v2)
             const legacyProxy = this.readLegacyProxyUrl();

@@ -194,6 +194,75 @@
                             </label>
                         </div>
 
+                        <div class="strategy-panel">
+                            <div class="card-header">
+                                <h3>전략 프리셋</h3>
+                                <label class="check-box" style="padding:0;">
+                                    <input type="checkbox" id="genShowExperimental">
+                                    <span class="checkmark"></span>
+                                    <span>실험 전략 보기</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label for="genStrategySelect">전략 선택</label>
+                                <select id="genStrategySelect" class="input-field"></select>
+                            </div>
+                            <div class="strategy-advanced-grid">
+                                <div class="input-group">
+                                    <label for="genSimulationCount">시뮬레이션 수</label>
+                                    <input type="number" id="genSimulationCount" class="input-field" min="1000" max="20000"
+                                        step="1000" value="5000">
+                                </div>
+                                <div class="input-group">
+                                    <label for="genLookbackWindow">최근 참조 회차</label>
+                                    <input type="number" id="genLookbackWindow" class="input-field" min="5" max="120"
+                                        step="1" value="20">
+                                </div>
+                                <div class="input-group">
+                                    <label for="genSeed">Seed (선택)</label>
+                                    <input type="number" id="genSeed" class="input-field" placeholder="예: 2026">
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>홀수 개수</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="genOddMin" class="input-field" min="0" max="6" placeholder="min">
+                                        <input type="number" id="genOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>고수(24~45) 개수</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="genHighMin" class="input-field" min="0" max="6" placeholder="min">
+                                        <input type="number" id="genHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>합계 범위</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="genSumMin" class="input-field" min="21" max="260" placeholder="min">
+                                        <input type="number" id="genSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>AC 범위</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="genAcMin" class="input-field" min="0" max="10" placeholder="min">
+                                        <input type="number" id="genAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="genMaxConsecutive">최대 연속쌍</label>
+                                    <input type="number" id="genMaxConsecutive" class="input-field" min="0" max="5"
+                                        placeholder="예: 1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="genEndDigitUnique">최소 끝수 종류</label>
+                                    <input type="number" id="genEndDigitUnique" class="input-field" min="1" max="6"
+                                        placeholder="예: 4">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="action-area">
                             <button id="generateBtn" class="btn primary full-width">
                                 <i class="ph-bold ph-sparkle"></i> 번호 생성하기
@@ -291,18 +360,68 @@
                     <div class="ai-orb">
                         <div class="orb-visual"></div>
 
-                        <div class="model-selector" style="margin-bottom: 20px; width: 220px;">
+                        <div class="model-selector" style="margin-bottom: 20px; width: min(680px, 100%);">
                             <label for="aiModelSelect"
                                 style="display:block; margin-bottom:8px; color:var(--text-muted); font-size:14px;">예측 모델
                                 선택</label>
                             <select id="aiModelSelect" class="input-field"
-                                style="background: rgba(0,0,0,0.3); border-color: var(--primary-glow);">
-                                <option value="ensemble">⚖️ 앙상블 (추천)</option>
-                                <option value="statistical">📊 정밀 통계 (AC/합계)</option>
-                                <option value="balance">✨ 패턴 밸런스 (균형)</option>
-                                <option value="cold">❄️ 콜드 포커스 (미출현)</option>
-                                <option value="hot">🔥 핫 포커스 (빈출)</option>
-                            </select>
+                                style="background: rgba(0,0,0,0.3); border-color: var(--primary-glow);"></select>
+                            <label class="check-box" style="margin-top:10px;">
+                                <input type="checkbox" id="aiShowExperimental">
+                                <span class="checkmark"></span>
+                                <span>실험 전략 보기</span>
+                            </label>
+                            <div class="strategy-advanced-grid compact">
+                                <div class="input-group">
+                                    <label for="aiSimulationCount">시뮬레이션 수</label>
+                                    <input type="number" id="aiSimulationCount" class="input-field" min="1000" max="20000"
+                                        step="1000" value="5000">
+                                </div>
+                                <div class="input-group">
+                                    <label for="aiLookbackWindow">최근 참조 회차</label>
+                                    <input type="number" id="aiLookbackWindow" class="input-field" min="5" max="120" value="20">
+                                </div>
+                                <div class="input-group">
+                                    <label for="aiSeed">Seed (선택)</label>
+                                    <input type="number" id="aiSeed" class="input-field" placeholder="예: 2026">
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>홀수 개수</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="aiOddMin" class="input-field" min="0" max="6" placeholder="min">
+                                        <input type="number" id="aiOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>고수 개수</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="aiHighMin" class="input-field" min="0" max="6" placeholder="min">
+                                        <input type="number" id="aiHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>합계 범위</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="aiSumMin" class="input-field" min="21" max="260" placeholder="min">
+                                        <input type="number" id="aiSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group strategy-range">
+                                    <label>AC 범위</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="aiAcMin" class="input-field" min="0" max="10" placeholder="min">
+                                        <input type="number" id="aiAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="aiMaxConsecutive">최대 연속쌍</label>
+                                    <input type="number" id="aiMaxConsecutive" class="input-field" min="0" max="5">
+                                </div>
+                                <div class="input-group">
+                                    <label for="aiEndDigitUnique">최소 끝수 종류</label>
+                                    <input type="number" id="aiEndDigitUnique" class="input-field" min="1" max="6">
+                                </div>
+                            </div>
                         </div>
 
                         <button id="aiPredictBtn" class="btn primary lg">
@@ -372,13 +491,64 @@
                             <div class="input-group">
                                 <label for="btStrategy">전략</label>
                                 <select id="btStrategy" class="input-field">
-                                    <option value="random">완전 랜덤</option>
-                                    <option value="ensemble">AI 앙상블 (Ensemble)</option>
-                                    <option value="balance">패턴 밸런스 (Based)</option>
-                                    <option value="cold">콜드 포커스 (Cold Focus)</option>
-                                    <option value="hot">핫 포커스 (Hot Focus)</option>
-                                    <option value="statistical">정밀 통계 (Statistical)</option>
+                                    <option value="random_baseline">완전 랜덤</option>
                                 </select>
+                            </div>
+                        </div>
+                        <label class="check-box" style="margin:8px 0 4px 0;">
+                            <input type="checkbox" id="btShowExperimental">
+                            <span class="checkmark"></span>
+                            <span>실험 전략 보기</span>
+                        </label>
+                        <div class="strategy-advanced-grid compact">
+                            <div class="input-group">
+                                <label for="btSimulationCount">시뮬레이션 수</label>
+                                <input type="number" id="btSimulationCount" class="input-field" min="1000" max="20000"
+                                    step="1000" value="5000">
+                            </div>
+                            <div class="input-group">
+                                <label for="btLookbackWindow">최근 참조 회차</label>
+                                <input type="number" id="btLookbackWindow" class="input-field" min="5" max="120" value="20">
+                            </div>
+                            <div class="input-group">
+                                <label for="btSeed">Seed (선택)</label>
+                                <input type="number" id="btSeed" class="input-field" placeholder="예: 2026">
+                            </div>
+                            <div class="input-group strategy-range">
+                                <label>홀수 개수</label>
+                                <div class="range-inputs">
+                                    <input type="number" id="btOddMin" class="input-field" min="0" max="6" placeholder="min">
+                                    <input type="number" id="btOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                </div>
+                            </div>
+                            <div class="input-group strategy-range">
+                                <label>고수 개수</label>
+                                <div class="range-inputs">
+                                    <input type="number" id="btHighMin" class="input-field" min="0" max="6" placeholder="min">
+                                    <input type="number" id="btHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                </div>
+                            </div>
+                            <div class="input-group strategy-range">
+                                <label>합계 범위</label>
+                                <div class="range-inputs">
+                                    <input type="number" id="btSumMin" class="input-field" min="21" max="260" placeholder="min">
+                                    <input type="number" id="btSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                </div>
+                            </div>
+                            <div class="input-group strategy-range">
+                                <label>AC 범위</label>
+                                <div class="range-inputs">
+                                    <input type="number" id="btAcMin" class="input-field" min="0" max="10" placeholder="min">
+                                    <input type="number" id="btAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="btMaxConsecutive">최대 연속쌍</label>
+                                <input type="number" id="btMaxConsecutive" class="input-field" min="0" max="5">
+                            </div>
+                            <div class="input-group">
+                                <label for="btEndDigitUnique">최소 끝수 종류</label>
+                                <input type="number" id="btEndDigitUnique" class="input-field" min="1" max="6">
                             </div>
                         </div>
                         <button id="runBacktest" class="btn primary full-width">

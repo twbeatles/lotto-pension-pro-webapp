@@ -1527,6 +1527,59 @@ input:checked+.slider:before {
   position: relative;
 }
 
+/* Strategy presets / advanced panel */
+.strategy-panel {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.strategy-advanced-grid {
+    margin-top: 10px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.strategy-advanced-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    margin-top: 12px;
+}
+
+.range-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.strategy-tier-a {
+    color: #6be675;
+}
+
+.strategy-tier-b {
+    color: #88c7ff;
+}
+
+.strategy-tier-c {
+    color: #ffc66d;
+}
+
+.strategy-experimental-badge {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--warning);
+}
+
+@media (max-width: 960px) {
+    .strategy-advanced-grid,
+    .strategy-advanced-grid.compact {
+        grid-template-columns: 1fr;
+    }
+}
+
 .pie-chart {
   width: 160px;
   height: 160px;

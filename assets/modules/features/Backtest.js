@@ -1,5 +1,6 @@
 import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
+import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 
 export class BacktestModule {
     constructor(app) {
@@ -8,10 +9,13 @@ export class BacktestModule {
         this.MAX_QTY = 1000;
         this.worker = null;
         this.bindEvents();
+        this.populateStrategySelect();
+        this.applySavedStrategyPrefs();
     }
 
     bindEvents() {
         $('#runBacktest')?.addEventListener('click', () => this.run());
+        $('#btShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
     }
 
     onEnter() {
@@ -57,6 +61,116 @@ export class BacktestModule {
         tbody.appendChild(tr);
     }
 
+    populateStrategySelect() {
+        const select = $('#btStrategy');
+        if (!select) return;
+        const current = select.value || 'random';
+        const includeExperimental = Boolean($('#btShowExperimental')?.checked);
+        const strategies = listStrategies({ includeExperimental });
+        select.innerHTML = '';
+
+        strategies.forEach((item) => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = `${item.label} (Tier ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            select.appendChild(opt);
+        });
+
+        // Legacy aliases
+        const legacy = [
+            ['random', 'Legacy: 완전 랜덤'],
+            ['ensemble', 'Legacy: AI 앙상블'],
+            ['balance', 'Legacy: 패턴 밸런스'],
+            ['cold', 'Legacy: 콜드 포커스'],
+            ['hot', 'Legacy: 핫 포커스'],
+            ['statistical', 'Legacy: 정밀 통계']
+        ];
+        legacy.forEach(([id, label]) => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = label;
+            select.appendChild(opt);
+        });
+
+        const resolved = resolveStrategyId(current);
+        if ([...select.options].some((x) => x.value === current)) select.value = current;
+        else if ([...select.options].some((x) => x.value === resolved)) select.value = resolved;
+    }
+
+    readNumber(id, fallback = null) {
+        const el = $(`#${id}`);
+        if (!el) return fallback;
+        const raw = String(el.value || '').trim();
+        if (!raw) return fallback;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) return fallback;
+        return n;
+    }
+
+    range(minId, maxId) {
+        const min = this.readNumber(minId, null);
+        const max = this.readNumber(maxId, null);
+        if (min === null || max === null) return null;
+        return min <= max ? [min, max] : [max, min];
+    }
+
+    buildStrategyRequest() {
+        const strategyId = resolveStrategyId($('#btStrategy')?.value || 'random_baseline');
+        const request = {
+            strategyId,
+            params: {
+                simulationCount: this.readNumber('btSimulationCount', 5000),
+                lookbackWindow: this.readNumber('btLookbackWindow', 20),
+                wheelPoolSize: null,
+                wheelGuarantee: null,
+                seed: this.readNumber('btSeed', null)
+            },
+            filters: {
+                oddEven: this.range('btOddMin', 'btOddMax'),
+                highLow: this.range('btHighMin', 'btHighMax'),
+                sumRange: this.range('btSumMin', 'btSumMax'),
+                acRange: this.range('btAcMin', 'btAcMax'),
+                maxConsecutivePairs: this.readNumber('btMaxConsecutive', null),
+                endDigitUniqueMin: this.readNumber('btEndDigitUnique', null)
+            }
+        };
+        this.data.setStrategyPrefs('backtest', request);
+        return request;
+    }
+
+    applySavedStrategyPrefs() {
+        const saved = this.data.state.strategyPrefs?.backtest;
+        if (!saved) return;
+        const assign = (id, value) => {
+            const el = $(`#${id}`);
+            if (el && value !== undefined && value !== null) el.value = value;
+        };
+        assign('btSimulationCount', saved.params?.simulationCount);
+        assign('btLookbackWindow', saved.params?.lookbackWindow);
+        assign('btSeed', saved.params?.seed ?? '');
+        const pair = (minId, maxId, values) => {
+            const minEl = $(`#${minId}`);
+            const maxEl = $(`#${maxId}`);
+            if (!minEl || !maxEl) return;
+            if (Array.isArray(values) && values.length >= 2) {
+                minEl.value = values[0];
+                maxEl.value = values[1];
+            }
+        };
+        pair('btOddMin', 'btOddMax', saved.filters?.oddEven);
+        pair('btHighMin', 'btHighMax', saved.filters?.highLow);
+        pair('btSumMin', 'btSumMax', saved.filters?.sumRange);
+        pair('btAcMin', 'btAcMax', saved.filters?.acRange);
+        assign('btMaxConsecutive', saved.filters?.maxConsecutivePairs);
+        assign('btEndDigitUnique', saved.filters?.endDigitUniqueMin);
+
+        const strategyId = resolveStrategyId(saved.strategyId || 'random_baseline');
+        const select = $('#btStrategy');
+        if (select && [...select.options].some((x) => x.value === strategyId)) {
+            select.value = strategyId;
+        }
+    }
+
     async run() {
         if (!this.data.state.winningStats.length) {
             return UIManager.toast('당첨 데이터를 불러오지 못했습니다.', 'error', 3500);
@@ -65,7 +179,8 @@ export class BacktestModule {
         const start = Number($('#btStart')?.value);
         const end = Number($('#btEnd')?.value);
         let qty = Number($('#btQty')?.value);
-        const strategy = ($('#btStrategy')?.value || 'random');
+        const strategyRequest = this.buildStrategyRequest();
+        this.data.save();
 
         if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
             return UIManager.toast('회차 범위를 확인하세요. (start <= end)', 'warning', 2500);
@@ -88,7 +203,13 @@ export class BacktestModule {
         this.worker.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'PROGRESS' || type === 'DONE') {
-                this.renderSummary(payload);
+                const summary = payload?.summary || payload;
+                this.renderSummary(summary);
+                if (type === 'PROGRESS' && payload?.processedDraws) {
+                    const etaMs = Number(payload.etaMs || 0);
+                    const etaText = etaMs > 0 ? `, ETA ${(etaMs / 1000).toFixed(1)}s` : '';
+                    UIManager.toast(`진행률 ${payload.processedDraws}/${payload.totalDraws}${etaText}`, 'info', 800);
+                }
             }
             if (type === 'WINS') {
                 payload.forEach(w => this.appendWinRow(w));
@@ -99,6 +220,15 @@ export class BacktestModule {
                     btn.innerHTML = original;
                 }
                 UIManager.toast('백테스팅 완료', 'success');
+                this.worker.terminate();
+                this.worker = null;
+            }
+            if (type === 'ERROR') {
+                UIManager.toast(payload?.message || '백테스트 오류', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                }
                 this.worker.terminate();
                 this.worker = null;
             }
@@ -122,7 +252,7 @@ export class BacktestModule {
                 startDraw: start,
                 endDraw: end,
                 qty,
-                strategy
+                strategyRequest
             }
         });
 

@@ -1,4 +1,5 @@
-import { AdvancedMonteCarlo } from './modules/core/MonteCarlo.js';
+import { StrategyEngine } from './modules/core/StrategyEngine.js';
+import { resolveStrategyId } from './modules/core/StrategyCatalog.js';
 
 self.onmessage = async (e) => {
     const { type, payload } = e.data;
@@ -8,14 +9,28 @@ self.onmessage = async (e) => {
             await runBacktest(payload);
         } catch (err) {
             console.error(err);
-            self.postMessage({ type: 'ERROR', payload: err.message });
+            self.postMessage({
+                type: 'ERROR',
+                payload: {
+                    code: 'BACKTEST_RUNTIME_ERROR',
+                    message: err.message || 'Backtest runtime error',
+                    strategyId: resolveStrategyId(payload?.strategyRequest?.strategyId || payload?.strategy || 'random')
+                }
+            });
         }
     }
 };
 
-async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
+async function runBacktest({ statsData, startDraw, endDraw, qty, strategyRequest, strategy }) {
     const totalDraws = endDraw - startDraw + 1;
     let processed = 0;
+    const startAt = Date.now();
+    const canonicalStrategyRequest = strategyRequest || {
+        strategyId: resolveStrategyId(strategy || 'random'),
+        params: { simulationCount: 5000, lookbackWindow: 20, wheelPoolSize: null, wheelGuarantee: null, seed: null },
+        filters: {}
+    };
+    const strategyId = resolveStrategyId(canonicalStrategyRequest.strategyId || strategy || 'random');
 
     // Sort data just in case
     const allStats = [...statsData].sort((a, b) => a.draw_no - b.draw_no);
@@ -49,31 +64,12 @@ async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
             continue;
         }
 
-        // 2. Generate Numbers
-        const tickets = [];
-
-        if (strategy !== 'random') {
-            const ai = new AdvancedMonteCarlo(historyData);
-
-            // Generate weights based on specific strategy
-            let simCounts = [];
-            try {
-                simCounts = ai.runSimulation(strategy);
-            } catch (e) {
-                // Fallback if simulation fails
-                simCounts = ai.runSimulation('ensemble');
-            }
-
-            for (let i = 0; i < qty; i++) {
-                // Use weighted sample based on the simulation results
-                const nums = AdvancedMonteCarlo.weightedSample(simCounts, 6);
-                tickets.push(nums);
-            }
-        } else {
-            // Random
-            for (let i = 0; i < qty; i++) {
-                tickets.push(generateRandomNums());
-            }
+        // 2. Generate Numbers (same rule as UI strategy engine)
+        const engine = new StrategyEngine(historyData);
+        let tickets = engine.generateMultipleSets(qty, canonicalStrategyRequest, { sourceData: historyData, maxAttempts: qty * 120 });
+        if (!Array.isArray(tickets) || tickets.length === 0) {
+            tickets = [];
+            for (let i = 0; i < qty; i++) tickets.push(generateRandomNums());
         }
 
         // 3. Check Wins
@@ -102,11 +98,21 @@ async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
         report.draws++;
         processed++;
 
-        // Progress Update every 10 draws or last one
-        if (processed % 10 === 0 || processed === totalDraws) {
+        // Progress Update every 5 draws or last one
+        if (processed % 5 === 0 || processed === totalDraws) {
+            const elapsed = Date.now() - startAt;
+            const avg = processed > 0 ? (elapsed / processed) : 0;
+            const remaining = Math.max(totalDraws - processed, 0);
+            const etaMs = Math.max(Math.round(avg * remaining), 0);
             self.postMessage({
                 type: 'PROGRESS',
-                payload: report
+                payload: {
+                    summary: report,
+                    processedDraws: processed,
+                    totalDraws,
+                    etaMs,
+                    strategyId
+                }
             });
             // Send batch of wins to avoid spamming
             if (wins.length > 0) {
@@ -119,7 +125,18 @@ async function runBacktest({ statsData, startDraw, endDraw, qty, strategy }) {
     }
 
     // Final Done message
-    self.postMessage({ type: 'DONE', payload: report });
+    self.postMessage({
+        type: 'DONE',
+        payload: {
+            summary: report,
+            diagnostics: {
+                elapsedMs: Date.now() - startAt,
+                processedDraws: processed,
+                totalDraws,
+                strategyId
+            }
+        }
+    });
 }
 
 function generateRandomNums() {

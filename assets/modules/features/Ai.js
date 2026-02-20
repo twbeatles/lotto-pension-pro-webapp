@@ -1,7 +1,7 @@
 import { $, sleep } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 import { StrategyEngine } from '../core/StrategyEngine.js';
-import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
+import { listStrategies, resolveStrategyId, getStrategyMeta, STRATEGY_CATALOG } from '../core/StrategyCatalog.js';
 import { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
 
 export class AiModule {
@@ -12,9 +12,14 @@ export class AiModule {
         this.lastExplain = [];
         const btn = $('#aiPredictBtn');
         if (btn) btn.addEventListener('click', () => this.run());
-        $('#aiShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
+        $('#aiShowExperimental')?.addEventListener('change', () => {
+            this.populateStrategySelect();
+            this.renderModelGuide();
+        });
+        $('#aiModelSelect')?.addEventListener('change', () => this.renderModelGuide());
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
+        this.renderModelGuide();
 
         // Restore state if available
         if (this.app.data.state.aiResults && this.app.data.state.aiResults.length > 0) {
@@ -293,5 +298,90 @@ export class AiModule {
                 }
             });
         });
+    }
+
+    renderModelGuide() {
+        const container = $('#aiModelGuideContainer');
+        if (!container) return;
+
+        const selectedId = resolveStrategyId($('#aiModelSelect')?.value || 'ensemble_weighted');
+        const selectedMeta = getStrategyMeta(selectedId);
+        const includeExperimental = Boolean($('#aiShowExperimental')?.checked);
+        const allStrategies = Object.values(STRATEGY_CATALOG).filter(s => includeExperimental || !s.experimental);
+
+        const tierIcons = { A: '🏆', B: '⭐', C: '🔬' };
+        const tierLabels = { A: '검증됨', B: '유용함', C: '실험적' };
+        const tierColors = { A: 'var(--success)', B: 'var(--primary)', C: 'var(--warning)' };
+
+        // Selected model detail card
+        const selectedCard = `
+            <div class="guide-selected">
+                <div class="guide-selected-header">
+                    <h3><i class="ph-bold ph-book-open"></i> 현재 선택된 모델</h3>
+                    <span class="guide-tier-badge" style="border-color: ${tierColors[selectedMeta.tier]}; color: ${tierColors[selectedMeta.tier]};">
+                        ${tierIcons[selectedMeta.tier]} Tier ${selectedMeta.tier} · ${tierLabels[selectedMeta.tier]}
+                    </span>
+                </div>
+                <div class="guide-selected-body">
+                    <h4>${selectedMeta.label}</h4>
+                    <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
+                    ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 이 모델은 실험(Experimental) 전략입니다. 백테스트를 통해 성능 검증 후 사용을 추천합니다.</div>' : ''}
+                    ${this._renderDefaultFilters(selectedMeta)}
+                </div>
+            </div>
+        `;
+
+        // All models overview grid
+        const gridItems = allStrategies.map(s => {
+            const isActive = s.id === selectedId;
+            return `
+                <div class="guide-item ${isActive ? 'active' : ''}" data-strategy-id="${s.id}">
+                    <div class="guide-item-head">
+                        <span class="guide-item-tier" style="color: ${tierColors[s.tier]};">${tierIcons[s.tier]}</span>
+                        <strong>${s.label}</strong>
+                        ${s.experimental ? '<span class="guide-exp-tag">실험</span>' : ''}
+                    </div>
+                    <p>${s.summary}</p>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            ${selectedCard}
+            <div class="guide-all-header">
+                <h3><i class="ph-bold ph-list-bullets"></i> 전체 모델 요약</h3>
+                <span class="guide-count">${allStrategies.length}개 전략</span>
+            </div>
+            <div class="guide-grid">${gridItems}</div>
+            <div class="guide-filter-notice">
+                <i class="ph-bold ph-info"></i>
+                <span>필터(홀짝/합계/AC 등)를 과도하게 좁히면 유효한 조합이 부족해져 <strong>Fallback(랜덤)</strong>으로 대체될 수 있습니다. 적정 범위를 유지해 주세요.</span>
+            </div>
+        `;
+
+        // Click on guide-item to switch strategy
+        container.querySelectorAll('.guide-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const stratId = item.dataset.strategyId;
+                const select = $('#aiModelSelect');
+                if (select && [...select.options].some(o => o.value === stratId)) {
+                    select.value = stratId;
+                    this.renderModelGuide();
+                }
+            });
+        });
+    }
+
+    _renderDefaultFilters(meta) {
+        const filters = meta.defaultFilters || {};
+        const parts = [];
+        if (filters.oddEven) parts.push(`홀수 ${filters.oddEven[0]}~${filters.oddEven[1]}개`);
+        if (filters.highLow) parts.push(`고수 ${filters.highLow[0]}~${filters.highLow[1]}개`);
+        if (filters.sumRange) parts.push(`합계 ${filters.sumRange[0]}~${filters.sumRange[1]}`);
+        if (filters.acRange) parts.push(`AC ${filters.acRange[0]}~${filters.acRange[1]}`);
+        if (filters.maxConsecutivePairs != null) parts.push(`연속쌍 ≤${filters.maxConsecutivePairs}`);
+        if (filters.endDigitUniqueMin != null) parts.push(`끝수종류 ≥${filters.endDigitUniqueMin}`);
+        if (!parts.length) return '';
+        return `<div class="guide-default-filters"><strong>기본 적용 필터:</strong> ${parts.join(' · ')}</div>`;
     }
 }

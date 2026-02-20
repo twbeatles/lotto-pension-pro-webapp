@@ -2,24 +2,34 @@ import { $ } from '../utils/utils.js';
 import { EXTERNAL_ASSETS, loadScriptOnce } from '../utils/loader.js';
 
 export class UIManager {
-    static toast(msg, type = 'info', duration = 2000) {
+    static _ballCache = new Map();
+
+    static toast(msg, type = 'info', duration = 3000) {
         const container = $('#toast-container');
         if (!container) return;
 
         const el = document.createElement('div');
         el.className = `toast ${type}`;
         el.textContent = msg;
+
+        // Premium animation timing
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px) scale(0.95)';
+        el.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
         container.appendChild(el);
 
         requestAnimationFrame(() => {
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
+            requestAnimationFrame(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0) scale(1)';
+            });
         });
 
         setTimeout(() => {
             el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            setTimeout(() => el.remove(), 300);
+            el.style.transform = 'translateY(15px) scale(0.98)';
+            setTimeout(() => el.remove(), 400);
         }, duration);
     }
 
@@ -32,9 +42,21 @@ export class UIManager {
     }
 
     static renderBalls(nums, size = '') {
-        return nums.map(n =>
+        const key = nums.join(',') + '|' + size;
+        if (this._ballCache.has(key)) return this._ballCache.get(key);
+
+        const html = nums.map(n =>
             `<span class="ball ${this.getBallColor(n)} ${size}">${n}</span>`
         ).join('');
+
+        // 캐시 크기 관리 (최대 1000개)
+        if (this._ballCache.size > 1000) {
+            const firstKey = this._ballCache.keys().next().value;
+            this._ballCache.delete(firstKey);
+        }
+
+        this._ballCache.set(key, html);
+        return html;
     }
 
     static formatNumbers(nums) {

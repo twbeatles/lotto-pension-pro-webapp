@@ -342,6 +342,43 @@ export class LottoApp {
     }
 
     renderDataLists() {
+        // Lazy rendering helper to prevent main thread blocking
+        const renderChunk = (list, renderer, targetEl, chunkSize = 20) => {
+            if (!targetEl) return;
+            targetEl.innerHTML = '';
+            let index = 0;
+
+            const doChunk = () => {
+                const frag = document.createDocumentFragment();
+                const end = Math.min(index + chunkSize, list.length);
+
+                for (let i = index; i < end; i++) {
+                    const item = list[i];
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+
+                    if (renderer.datasetId) div.dataset.id = item.id;
+                    if (renderer.datasetIdx) div.dataset.idx = String(i);
+
+                    div.innerHTML = renderer.html(item);
+                    frag.appendChild(div);
+                }
+
+                targetEl.appendChild(frag);
+                index = end;
+
+                if (index < list.length) {
+                    if (window.requestIdleCallback) {
+                        window.requestIdleCallback(doChunk, { timeout: 100 });
+                    } else {
+                        setTimeout(doChunk, 16);
+                    }
+                }
+            };
+
+            if (list.length > 0) doChunk();
+        };
+
         const fill = (id, list, emptyText) => {
             const el = $(id);
             if (!el) return;
@@ -350,24 +387,20 @@ export class LottoApp {
                 return;
             }
 
-            const frag = document.createDocumentFragment();
-            list.slice(0, 50).forEach((item, idx) => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.dataset.idx = String(idx);
-                const dateStr = item.date || item.created_at || '';
-                div.innerHTML = `
-                    <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
-                    <span class="result-meta">${dateStr ? new Date(dateStr).toLocaleDateString() : ''}</span>
-                    <div class="result-actions">
-                      <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
-                      <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
-                    </div>
-                `;
-                frag.appendChild(div);
-            });
-            el.innerHTML = '';
-            el.appendChild(frag);
+            renderChunk(list.slice(0, 50), {
+                datasetIdx: true,
+                html: (item) => {
+                    const dateStr = item.date || item.created_at || '';
+                    return `
+                        <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
+                        <span class="result-meta">${dateStr ? new Date(dateStr).toLocaleDateString() : ''}</span>
+                        <div class="result-actions">
+                          <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
+                          <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                        </div>
+                    `;
+                }
+            }, el);
         };
 
         const fillTickets = () => {
@@ -385,25 +418,22 @@ export class LottoApp {
                 el.innerHTML = '<div class="empty-state">조건에 맞는 티켓이 없습니다.</div>';
                 return;
             }
-            const frag = document.createDocumentFragment();
-            list.slice(0, 100).forEach((item) => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.dataset.id = item.id;
-                const rankText = !item.checked ? '미정산' : (item.checked.rank > 0 ? `${item.checked.rank}등` : '미당첨');
-                div.innerHTML = `
-                    <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
-                    <span class="result-meta">${item.targetDrawNo}회 · ${rankText}</span>
-                    <div class="result-actions">
-                      <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
-                      <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
-                      <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
-                    </div>
-                `;
-                frag.appendChild(div);
-            });
-            el.innerHTML = '';
-            el.appendChild(frag);
+
+            renderChunk(list.slice(0, 100), {
+                datasetId: true,
+                html: (item) => {
+                    const rankText = !item.checked ? '미정산' : (item.checked.rank > 0 ? `${item.checked.rank}등` : '미당첨');
+                    return `
+                        <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
+                        <span class="result-meta">${item.targetDrawNo}회 · ${rankText}</span>
+                        <div class="result-actions">
+                          <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
+                          <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                          <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
+                        </div>
+                    `;
+                }
+            }, el);
         };
 
         const fillCampaigns = () => {
@@ -414,22 +444,19 @@ export class LottoApp {
                 el.innerHTML = '<div class="empty-state">저장된 캠페인이 없습니다.</div>';
                 return;
             }
-            const frag = document.createDocumentFragment();
-            list.slice(0, 50).forEach((item) => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.dataset.id = item.id;
-                div.innerHTML = `
-                    <div class="result-meta">${item.name}</div>
-                    <span class="result-meta">${item.startDrawNo}회 시작 · ${item.weeks}주 · 주당 ${item.setsPerWeek}세트</span>
-                    <div class="result-actions">
-                      <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
-                    </div>
-                `;
-                frag.appendChild(div);
-            });
-            el.innerHTML = '';
-            el.appendChild(frag);
+
+            renderChunk(list.slice(0, 50), {
+                datasetId: true,
+                html: (item) => {
+                    return `
+                        <div class="result-meta">${item.name}</div>
+                        <span class="result-meta">${item.startDrawNo}회 시작 · ${item.weeks}주 · 주당 ${item.setsPerWeek}세트</span>
+                        <div class="result-actions">
+                          <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
+                        </div>
+                    `;
+                }
+            }, el);
         };
 
         fill('#favList', this.data.state.favorites, '저장된 즐겨찾기가 없습니다.');

@@ -22,6 +22,8 @@ export class DataManager {
             strategyPresets: [],
             alertPrefs: this.getDefaultAlertPrefs()
         };
+        // Debounce timer for storage I/O
+        this._saveTimer = null;
     }
 
     getDefaultStrategyPrefs() {
@@ -284,18 +286,39 @@ export class DataManager {
         }
     }
 
-    save() {
-        try {
-            localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
-            localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
-            const proxyInput = $('#customProxyUrl');
-            if (proxyInput) this.state.customProxy = proxyInput.value.trim();
-
-            this.persistSettings();
-            this.persistExtendedData();
-        } catch (e) {
-            console.error('Data save failed', e);
+    save(immediate = false) {
+        if (this._saveTimer) {
+            clearTimeout(this._saveTimer);
+            this._saveTimer = null;
         }
+
+        const executeSave = () => {
+            try {
+                localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
+                localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
+                const proxyInput = $('#customProxyUrl');
+                if (proxyInput) this.state.customProxy = proxyInput.value.trim();
+
+                this.persistSettings();
+                this.persistExtendedData();
+            } catch (e) {
+                console.error('Data save failed', e);
+            }
+        };
+
+        if (immediate) {
+            executeSave();
+            return;
+        }
+
+        // Debounce storage I/O using requestIdleCallback if available, fallback to setTimeout
+        this._saveTimer = setTimeout(() => {
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(() => executeSave(), { timeout: 1000 });
+            } else {
+                executeSave();
+            }
+        }, 300);
     }
 
     addTicket(numbers, options = {}) {

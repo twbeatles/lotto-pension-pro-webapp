@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -9,14 +9,26 @@ const APP_SHELL_ASSETS = [
     './assets/app.css',
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
+    './assets/backtest.worker.js',
     './assets/modules/index.js',
     './assets/modules/core/LottoApp.js',
     './assets/modules/core/DataManager.js',
+    './assets/modules/core/StrategyCatalog.js',
+    './assets/modules/core/StrategyEngine.js',
+    './assets/modules/core/StrategyFilters.js',
+    './assets/modules/core/MonteCarlo.js',
     './assets/modules/core/UIManager.js',
     './assets/modules/utils/utils.js',
     './assets/modules/utils/config.js',
     './assets/modules/utils/loader.js',
+    './assets/modules/utils/perf.js',
+    './assets/modules/features/Ai.js',
+    './assets/modules/features/Backtest.js',
+    './assets/modules/features/Check.js',
+    './assets/modules/features/DataIO.js',
     './assets/modules/features/Generator.js',
+    './assets/modules/features/QrScanner.js',
+    './assets/modules/features/Stats.js',
     './data/winning_stats.json'
 ];
 
@@ -48,7 +60,7 @@ async function putIfOk(cacheName, request, response) {
     cache.put(request, response.clone());
 }
 
-async function networkFirstWithTimeout(request, cacheName, timeoutMs = 3500) {
+async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500) {
     const cache = await caches.open(cacheName);
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('network-timeout')), timeoutMs);
@@ -98,12 +110,12 @@ self.addEventListener('fetch', (event) => {
 
     const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
     if (isDataRequest) {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 3000));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 2400));
         return;
     }
 
     if (event.request.mode === 'navigate') {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 2200));
         return;
     }
 

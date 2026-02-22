@@ -1,6 +1,7 @@
 import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
+import { endMark, startMark } from '../utils/perf.js';
 
 export class BacktestModule {
     constructor(app) {
@@ -10,6 +11,7 @@ export class BacktestModule {
         this.MAX_COMPARE_STRATEGIES = 5;
         this.worker = null;
         this.lastComparisons = [];
+        this.lastProgressAt = 0;
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
@@ -34,14 +36,30 @@ export class BacktestModule {
 
     resetUI() {
         const sum = $('#btSummaryList');
-        if (sum) sum.innerHTML = '<li>실행 대기중...</li>';
+        if (sum) sum.innerHTML = '<li>Waiting...</li>';
+
         const tbody = $('#btResultTable tbody');
         if (tbody) tbody.innerHTML = '';
         const compareTbody = $('#btCompareTable tbody');
         if (compareTbody) compareTbody.innerHTML = '';
         const winner = $('#btWinnerBadge');
         if (winner) winner.textContent = '-';
+        this.setProgressStatus('');
         this.lastComparisons = [];
+    }
+
+    setProgressStatus(text) {
+        const el = $('#btProgressMeta');
+        if (!el) return;
+        el.textContent = text || '';
+    }
+
+    cleanupWorker() {
+        if (!this.worker) return;
+        this.worker.onmessage = null;
+        this.worker.onerror = null;
+        this.worker.terminate();
+        this.worker = null;
     }
 
     renderSummary(stats) {
@@ -51,16 +69,16 @@ export class BacktestModule {
         const roi = stats.cost > 0 ? (((stats.totalPrize - stats.cost) / stats.cost) * 100) : 0;
 
         el.innerHTML = `
-      <li><b>전략</b>: ${stats.strategyId || '-'}</li>
-      <li><b>회차 수</b>: ${stats.draws}</li>
-      <li><b>총 티켓</b>: ${stats.tickets}</li>
-      <li><b>총 비용</b>: ${stats.cost.toLocaleString()}원</li>
-      <li><b>총 상금(추정)</b>: ${stats.totalPrize.toLocaleString()}원</li>
-      <li><b>순이익</b>: ${(stats.totalPrize - stats.cost).toLocaleString()}원</li>
+      <li><b>Strategy</b>: ${stats.strategyId || '-'}</li>
+      <li><b>Draws</b>: ${stats.draws}</li>
+      <li><b>Total Tickets</b>: ${stats.tickets}</li>
+      <li><b>Total Cost</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
+      <li><b>Total Prize</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>
+      <li><b>P/L</b>: ${(Number(stats.totalPrize || 0) - Number(stats.cost || 0)).toLocaleString()}</li>
       <li><b>ROI</b>: ${roi.toFixed(2)}%</li>
-      <li><b>1등</b>: ${stats.counts[1]} / <b>2등</b>: ${stats.counts[2]} / <b>3등</b>: ${stats.counts[3]}</li>
-      <li><b>4등</b>: ${stats.counts[4]} / <b>5등</b>: ${stats.counts[5]} / <b>낙첨</b>: ${stats.counts[0]}</li>
-      <li><b>당첨률(5등+)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
+      <li><b>1st</b>: ${stats.counts[1]} / <b>2nd</b>: ${stats.counts[2]} / <b>3rd</b>: ${stats.counts[3]}</li>
+      <li><b>4th</b>: ${stats.counts[4]} / <b>5th</b>: ${stats.counts[5]} / <b>No Win</b>: ${stats.counts[0]}</li>
+      <li><b>Hit Rate (5+)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
     `;
     }
 
@@ -96,7 +114,7 @@ export class BacktestModule {
         tr.innerHTML = `
       <td>${row.strategyId || '-'}</td>
       <td>${row.drawNo}</td>
-      <td>${row.rank}등</td>
+      <td>${row.rank}</td>
       <td>${row.hitText}</td>
       <td><div class="ball-container sm">${UIManager.renderBalls(row.nums, 'sm')}</div></td>
     `;
@@ -116,17 +134,17 @@ export class BacktestModule {
         strategies.forEach((item) => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.label} (Tier ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            opt.textContent = `${item.label} (Tier ${item.tier})${item.experimental ? ' [EXP]' : ''}`;
             select.appendChild(opt);
         });
 
         const legacy = [
-            ['random', 'Legacy: 완전 랜덤'],
-            ['ensemble', 'Legacy: AI 앙상블'],
-            ['balance', 'Legacy: 패턴 밸런스'],
-            ['cold', 'Legacy: 콜드 포커스'],
-            ['hot', 'Legacy: 핫 포커스'],
-            ['statistical', 'Legacy: 정밀 통계']
+            ['random', 'Legacy: Random'],
+            ['ensemble', 'Legacy: Ensemble'],
+            ['balance', 'Legacy: Balance'],
+            ['cold', 'Legacy: Cold'],
+            ['hot', 'Legacy: Hot'],
+            ['statistical', 'Legacy: Statistical']
         ];
         legacy.forEach(([id, label]) => {
             const opt = document.createElement('option');
@@ -221,6 +239,7 @@ export class BacktestModule {
         assign('btSimulationCount', saved.params?.simulationCount);
         assign('btLookbackWindow', saved.params?.lookbackWindow);
         assign('btSeed', saved.params?.seed ?? '');
+
         const pair = (minId, maxId, values) => {
             const minEl = $(`#${minId}`);
             const maxEl = $(`#${maxId}`);
@@ -246,7 +265,7 @@ export class BacktestModule {
 
     exportComparisonCsv() {
         if (!this.lastComparisons.length) {
-            UIManager.toast('내보낼 비교 결과가 없습니다.', 'warning');
+            UIManager.toast('No comparison result to export.', 'warning');
             return;
         }
 
@@ -274,13 +293,14 @@ export class BacktestModule {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('비교 결과 CSV 저장 완료', 'success');
+        UIManager.toast('Comparison CSV exported.', 'success');
     }
 
     async run() {
         if (!this.data.state.winningStats.length) {
-            return UIManager.toast('당첨 데이터를 불러오지 못했습니다.', 'error', 3500);
+            return UIManager.toast('Winning data is not available.', 'error', 3500);
         }
+        startMark('backtest.run');
 
         const start = Number($('#btStart')?.value);
         const end = Number($('#btEnd')?.value);
@@ -289,7 +309,8 @@ export class BacktestModule {
         this.data.save();
 
         if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
-            return UIManager.toast('회차 범위를 확인하세요. (start <= end)', 'warning', 2500);
+            endMark('backtest.run', { invalidRange: true });
+            return UIManager.toast('Check draw range. (start <= end)', 'warning', 2500);
         }
         if (!Number.isFinite(qty) || qty < 1) qty = 1;
         qty = Math.min(qty, this.MAX_QTY);
@@ -298,57 +319,74 @@ export class BacktestModule {
         const original = btn?.innerHTML;
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 실행 중...';
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Running...';
         }
 
         this.resetUI();
+        this.setProgressStatus('Running...');
+        this.lastProgressAt = 0;
 
-        if (this.worker) this.worker.terminate();
+        this.cleanupWorker();
         this.worker = new Worker('assets/backtest.worker.js', { type: 'module' });
 
         this.worker.onmessage = (e) => {
             const { type, payload } = e.data;
+
             if (type === 'PROGRESS' || type === 'DONE') {
                 if (payload?.summary) this.renderSummary(payload.summary);
                 if (type === 'PROGRESS' && payload?.processedDraws) {
-                    const etaMs = Number(payload.etaMs || 0);
-                    const etaText = etaMs > 0 ? `, ETA ${(etaMs / 1000).toFixed(1)}s` : '';
-                    UIManager.toast(`진행률 ${payload.processedDraws}/${payload.totalDraws}${etaText}`, 'info', 700);
+                    const now = Date.now();
+                    if (now - this.lastProgressAt >= 250) {
+                        this.lastProgressAt = now;
+                        const etaMs = Number(payload.etaMs || 0);
+                        const etaText = etaMs > 0 ? `, ETA ${(etaMs / 1000).toFixed(1)}s` : '';
+                        const percent = Number(payload.percent || 0).toFixed(1);
+                        this.setProgressStatus(`Progress ${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
+                    }
                 }
             }
+
             if (type === 'WINS') {
                 payload.forEach((w) => this.appendWinRow(w));
             }
+
             if (type === 'DONE') {
                 if (payload?.comparisons) this.renderComparisons(payload.comparisons, payload?.diagnostics || {});
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = original;
                 }
-                UIManager.toast('백테스팅 완료', 'success');
-                this.worker.terminate();
-                this.worker = null;
+                this.setProgressStatus(`Done in ${(Number(payload?.diagnostics?.elapsedMs || 0) / 1000).toFixed(2)}s`);
+                UIManager.toast('Backtest complete.', 'success');
+                this.cleanupWorker();
+                endMark('backtest.run', {
+                    processedDraws: payload?.diagnostics?.processedDraws || 0,
+                    totalDraws: payload?.diagnostics?.totalDraws || 0
+                });
             }
+
             if (type === 'ERROR') {
-                UIManager.toast(payload?.message || '백테스트 오류', 'error');
+                UIManager.toast(payload?.message || 'Backtest error.', 'error');
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = original;
                 }
-                this.worker.terminate();
-                this.worker = null;
+                this.setProgressStatus('Failed');
+                this.cleanupWorker();
+                endMark('backtest.run', { error: true });
             }
         };
 
         this.worker.onerror = (err) => {
             console.error(err);
-            UIManager.toast('오류 발생', 'error');
+            UIManager.toast('Unexpected error occurred.', 'error');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = original;
             }
-            this.worker.terminate();
-            this.worker = null;
+            this.setProgressStatus('Failed');
+            this.cleanupWorker();
+            endMark('backtest.run', { error: true });
         };
 
         this.worker.postMessage({
@@ -362,6 +400,6 @@ export class BacktestModule {
             }
         });
 
-        UIManager.toast('백그라운드에서 실행 중...');
+        UIManager.toast('Backtest started in the background.');
     }
 }

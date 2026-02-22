@@ -3,7 +3,7 @@ import {
     getStrategyMeta,
     resolveStrategyId
 } from './StrategyCatalog.js';
-import { passesFilters, sanitizeFilters } from './StrategyFilters.js';
+import { createFilterEvaluator, passesFilters, sanitizeFilters } from './StrategyFilters.js';
 import { AdvancedMonteCarlo } from './MonteCarlo.js';
 
 function clamp(n, min, max, fallback) {
@@ -118,6 +118,10 @@ export class StrategyEngine {
 
     computeWeights(request, sourceData) {
         const normalized = this.normalizeRequest(request);
+        return this.computeWeightsFromNormalized(normalized, sourceData);
+    }
+
+    computeWeightsFromNormalized(normalized, sourceData) {
         const ctx = this.buildContext(sourceData, normalized.params.lookbackWindow);
         const { totalDraws, freq, recentFreq, lastSeen, pairCounts, endDigitRecent, zoneRecent, lastDraw } = ctx;
 
@@ -129,6 +133,24 @@ export class StrategyEngine {
         const zoneMax = Math.max(...zoneRecent, 1);
 
         const isWheel = normalized.strategyId === 'wheel_full' || normalized.strategyId === 'wheel_reduced_t3';
+        const isAdjacency = normalized.strategyId === 'adjacency_bias';
+        const isDeltaPattern = normalized.strategyId === 'delta_gap_pattern';
+
+        const lastDrawSet = isAdjacency || normalized.strategyId === 'carryover_repeat_control'
+            ? new Set(lastDraw)
+            : null;
+
+        let avgDelta = 0;
+        if (isDeltaPattern && lastDraw.length >= 2) {
+            const sortedLastDraw = [...lastDraw].sort((a, b) => a - b);
+            let deltaSum = 0;
+            let deltaCount = 0;
+            for (let i = 0; i < sortedLastDraw.length - 1; i++) {
+                deltaSum += (sortedLastDraw[i + 1] - sortedLastDraw[i]);
+                deltaCount++;
+            }
+            avgDelta = deltaCount > 0 ? (deltaSum / deltaCount) : 0;
+        }
 
         for (let n = 1; n <= 45; n++) {
             const g = freq[n] / freqMax;
@@ -158,9 +180,9 @@ export class StrategyEngine {
                 weights[n] = 0.7 + (g * 0.25) + (p * 1.0);
             } else if (normalized.strategyId === 'adjacency_bias') {
                 let adj = 0;
-                if (lastDraw.includes(n)) adj += 0.2;
-                if (lastDraw.includes(n - 1)) adj += 0.5;
-                if (lastDraw.includes(n + 1)) adj += 0.5;
+                if (lastDrawSet?.has(n)) adj += 0.2;
+                if (lastDrawSet?.has(n - 1)) adj += 0.5;
+                if (lastDrawSet?.has(n + 1)) adj += 0.5;
                 weights[n] = 0.7 + (g * 0.35) + (adj * 0.8);
             } else if (normalized.strategyId === 'zone_split_3band') {
                 weights[n] = 0.75 + (g * 0.3) + (r * 0.3) + (zoneBal * 0.8);
@@ -171,17 +193,12 @@ export class StrategyEngine {
             } else if (normalized.strategyId === 'last_digit_balance') {
                 weights[n] = 0.75 + (g * 0.3) + (endBal * 0.9);
             } else if (normalized.strategyId === 'delta_gap_pattern') {
-                let avgDelta = 0;
-                if (lastDraw.length >= 2) {
-                    const sorted = [...lastDraw].sort((a, b) => a - b);
-                    const deltas = [];
-                    for (let i = 0; i < sorted.length - 1; i++) deltas.push(sorted[i + 1] - sorted[i]);
-                    avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
-                }
-                const nearDelta = avgDelta ? 1 - Math.min(Math.abs((n % 10) - (avgDelta % 10)) / 10, 1) : 0.5;
+                const nearDelta = avgDelta
+                    ? 1 - Math.min(Math.abs((n % 10) - (avgDelta % 10)) / 10, 1)
+                    : 0.5;
                 weights[n] = 0.7 + (g * 0.35) + (nearDelta * 0.8);
             } else if (normalized.strategyId === 'carryover_repeat_control') {
-                const repeatPenalty = lastDraw.includes(n) ? 0.4 : 1.0;
+                const repeatPenalty = lastDrawSet?.has(n) ? 0.4 : 1.0;
                 weights[n] = (0.75 + (g * 0.35) + (r * 0.2) + (gap * 0.25)) * repeatPenalty;
             } else {
                 weights[n] = 0.8 + (g * 0.5) + (r * 0.35) + (gap * 0.25);
@@ -197,11 +214,27 @@ export class StrategyEngine {
         return { weights, request: normalized };
     }
 
+    prepareExecution(request, options = {}) {
+        const normalizedRequest = options.normalizedRequest || this.normalizeRequest(request);
+        const sourceData = options.sourceData || this.data;
+        const rng = options.rng || this.getRandomFn(normalizedRequest.params.seed);
+        const { weights } = this.computeWeightsFromNormalized(normalizedRequest, sourceData);
+        const isWheel = normalizedRequest.strategyId === 'wheel_full' || normalizedRequest.strategyId === 'wheel_reduced_t3';
+
+        return {
+            normalizedRequest,
+            sourceData,
+            rng,
+            weights,
+            isWheel
+        };
+    }
+
     explainSet(numbers, request, options = {}) {
         const candidate = [...(numbers || [])].map(Number).filter((n) => n >= 1 && n <= 45).sort((a, b) => a - b);
         const normalized = this.normalizeRequest(request);
         const sourceData = options.sourceData || this.data;
-        const { weights } = this.computeWeights(normalized, sourceData);
+        const { weights } = this.computeWeightsFromNormalized(normalized, sourceData);
         const ctx = this.buildContext(sourceData, normalized.params.lookbackWindow);
         const totalDraws = Math.max(ctx.totalDraws, 1);
         const freqMax = Math.max(...ctx.freq.slice(1), 1);
@@ -310,8 +343,9 @@ export class StrategyEngine {
         if (!seedSet) return null;
 
         const candidates = [];
+        const excludeSet = new Set(exclude || []);
         const available = Array.from({ length: 45 }, (_, idx) => idx + 1)
-            .filter((n) => !exclude.includes(n));
+            .filter((n) => !excludeSet.has(n));
         const sortedByWeight = [...available]
             .sort((a, b) => (weights[b] || 1) - (weights[a] || 1));
         for (const n of sortedByWeight) {
@@ -321,7 +355,7 @@ export class StrategyEngine {
 
         while (candidates.length < poolSize) {
             const n = Math.floor(rng() * 45) + 1;
-            if (!exclude.includes(n) && !candidates.includes(n)) candidates.push(n);
+            if (!excludeSet.has(n) && !candidates.includes(n)) candidates.push(n);
         }
 
         const wheelBase = seedSet.slice(0, Math.max(guarantee, 1));
@@ -335,41 +369,55 @@ export class StrategyEngine {
         return set.sort((a, b) => a - b);
     }
 
-    generateSet(request, options = {}) {
-        const normalized = this.normalizeRequest(request);
-        const sourceData = options.sourceData || this.data;
-        const { weights } = this.computeWeights(normalized, sourceData);
-        const rng = options.rng || this.getRandomFn(normalized.params.seed);
+    generateSetWithExecution(execution, options = {}) {
+        const normalized = execution.normalizedRequest;
+        const filterEvaluator = options.filterEvaluator || createFilterEvaluator(normalized.filters);
         const maxAttempts = options.maxAttempts || 250;
         const fixed = options.fixed || [];
         const exclude = options.exclude || [];
+        const rng = options.rng || execution.rng;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            const candidate = (normalized.strategyId === 'wheel_full' || normalized.strategyId === 'wheel_reduced_t3')
-                ? this.generateWheelSet(weights, normalized, { fixed, exclude, rng })
-                : this.sampleWithConstraints(weights, fixed, exclude, rng);
+            const candidate = execution.isWheel
+                ? this.generateWheelSet(execution.weights, normalized, { fixed, exclude, rng })
+                : this.sampleWithConstraints(execution.weights, fixed, exclude, rng);
             if (!candidate) continue;
-            if (passesFilters(candidate, normalized.filters)) return candidate;
+            if (filterEvaluator(candidate, { assumeSorted: true })) return candidate;
         }
 
         const fallbackWeights = Array(46).fill(1);
         for (let i = 0; i < 120; i++) {
             const fallback = this.sampleWithConstraints(fallbackWeights, fixed, exclude, rng);
-            if (fallback && passesFilters(fallback, normalized.filters)) return fallback;
+            if (fallback && filterEvaluator(fallback, { assumeSorted: true })) return fallback;
         }
         return this.sampleWithConstraints(fallbackWeights, fixed, exclude, rng);
+    }
+
+    generateSet(request, options = {}) {
+        const execution = options.execution || this.prepareExecution(request, options);
+        return this.generateSetWithExecution(execution, options);
     }
 
     generateMultipleSets(count, request, options = {}) {
         const qty = Math.max(1, Math.floor(Number(count) || 1));
         const unique = new Set();
         const result = [];
-        const normalized = this.normalizeRequest(request);
-        const rng = options.rng || this.getRandomFn(normalized.params.seed);
+
+        const execution = options.execution || this.prepareExecution(request, options);
+        const filterEvaluator = options.filterEvaluator || createFilterEvaluator(execution.normalizedRequest.filters);
+        const rng = options.rng || execution.rng;
+
         let attempts = 0;
         const maxAttempts = Math.max(200, qty * 80);
+        const perSetMaxAttempts = options.maxAttempts || 250;
+
         while (result.length < qty && attempts++ < maxAttempts) {
-            const set = this.generateSet(normalized, { ...options, rng });
+            const set = this.generateSetWithExecution(execution, {
+                ...options,
+                rng,
+                maxAttempts: perSetMaxAttempts,
+                filterEvaluator
+            });
             if (!set || set.length !== 6) continue;
             const key = set.join(',');
             if (unique.has(key)) continue;
@@ -380,20 +428,20 @@ export class StrategyEngine {
     }
 
     simulateWeights(request, options = {}) {
-        const normalized = this.normalizeRequest(request);
-        const sourceData = options.sourceData || this.data;
+        const execution = options.execution || this.prepareExecution(request, options);
+        const normalized = execution.normalizedRequest;
         const rng = options.rng || this.getRandomFn(normalized.params.seed);
-        const { weights } = this.computeWeights(normalized, sourceData);
         const simCount = normalized.params.simulationCount;
         const counts = Array(46).fill(0);
+        const filterEvaluator = options.filterEvaluator || createFilterEvaluator(normalized.filters);
         let accepted = 0;
 
         for (let i = 0; i < simCount; i++) {
-            const set = (normalized.strategyId === 'wheel_full' || normalized.strategyId === 'wheel_reduced_t3')
-                ? this.generateWheelSet(weights, normalized, { rng })
-                : this.sampleWithConstraints(weights, [], [], rng);
+            const set = execution.isWheel
+                ? this.generateWheelSet(execution.weights, normalized, { rng })
+                : this.sampleWithConstraints(execution.weights, [], [], rng);
             if (!set) continue;
-            if (!passesFilters(set, normalized.filters)) continue;
+            if (!filterEvaluator(set, { assumeSorted: true })) continue;
             set.forEach((n) => { counts[n] += 1; });
             accepted++;
         }
@@ -415,8 +463,10 @@ export class StrategyEngine {
 
     recommendFromSimulation(request, options = {}) {
         const setCount = Math.max(1, Math.floor(Number(options.setCount) || 5));
-        const sim = this.simulateWeights(request, options);
+        const execution = options.execution || this.prepareExecution(request, options);
+        const sim = this.simulateWeights(request, { ...options, execution });
         const rng = options.rng || this.getRandomFn(sim.request.params.seed);
+        const filterEvaluator = options.filterEvaluator || createFilterEvaluator(sim.request.filters);
         const unique = new Set();
         const out = [];
         let attempts = 0;
@@ -425,7 +475,7 @@ export class StrategyEngine {
         while (out.length < setCount && attempts++ < maxAttempts) {
             const candidate = this.sampleWithConstraints(sim.weights, [], [], rng);
             if (!candidate) continue;
-            if (!passesFilters(candidate, sim.request.filters)) continue;
+            if (!filterEvaluator(candidate, { assumeSorted: true })) continue;
             const key = candidate.join(',');
             if (unique.has(key)) continue;
             unique.add(key);

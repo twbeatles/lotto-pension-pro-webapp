@@ -3,6 +3,7 @@ import { DataManager } from './DataManager.js';
 import { UIManager } from './UIManager.js';
 import { GeneratorModule } from '../features/Generator.js';
 import { runWhenIdle } from '../utils/loader.js';
+import { endMark, startMark } from '../utils/perf.js';
 
 export class LottoApp {
     constructor() {
@@ -19,9 +20,13 @@ export class LottoApp {
         this.pendingModulePromises = new Map();
         this.dataListDelegationBound = false;
         this.routeToken = 0;
+        this.navItems = [];
+        this.pageItems = [];
+        this.navByTarget = new Map();
     }
 
     async init() {
+        startMark('app.init');
         // Link app to data manager if needed
         if (this.data.setApp) this.data.setApp(this);
 
@@ -31,6 +36,8 @@ export class LottoApp {
 
         // Eager module (default route)
         this.generator = new GeneratorModule(this);
+
+        this.cacheStaticSelectors();
 
         // Bind Global Events
         this.bindNav();
@@ -59,7 +66,20 @@ export class LottoApp {
         await this.refreshCurrentRoute();
         this.preloadLikelyModules();
 
+        endMark('app.init');
         console.log('LottoApp Initialized');
+    }
+
+    cacheStaticSelectors() {
+        this.navItems = Array.from($$('.nav-item'));
+        this.pageItems = Array.from($$('.page'));
+        this.navByTarget.clear();
+        this.navItems.forEach((el) => {
+            const target = el.dataset.target;
+            if (!target) return;
+            if (!this.navByTarget.has(target)) this.navByTarget.set(target, []);
+            this.navByTarget.get(target).push(el);
+        });
     }
 
     async ensureModule(name) {
@@ -113,7 +133,7 @@ export class LottoApp {
 
     bindNav() {
         // Desktop & Mobile Nav
-        $$('.nav-item').forEach(el => {
+        this.navItems.forEach(el => {
             el.addEventListener('click', (e) => {
                 const target = e.currentTarget.dataset.target;
                 this.route(target);
@@ -251,44 +271,54 @@ export class LottoApp {
     }
 
     async route(target) {
+        const perfLabel = `route:${target}`;
+        startMark(perfLabel);
         const localToken = ++this.routeToken;
+        const changedRoute = this.currentRoute !== target;
         this.currentRoute = target;
-        // Active Nav
-        $$('.nav-item').forEach(el => el.classList.remove('active'));
-        $$(`.nav-item[data-target="${target}"]`).forEach(el => el.classList.add('active'));
 
-        // Active Page
-        $$('.page').forEach(el => el.classList.remove('active'));
-        const page = $(`#page-${target}`);
-        if (page) page.classList.add('active');
-        const isStale = () => localToken !== this.routeToken;
+        try {
+            if (changedRoute) {
+                // Active Nav
+                this.navItems.forEach((el) => el.classList.remove('active'));
+                (this.navByTarget.get(target) || []).forEach((el) => el.classList.add('active'));
 
-        // Page specific renders
-        if (target === 'stats') {
-            await this.ensureModule('stats');
-            if (isStale()) return;
-            this.stats?.render();
-        }
-        if (target === 'ai') {
-            await this.ensureModule('ai');
-            if (isStale()) return;
-        }
-        if (target === 'data') {
-            await this.ensureModule('dataIO');
-            if (isStale()) return;
-            this.renderDataLists();
-        }
-        if (target === 'check') {
-            await this.ensureModule('qr');
-            if (isStale()) return;
-            await this.ensureModule('check');
-            if (isStale()) return;
-            this.check?.onEnter();
-        }
-        if (target === 'bt') {
-            await this.ensureModule('backtest');
-            if (isStale()) return;
-            this.backtest?.onEnter();
+                // Active Page
+                this.pageItems.forEach((el) => el.classList.remove('active'));
+                const page = $(`#page-${target}`);
+                if (page) page.classList.add('active');
+            }
+            const isStale = () => localToken !== this.routeToken;
+
+            // Page specific renders
+            if (target === 'stats') {
+                await this.ensureModule('stats');
+                if (isStale()) return;
+                this.stats?.render();
+            }
+            if (target === 'ai') {
+                await this.ensureModule('ai');
+                if (isStale()) return;
+            }
+            if (target === 'data') {
+                await this.ensureModule('dataIO');
+                if (isStale()) return;
+                this.renderDataLists();
+            }
+            if (target === 'check') {
+                await this.ensureModule('qr');
+                if (isStale()) return;
+                await this.ensureModule('check');
+                if (isStale()) return;
+                this.check?.onEnter();
+            }
+            if (target === 'bt') {
+                await this.ensureModule('backtest');
+                if (isStale()) return;
+                this.backtest?.onEnter();
+            }
+        } finally {
+            endMark(perfLabel, { changedRoute });
         }
     }
 
@@ -342,6 +372,7 @@ export class LottoApp {
     }
 
     renderDataLists() {
+        startMark('render.dataLists');
         // Lazy rendering helper to prevent main thread blocking
         const renderChunk = (list, renderer, targetEl, chunkSize = 20) => {
             if (!targetEl) return;
@@ -349,22 +380,18 @@ export class LottoApp {
             let index = 0;
 
             const doChunk = () => {
-                const frag = document.createDocumentFragment();
                 const end = Math.min(index + chunkSize, list.length);
-
+                let html = '';
                 for (let i = index; i < end; i++) {
                     const item = list[i];
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-
-                    if (renderer.datasetId) div.dataset.id = item.id;
-                    if (renderer.datasetIdx) div.dataset.idx = String(i);
-
-                    div.innerHTML = renderer.html(item);
-                    frag.appendChild(div);
+                    const attrs = [
+                        renderer.datasetId ? ` data-id="${item.id}"` : '',
+                        renderer.datasetIdx ? ` data-idx="${i}"` : ''
+                    ].join('');
+                    html += `<div class="result-item"${attrs}>${renderer.html(item)}</div>`;
                 }
 
-                targetEl.appendChild(frag);
+                targetEl.insertAdjacentHTML('beforeend', html);
                 index = end;
 
                 if (index < list.length) {
@@ -470,6 +497,7 @@ export class LottoApp {
         if (inApp) inApp.checked = this.data.state.alertPrefs?.enableInApp !== false;
         if (system) system.checked = Boolean(this.data.state.alertPrefs?.enableSystemNotification);
         if (notify) notify.checked = this.data.state.alertPrefs?.notifyOnNewResult !== false;
+        endMark('render.dataLists');
     }
 
     async requestNumbers(nums) {

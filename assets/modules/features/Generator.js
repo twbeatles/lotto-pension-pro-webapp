@@ -3,6 +3,7 @@ import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 import { StrategyEngine } from '../core/StrategyEngine.js';
 import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
+import { endMark, startMark } from '../utils/perf.js';
 
 export class GeneratorModule {
     constructor(app) {
@@ -279,6 +280,7 @@ export class GeneratorModule {
     }
 
     generate() {
+        startMark('generator.generate');
         const count = Number($('#setCount').value) || 5;
         const fixed = this.parseInput($('#fixedNums').value);
         const exclude = this.parseInput($('#excludeNums').value);
@@ -305,9 +307,11 @@ export class GeneratorModule {
             this.data.state.generated.push(nums);
             this.renderResultItem(nums, i, listEl);
         });
+        endMark('generator.generate', { count: sets.length, requested: count });
     }
 
     generateCampaign() {
+        startMark('generator.campaign');
         const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
         const weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
         const setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
@@ -353,6 +357,7 @@ export class GeneratorModule {
 
         UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
         if (campaign && this.app.renderDataLists) this.app.renderDataLists();
+        endMark('generator.campaign', { inserted, totalCreated, weeks, setsPerWeek });
     }
 
     parseInput(val) {
@@ -374,13 +379,9 @@ export class GeneratorModule {
             </div>
         `;
 
-        // Animation
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(10px)';
-        setTimeout(() => {
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-        }, index * 80);
+        // CSS animation delay avoids one timer per row during bulk rendering.
+        el.classList.add('enter-animate');
+        el.style.setProperty('--enter-delay', `${Math.min(index, 20) * 60}ms`);
 
         container.appendChild(el);
     }

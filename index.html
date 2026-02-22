@@ -10,6 +10,8 @@
     <title>Lotto 6/45 Pro</title>
     <link rel="stylesheet" href="assets/app.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
@@ -19,52 +21,6 @@
     <meta property="og:title" content="Lotto 6/45 Pro">
     <meta property="og:description" content="AI 기반 로또 번호 생성 및 당첨 분석 (PWA 지원)">
     <meta property="og:image" content="assets/icons/icon-512.png">
-
-    <!-- PWA Service Worker -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').then(reg => {
-                    console.log('SW Registered:', reg.scope);
-
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New version available
-                                showUpdateToast(newWorker);
-                            }
-                        });
-                    });
-                }).catch(err => console.log('SW Fail:', err));
-            });
-
-            function showUpdateToast(worker) {
-                const toast = document.createElement('div');
-                toast.className = 'update-toast';
-                toast.innerHTML = `
-                    <span>새로운 버전이 있습니다.</span>
-                    <button id="reloadBtn">업데이트</button>
-                    <button id="dismissBtn">나중에</button>
-                `;
-                document.body.appendChild(toast);
-
-                document.getElementById('reloadBtn').onclick = () => {
-                    worker.postMessage({ action: 'skipWaiting' });
-                };
-                document.getElementById('dismissBtn').onclick = () => {
-                    toast.remove();
-                };
-            }
-
-            let refreshing;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                window.location.reload();
-                refreshing = true;
-            });
-        }
-    </script>
 </head>
 
 <body data-theme="dark">
@@ -583,6 +539,7 @@
                         <ul id="btSummaryList" class="stat-list">
                             <li>실행 대기중...</li>
                         </ul>
+                        <p id="btProgressMeta" class="subtitle bt-progress-meta" aria-live="polite"></p>
                         <button id="btExportCsv" class="btn ghost sm" style="margin-top:10px;">
                             <i class="ph ph-file-csv"></i> 비교 CSV 저장
                         </button>
@@ -811,6 +768,61 @@
             <button class="btn ghost" id="closeScanBtn">닫기</button>
         </div>
     </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            const registerSW = () => {
+                navigator.serviceWorker.register('sw.js').then((reg) => {
+                    console.log('SW Registered:', reg.scope);
+
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateToast(newWorker);
+                            }
+                        });
+                    });
+                }).catch((err) => console.log('SW Fail:', err));
+            };
+
+            const showUpdateToast = (worker) => {
+                const toast = document.createElement('div');
+                toast.className = 'update-toast';
+                toast.innerHTML = `
+                    <span>New app version is available.</span>
+                    <button id="reloadBtn">Update</button>
+                    <button id="dismissBtn">Dismiss</button>
+                `;
+                document.body.appendChild(toast);
+
+                const reloadBtn = document.getElementById('reloadBtn');
+                const dismissBtn = document.getElementById('dismissBtn');
+                if (reloadBtn) {
+                    reloadBtn.onclick = () => worker.postMessage({ action: 'skipWaiting' });
+                }
+                if (dismissBtn) {
+                    dismissBtn.onclick = () => toast.remove();
+                }
+            };
+
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+
+            window.addEventListener('load', () => {
+                if ('requestIdleCallback' in window) {
+                    window.requestIdleCallback(registerSW, { timeout: 1200 });
+                } else {
+                    setTimeout(registerSW, 250);
+                }
+            });
+        }
+    </script>
 
     <!-- Main Logic (Module) -->
     <script type="module" src="assets/modules/index.js"></script>

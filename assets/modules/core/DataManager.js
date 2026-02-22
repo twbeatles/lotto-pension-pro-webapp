@@ -244,6 +244,7 @@ export class DataManager {
 
     load() {
         try {
+            let needsPersist = false;
             this.state.favorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', []);
             this.state.history = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', []);
 
@@ -256,20 +257,28 @@ export class DataManager {
             const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', []);
             const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {});
 
-            this.state.ticketBook = Array.isArray(rawTickets)
+            const normalizedTickets = Array.isArray(rawTickets)
                 ? rawTickets.map((x) => this.normalizeTicketEntry(x)).filter(Boolean)
                 : [];
-            this.state.campaigns = Array.isArray(rawCampaigns)
+            const normalizedCampaigns = Array.isArray(rawCampaigns)
                 ? rawCampaigns.map((x) => this.normalizeCampaignEntry(x)).filter(Boolean)
                 : [];
-            this.state.alertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
+            const normalizedAlertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
+
+            if (Array.isArray(rawTickets) && normalizedTickets.length !== rawTickets.length) needsPersist = true;
+            if (Array.isArray(rawCampaigns) && normalizedCampaigns.length !== rawCampaigns.length) needsPersist = true;
+            if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
+
+            this.state.ticketBook = normalizedTickets;
+            this.state.campaigns = normalizedCampaigns;
+            this.state.alertPrefs = normalizedAlertPrefs;
             this.state.strategyPresets = [];
 
             // Legacy proxy settings migration (v1 -> v2)
             const legacyProxy = this.readLegacyProxyUrl();
             if (!this.state.customProxy && legacyProxy) {
                 this.state.customProxy = legacyProxy;
-                this.persistSettings();
+                needsPersist = true;
             }
 
             // UI sync if input exists
@@ -279,7 +288,10 @@ export class DataManager {
                 proxyInput.value = resolved?.url || this.state.customProxy;
             }
 
-            this.persistExtendedData();
+            if (needsPersist) {
+                this.persistSettings();
+                this.persistExtendedData();
+            }
         } catch (e) {
             console.error('Data load failed', e);
             UIManager.toast('데이터 로드 실패', 'error');

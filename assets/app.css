@@ -114,7 +114,7 @@ body {
   flex-direction: column;
   padding: 30px 24px;
   z-index: 20;
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(14px);
 }
 
 .brand {
@@ -160,7 +160,11 @@ body {
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   letter-spacing: -0.01em;
 }
@@ -305,16 +309,16 @@ body {
 
 .card.glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--glass-border);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 1px var(--glass-shine);
 }
 
 [data-theme="light"] .card.glass {
   background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-color: rgba(255, 255, 255, 0.6);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--glass-shine);
 }
@@ -373,7 +377,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   font-size: 15px;
   position: relative;
   overflow: hidden;
@@ -497,7 +505,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .icon-btn:hover {
@@ -526,7 +538,7 @@ select {
   outline: none;
   font-family: inherit;
   font-size: 15px;
-  transition: all 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
 }
 
 [data-theme="light"] input,
@@ -612,7 +624,7 @@ select:focus {
   cursor: pointer;
   font-size: 14px;
   padding: 4px 8px;
-  transition: all 0.2s;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .text-btn:hover {
@@ -657,7 +669,7 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .check-box:hover .checkmark {
@@ -818,7 +830,9 @@ select:focus {
   background-color: var(--bg-deep);
   border: 1px solid var(--border);
   border-radius: 30px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slider:before {
@@ -830,7 +844,9 @@ select:focus {
   bottom: 3px;
   background-color: var(--text-muted);
   border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -840,8 +856,8 @@ select:focus {
   bottom: 24px;
   right: 24px;
   background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--primary);
   border-radius: 12px;
   padding: 16px 20px;
@@ -873,7 +889,7 @@ select:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .update-toast #reloadBtn {
@@ -976,7 +992,10 @@ input:checked+.slider:before {
   font-size: 16px;
   cursor: pointer;
   border-radius: 6px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1050,6 +1069,16 @@ input:checked+.slider:before {
   animation: orb-glow 3s infinite alternate;
 }
 
+.orb-visual,
+.orb-visual::after {
+  animation-play-state: paused;
+}
+
+.ai-container.fx-active .orb-visual,
+.ai-container.fx-active .orb-visual::after {
+  animation-play-state: running;
+}
+
 @keyframes orb-pulse {
 
   0%,
@@ -1114,9 +1143,29 @@ input:checked+.slider:before {
   padding: 20px 24px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+.result-item.enter-animate {
+  animation: result-enter 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+@keyframes result-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .result-item:hover {
@@ -1199,7 +1248,10 @@ input:checked+.slider:before {
   border-radius: var(--radius-md);
   text-align: center;
   border: 1px solid var(--border);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pair-card:hover {
@@ -1250,7 +1302,11 @@ input:checked+.slider:before {
   color: var(--text-muted);
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
 }
@@ -1305,7 +1361,7 @@ input:checked+.slider:before {
   border: 2px solid var(--border);
   border-radius: 6px;
   position: relative;
-  transition: all 0.2s;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .check-box input:checked~.checkmark {
@@ -1912,13 +1968,20 @@ input:checked+.slider:before {
   color: #334155;
 }
 
+.bt-progress-meta {
+  min-height: 1.2em;
+  margin-top: 8px;
+  margin-bottom: 0;
+  color: var(--text-muted);
+}
+
 #btResultTable thead th,
 #btCompareTable thead th {
   position: sticky;
   top: 0;
   background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 10;
   font-weight: 600;
   color: var(--text-muted);
@@ -2338,8 +2401,8 @@ input:checked+.slider:before {
     align-items: center;
     padding: 16px 20px;
     background: rgba(11, 11, 26, 0.75);
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     position: sticky;
     top: 0;
@@ -2365,8 +2428,8 @@ input:checked+.slider:before {
     height: calc(65px + env(safe-area-inset-bottom, 20px));
     padding-bottom: env(safe-area-inset-bottom, 20px);
     background: rgba(11, 11, 26, 0.85);
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     z-index: 100;
     justify-content: space-around;
@@ -2393,7 +2456,9 @@ input:checked+.slider:before {
     font-weight: 600;
     border: none;
     background: transparent;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     padding: 0;
     border-radius: 0;
   }
@@ -2569,7 +2634,10 @@ input:checked+.slider:before {
   border-radius: var(--radius-md);
   padding: 14px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
@@ -2673,4 +2741,20 @@ input:checked+.slider:before {
 
 [data-theme="light"] .guide-tier-badge {
   background: rgba(255, 255, 255, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ai-container.fx-active .orb-visual,
+  .ai-container.fx-active .orb-visual::after {
+    animation: none !important;
+  }
 }

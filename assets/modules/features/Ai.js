@@ -1,8 +1,9 @@
-import { $, sleep } from '../utils/utils.js';
+import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 import { StrategyEngine } from '../core/StrategyEngine.js';
 import { listStrategies, resolveStrategyId, getStrategyMeta, STRATEGY_CATALOG } from '../core/StrategyCatalog.js';
 import { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
+import { endMark, startMark } from '../utils/perf.js';
 
 export class AiModule {
     constructor(app) {
@@ -10,18 +11,22 @@ export class AiModule {
         this.engine = new StrategyEngine(this.app.data.state.winningStats);
         this.lastRequest = null;
         this.lastExplain = [];
+        this.outputDelegationBound = false;
+
         const btn = $('#aiPredictBtn');
         if (btn) btn.addEventListener('click', () => this.run());
+
         $('#aiShowExperimental')?.addEventListener('change', () => {
             this.populateStrategySelect();
             this.renderModelGuide();
         });
         $('#aiModelSelect')?.addEventListener('change', () => this.renderModelGuide());
+
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
         this.renderModelGuide();
+        this.bindOutputDelegation();
 
-        // Restore state if available
         if (this.app.data.state.aiResults && this.app.data.state.aiResults.length > 0) {
             this.renderResults(this.app.data.state.aiResults);
         }
@@ -40,20 +45,21 @@ export class AiModule {
         const includeExperimental = Boolean($('#aiShowExperimental')?.checked);
         const strategies = listStrategies({ includeExperimental });
         select.innerHTML = '';
+
         strategies.forEach((item) => {
             const option = document.createElement('option');
             option.value = item.id;
-            option.textContent = `${item.label} (Tier ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            option.textContent = `${item.label} (Tier ${item.tier})${item.experimental ? ' [EXP]' : ''}`;
             select.appendChild(option);
         });
 
-        // Legacy aliases remain available for backward compatibility
+        // Legacy aliases
         const legacy = [
-            ['ensemble', 'Legacy: 앙상블'],
-            ['statistical', 'Legacy: 정밀 통계'],
-            ['balance', 'Legacy: 패턴 밸런스'],
-            ['cold', 'Legacy: 콜드 포커스'],
-            ['hot', 'Legacy: 핫 포커스']
+            ['ensemble', 'Legacy: Ensemble'],
+            ['statistical', 'Legacy: Statistical'],
+            ['balance', 'Legacy: Balance'],
+            ['cold', 'Legacy: Cold'],
+            ['hot', 'Legacy: Hot']
         ];
         legacy.forEach(([id, label]) => {
             const option = document.createElement('option');
@@ -120,6 +126,7 @@ export class AiModule {
         assign('aiSimulationCount', saved.params?.simulationCount);
         assign('aiLookbackWindow', saved.params?.lookbackWindow);
         assign('aiSeed', saved.params?.seed ?? '');
+
         const pair = (minId, maxId, values) => {
             const minEl = $(`#${minId}`);
             const maxEl = $(`#${maxId}`);
@@ -129,6 +136,7 @@ export class AiModule {
                 maxEl.value = values[1];
             }
         };
+
         pair('aiOddMin', 'aiOddMax', saved.filters?.oddEven);
         pair('aiHighMin', 'aiHighMax', saved.filters?.highLow);
         pair('aiSumMin', 'aiSumMax', saved.filters?.sumRange);
@@ -143,74 +151,113 @@ export class AiModule {
         }
     }
 
+    bindOutputDelegation() {
+        if (this.outputDelegationBound) return;
+        const out = $('#aiOutput');
+        if (!out) return;
+
+        out.addEventListener('click', (e) => {
+            const pickBtn = e.target.closest('.pick-btn');
+            if (pickBtn) {
+                const nums = String(pickBtn.dataset.nums || '').split(',').map(Number).filter(Number.isFinite);
+                if (nums.length === 6) this.app.requestNumbers(nums);
+                return;
+            }
+
+            const ticketBtn = e.target.closest('.ticket-btn');
+            if (!ticketBtn) return;
+            const nums = String(ticketBtn.dataset.nums || '').split(',').map(Number).filter(Number.isFinite);
+            if (nums.length !== 6) return;
+
+            const targetDrawNo = this.getAiTargetDrawNo();
+            const added = this.app.data.addTicket(nums, {
+                source: 'ai',
+                targetDrawNo,
+                strategyRequest: this.lastRequest || this.buildStrategyRequest()
+            });
+            if (!added) UIManager.toast('Ticket already exists in the ticket book.', 'warning');
+            else {
+                UIManager.toast(`${targetDrawNo} draw ticket added to ticket book.`, 'success');
+                if (this.app.renderDataLists) this.app.renderDataLists();
+            }
+        });
+
+        this.outputDelegationBound = true;
+    }
+
+    appendLog(logEl, message, color = null) {
+        if (!logEl) return;
+        const line = document.createElement('div');
+        if (color) line.style.color = color;
+        line.textContent = message;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
     async run() {
         const btn = $('#aiPredictBtn');
         const out = $('#aiOutput');
         const log = $('#aiLogArea');
+        const aiContainer = $('#page-ai .ai-container');
 
         if (!this.app.data.state.winningStats.length) {
-            UIManager.toast('당첨 데이터가 없습니다. (data/winning_stats.json)', 'error', 3000);
+            UIManager.toast('Winning data is missing. (data/winning_stats.json)', 'error', 3000);
             return;
         }
 
+        startMark('ai.run');
         btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Analyzing...';
         out.innerHTML = '';
         log.innerHTML = '';
+        aiContainer?.classList.add('fx-active');
 
         const request = this.buildStrategyRequest();
         this.app.data.save();
         const strategy = request.strategyId;
 
         const strategyNames = {
-            ensemble_weighted: '앙상블 가중치',
-            stat_ac_sum: '정밀 통계 (AC/합계)',
-            balance_oe_hl: '홀짝/고저 밸런스',
-            cold_frequency: '콜드 포커스',
-            hot_frequency: '핫 포커스'
+            ensemble_weighted: 'Ensemble Weighted',
+            stat_ac_sum: 'Statistical AC/Sum',
+            balance_oe_hl: 'Odd/Even + High/Low Balance',
+            cold_frequency: 'Cold Frequency',
+            hot_frequency: 'Hot Frequency'
         };
 
-        const LOGS = [
-            `선택된 모델: ${strategyNames[strategy] || strategy}`,
-            '데이터 패턴 학습 (Frequency, Recency, Pattern)...',
-            '전략별 가중치 재조정...',
-            `몬테카를로 시뮬레이션 (${request.params.simulationCount.toLocaleString()}회 수행)...`,
-            '최적 번호 조합 추출 중...'
+        const logs = [
+            `Selected model: ${strategyNames[strategy] || strategy}`,
+            'Analyzing frequency/recency/pattern signals...',
+            'Applying strategy weights...',
+            `Running Monte Carlo (${request.params.simulationCount.toLocaleString()} samples)...`,
+            'Extracting best candidate sets...'
         ];
 
         try {
-            for (const msg of LOGS) {
-                log.innerHTML += `<div>> ${msg}</div>`;
-                await sleep(400); // Simulate processing time
-                log.scrollTop = log.scrollHeight;
-            }
+            logs.forEach((msg) => this.appendLog(log, `> ${msg}`));
 
             this.engine = new StrategyEngine(this.app.data.state.winningStats);
-            await sleep(100);
-
             const result = this.engine.recommendFromSimulation(request, { setCount: 5 });
             const results = result.sets;
             if (!results || results.length === 0) throw new Error('Simulation returned empty results');
+
             const explanations = results.map((set) => this.engine.explainSet(set, request));
 
-            log.innerHTML += `<div style="color:var(--success)">> 분석 완료! 5개 추천 조합 생성.</div>`;
-            log.innerHTML += `<div>> 유효 샘플: ${result.simulation.diagnostics.accepted}/${result.simulation.diagnostics.simulationCount}</div>`;
-            log.scrollTop = log.scrollHeight;
+            this.appendLog(log, '> Analysis done. Generated 5 recommended sets.', 'var(--success)');
+            this.appendLog(log, `> Accepted samples: ${result.simulation.diagnostics.accepted}/${result.simulation.diagnostics.simulationCount}`);
 
-            // Save state
             this.app.data.state.aiResults = results;
             this.lastRequest = request;
             this.lastExplain = explanations;
             this.renderResults(results, explanations);
-
         } catch (e) {
             console.error('AI Error:', e);
-            log.innerHTML += `<div style="color:var(--danger)">> 오류 발생: ${e.message}</div>`;
-            log.scrollTop = log.scrollHeight;
-            UIManager.toast('분석 중 오류가 발생했습니다.', 'error');
+            this.appendLog(log, `> Error: ${e.message}`, 'var(--danger)');
+            UIManager.toast('An error occurred during analysis.', 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-brain"></i> 재분석';
+            btn.innerHTML = '<i class="ph-bold ph-brain"></i> Run Again';
+            aiContainer?.classList.remove('fx-active');
+            endMark('ai.run', { strategyId: request.strategyId });
         }
     }
 
@@ -228,18 +275,16 @@ export class AiModule {
             row.className = 'ai-card-row';
             row.style.animationDelay = `${idx * 0.1}s`;
 
-            // Badges
-            let badgHtml = `
+            const badgHtml = `
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
-                    합계: ${sum}
+                    Sum: ${sum}
                 </span>
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
                     AC: ${ac}
                 </span>
             `;
 
-            // Ball HTML
-            const ballsHtml = set.map(n => {
+            const ballsHtml = set.map((n) => {
                 let colorClass = 'yellow';
                 if (n <= 10) colorClass = 'yellow';
                 else if (n <= 20) colorClass = 'blue';
@@ -256,15 +301,15 @@ export class AiModule {
                 </div>
                 <div class="ball-container left">${ballsHtml}</div>
                 <div class="row-actions" style="margin-top:8px; display:flex; justify-content:flex-end;">
-                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">선택</button>
-                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓북</button>
+                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">Pick</button>
+                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">Ticket</button>
                 </div>
                 ${exp ? `
                 <details class="ai-explain" style="margin-top:10px;">
-                    <summary style="cursor:pointer; color:var(--text-muted);">근거 보기</summary>
+                    <summary style="cursor:pointer; color:var(--text-muted);">Details</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
-                        <div>전략: <b>${exp.strategyId}</b> (Tier ${exp.evidenceTier})</div>
-                        <div>세트 점수: <b>${exp.summary.setWeight}</b>, 필터 통과: <b>${exp.filtersPass ? 'YES' : 'NO'}</b></div>
+                        <div>Strategy: <b>${exp.strategyId}</b> (Tier ${exp.evidenceTier})</div>
+                        <div>Weight: <b>${exp.summary.setWeight}</b>, Filter pass: <b>${exp.filtersPass ? 'YES' : 'NO'}</b></div>
                         <div style="margin-top:6px; display:grid; gap:4px;">
                             ${exp.signals.map((s) => `<div>#${s.number} w:${s.weight} / f:${s.frequencyScore} / r:${s.recencyScore} / g:${s.gapScore} / p:${s.pairScore}</div>`).join('')}
                         </div>
@@ -273,30 +318,6 @@ export class AiModule {
             `;
 
             out.appendChild(row);
-        });
-
-        // Bind events
-        out.querySelectorAll('.pick-btn').forEach(b => {
-            b.addEventListener('click', (e) => {
-                const nums = e.target.dataset.nums.split(',').map(Number);
-                this.app.requestNumbers(nums);
-            });
-        });
-        out.querySelectorAll('.ticket-btn').forEach((b) => {
-            b.addEventListener('click', (e) => {
-                const nums = e.target.dataset.nums.split(',').map(Number);
-                const targetDrawNo = this.getAiTargetDrawNo();
-                const added = this.app.data.addTicket(nums, {
-                    source: 'ai',
-                    targetDrawNo,
-                    strategyRequest: this.lastRequest || this.buildStrategyRequest()
-                });
-                if (!added) UIManager.toast('이미 티켓북에 있습니다.', 'warning');
-                else {
-                    UIManager.toast(`${targetDrawNo}회차 티켓북에 추가되었습니다.`, 'success');
-                    if (this.app.renderDataLists) this.app.renderDataLists();
-                }
-            });
         });
     }
 
@@ -307,39 +328,37 @@ export class AiModule {
         const selectedId = resolveStrategyId($('#aiModelSelect')?.value || 'ensemble_weighted');
         const selectedMeta = getStrategyMeta(selectedId);
         const includeExperimental = Boolean($('#aiShowExperimental')?.checked);
-        const allStrategies = Object.values(STRATEGY_CATALOG).filter(s => includeExperimental || !s.experimental);
+        const allStrategies = Object.values(STRATEGY_CATALOG).filter((s) => includeExperimental || !s.experimental);
 
-        const tierIcons = { A: '🏆', B: '⭐', C: '🔬' };
-        const tierLabels = { A: '검증됨', B: '유용함', C: '실험적' };
+        const tierIcons = { A: 'A', B: 'B', C: 'C' };
+        const tierLabels = { A: 'Validated', B: 'Usable', C: 'Experimental' };
         const tierColors = { A: 'var(--success)', B: 'var(--primary)', C: 'var(--warning)' };
 
-        // Selected model detail card
         const selectedCard = `
             <div class="guide-selected">
                 <div class="guide-selected-header">
-                    <h3><i class="ph-bold ph-book-open"></i> 현재 선택된 모델</h3>
+                    <h3><i class="ph-bold ph-book-open"></i> Current Model</h3>
                     <span class="guide-tier-badge" style="border-color: ${tierColors[selectedMeta.tier]}; color: ${tierColors[selectedMeta.tier]};">
-                        ${tierIcons[selectedMeta.tier]} Tier ${selectedMeta.tier} · ${tierLabels[selectedMeta.tier]}
+                        ${tierIcons[selectedMeta.tier]} Tier ${selectedMeta.tier} - ${tierLabels[selectedMeta.tier]}
                     </span>
                 </div>
                 <div class="guide-selected-body">
                     <h4>${selectedMeta.label}</h4>
                     <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
-                    ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 이 모델은 실험(Experimental) 전략입니다. 백테스트를 통해 성능 검증 후 사용을 추천합니다.</div>' : ''}
+                    ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> This is an experimental model. Validate with backtesting before use.</div>' : ''}
                     ${this._renderDefaultFilters(selectedMeta)}
                 </div>
             </div>
         `;
 
-        // All models overview grid
-        const gridItems = allStrategies.map(s => {
+        const gridItems = allStrategies.map((s) => {
             const isActive = s.id === selectedId;
             return `
                 <div class="guide-item ${isActive ? 'active' : ''}" data-strategy-id="${s.id}">
                     <div class="guide-item-head">
                         <span class="guide-item-tier" style="color: ${tierColors[s.tier]};">${tierIcons[s.tier]}</span>
                         <strong>${s.label}</strong>
-                        ${s.experimental ? '<span class="guide-exp-tag">실험</span>' : ''}
+                        ${s.experimental ? '<span class="guide-exp-tag">EXP</span>' : ''}
                     </div>
                     <p>${s.summary}</p>
                 </div>
@@ -349,22 +368,21 @@ export class AiModule {
         container.innerHTML = `
             ${selectedCard}
             <div class="guide-all-header">
-                <h3><i class="ph-bold ph-list-bullets"></i> 전체 모델 요약</h3>
-                <span class="guide-count">${allStrategies.length}개 전략</span>
+                <h3><i class="ph-bold ph-list-bullets"></i> Strategy Overview</h3>
+                <span class="guide-count">${allStrategies.length} strategies</span>
             </div>
             <div class="guide-grid">${gridItems}</div>
             <div class="guide-filter-notice">
                 <i class="ph-bold ph-info"></i>
-                <span>필터(홀짝/합계/AC 등)를 과도하게 좁히면 유효한 조합이 부족해져 <strong>Fallback(랜덤)</strong>으로 대체될 수 있습니다. 적정 범위를 유지해 주세요.</span>
+                <span>If filters are too strict, valid combinations may be rare and fallback random generation can increase.</span>
             </div>
         `;
 
-        // Click on guide-item to switch strategy
-        container.querySelectorAll('.guide-item').forEach(item => {
+        container.querySelectorAll('.guide-item').forEach((item) => {
             item.addEventListener('click', () => {
                 const stratId = item.dataset.strategyId;
                 const select = $('#aiModelSelect');
-                if (select && [...select.options].some(o => o.value === stratId)) {
+                if (select && [...select.options].some((o) => o.value === stratId)) {
                     select.value = stratId;
                     this.renderModelGuide();
                 }
@@ -375,13 +393,14 @@ export class AiModule {
     _renderDefaultFilters(meta) {
         const filters = meta.defaultFilters || {};
         const parts = [];
-        if (filters.oddEven) parts.push(`홀수 ${filters.oddEven[0]}~${filters.oddEven[1]}개`);
-        if (filters.highLow) parts.push(`고수 ${filters.highLow[0]}~${filters.highLow[1]}개`);
-        if (filters.sumRange) parts.push(`합계 ${filters.sumRange[0]}~${filters.sumRange[1]}`);
-        if (filters.acRange) parts.push(`AC ${filters.acRange[0]}~${filters.acRange[1]}`);
-        if (filters.maxConsecutivePairs != null) parts.push(`연속쌍 ≤${filters.maxConsecutivePairs}`);
-        if (filters.endDigitUniqueMin != null) parts.push(`끝수종류 ≥${filters.endDigitUniqueMin}`);
+        if (filters.oddEven) parts.push(`Odd ${filters.oddEven[0]}-${filters.oddEven[1]}`);
+        if (filters.highLow) parts.push(`High ${filters.highLow[0]}-${filters.highLow[1]}`);
+        if (filters.sumRange) parts.push(`Sum ${filters.sumRange[0]}-${filters.sumRange[1]}`);
+        if (filters.acRange) parts.push(`AC ${filters.acRange[0]}-${filters.acRange[1]}`);
+        if (filters.maxConsecutivePairs != null) parts.push(`Consecutive <= ${filters.maxConsecutivePairs}`);
+        if (filters.endDigitUniqueMin != null) parts.push(`End-digit unique >= ${filters.endDigitUniqueMin}`);
         if (!parts.length) return '';
-        return `<div class="guide-default-filters"><strong>기본 적용 필터:</strong> ${parts.join(' · ')}</div>`;
+        return `<div class="guide-default-filters"><strong>Default filters:</strong> ${parts.join(' / ')}</div>`;
     }
 }
+

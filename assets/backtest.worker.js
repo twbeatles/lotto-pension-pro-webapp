@@ -1,5 +1,9 @@
 import { StrategyEngine } from './modules/core/StrategyEngine.js';
 import { resolveStrategyId } from './modules/core/StrategyCatalog.js';
+import { createFilterEvaluator } from './modules/core/StrategyFilters.js';
+
+const PROGRESS_INTERVAL_MS = 250;
+const WINS_BATCH_SIZE = 40;
 
 self.onmessage = async (e) => {
     const { type, payload } = e.data;
@@ -86,38 +90,91 @@ function summarizeReport(report) {
     };
 }
 
-async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests }) {
+function prepareStatsIndex(statsData = []) {
     const allStats = [...statsData].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
     const drawMap = new Map();
-    allStats.forEach((d) => drawMap.set(Number(d.draw_no), d));
+    const drawIndex = new Map();
 
+    allStats.forEach((draw, idx) => {
+        const drawNo = Number(draw.draw_no);
+        drawMap.set(drawNo, draw);
+        drawIndex.set(drawNo, idx);
+    });
+
+    return { allStats, drawMap, drawIndex };
+}
+
+function postWinsIfNeeded(winsBuffer, force = false) {
+    if (!winsBuffer.length) return;
+    if (!force && winsBuffer.length < WINS_BATCH_SIZE) return;
+    self.postMessage({ type: 'WINS', payload: [...winsBuffer] });
+    winsBuffer.length = 0;
+}
+
+async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests }) {
+    const { allStats, drawMap, drawIndex } = prepareStatsIndex(statsData);
     const requests = getStrategyRequests({ strategyRequest, strategy, strategyRequests });
+    const normalizationEngine = new StrategyEngine(allStats);
     const strategyDrawTotal = Math.max(0, Number(endDraw) - Number(startDraw) + 1);
     const totalDraws = strategyDrawTotal * requests.length;
     const ticketQty = Math.max(1, Math.floor(Number(qty) || 1));
 
     const startAt = Date.now();
+    let lastProgressAt = 0;
     let processedTotal = 0;
     const strategyProgress = requests.map((req) => ({ strategyId: req.strategyId, draws: 0 }));
     const comparisons = [];
 
+    const maybePostProgress = (summary, force = false) => {
+        const now = Date.now();
+        if (!force && now - lastProgressAt < PROGRESS_INTERVAL_MS) return false;
+        lastProgressAt = now;
+        const elapsedMs = now - startAt;
+        const avgMs = processedTotal > 0 ? elapsedMs / processedTotal : 0;
+        const remaining = Math.max(totalDraws - processedTotal, 0);
+        const etaMs = Math.max(Math.round(avgMs * remaining), 0);
+        const percent = totalDraws > 0 ? (processedTotal / totalDraws) * 100 : 0;
+
+        self.postMessage({
+            type: 'PROGRESS',
+            payload: {
+                summary,
+                processedDraws: processedTotal,
+                totalDraws,
+                etaMs,
+                elapsedMs,
+                percent,
+                strategyProgress: strategyProgress.map((x) => ({ ...x }))
+            }
+        });
+        return true;
+    };
+
     for (let reqIndex = 0; reqIndex < requests.length; reqIndex++) {
         const req = requests[reqIndex];
+        const normalizedRequest = normalizationEngine.normalizeRequest(req);
+        const filterEvaluator = createFilterEvaluator(normalizedRequest.filters);
         const report = createReport(req.strategyId);
         const winsBuffer = [];
 
         for (let currentDraw = Number(startDraw); currentDraw <= Number(endDraw); currentDraw++) {
-            const historyData = allStats.filter((d) => Number(d.draw_no) < currentDraw);
             const actualResult = drawMap.get(currentDraw);
+            const idx = drawIndex.get(currentDraw);
+            const historyData = Number.isFinite(idx) && idx > 0 ? allStats.slice(0, idx) : [];
+
             if (!actualResult) {
                 processedTotal++;
                 strategyProgress[reqIndex].draws++;
+                const didPostProgress = maybePostProgress(report);
+                if (didPostProgress) postWinsIfNeeded(winsBuffer, true);
                 continue;
             }
 
             const engine = new StrategyEngine(historyData);
             let tickets = engine.generateMultipleSets(ticketQty, req, {
                 sourceData: historyData,
+                normalizedRequest,
+                filterEvaluator,
                 maxAttempts: ticketQty * 120
             });
 
@@ -142,37 +199,19 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
                         nums: ticket,
                         hitText: ''
                     });
+                    postWinsIfNeeded(winsBuffer);
                 }
             }
 
             report.draws++;
             processedTotal++;
             strategyProgress[reqIndex].draws++;
-
-            if (processedTotal % 5 === 0 || processedTotal === totalDraws) {
-                const elapsed = Date.now() - startAt;
-                const avg = processedTotal > 0 ? elapsed / processedTotal : 0;
-                const remaining = Math.max(totalDraws - processedTotal, 0);
-                const etaMs = Math.max(Math.round(avg * remaining), 0);
-
-                self.postMessage({
-                    type: 'PROGRESS',
-                    payload: {
-                        summary: report,
-                        processedDraws: processedTotal,
-                        totalDraws,
-                        etaMs,
-                        strategyProgress: strategyProgress.map((x) => ({ ...x }))
-                    }
-                });
-
-                if (winsBuffer.length > 0) {
-                    self.postMessage({ type: 'WINS', payload: [...winsBuffer] });
-                    winsBuffer.length = 0;
-                }
-            }
+            const didPostProgress = maybePostProgress(report);
+            if (didPostProgress) postWinsIfNeeded(winsBuffer, true);
         }
 
+        postWinsIfNeeded(winsBuffer, true);
+        maybePostProgress(report, true);
         comparisons.push(summarizeReport(report));
     }
 

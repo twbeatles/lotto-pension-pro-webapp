@@ -35,46 +35,68 @@ export function countConsecutivePairs(numbers) {
     return pairs;
 }
 
-export function passesFilters(numbers, filters = {}) {
-    if (!Array.isArray(numbers) || numbers.length !== 6) return false;
-    const sorted = [...numbers].sort((a, b) => a - b);
+function toSortedUniqueNumbers(numbers, assumeSorted = false) {
+    if (!Array.isArray(numbers) || numbers.length !== 6) return null;
+    const sorted = assumeSorted ? numbers : [...numbers].sort((a, b) => a - b);
+
+    for (let i = 0; i < sorted.length; i++) {
+        const n = Number(sorted[i]);
+        if (!Number.isInteger(n) || n < 1 || n > 45) return null;
+        if (i > 0 && n === Number(sorted[i - 1])) return null;
+        if (!assumeSorted) sorted[i] = n;
+    }
+    return sorted;
+}
+
+function bitCount10(mask) {
+    let n = mask;
+    let count = 0;
+    while (n) {
+        n &= (n - 1);
+        count++;
+    }
+    return count;
+}
+
+function evaluateSortedNumbers(sorted, f) {
+    let odd = 0;
+    let high = 0;
+    let sum = 0;
+    let consecutivePairs = 0;
+    let endDigitMask = 0;
 
     for (let i = 0; i < sorted.length; i++) {
         const n = sorted[i];
-        if (!Number.isInteger(n) || n < 1 || n > 45) return false;
-        if (i > 0 && n === sorted[i - 1]) return false;
+        if ((n % 2) !== 0) odd++;
+        if (n > 23) high++;
+        sum += n;
+        endDigitMask |= (1 << (n % 10));
+        if (i > 0 && n === sorted[i - 1] + 1) consecutivePairs++;
     }
 
-    const f = sanitizeFilters(filters);
-
-    if (f.oddEven) {
-        const odd = sorted.filter((n) => n % 2 !== 0).length;
-        if (odd < f.oddEven[0] || odd > f.oddEven[1]) return false;
-    }
-
-    if (f.highLow) {
-        const high = sorted.filter((n) => n > 23).length;
-        if (high < f.highLow[0] || high > f.highLow[1]) return false;
-    }
-
-    if (f.sumRange) {
-        const sum = AdvancedMonteCarlo.calculateSum(sorted);
-        if (sum < f.sumRange[0] || sum > f.sumRange[1]) return false;
-    }
+    if (f.oddEven && (odd < f.oddEven[0] || odd > f.oddEven[1])) return false;
+    if (f.highLow && (high < f.highLow[0] || high > f.highLow[1])) return false;
+    if (f.sumRange && (sum < f.sumRange[0] || sum > f.sumRange[1])) return false;
+    if (f.maxConsecutivePairs !== null && consecutivePairs > f.maxConsecutivePairs) return false;
+    if (f.endDigitUniqueMin !== null && bitCount10(endDigitMask) < f.endDigitUniqueMin) return false;
 
     if (f.acRange) {
         const ac = AdvancedMonteCarlo.calculateAC(sorted);
         if (ac < f.acRange[0] || ac > f.acRange[1]) return false;
     }
 
-    if (f.maxConsecutivePairs !== null) {
-        if (countConsecutivePairs(sorted) > f.maxConsecutivePairs) return false;
-    }
-
-    if (f.endDigitUniqueMin !== null) {
-        const uniqEndDigits = new Set(sorted.map((n) => n % 10)).size;
-        if (uniqEndDigits < f.endDigitUniqueMin) return false;
-    }
-
     return true;
+}
+
+export function createFilterEvaluator(filters = {}) {
+    const f = sanitizeFilters(filters);
+    return (numbers, options = {}) => {
+        const sorted = toSortedUniqueNumbers(numbers, Boolean(options.assumeSorted));
+        if (!sorted) return false;
+        return evaluateSortedNumbers(sorted, f);
+    };
+}
+
+export function passesFilters(numbers, filters = {}) {
+    return createFilterEvaluator(filters)(numbers);
 }

@@ -1,6 +1,6 @@
 {
-    "name": "Lotto 6/45 Pro",
-    "short_name": "Lotto Pro",
+    "name": "로또 6/45 프로",
+    "short_name": "로또 프로",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#0f172a",

@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="description" content="Lotto 6/45 Generator Pro Web App">
+    <meta name="description" content="로또 6/45 번호 생성기 웹앱">
     <meta name="theme-color" content="#0f172a">
-    <title>Lotto 6/45 Pro</title>
+    <title>로또 6/45 프로</title>
     <link rel="stylesheet" href="assets/app.css">
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -18,8 +18,8 @@
 
     <!-- SEO & Social Tags -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Lotto 6/45 Pro">
-    <meta property="og:description" content="AI 기반 로또 번호 생성 및 당첨 분석 (PWA 지원)">
+    <meta property="og:title" content="로또 6/45 프로">
+    <meta property="og:description" content="인공지능 기반 로또 번호 생성 및 당첨 분석 (앱 설치 지원)">
     <meta property="og:image" content="assets/icons/icon-512.png">
 </head>
 
@@ -29,7 +29,7 @@
         <nav class="sidebar">
             <div class="brand">
                 <i class="ph-fill ph-clover"></i>
-                <h1>Lotto Pro</h1>
+                <h1>로또 프로</h1>
             </div>
 
             <div class="nav-menu">
@@ -43,7 +43,7 @@
                 </button>
                 <button class="nav-item" data-target="ai">
                     <i class="ph ph-brain"></i>
-                    <span>AI 예측</span>
+                    <span>인공지능 예측</span>
                 </button>
                 <button class="nav-item" data-target="bt">
                     <i class="ph ph-flask"></i>
@@ -60,12 +60,12 @@
             </div>
 
             <div class="sidebar-footer">
-                <button id="themeToggle" class="icon-btn" aria-label="Toggle Theme">
+                <button id="themeToggle" class="icon-btn" aria-label="테마 전환">
                     <i class="ph ph-moon"></i>
                 </button>
                 <div class="sync-status" id="syncStatus">
                     <span class="dot"></span>
-                    <span class="text">Ready</span>
+                    <span class="text">준비됨</span>
                 </div>
             </div>
         </nav>
@@ -76,7 +76,7 @@
             <header class="mobile-header">
                 <div class="brand">
                     <i class="ph-fill ph-clover"></i>
-                    <span>Lotto Pro</span>
+                    <span>로또 프로</span>
                 </div>
                 <button id="mobileThemeToggle" class="icon-btn">
                     <i class="ph ph-moon"></i>
@@ -179,35 +179,35 @@
                                         step="1" value="20">
                                 </div>
                                 <div class="input-group">
-                                    <label for="genSeed">Seed (선택)</label>
+                                    <label for="genSeed">난수 시드 (선택)</label>
                                     <input type="number" id="genSeed" class="input-field" placeholder="예: 2026">
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>홀수 개수</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="genOddMin" class="input-field" min="0" max="6" placeholder="min">
-                                        <input type="number" id="genOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                        <input type="number" id="genOddMin" class="input-field" min="0" max="6" placeholder="최소">
+                                        <input type="number" id="genOddMax" class="input-field" min="0" max="6" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>고수(24~45) 개수</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="genHighMin" class="input-field" min="0" max="6" placeholder="min">
-                                        <input type="number" id="genHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                        <input type="number" id="genHighMin" class="input-field" min="0" max="6" placeholder="최소">
+                                        <input type="number" id="genHighMax" class="input-field" min="0" max="6" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>합계 범위</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="genSumMin" class="input-field" min="21" max="260" placeholder="min">
-                                        <input type="number" id="genSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                        <input type="number" id="genSumMin" class="input-field" min="21" max="260" placeholder="최소">
+                                        <input type="number" id="genSumMax" class="input-field" min="21" max="260" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
-                                    <label>AC 범위</label>
+                                    <label>복잡도 지수 범위</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="genAcMin" class="input-field" min="0" max="10" placeholder="min">
-                                        <input type="number" id="genAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                        <input type="number" id="genAcMin" class="input-field" min="0" max="10" placeholder="최소">
+                                        <input type="number" id="genAcMax" class="input-field" min="0" max="10" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group">
@@ -259,7 +259,7 @@
                         <div class="card-header">
                             <h3>최신 당첨결과</h3>
                             <div class="row-center">
-                                <span id="latestDrawNo" class="badge">Loading...</span>
+                                <span id="latestDrawNo" class="badge">불러오는 중...</span>
                                 <button id="refreshDataBtn" class="icon-btn sm" aria-label="새로고침"
                                     style="margin-left: 8px;">
                                     <i class="ph-bold ph-arrows-clockwise"></i>
@@ -310,13 +310,13 @@
                         <div id="chartOddEven" class="chart-container"></div>
                     </div>
                     <div class="card glass full-width">
-                        <h3>자주 나오는 번호 (Hot & Cold)</h3>
+                        <h3>자주/드물게 나온 번호</h3>
                         <div id="hotColdContainer" class="hot-cold-grid">
                             <!-- Injected JS -->
                         </div>
                     </div>
                     <div class="card glass full-width">
-                        <h3>연속 동시 출현 (Top Pairs)</h3>
+                        <h3>동시 출현 상위 번호쌍</h3>
                         <div id="pairContainer" class="pairs-grid">
                             <!-- Injected JS -->
                         </div>
@@ -324,17 +324,17 @@
                 </div>
             </section>
 
-            <!-- 3. AI -->
+            <!-- 3. 인공지능 -->
             <section id="page-ai" class="page">
                 <header class="page-header">
-                    <h2>AI 예측</h2>
+                    <h2>인공지능 예측</h2>
                     <p class="subtitle">통계적 알고리즘이 다음 회차 번호를 예측합니다.</p>
                 </header>
 
                 <div class="card glass full-width" style="margin-bottom: 24px; text-align: left;">
                     <h3 style="font-size: 16px; margin-bottom: 8px;"><i class="ph-fill ph-info"></i> 예측 방식 안내</h3>
                     <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6;">
-                        본 AI 예측 시스템은 <strong>최근 당첨 번호의 패턴, 빈도수, 미출현 기간</strong> 등을 종합적으로 분석하여 번호를 추천합니다.
+                        본 인공지능 예측 시스템은 <strong>최근 당첨 번호의 패턴, 빈도수, 미출현 기간</strong> 등을 종합적으로 분석하여 번호를 추천합니다.
                         단순 랜덤이 아닌 가중치 기반 알고리즘을 사용하여 통계적으로 유의미한 조합을 생성하려 노력합니다.
                         (※ 당첨을 보장하지 않습니다.)
                     </p>
@@ -366,7 +366,7 @@
                                     <input type="number" id="aiLookbackWindow" class="input-field" min="5" max="120" value="20">
                                 </div>
                                 <div class="input-group">
-                                    <label for="aiSeed">Seed (선택)</label>
+                                    <label for="aiSeed">난수 시드 (선택)</label>
                                     <input type="number" id="aiSeed" class="input-field" placeholder="예: 2026">
                                 </div>
                                 <div class="input-group">
@@ -376,29 +376,29 @@
                                 <div class="input-group strategy-range">
                                     <label>홀수 개수</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="aiOddMin" class="input-field" min="0" max="6" placeholder="min">
-                                        <input type="number" id="aiOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                        <input type="number" id="aiOddMin" class="input-field" min="0" max="6" placeholder="최소">
+                                        <input type="number" id="aiOddMax" class="input-field" min="0" max="6" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>고수 개수</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="aiHighMin" class="input-field" min="0" max="6" placeholder="min">
-                                        <input type="number" id="aiHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                        <input type="number" id="aiHighMin" class="input-field" min="0" max="6" placeholder="최소">
+                                        <input type="number" id="aiHighMax" class="input-field" min="0" max="6" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>합계 범위</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="aiSumMin" class="input-field" min="21" max="260" placeholder="min">
-                                        <input type="number" id="aiSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                        <input type="number" id="aiSumMin" class="input-field" min="21" max="260" placeholder="최소">
+                                        <input type="number" id="aiSumMax" class="input-field" min="21" max="260" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group strategy-range">
-                                    <label>AC 범위</label>
+                                    <label>복잡도 지수 범위</label>
                                     <div class="range-inputs">
-                                        <input type="number" id="aiAcMin" class="input-field" min="0" max="10" placeholder="min">
-                                        <input type="number" id="aiAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                        <input type="number" id="aiAcMin" class="input-field" min="0" max="10" placeholder="최소">
+                                        <input type="number" id="aiAcMax" class="input-field" min="0" max="10" placeholder="최대">
                                     </div>
                                 </div>
                                 <div class="input-group">
@@ -417,7 +417,7 @@
                         </button>
                     </div>
                     <div id="aiOutput" class="ai-output">
-                        <!-- AI Cards -->
+                        <!-- 인공지능 카드 -->
                     </div>
                     <div class="card glass console-log">
                         <h3>분석 로그</h3>
@@ -431,7 +431,7 @@
                 </div>
             </section>
 
-            <!-- 4. Backtest -->
+            <!-- 4. 시뮬레이션 -->
             <section id="page-bt" class="page">
                 <header class="page-header">
                     <h2>전략 시뮬레이션</h2>
@@ -487,35 +487,35 @@
                                 <input type="number" id="btLookbackWindow" class="input-field" min="5" max="120" value="20">
                             </div>
                             <div class="input-group">
-                                <label for="btSeed">Seed (선택)</label>
+                                <label for="btSeed">난수 시드 (선택)</label>
                                 <input type="number" id="btSeed" class="input-field" placeholder="예: 2026">
                             </div>
                             <div class="input-group strategy-range">
                                 <label>홀수 개수</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="btOddMin" class="input-field" min="0" max="6" placeholder="min">
-                                    <input type="number" id="btOddMax" class="input-field" min="0" max="6" placeholder="max">
+                                    <input type="number" id="btOddMin" class="input-field" min="0" max="6" placeholder="최소">
+                                    <input type="number" id="btOddMax" class="input-field" min="0" max="6" placeholder="최대">
                                 </div>
                             </div>
                             <div class="input-group strategy-range">
                                 <label>고수 개수</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="btHighMin" class="input-field" min="0" max="6" placeholder="min">
-                                    <input type="number" id="btHighMax" class="input-field" min="0" max="6" placeholder="max">
+                                    <input type="number" id="btHighMin" class="input-field" min="0" max="6" placeholder="최소">
+                                    <input type="number" id="btHighMax" class="input-field" min="0" max="6" placeholder="최대">
                                 </div>
                             </div>
                             <div class="input-group strategy-range">
                                 <label>합계 범위</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="btSumMin" class="input-field" min="21" max="260" placeholder="min">
-                                    <input type="number" id="btSumMax" class="input-field" min="21" max="260" placeholder="max">
+                                    <input type="number" id="btSumMin" class="input-field" min="21" max="260" placeholder="최소">
+                                    <input type="number" id="btSumMax" class="input-field" min="21" max="260" placeholder="최대">
                                 </div>
                             </div>
                             <div class="input-group strategy-range">
-                                <label>AC 범위</label>
+                                <label>복잡도 지수 범위</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="btAcMin" class="input-field" min="0" max="10" placeholder="min">
-                                    <input type="number" id="btAcMax" class="input-field" min="0" max="10" placeholder="max">
+                                    <input type="number" id="btAcMin" class="input-field" min="0" max="10" placeholder="최소">
+                                    <input type="number" id="btAcMax" class="input-field" min="0" max="10" placeholder="최대">
                                 </div>
                             </div>
                             <div class="input-group">
@@ -541,7 +541,7 @@
                         </ul>
                         <p id="btProgressMeta" class="subtitle bt-progress-meta" aria-live="polite"></p>
                         <button id="btExportCsv" class="btn ghost sm" style="margin-top:10px;">
-                            <i class="ph ph-file-csv"></i> 비교 CSV 저장
+                            <i class="ph ph-file-csv"></i> 비교 파일 저장
                         </button>
                     </div>
                 </div>
@@ -553,7 +553,7 @@
                                 <tr>
                                     <th>순위</th>
                                     <th>전략</th>
-                                    <th>ROI</th>
+                                    <th>수익률</th>
                                     <th>당첨률</th>
                                     <th>총비용</th>
                                     <th>총상금</th>
@@ -678,7 +678,7 @@
                         <label class="check-box">
                             <input type="checkbox" id="alertEnableSystem">
                             <span class="checkmark"></span>
-                            <span>시스템 알림(Notification)</span>
+                            <span>시스템 알림</span>
                         </label>
                         <label class="check-box">
                             <input type="checkbox" id="alertNotifyOnResult" checked>
@@ -693,7 +693,7 @@
                     <p class="subtitle" style="margin-bottom:15px">최신 회차 정보를 비동기로 가져옵니다.</p>
 
                     <div class="input-group" style="margin-bottom:15px">
-                        <label for="customProxyUrl">Custom Proxy URL (Optional)</label>
+                        <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
                         <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
                             style="font-size:14px">
                         <p class="subtitle" style="font-size:12px; margin-top:5px;">기본값: api.allorigins.win (공용)</p>
@@ -710,7 +710,7 @@
                     <h3>데이터 백업/복원</h3>
                     <div class="button-group">
                         <button id="exportAll" class="btn ghost">
-                            <i class="ph ph-export"></i> 전체 데이터 내보내기 (JSON)
+                            <i class="ph ph-export"></i> 전체 데이터 내보내기 (백업 파일)
                         </button>
                         <button id="importAllTrigger" class="btn ghost">
                             <i class="ph ph-import"></i> 가져오기
@@ -733,7 +733,7 @@
             </button>
             <button class="nav-item" data-target="ai">
                 <i class="ph ph-brain"></i>
-                <span>AI</span>
+                <span>예측</span>
             </button>
             <button class="nav-item" data-target="bt">
                 <i class="ph ph-flask"></i>
@@ -752,7 +752,7 @@
     <!-- Modals -->
     <div id="qrModal" class="modal">
         <div class="modal-content center-content">
-            <h3>QR Code</h3>
+            <h3>큐알 코드</h3>
             <div id="qrCanvasContainer"></div>
             <button class="btn ghost"
                 onclick="document.getElementById('qrModal').classList.remove('active')">닫기</button>
@@ -761,10 +761,10 @@
 
     <div id="qrScanModal" class="modal">
         <div class="modal-content center-content" style="max-width: 500px; width: 95%;">
-            <h3>로또 QR 스캔</h3>
+            <h3>로또 큐알 스캔</h3>
             <div id="qr-reader"
                 style="width: 100%; min-height: 300px; background: #000; border-radius: 12px; overflow: hidden;"></div>
-            <p class="subtitle" style="margin-top: 15px;">카메라로 로또 QR코드를 비춰주세요.</p>
+            <p class="subtitle" style="margin-top: 15px;">카메라로 로또 큐알 코드를 비춰주세요.</p>
             <button class="btn ghost" id="closeScanBtn">닫기</button>
         </div>
     </div>
@@ -773,7 +773,7 @@
         if ('serviceWorker' in navigator) {
             const registerSW = () => {
                 navigator.serviceWorker.register('sw.js').then((reg) => {
-                    console.log('SW Registered:', reg.scope);
+                    console.log('서비스 워커 등록 완료:', reg.scope);
 
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
@@ -784,16 +784,16 @@
                             }
                         });
                     });
-                }).catch((err) => console.log('SW Fail:', err));
+                }).catch((err) => console.log('서비스 워커 등록 실패:', err));
             };
 
             const showUpdateToast = (worker) => {
                 const toast = document.createElement('div');
                 toast.className = 'update-toast';
                 toast.innerHTML = `
-                    <span>New app version is available.</span>
-                    <button id="reloadBtn">Update</button>
-                    <button id="dismissBtn">Dismiss</button>
+                    <span>새 버전이 준비되었습니다.</span>
+                    <button id="reloadBtn">업데이트</button>
+                    <button id="dismissBtn">닫기</button>
                 `;
                 document.body.appendChild(toast);
 

@@ -40,8 +40,8 @@ export const STRATEGY_CATALOG = Object.freeze({
         label: '앙상블 가중치',
         tier: 'A',
         experimental: false,
-        summary: '빈도/최근/갭 신호를 혼합',
-        description: '역대 당첨 번호의 빈도(Frequency), 최근 출현 여부(Recency), 그리고 출현 간격(Gap)을 5:3:2 비율로 종합하여 점수를 매깁니다. 가장 균형 잡히고 권장되는 <strong>표준 AI 예측 모델</strong>입니다.',
+        summary: '빈도/최근/공백 신호를 혼합',
+        description: '역대 당첨 번호의 빈도, 최근 출현 여부, 그리고 출현 공백 간격을 5:3:2 비율로 종합하여 점수를 매깁니다. 가장 균형 잡히고 권장되는 <strong>표준 인공지능 예측 모델</strong>입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -51,7 +51,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '빈출 번호 우선',
-        description: '최근들어 자주 당첨되고 있는 이른바 <strong>핫(Hot) 번호</strong>들에 높은 가중치를 부여합니다. 현재 상승세를 타고 있는 번호의 추세를 따라가는 순응형 전략입니다.',
+        description: '최근들어 자주 당첨되고 있는 이른바 <strong>강세 번호</strong>들에 높은 가중치를 부여합니다. 현재 상승세를 타고 있는 번호의 추세를 따라가는 순응형 전략입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -61,7 +61,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '저빈도/장기 미출현 보정',
-        description: '오랫동안 당첨되지 않아 <strong>출현 패턴상 나올 때가 된 콜드(Cold) 번호</strong>를 우선적으로 선택합니다. 통계적 회귀 현상을 노리는 반등형 전략입니다.',
+        description: '오랫동안 당첨되지 않아 <strong>출현 패턴상 나올 때가 된 약세 번호</strong>를 우선적으로 선택합니다. 통계적 회귀 현상을 노리는 반등형 전략입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -71,7 +71,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'A',
         experimental: false,
         summary: '최근성과 미출현 길이를 함께 반영',
-        description: '최근 발생한 출현과 직전 출현 사이의 <strong>공백 기간(Gap)</strong>을 집중 분석합니다. 번호가 규칙적인 주기를 가지고 출현한다고 가정하고 그 출현 리듬의 맥락을 공략합니다.',
+        description: '최근 발생한 출현과 직전 출현 사이의 <strong>공백 기간</strong>을 집중 분석합니다. 번호가 규칙적인 주기를 가지고 출현한다고 가정하고 그 출현 리듬의 맥락을 공략합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -91,11 +91,11 @@ export const STRATEGY_CATALOG = Object.freeze({
     },
     stat_ac_sum: {
         id: 'stat_ac_sum',
-        label: '정밀 통계(AC/합계)',
+        label: '정밀 통계(복잡도/합계)',
         tier: 'B',
         experimental: false,
-        summary: 'AC와 합계 구간 기반 필터',
-        description: '역대 당첨 비율이 가장 높은 <strong>산술적 복잡도 AC값(7~10)</strong>과 <strong>총합(100~175)</strong> 구간만을 엄격하게 필터링합니다. 번호 간 산포도를 최적화하여 뭉침을 배제합니다.',
+        summary: '복잡도 지수와 합계 구간 기반 필터',
+        description: '역대 당첨 비율이 가장 높은 <strong>산술적 복잡도 지수(7~10)</strong>와 <strong>총합(100~175)</strong> 구간만을 엄격하게 필터링합니다. 번호 간 산포도를 최적화하여 뭉침을 배제합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 8000 },
         defaultFilters: {
             ...EMPTY_FILTERS,
@@ -109,7 +109,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '동시 출현 페어 빈도 가중',
-        description: '과거에 <strong>함께 당첨된 적이 많은 짝꿍 번호(Pair)</strong>들의 데이터를 분석하여, 특정 번호가 선택되면 그와 시너지가 좋은 번호가 함께 끌려오도록 가중치를 부여합니다.',
+        description: '과거에 <strong>함께 당첨된 적이 많은 번호쌍</strong>의 데이터를 분석하여, 특정 번호가 선택되면 그와 시너지가 좋은 번호가 함께 끌려오도록 가중치를 부여합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -145,7 +145,7 @@ export const STRATEGY_CATALOG = Object.freeze({
     },
     wheel_reduced_t3: {
         id: 'wheel_reduced_t3',
-        label: '휠링(축약 T3)',
+        label: '휠링(축약 3단계)',
         tier: 'B',
         experimental: false,
         summary: '소수 티켓 중심 축약 휠',
@@ -155,11 +155,11 @@ export const STRATEGY_CATALOG = Object.freeze({
     },
     skip_hit_weighted: {
         id: 'skip_hit_weighted',
-        label: 'Skip/Hit 가중',
+        label: '결번/출현 가중',
         tier: 'B',
         experimental: true,
         summary: '결번-출현 리듬 기반',
-        description: '<strong>[실험 모델]</strong> 번호별로 당첨(Hit)과 미당첨(Skip)이 순환하는 리듬 패턴을 수학적으로 추적하여, 다음 타이밍에 Hit로 전환될 확률이 높은 번호를 신경망 형태로 추정합니다.',
+        description: '<strong>[실험 모델]</strong> 번호별로 출현과 결번이 순환하는 리듬 패턴을 수학적으로 추적하여, 다음 타이밍에 출현으로 전환될 확률이 높은 번호를 신경망 형태로 추정합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -179,7 +179,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'C',
         experimental: true,
         summary: '번호 간 간격 분포 근사',
-        description: '<strong>[실험 모델]</strong> 생성된 6개 번호들 사이의 간격(Delta) 값이 과거 당첨 티켓들이 보였던 간격 분포 곡선과 가장 유사한 형태를 띠도록 섀도우 매칭을 수행합니다.',
+        description: '<strong>[실험 모델]</strong> 생성된 6개 번호들 사이의 간격 변화 값이 과거 당첨 티켓들이 보였던 간격 분포 곡선과 가장 유사한 형태를 띠도록 섀도우 매칭을 수행합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },

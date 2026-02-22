@@ -58,7 +58,7 @@ export class LottoApp {
                 this.data.fetchLatestFromAPI({ silent: true, trigger: 'idle' });
             });
         } catch (error) {
-            console.error('Failed to fetch winning stats:', error);
+            console.error('당첨 데이터 조회 실패:', error);
             // Fallback for offline mode or error
             $('#latestWinMeta').innerHTML = `<span class="error-msg">데이터 동기화 실패 (오프라인)</span>`;
         }
@@ -67,7 +67,7 @@ export class LottoApp {
         this.preloadLikelyModules();
 
         endMark('app.init');
-        console.log('LottoApp Initialized');
+        console.log('앱 초기화 완료');
     }
 
     cacheStaticSelectors() {
@@ -168,7 +168,9 @@ export class LottoApp {
 
         $('#clearTickets')?.addEventListener('click', () => {
             const filter = $('#ticketFilter')?.value || 'all';
-            if (!confirm(`티켓북에서 '${filter}' 항목을 삭제하시겠습니까?`)) return;
+            const filterLabels = { all: '전체', pending: '예정', win: '당첨', lose: '미당첨' };
+            const filterLabel = filterLabels[filter] || filter;
+            if (!confirm(`티켓북에서 '${filterLabel}' 항목을 삭제하시겠습니까?`)) return;
             const removed = this.data.clearTicketBook(filter);
             UIManager.toast(`${removed}개 티켓 삭제`, removed > 0 ? 'success' : 'info');
             this.renderDataLists();
@@ -423,7 +425,7 @@ export class LottoApp {
                         <span class="result-meta">${dateStr ? new Date(dateStr).toLocaleDateString() : ''}</span>
                         <div class="result-actions">
                           <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
-                          <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                          <button class="icon-btn" data-action="qr" title="큐알"><i class="ph ph-qr-code"></i></button>
                         </div>
                     `;
                 }
@@ -455,7 +457,7 @@ export class LottoApp {
                         <span class="result-meta">${item.targetDrawNo}회 · ${rankText}</span>
                         <div class="result-actions">
                           <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
-                          <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                          <button class="icon-btn" data-action="qr" title="큐알"><i class="ph ph-qr-code"></i></button>
                           <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
                         </div>
                     `;
@@ -507,6 +509,6 @@ export class LottoApp {
         if (!list) return;
         this.generator?.renderResultItem(nums, 0, list);
         this.data.state.generated = [nums];
-        UIManager.toast('AI 추천 번호를 생성 탭으로 가져왔습니다.', 'success');
+        UIManager.toast('인공지능 추천 번호를 생성 탭으로 가져왔습니다.', 'success');
     }
 }

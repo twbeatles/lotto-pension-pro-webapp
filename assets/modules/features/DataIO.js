@@ -37,12 +37,12 @@ export class DataIOModule {
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        a.download = `lotto_pro_backup_v2_${ts}.json`;
+        a.download = `로또_프로_백업_v2_${ts}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('백업 파일(v2)을 내보냈습니다.', 'success');
+        UIManager.toast('백업 파일(2버전)을 내보냈습니다.', 'success');
     }
 
     normalizeItems(items) {
@@ -178,8 +178,8 @@ export class DataIOModule {
             this.data.save();
             this.app.renderDataLists();
         } catch (err) {
-            console.error('Import failed', err);
-            UIManager.toast('가져오기 실패: JSON 파싱 오류', 'error', 3500);
+            console.error('가져오기 실패', err);
+            UIManager.toast('가져오기 실패: 백업 파일 해석 오류', 'error', 3500);
         } finally {
             input.value = '';
         }

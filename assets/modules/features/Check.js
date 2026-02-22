@@ -45,7 +45,7 @@ export class CheckModule {
       if (action === 'qr') UIManager.showQR(this.currentTicket);
       if (action === 'save') {
         const resultEl = $('#checkResultArea .check-result');
-        UIManager.saveAsImage(resultEl, `lotto_check_${this.currentDrawNo || 'latest'}.png`);
+        UIManager.saveAsImage(resultEl, `로또_확인_${this.currentDrawNo || '최신'}.png`);
       }
     });
   }
@@ -143,7 +143,7 @@ export class CheckModule {
 
   run() {
     if (!this.data.state.winningStats.length) {
-      return UIManager.toast('당첨 데이터가 없습니다. (data/winning_stats.json)', 'error', 3000);
+      return UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
     }
 
     const listEl = $('#checkTargetList');
@@ -184,7 +184,7 @@ export class CheckModule {
     area.classList.remove('check-result-placeholder');
 
     const rankText = rank ? `${rank}등` : '낙첨';
-    const hitText = (rank === 2) ? '5+B' : `${matchCount}`;
+    const hitText = (rank === 2) ? '5+보너스' : `${matchCount}`;
 
     area.innerHTML = `
       <div class="check-result">
@@ -194,7 +194,7 @@ export class CheckModule {
         </div>
         <div class="check-actions">
           <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
           <button class="btn ghost sm" data-action="save"><i class="ph ph-download-simple"></i> 저장</button>
         </div>
         <div class="check-section">
@@ -207,7 +207,7 @@ export class CheckModule {
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, winSet)}</div>
-          <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${bonusHit ? 'O' : 'X'}</b></div>
+          <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${bonusHit ? '있음' : '없음'}</b></div>
         </div>
       </div>
     `;
@@ -251,7 +251,7 @@ export class CheckModule {
           </div>
           <div class="check-actions">
             <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-            <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
+            <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
           </div>
           <div class="check-section">
             <div class="label">내 번호</div>
@@ -268,7 +268,7 @@ export class CheckModule {
     const cards = limited.map(r => {
       const rankText = `${r.rank}등`;
       const badgeCls = r.rank ? 'ok' : 'no';
-      const hitText = (r.rank === 2) ? '5+B' : String(r.matchCount);
+      const hitText = (r.rank === 2) ? '5+보너스' : String(r.matchCount);
       return `
         <div class="check-card">
           <div class="check-head">
@@ -285,7 +285,7 @@ export class CheckModule {
           <div class="check-section">
             <div class="label">내 번호</div>
             <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, r.winSet)}</div>
-            <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${r.bonusHit ? 'O' : 'X'}</b></div>
+            <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${r.bonusHit ? '있음' : '없음'}</b></div>
           </div>
         </div>
       `;
@@ -299,7 +299,7 @@ export class CheckModule {
         </div>
         <div class="check-actions">
           <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
         </div>
         <div class="check-section">
           <div class="label">내 번호</div>

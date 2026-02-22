@@ -17,7 +17,7 @@ self.onmessage = async (e) => {
                 type: 'ERROR',
                 payload: {
                     code: 'BACKTEST_RUNTIME_ERROR',
-                    message: err.message || 'Backtest runtime error'
+                    message: err.message || '시뮬레이션 실행 중 오류가 발생했습니다.'
                 }
             });
         }

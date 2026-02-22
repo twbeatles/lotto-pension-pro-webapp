@@ -1,77 +1,72 @@
-# 🌐 Global Lotto Proxy (Web App)
+﻿# 🌐 로또 6/45 프로 웹앱
 
-이 프로젝트는 동행복권의 당첨 정보를 제공하고 분석하는 현대적인 **웹 애플리케이션**입니다.  
-기존 Python 데스크톱 앱에서 **모던 웹 앱(SPA)**으로 완전히 전환되었습니다.
+이 프로젝트는 동행복권 당첨 정보를 조회·분석하고 번호를 생성하는 웹앱입니다.  
+기존 파이썬 데스크톱 앱을 단일 페이지 웹앱으로 전환한 버전입니다.
 
-## 🚀 배포 (Deployment)
+## 🚀 배포 주소
 **[👉 웹앱 바로가기 (GitHub Pages)](https://soulb.github.io/lotto-webapp/)**  
-*(URL은 사용자 아이디에 따라 다를 수 있습니다.)*
+*(주소는 계정/저장소 설정에 따라 달라질 수 있습니다.)*
 
 ## ✨ 주요 기능
-- **번호 생성**: 가중치/스마트 모드, 연속수 제한, 고정/제외수 설정, **QR 코드 스캔 및 당첨 확인**
-- **티켓북 & 캠페인**:
-    - 생성/AI 결과를 회차 기반 `티켓북`으로 저장
-    - `N주 × 주당 M세트` 캠페인 생성으로 일괄 티켓 등록
-    - 동기화 시 미정산 티켓 자동 정산(당첨/미당첨)
-- **AI 예측 (New)**:
-    - **다중 모델**: 앙상블(Ensemble), 패턴 밸런스(Pattern Balance), Cold/Hot 포커스 전략 지원
-    - **정밀 시뮬레이션**: True Monte Carlo 알고리즘을 통한 10만 회 이상의 가상 시뮬레이션
-    - **설명가능성(XAI)**: 추천 조합의 신호별 근거(빈도/최근성/갭/페어/필터) 표시
-- **전략 시뮬레이션 (Backtest Compare Lab)**:
-    - 단일/다중 전략 비교(최대 5개)
-    - ROI/당첨률/총비용/총상금/5등+ 비교 테이블
-    - CSV 내보내기 지원
-- **통계 분석**: 번호대별 분포(색상 구분), 홀짝/고저 비율, Hot/Cold 번호 분석 (모바일 최적화 차트)
-- **프리미엄 UI/UX**:
-    - **Cosmic Theme**: 깊이감 있는 다크 모드와 세련된 라이트 모드 완벽 지원
-    - **Glassmorphism**: 현대적인 블러 효과와 부드러운 인터랙션
-    - **모바일 퍼스트**: 아이폰/안드로이드 Safe Area(100dvh) 완벽 대응 및 제스처 친화적 네비게이션
-- **로컬 알림 센터**:
-    - 인앱 토스트/시스템 Notification 선택 지원
-    - 푸시 서버 없이 재방문 시점 결과 알림
-- **강력한 PWA**:
-    - **오프라인 모드**: 인터넷 없이도 조회 및 생성 가능
-    - **자동 동기화**: 앱 실행 시 최신 당첨 데이터 백그라운드 동기화
-    - **설치 지원**: 홈 화면 추가 및 네이티브 앱과 동일한 사용성
-- **데이터 관리**: 백업/복원 v2(JSON), v1 백업 읽기 호환, 중복 제거 알고리즘 적용
-- **스마트 프록시**: `dhlottery.co.kr` 우회 및 커스텀 프록시 설정 지원
-  - 우선순위: `?proxyUrl/?proxy` → `lotto_webapp_settings_v1.proxyLatestUrl` → `lotto_pro_settings_v2.customProxy` → public fallback
+- **번호 생성**: 스마트 추천, 연속수 제한, 고정수/제외수 설정, 큐알 생성
+- **티켓북/캠페인**:
+  - 생성 결과와 인공지능 결과를 회차 기준으로 티켓북에 저장
+  - `N주 × 주당 M세트` 캠페인 생성으로 일괄 등록
+  - 동기화 시 미정산 티켓 자동 정산
+- **인공지능 예측**:
+  - 다중 전략(앙상블, 균형, 고빈도/저빈도 등) 지원
+  - 몬테카를로 기반 정밀 시뮬레이션
+  - 추천 조합별 근거 신호(빈도/최근성/공백/페어/필터) 표시
+- **전략 시뮬레이션**:
+  - 단일/다중 전략 비교(최대 5개)
+  - 수익률, 당첨률, 총비용, 총상금, 5등 이상 비교 표
+  - 비교 결과 파일 내보내기
+- **통계 분석**: 번호 구간 분포, 홀짝/고저 비율, 자주·드물게 나온 번호, 상위 동시출현 번호쌍
+- **모바일 최적화 화면**: 세이프 영역 대응, 하단 탐색, 반응형 레이아웃
+- **알림 관리**: 인앱 알림과 시스템 알림 설정
+- **오프라인 앱 지원**:
+  - 네트워크가 없을 때도 기본 기능 사용 가능
+  - 백그라운드 최신 데이터 동기화
+  - 홈 화면 설치 지원
+- **데이터 백업/복원**: 2버전 백업 파일 지원, 이전 버전 호환, 중복 제거 처리
+- **프록시 지원**: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
+  - 우선순위: `?proxyUrl/?proxy` → `lotto_webapp_settings_v1.proxyLatestUrl` → `lotto_pro_settings_v2.customProxy` → 공용 기본값
 
-## 🏗️ 아키텍처
+## 🏗️ 구성 개요
 
 ```mermaid
 graph LR
-    User[Web Client] -->|Static Hosting| GitHubPages[GitHub Pages]
-    User -->|Data Sync| JSON[Static JSON Data]
-    User -->|LocalStorage| Browser[Browser Storage]
+    사용자[웹 사용자] -->|정적 배포| 깃허브페이지[GitHub Pages]
+    사용자 -->|데이터 동기화| 정적데이터[정적 JSON 데이터]
+    사용자 -->|브라우저 저장소| 로컬저장소[localStorage]
 ```
 
-- **Frontend**: Vanilla JS (ES Modules) + CSS Variables (No Build Step)
-- **Deployment**: GitHub Actions -> GitHub Pages
-- **Data**: 정적 JSON (`data/winning_stats.json`) + 로컬 스토리지(favorites/history/ticketBook/campaign/alertPrefs)
-- **Service Worker**: same-origin 리소스만 캐시 전략 적용 (cross-origin API 요청은 우회)
+- **화면/로직**: 바닐라 자바스크립트(ES 모듈) + CSS 변수 (빌드 단계 없음)
+- **배포**: GitHub Actions → GitHub Pages
+- **데이터**: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소(favorites/history/ticketBook/campaign/alertPrefs)
+- **서비스 워커**: 같은 출처 리소스 중심 캐시 전략 적용
 
 ## 📁 프로젝트 구조
 
-```
-lotto - webapp/
-├── .github/workflows/       # [CI/CD] GitHub Pages 배포 자동화
-├── assets/                  # 정적 리소스 (CSS, JS, Images)
-│   ├── modules/             # [Core] JS 모듈 (ES6+)
-│   │   ├── core/            # (App, Data, UI, MonteCarlo)
-│   │   ├── features/        # (AI, Backtest, Stats, QR 등)
-│   │   └── utils/           # (Helpers, Config)
-│   ├── icons/               # [PWA] 아이콘 에셋
-│   ├── app.css              # [Style] 통합 CSS (Cosmic Theme)
-│   └── backtest.worker.js   # [Worker] 백테스트 연산 처리
+```text
+lotto-webapp/
+├── .github/workflows/       # GitHub Pages 자동 배포
+├── assets/                  # 정적 리소스(CSS, JS, 이미지)
+│   ├── modules/             # 자바스크립트 모듈
+│   │   ├── core/            # 앱/데이터/전략/UI 핵심
+│   │   ├── features/        # 기능 모듈(예측/시뮬레이션/검증/통계 등)
+│   │   └── utils/           # 공통 유틸리티
+│   ├── icons/               # 앱 아이콘
+│   ├── app.css              # 통합 스타일
+│   └── backtest.worker.js   # 시뮬레이션 워커
 ├── data/                    # 정적 데이터
-│   └── winning_stats.json   # [Data] 로또 당첨 이력 (Auto Update)
-├── proxy/                   # [Serverless] Cloudflare Worker (CORS)
-├── index.html               # [Entry] SPA 진입점
-├── manifest.json            # [PWA] 웹앱 매니페스트
-└── sw.js                    # [PWA] Service Worker (Offline Support)
+│   └── winning_stats.json   # 로또 당첨 이력
+├── proxy/                   # 프록시 워커 예시
+├── index.html               # 앱 진입점
+├── manifest.json            # 웹앱 설치 설정
+└── sw.js                    # 서비스 워커
 ```
 
 ## 📝 라이선스
 
-[MIT License](LICENSE)
+[MIT 라이선스](LICENSE)

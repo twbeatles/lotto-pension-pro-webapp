@@ -100,7 +100,7 @@ async function staleWhileRevalidate(request, cacheName) {
         const shell = await caches.open(CACHE_APP_SHELL);
         return shell.match('./index.html');
     }
-    return new Response('Offline', { status: 503, statusText: 'Offline' });
+    return new Response('오프라인', { status: 503, statusText: '오프라인' });
 }
 
 self.addEventListener('fetch', (event) => {

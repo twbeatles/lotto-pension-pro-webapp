@@ -81,7 +81,7 @@ export class UIManager {
             }
             UIManager.toast('복사 완료', 'success');
         } catch (e) {
-            console.warn('Copy failed', e);
+            console.warn('복사 실패', e);
             UIManager.toast('복사 실패', 'error');
         }
     }
@@ -92,35 +92,35 @@ export class UIManager {
         if (!modal || !container) return;
         container.innerHTML = '';
 
-        const payload = `Lotto 6/45\nNumbers: ${this.formatNumbers(nums)}`;
+        const payload = `로또 6/45\n번호: ${this.formatNumbers(nums)}`;
         try {
             if (!window.QRCode?.toCanvas) {
                 await loadScriptOnce(EXTERNAL_ASSETS.qrcode);
             }
-            if (!window.QRCode?.toCanvas) throw new Error('QRCode library not loaded');
+            if (!window.QRCode?.toCanvas) throw new Error('큐알 생성 라이브러리를 불러오지 못했습니다.');
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
             window.QRCode.toCanvas(canvas, payload, { width: 220, margin: 1 }, (err) => {
                 if (err) {
-                    console.warn('QR render failed', err);
-                    UIManager.toast('QR 생성 실패', 'error');
+                    console.warn('큐알 렌더링 실패', err);
+                    UIManager.toast('큐알 생성 실패', 'error');
                     return;
                 }
                 modal.classList.add('active');
             });
         } catch (e) {
-            console.warn('QR error', e);
-            UIManager.toast('QR 기능을 사용할 수 없습니다.', 'error', 3000);
+            console.warn('큐알 처리 오류', e);
+            UIManager.toast('큐알 기능을 사용할 수 없습니다.', 'error', 3000);
         }
     }
 
-    static async saveAsImage(element, filename = 'lotto_result.png') {
+    static async saveAsImage(element, filename = '로또_결과.png') {
         if (!element) return;
         try {
             if (!window.html2canvas) {
                 await loadScriptOnce(EXTERNAL_ASSETS.html2canvas);
             }
-            if (!window.html2canvas) throw new Error('html2canvas library not loaded');
+            if (!window.html2canvas) throw new Error('이미지 저장 라이브러리를 불러오지 못했습니다.');
 
             // Visual feedback
             const originalTransform = element.style.transform;
@@ -145,7 +145,7 @@ export class UIManager {
 
             UIManager.toast('이미지로 저장되었습니다.', 'success');
         } catch (e) {
-            console.error('Image save failed', e);
+            console.error('이미지 저장 실패', e);
             UIManager.toast('이미지 저장 실패', 'error');
         }
     }

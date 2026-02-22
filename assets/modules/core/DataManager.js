@@ -145,9 +145,9 @@ export class DataManager {
         try {
             const params = new URLSearchParams(window.location.search);
             const proxyUrl = (params.get('proxyUrl') || '').trim();
-            if (proxyUrl) return { source: 'query.proxyUrl', url: proxyUrl };
+            if (proxyUrl) return { source: 'URL 쿼리(proxyUrl)', url: proxyUrl };
             const proxy = (params.get('proxy') || '').trim();
-            if (proxy) return { source: 'query.proxy', url: proxy };
+            if (proxy) return { source: 'URL 쿼리(proxy)', url: proxy };
         } catch (e) {
             return null;
         }
@@ -159,12 +159,12 @@ export class DataManager {
         if (queryProxy) return queryProxy;
 
         const legacyProxy = this.readLegacyProxyUrl();
-        if (legacyProxy) return { source: 'legacy.v1', url: legacyProxy };
+        if (legacyProxy) return { source: '이전 설정(v1)', url: legacyProxy };
 
         const v2Proxy = (this.state.customProxy || '').trim();
-        if (v2Proxy) return { source: 'settings.v2', url: v2Proxy };
+        if (v2Proxy) return { source: '앱 설정(v2)', url: v2Proxy };
 
-        return { source: 'public', url: '' };
+        return { source: '공용 기본값', url: '' };
     }
 
     safeJsonParse(raw, fallback) {
@@ -293,7 +293,7 @@ export class DataManager {
                 this.persistExtendedData();
             }
         } catch (e) {
-            console.error('Data load failed', e);
+            console.error('데이터 불러오기 실패', e);
             UIManager.toast('데이터 로드 실패', 'error');
         }
     }
@@ -314,7 +314,7 @@ export class DataManager {
                 this.persistSettings();
                 this.persistExtendedData();
             } catch (e) {
-                console.error('Data save failed', e);
+                console.error('데이터 저장 실패', e);
             }
         };
 
@@ -477,10 +477,10 @@ export class DataManager {
                     permission = await Notification.requestPermission();
                 }
                 if (permission === 'granted') {
-                    new Notification('Lotto Pro 티켓 정산', { body: message });
+                    new Notification('로또 프로 티켓 정산', { body: message });
                 }
             } catch (e) {
-                console.warn('System notification failed', e);
+                console.warn('시스템 알림 전송 실패', e);
             }
         }
     }
@@ -603,7 +603,7 @@ export class DataManager {
         };
 
         try {
-            updateStatus('Check Local', 'var(--warning)');
+            updateStatus('로컬 확인 중', 'var(--warning)');
 
             const res = await fetch('data/winning_stats.json', { cache: 'no-cache' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -633,14 +633,14 @@ export class DataManager {
             const estNo = estimateLatestDrawKST();
 
             if (latestNo > 0 && estNo > 0 && latestNo < estNo) {
-                updateStatus(`Update Avail (+${estNo - latestNo})`, 'var(--warning)');
+                updateStatus(`업데이트 가능 (+${estNo - latestNo})`, 'var(--warning)');
             } else {
-                updateStatus('Latest', 'var(--success)');
+                updateStatus('최신', 'var(--success)');
             }
             return true;
         } catch (e) {
-            console.warn('Winning stats fetch failed', e);
-            updateStatus('Offline', 'var(--danger)');
+            console.warn('당첨 데이터 조회 실패', e);
+            updateStatus('오프라인', 'var(--danger)');
             return false;
         }
     }
@@ -762,7 +762,7 @@ export class DataManager {
                 logEl.innerHTML += `<div>${msg}</div>`;
                 logEl.scrollTop = logEl.scrollHeight;
             }
-            console.log(`[Sync] ${msg}`);
+            console.log(`[동기화] ${msg}`);
         };
 
         if (btn) btn.disabled = true;
@@ -783,7 +783,7 @@ export class DataManager {
             const proxyInput = $('#customProxyUrl');
             if (proxyInput) this.state.customProxy = proxyInput.value.trim();
             const proxyConfig = this.resolveProxyConfig();
-            log(`🔗 Proxy Source: ${proxyConfig.source}`);
+            log(`🔗 프록시 소스: ${proxyConfig.source}`);
 
             let updatedCount = 0;
             const newItems = [];

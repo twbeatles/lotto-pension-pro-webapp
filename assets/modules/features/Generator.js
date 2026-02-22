@@ -90,7 +90,7 @@ export class GeneratorModule {
                     try {
                         btn.disabled = true;
                         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
-                        await UIManager.saveAsImage(itemEl, `lotto_gen_${idx + 1}.png`);
+                        await UIManager.saveAsImage(itemEl, `로또_생성_${idx + 1}.png`);
                     } catch (err) {
                         console.error(err);
                         UIManager.toast('이미지 저장 실패', 'error');
@@ -162,7 +162,7 @@ export class GeneratorModule {
             const opt = document.createElement('option');
             const exp = item.experimental ? ' [실험]' : '';
             opt.value = item.id;
-            opt.textContent = `${item.label} (Tier ${item.tier})${exp}`;
+            opt.textContent = `${item.label} (등급 ${item.tier})${exp}`;
             select.appendChild(opt);
         });
         const resolved = resolveStrategyId(current);
@@ -337,7 +337,7 @@ export class GeneratorModule {
                     targetDrawNo,
                     source: 'generator',
                     strategyRequest: request,
-                    memo: `Campaign ${startDraw}-${startDraw + weeks - 1}`,
+                    memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
                     createdAt: new Date().toISOString(),
                     checked: null
                 });
@@ -372,7 +372,7 @@ export class GeneratorModule {
             <div class="result-balls ball-container">${UIManager.renderBalls(nums)}</div>
             <div class="result-actions">
                 <button class="icon-btn" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
-                <button class="icon-btn" data-action="qr" aria-label="QR 코드 보기" title="QR"><i class="ph ph-qr-code"></i></button>
+                <button class="icon-btn" data-action="qr" aria-label="큐알 코드 보기" title="큐알"><i class="ph ph-qr-code"></i></button>
                 <button class="icon-btn" data-action="ticket" aria-label="티켓북 추가" title="티켓북"><i class="ph ph-ticket"></i></button>
                 <button class="icon-btn" data-action="share" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
                 <button class="icon-btn" data-action="fav" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>

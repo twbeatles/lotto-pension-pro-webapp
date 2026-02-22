@@ -52,7 +52,7 @@ export class QrScannerModule {
             if (!window.Html5Qrcode) {
                 await loadScriptOnce(EXTERNAL_ASSETS.html5QrCode);
             }
-            if (!window.Html5Qrcode) throw new Error('Html5Qrcode library not loaded');
+            if (!window.Html5Qrcode) throw new Error('큐알 스캐너 라이브러리를 불러오지 못했습니다.');
 
             this.scanner = new Html5Qrcode("qr-reader");
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
@@ -70,7 +70,7 @@ export class QrScannerModule {
             );
             this.isScanning = true;
         } catch (err) {
-            console.error("Error starting scanner", err);
+            console.error('스캐너 시작 오류', err);
             UIManager.toast("카메라를 시작할 수 없습니다. 권한을 확인해주세요.", "error");
             await this.destroyScanner();
             modal.classList.remove('active');
@@ -93,7 +93,7 @@ export class QrScannerModule {
             const numbers = this.parseLottoQr(decodedText);
             if (numbers && numbers.length > 0) {
                 await this.stop();
-                UIManager.toast('QR 스캔 성공!', 'success');
+                UIManager.toast('큐알 스캔 성공!', 'success');
 
                 // Pass to CheckModule
                 // Switch to check tab
@@ -106,22 +106,22 @@ export class QrScannerModule {
                 }
             } else {
                 // Valid QR but not Lotto? or parse failed
-                UIManager.toast('유효한 로또 QR코드가 아닙니다.', 'warning');
+                UIManager.toast('유효한 로또 큐알 코드가 아닙니다.', 'warning');
             }
         } catch (e) {
             console.error(e);
-            UIManager.toast('QR 코드 해석 실패', 'error');
+            UIManager.toast('큐알 코드 해석 실패', 'error');
         }
     }
 
     parseLottoQr(url) {
         // Expected format: http://m.dhlottery.co.kr/?v=0861q020612162843q...
 
-        if (!url || typeof url !== 'string') throw new Error('Invalid URL');
+        if (!url || typeof url !== 'string') throw new Error('잘못된 주소입니다.');
 
         // Loose check for dhlottery domain
         if (!url.includes('dhlottery')) {
-            throw new Error('Not a Lotto 6/45 QR code');
+            throw new Error('로또 6/45 큐알 코드가 아닙니다.');
         }
 
         // Extract 'v' parameter
@@ -135,12 +135,12 @@ export class QrScannerModule {
             if (match) vParam = match[1];
         }
 
-        if (!vParam) throw new Error('QR code missing lottery data (v param)');
+        if (!vParam) throw new Error('큐알 코드에 로또 데이터(v 파라미터)가 없습니다.');
 
         // Parse games (separated by 'q')
         // Format: [DrawNo]q[Game1]q[Game2]...
         const parts = vParam.split('q');
-        if (parts.length < 2) throw new Error('Invalid data format');
+        if (parts.length < 2) throw new Error('데이터 형식이 올바르지 않습니다.');
 
         const games = [];
         for (let i = 1; i < parts.length; i++) {
@@ -164,7 +164,7 @@ export class QrScannerModule {
             }
         }
 
-        if (games.length === 0) throw new Error('No valid games found in QR');
+        if (games.length === 0) throw new Error('큐알 코드에서 유효한 게임을 찾을 수 없습니다.');
         return games;
     }
 }

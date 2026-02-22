@@ -86,12 +86,12 @@ export class StatsModule {
         <div class="pie-legend">
           <div class="legend-item">
             <span class="dot" style="background: var(--primary)"></span>
-            <span class="label">짝수 (Even)</span>
+            <span class="label">짝수</span>
             <span class="value">${evenPct.toFixed(1)}% (${data[0]})</span>
           </div>
           <div class="legend-item">
             <span class="dot" style="background: var(--accent)"></span>
-            <span class="label">홀수 (Odd)</span>
+            <span class="label">홀수</span>
             <span class="value">${oddPct.toFixed(1)}% (${data[1]})</span>
           </div>
         </div>
@@ -143,8 +143,8 @@ export class StatsModule {
             return div;
         };
 
-        container.appendChild(mkCol('🔥 Hot Numbers', hot, 'hot'));
-        container.appendChild(mkCol('❄️ Cold Numbers', cold, 'cold'));
+        container.appendChild(mkCol('🔥 자주 나온 번호', hot, 'hot'));
+        container.appendChild(mkCol('❄️ 드물게 나온 번호', cold, 'cold'));
     }
 
     renderPairs(analytics) {

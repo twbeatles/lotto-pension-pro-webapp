@@ -4,6 +4,7 @@ import { UIManager } from './UIManager.js';
 import { GeneratorModule } from '../features/Generator.js';
 import { runWhenIdle } from '../utils/loader.js';
 import { endMark, startMark } from '../utils/perf.js';
+import { StrategyWorkerClient } from './StrategyWorkerClient.js';
 
 export class LottoApp {
     constructor() {
@@ -23,6 +24,9 @@ export class LottoApp {
         this.navItems = [];
         this.pageItems = [];
         this.navByTarget = new Map();
+        this.strategyWorker = new StrategyWorkerClient();
+        this.dataListRenderToken = 0;
+        this.dateFormatter = new Intl.DateTimeFormat('ko-KR');
     }
 
     async init() {
@@ -127,7 +131,15 @@ export class LottoApp {
 
     preloadLikelyModules() {
         runWhenIdle(() => {
-            // Keep cold-start as lean as possible; non-critical modules load on route entry.
+            // Warm important modules and worker during idle time.
+            import('../features/Ai.js')
+                .then((mod) => { this.moduleConstructors.ai = mod.AiModule; })
+                .catch(() => null);
+            import('../features/Backtest.js')
+                .then((mod) => { this.moduleConstructors.backtest = mod.BacktestModule; })
+                .catch(() => null);
+
+            this.strategyWorker?.warmup?.().catch(() => null);
         });
     }
 
@@ -144,6 +156,7 @@ export class LottoApp {
     bindThemeToggle() {
         const toggle = () => {
             this.data.state.theme = this.data.state.theme === 'light' ? 'dark' : 'light';
+            this.data.markDirty?.('settings');
             this.applyTheme();
             this.data.save();
         };
@@ -209,6 +222,7 @@ export class LottoApp {
 
         $('#customProxyUrl')?.addEventListener('change', (e) => {
             this.data.state.customProxy = e.target.value.trim();
+            this.data.markDirty?.('settings');
             this.data.save();
         });
     }
@@ -374,7 +388,8 @@ export class LottoApp {
     }
 
     renderDataLists() {
-        startMark('render.dataLists');
+        startMark('data.render');
+        const renderToken = ++this.dataListRenderToken;
         // Lazy rendering helper to prevent main thread blocking
         const renderChunk = (list, renderer, targetEl, chunkSize = 20) => {
             if (!targetEl) return;
@@ -382,6 +397,7 @@ export class LottoApp {
             let index = 0;
 
             const doChunk = () => {
+                if (renderToken !== this.dataListRenderToken) return;
                 const end = Math.min(index + chunkSize, list.length);
                 let html = '';
                 for (let i = index; i < end; i++) {
@@ -422,7 +438,7 @@ export class LottoApp {
                     const dateStr = item.date || item.created_at || '';
                     return `
                         <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
-                        <span class="result-meta">${dateStr ? new Date(dateStr).toLocaleDateString() : ''}</span>
+                        <span class="result-meta">${this.formatDate(dateStr)}</span>
                         <div class="result-actions">
                           <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
                           <button class="icon-btn" data-action="qr" title="큐알"><i class="ph ph-qr-code"></i></button>
@@ -499,7 +515,14 @@ export class LottoApp {
         if (inApp) inApp.checked = this.data.state.alertPrefs?.enableInApp !== false;
         if (system) system.checked = Boolean(this.data.state.alertPrefs?.enableSystemNotification);
         if (notify) notify.checked = this.data.state.alertPrefs?.notifyOnNewResult !== false;
-        endMark('render.dataLists');
+        endMark('data.render');
+    }
+
+    formatDate(value) {
+        if (!value) return '';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '';
+        return this.dateFormatter.format(d);
     }
 
     async requestNumbers(nums) {

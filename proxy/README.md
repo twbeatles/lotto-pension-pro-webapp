@@ -30,6 +30,7 @@ wrangler deploy proxy/worker.js
 - 기본값: 정규화 배열 (`data: []`)
 - `?format=legacy`: 기존 형식 배열 (`data.list`)
 - `?format=hybrid`: 정규화 + 기존 형식 동시 제공
+- 최대 구간 폭: `40` (예: `from=1200&to=1240` 허용, `to=1241` 거부)
 
 앱에서 사용하는 방법:
 - 주소 파라미터: `?proxyUrl=...` 또는 `?proxy=...`

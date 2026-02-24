@@ -175,6 +175,7 @@ export class DataIOModule {
                 this.data.state.history = this.data.state.history.slice(0, CONFIG.LIMITS.MAX_HIST);
             }
 
+            this.data.markAllDirty?.();
             this.data.save();
             this.app.renderDataLists();
         } catch (err) {

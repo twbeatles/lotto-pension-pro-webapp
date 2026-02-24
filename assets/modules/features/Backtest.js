@@ -12,6 +12,8 @@ export class BacktestModule {
         this.worker = null;
         this.lastComparisons = [];
         this.lastProgressAt = 0;
+        this.winRowsBuffer = [];
+        this.winFlushRaf = 0;
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
@@ -46,6 +48,11 @@ export class BacktestModule {
         if (winner) winner.textContent = '-';
         this.setProgressStatus('');
         this.lastComparisons = [];
+        this.winRowsBuffer = [];
+        if (this.winFlushRaf && typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(this.winFlushRaf);
+        }
+        this.winFlushRaf = 0;
     }
 
     setProgressStatus(text) {
@@ -114,9 +121,8 @@ export class BacktestModule {
         }
     }
 
-    appendWinRow(row) {
-        const tbody = $('#btResultTable tbody');
-        if (!tbody) return;
+    appendWinRowToFragment(row, fragment) {
+        if (!row || !fragment) return;
         const tr = document.createElement('tr');
         tr.innerHTML = `
       <td>${row.strategyId ? this.getStrategyLabel(row.strategyId) : '-'}</td>
@@ -125,7 +131,33 @@ export class BacktestModule {
       <td>${row.hitText}</td>
       <td><div class="ball-container sm">${UIManager.renderBalls(row.nums, 'sm')}</div></td>
     `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
+    }
+
+    flushWinRows() {
+        const tbody = $('#btResultTable tbody');
+        if (!tbody || !this.winRowsBuffer.length) return;
+
+        const fragment = document.createDocumentFragment();
+        const rows = this.winRowsBuffer.splice(0, this.winRowsBuffer.length);
+        rows.forEach((row) => this.appendWinRowToFragment(row, fragment));
+        tbody.appendChild(fragment);
+    }
+
+    queueWinRows(rows = []) {
+        if (!Array.isArray(rows) || !rows.length) return;
+        this.winRowsBuffer.push(...rows);
+        if (this.winFlushRaf) return;
+
+        if (typeof requestAnimationFrame === 'function') {
+            this.winFlushRaf = requestAnimationFrame(() => {
+                this.winFlushRaf = 0;
+                this.flushWinRows();
+            });
+            return;
+        }
+
+        this.flushWinRows();
     }
 
     populateStrategySelect() {
@@ -354,10 +386,11 @@ export class BacktestModule {
             }
 
             if (type === 'WINS') {
-                payload.forEach((w) => this.appendWinRow(w));
+                this.queueWinRows(payload);
             }
 
             if (type === 'DONE') {
+                this.flushWinRows();
                 if (payload?.comparisons) this.renderComparisons(payload.comparisons, payload?.diagnostics || {});
                 if (btn) {
                     btn.disabled = false;

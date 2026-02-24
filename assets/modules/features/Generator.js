@@ -4,12 +4,14 @@ import { UIManager } from '../core/UIManager.js';
 import { StrategyEngine } from '../core/StrategyEngine.js';
 import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 import { endMark, startMark } from '../utils/perf.js';
+import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
 
 export class GeneratorModule {
     constructor(app) {
         this.app = app;
         this.data = app.data;
         this.engine = new StrategyEngine(this.data.state.winningStats);
+        this.workerClient = this.app.strategyWorker || new StrategyWorkerClient();
         this.boundDelegation = false;
         this.bindEvents();
         this.populateStrategySelect();
@@ -19,7 +21,12 @@ export class GeneratorModule {
 
     bindEvents() {
         const btn = $('#generateBtn');
-        if (btn) btn.addEventListener('click', () => this.generate());
+        if (btn) btn.addEventListener('click', () => {
+            this.generate().catch((err) => {
+                console.error(err);
+                UIManager.toast('번호 생성 중 오류가 발생했습니다.', 'error');
+            });
+        });
 
         const resetBtn = $('#resetOptions');
         if (resetBtn) resetBtn.addEventListener('click', () => this.resetOptions());
@@ -33,7 +40,12 @@ export class GeneratorModule {
         const saveAllBtn = $('#saveAllBtn');
         if (saveAllBtn) saveAllBtn.addEventListener('click', () => this.saveAll());
         const genCampaignBtn = $('#generateCampaignBtn');
-        if (genCampaignBtn) genCampaignBtn.addEventListener('click', () => this.generateCampaign());
+        if (genCampaignBtn) genCampaignBtn.addEventListener('click', () => {
+            this.generateCampaign().catch((err) => {
+                console.error(err);
+                UIManager.toast('캠페인 생성 중 오류가 발생했습니다.', 'error');
+            });
+        });
         const genCampaignResetBtn = $('#resetCampaignBtn');
         if (genCampaignResetBtn) genCampaignResetBtn.addEventListener('click', () => this.resetCampaignOptions());
 
@@ -279,85 +291,145 @@ export class GeneratorModule {
         }
     }
 
-    generate() {
+    async generate() {
         startMark('generator.generate');
-        const count = Number($('#setCount').value) || 5;
-        const fixed = this.parseInput($('#fixedNums').value);
-        const exclude = this.parseInput($('#excludeNums').value);
+        let requested = Number($('#setCount').value) || 5;
+        let produced = 0;
+        try {
+            const fixed = this.parseInput($('#fixedNums').value);
+            const exclude = this.parseInput($('#excludeNums').value);
 
-        if (fixed.length > CONFIG.LIMITS.MAX_FIXED) {
-            return UIManager.toast(`고정수는 최대 ${CONFIG.LIMITS.MAX_FIXED}개입니다.`, 'error');
+            if (fixed.length > CONFIG.LIMITS.MAX_FIXED) {
+                UIManager.toast(`고정수는 최대 ${CONFIG.LIMITS.MAX_FIXED}개입니다.`, 'error');
+                return;
+            }
+
+            this.syncStrategyFromLegacyToggles();
+            const request = this.getStrategyRequestFromUI();
+            this.data.setStrategyPrefs('generator', request);
+            this.data.save();
+            if ($('#limitConsecutive')?.checked) {
+                request.filters.maxConsecutivePairs = request.filters.maxConsecutivePairs ?? 1;
+            }
+
+            const listEl = $('#genResultList');
+            listEl.innerHTML = '';
+            this.data.state.generated = [];
+            this.engine = new StrategyEngine(this.data.state.winningStats);
+
+            let sets = [];
+            let fallback = false;
+            startMark('generator.worker');
+            try {
+                const result = await this.workerClient.generate({
+                    statsData: this.data.state.winningStats,
+                    count: requested,
+                    request,
+                    fixed,
+                    exclude,
+                    maxAttempts: 300
+                });
+                sets = Array.isArray(result?.sets) ? result.sets : [];
+            } catch (err) {
+                fallback = true;
+                console.warn('전략 워커 사용 실패, 메인 스레드로 대체합니다.', err);
+                sets = this.engine.generateMultipleSets(requested, request, { fixed, exclude, maxAttempts: 300 });
+            } finally {
+                endMark('generator.worker', { count: sets.length, requested, fallback });
+            }
+
+            sets.forEach((nums, i) => {
+                this.data.state.generated.push(nums);
+                this.renderResultItem(nums, i, listEl);
+            });
+            produced = sets.length;
+        } finally {
+            endMark('generator.generate', { count: produced, requested });
         }
-
-        this.syncStrategyFromLegacyToggles();
-        const request = this.getStrategyRequestFromUI();
-        this.data.setStrategyPrefs('generator', request);
-        this.data.save();
-        if ($('#limitConsecutive')?.checked) {
-            request.filters.maxConsecutivePairs = request.filters.maxConsecutivePairs ?? 1;
-        }
-
-        const listEl = $('#genResultList');
-        listEl.innerHTML = '';
-        this.data.state.generated = [];
-        this.engine = new StrategyEngine(this.data.state.winningStats);
-
-        const sets = this.engine.generateMultipleSets(count, request, { fixed, exclude, maxAttempts: 300 });
-        sets.forEach((nums, i) => {
-            this.data.state.generated.push(nums);
-            this.renderResultItem(nums, i, listEl);
-        });
-        endMark('generator.generate', { count: sets.length, requested: count });
     }
 
-    generateCampaign() {
+    async generateCampaign() {
         startMark('generator.campaign');
-        const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
-        const weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
-        const setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
-        const fixed = this.parseInput($('#fixedNums').value);
-        const exclude = this.parseInput($('#excludeNums').value);
-        const request = this.getStrategyRequestFromUI();
-
-        this.engine = new StrategyEngine(this.data.state.winningStats);
-
+        let inserted = 0;
         let totalCreated = 0;
-        const tickets = [];
-        for (let i = 0; i < weeks; i++) {
-            const targetDrawNo = startDraw + i;
-            const sets = this.engine.generateMultipleSets(setsPerWeek, request, {
-                fixed,
-                exclude,
-                maxAttempts: Math.max(240, setsPerWeek * 120)
-            });
-            sets.forEach((numbers) => {
-                tickets.push({
-                    id: this.data.createId('ticket'),
-                    numbers,
-                    targetDrawNo,
-                    source: 'generator',
-                    strategyRequest: request,
-                    memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
-                    createdAt: new Date().toISOString(),
-                    checked: null
+        let weeks = 0;
+        let setsPerWeek = 0;
+        let fallbackRuns = 0;
+
+        try {
+            const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
+            weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
+            setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
+            const fixed = this.parseInput($('#fixedNums').value);
+            const exclude = this.parseInput($('#excludeNums').value);
+            const request = this.getStrategyRequestFromUI();
+
+            this.engine = new StrategyEngine(this.data.state.winningStats);
+
+            const tickets = [];
+            for (let i = 0; i < weeks; i++) {
+                const targetDrawNo = startDraw + i;
+                let sets = [];
+                let fallback = false;
+                startMark('generator.worker');
+                try {
+                    const result = await this.workerClient.generate({
+                        statsData: this.data.state.winningStats,
+                        count: setsPerWeek,
+                        request,
+                        fixed,
+                        exclude,
+                        maxAttempts: Math.max(240, setsPerWeek * 120)
+                    });
+                    sets = Array.isArray(result?.sets) ? result.sets : [];
+                } catch (err) {
+                    fallback = true;
+                    fallbackRuns++;
+                    console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
+                    sets = this.engine.generateMultipleSets(setsPerWeek, request, {
+                        fixed,
+                        exclude,
+                        maxAttempts: Math.max(240, setsPerWeek * 120)
+                    });
+                } finally {
+                    endMark('generator.worker', {
+                        count: sets.length,
+                        requested: setsPerWeek,
+                        fallback,
+                        campaign: true
+                    });
+                }
+
+                sets.forEach((numbers) => {
+                    tickets.push({
+                        id: this.data.createId('ticket'),
+                        numbers,
+                        targetDrawNo,
+                        source: 'generator',
+                        strategyRequest: request,
+                        memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
+                        createdAt: new Date().toISOString(),
+                        checked: null
+                    });
+                    totalCreated++;
                 });
-                totalCreated++;
+            }
+
+            inserted = this.data.addTicketsBulk(tickets, { silent: true });
+            const campaign = this.data.addCampaign({
+                name: `${startDraw}회 시작 ${weeks}주`,
+                startDrawNo: startDraw,
+                weeks,
+                setsPerWeek,
+                strategyRequest: request
             });
+            this.data.save();
+
+            UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
+            if (campaign && this.app.renderDataLists) this.app.renderDataLists();
+        } finally {
+            endMark('generator.campaign', { inserted, totalCreated, weeks, setsPerWeek, fallbackRuns });
         }
-
-        const inserted = this.data.addTicketsBulk(tickets, { silent: true });
-        const campaign = this.data.addCampaign({
-            name: `${startDraw}회 시작 ${weeks}주`,
-            startDrawNo: startDraw,
-            weeks,
-            setsPerWeek,
-            strategyRequest: request
-        });
-        this.data.save();
-
-        UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
-        if (campaign && this.app.renderDataLists) this.app.renderDataLists();
-        endMark('generator.campaign', { inserted, totalCreated, weeks, setsPerWeek });
     }
 
     parseInput(val) {
@@ -400,6 +472,7 @@ export class GeneratorModule {
         if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
             this.data.state.history = this.data.state.history.slice(0, CONFIG.LIMITS.MAX_HIST);
         }
+        this.data.markDirty?.('hist');
         this.data.save();
         UIManager.toast(`${count}개 세트 히스토리 저장 완료`, 'success');
         if (this.app.renderDataLists) this.app.renderDataLists();

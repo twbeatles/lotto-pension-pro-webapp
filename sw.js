@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -10,9 +10,11 @@ const APP_SHELL_ASSETS = [
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
     './assets/backtest.worker.js',
+    './assets/strategy.worker.js',
     './assets/modules/index.js',
     './assets/modules/core/LottoApp.js',
     './assets/modules/core/DataManager.js',
+    './assets/modules/core/StrategyWorkerClient.js',
     './assets/modules/core/StrategyCatalog.js',
     './assets/modules/core/StrategyEngine.js',
     './assets/modules/core/StrategyFilters.js',
@@ -28,8 +30,7 @@ const APP_SHELL_ASSETS = [
     './assets/modules/features/DataIO.js',
     './assets/modules/features/Generator.js',
     './assets/modules/features/QrScanner.js',
-    './assets/modules/features/Stats.js',
-    './data/winning_stats.json'
+    './assets/modules/features/Stats.js'
 ];
 
 self.addEventListener('message', (event) => {

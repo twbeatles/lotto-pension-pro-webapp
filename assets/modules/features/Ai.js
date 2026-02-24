@@ -4,11 +4,13 @@ import { StrategyEngine } from '../core/StrategyEngine.js';
 import { listStrategies, resolveStrategyId, getStrategyMeta, STRATEGY_CATALOG } from '../core/StrategyCatalog.js';
 import { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
 import { endMark, startMark } from '../utils/perf.js';
+import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
 
 export class AiModule {
     constructor(app) {
         this.app = app;
         this.engine = new StrategyEngine(this.app.data.state.winningStats);
+        this.workerClient = this.app.strategyWorker || new StrategyWorkerClient();
         this.lastRequest = null;
         this.lastExplain = [];
         this.outputDelegationBound = false;
@@ -236,15 +238,40 @@ export class AiModule {
         try {
             logs.forEach((msg) => this.appendLog(log, `> ${msg}`));
 
-            this.engine = new StrategyEngine(this.app.data.state.winningStats);
-            const result = this.engine.recommendFromSimulation(request, { setCount: 5 });
-            const results = result.sets;
-            if (!results || results.length === 0) throw new Error('시뮬레이션 결과가 비어 있습니다');
+            let result = null;
+            let results = [];
+            let explanations = [];
+            let fallback = false;
+            startMark('ai.worker');
+            try {
+                result = await this.workerClient.recommend({
+                    statsData: this.app.data.state.winningStats,
+                    request,
+                    setCount: 5
+                });
+                results = Array.isArray(result?.sets) ? result.sets : [];
+                explanations = Array.isArray(result?.explanations) ? result.explanations : [];
+            } catch (err) {
+                fallback = true;
+                console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
+                this.engine = new StrategyEngine(this.app.data.state.winningStats);
+                result = this.engine.recommendFromSimulation(request, { setCount: 5 });
+                results = Array.isArray(result?.sets) ? result.sets : [];
+                explanations = results.map((set) => this.engine.explainSet(set, request));
+            } finally {
+                endMark('ai.worker', { requested: 5, count: results.length, fallback });
+            }
 
-            const explanations = results.map((set) => this.engine.explainSet(set, request));
+            if (!results || results.length === 0) throw new Error('시뮬레이션 결과가 비어 있습니다');
+            if (!explanations.length) {
+                this.engine = new StrategyEngine(this.app.data.state.winningStats);
+                explanations = results.map((set) => this.engine.explainSet(set, request));
+            }
 
             this.appendLog(log, '> 분석 완료. 추천 조합 5개를 생성했습니다.', 'var(--success)');
-            this.appendLog(log, `> 채택된 표본: ${result.simulation.diagnostics.accepted}/${result.simulation.diagnostics.simulationCount}`);
+            const accepted = Number(result?.simulation?.diagnostics?.accepted || 0);
+            const simulationCount = Number(result?.simulation?.diagnostics?.simulationCount || request.params.simulationCount || 0);
+            this.appendLog(log, `> 채택된 표본: ${accepted}/${simulationCount}`);
 
             this.app.data.state.aiResults = results;
             this.lastRequest = request;

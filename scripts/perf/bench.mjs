@@ -155,13 +155,43 @@ function compareWithBaseline(report, baseline) {
     const oldBacktest = Number(baseline?.backtestLike?.totalMs || 0);
     if (!oldGenerate || !oldRecommend || !oldBacktest) return null;
 
-    const pct = (oldV, newV) => Number((((oldV - newV) / oldV) * 100).toFixed(2));
+    const metric = (oldV, newV) => {
+        const deltaMs = Number((newV - oldV).toFixed(2));
+        const slowdownPct = Number((((newV - oldV) / oldV) * 100).toFixed(2));
+        return {
+            baselineMs: Number(oldV.toFixed(2)),
+            currentMs: Number(newV.toFixed(2)),
+            deltaMs,
+            slowdownPct,
+            improvementPct: Number((slowdownPct * -1).toFixed(2))
+        };
+    };
+
     return {
         baselineTimestamp: baseline.timestamp || null,
-        generateAvgMsDeltaPct: pct(oldGenerate, report.generate.avgMs),
-        recommendAvgMsDeltaPct: pct(oldRecommend, report.recommend.avgMs),
-        backtestTotalMsDeltaPct: pct(oldBacktest, report.backtestLike.totalMs)
+        generateAvgMs: metric(oldGenerate, report.generate.avgMs),
+        recommendAvgMs: metric(oldRecommend, report.recommend.avgMs),
+        backtestTotalMs: metric(oldBacktest, report.backtestLike.totalMs)
     };
+}
+
+function buildRegressionChecks(comparison, maxSlowdownPct = 10) {
+    if (!comparison) return [];
+    const checks = [
+        { key: 'generateAvgMs', label: 'generate.avgMs' },
+        { key: 'recommendAvgMs', label: 'recommend.avgMs' },
+        { key: 'backtestTotalMs', label: 'backtestLike.totalMs' }
+    ];
+
+    return checks.map((item) => {
+        const slowdownPct = Number(comparison?.[item.key]?.slowdownPct || 0);
+        return {
+            name: `${item.label}.baseline_slowdown`,
+            slowdownPct,
+            maxAllowedPct: maxSlowdownPct,
+            ok: slowdownPct <= maxSlowdownPct
+        };
+    });
 }
 
 function main() {
@@ -172,12 +202,19 @@ function main() {
     const recommend = runRecommendBench(stats);
     const backtestLike = runBacktestLikeBench(stats);
 
-    const checks = [
+    const thresholdChecks = [
         assertThreshold('generate.avgMs', generate.avgMs, 50),
         assertThreshold('recommend.avgMs', recommend.avgMs, 35),
         assertThreshold('backtestLike.totalMs', backtestLike.totalMs, 7000)
     ];
-    const pass = checks.every((x) => x.ok);
+    const baseline = readBaseline(args.baseline);
+    const comparison = compareWithBaseline({
+        generate,
+        recommend,
+        backtestLike
+    }, baseline);
+    const regressionChecks = buildRegressionChecks(comparison, 10);
+    const pass = [...thresholdChecks, ...regressionChecks].every((x) => x.ok);
 
     const report = {
         timestamp: new Date().toISOString(),
@@ -201,13 +238,17 @@ function main() {
             totalTickets: backtestLike.totalTickets,
             totalMs: Number(backtestLike.totalMs.toFixed(2))
         },
-        thresholds: checks,
+        thresholds: thresholdChecks,
         pass
     };
 
-    const baseline = readBaseline(args.baseline);
-    const comparison = compareWithBaseline(report, baseline);
-    if (comparison) report.comparison = comparison;
+    if (comparison) {
+        report.comparison = comparison;
+        report.regression = {
+            maxAllowedSlowdownPct: 10,
+            checks: regressionChecks
+        };
+    }
 
     if (args.save) {
         const outPath = path.resolve(repoRoot, args.save);

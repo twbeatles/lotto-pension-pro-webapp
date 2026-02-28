@@ -1,6 +1,7 @@
 import { $ } from '../utils/utils.js';
 import { CONFIG } from '../utils/config.js';
 import { UIManager } from '../core/UIManager.js';
+import { buildBackupPayload, normalizeBackupPayload } from '../utils/backup.js';
 
 export class DataIOModule {
     constructor(app) {
@@ -16,20 +17,10 @@ export class DataIOModule {
     }
 
     exportAll() {
-        const payload = {
-            version: 2,
-            exportedAt: new Date().toISOString(),
-            favorites: this.data.state.favorites,
-            history: this.data.state.history,
-            ticketBook: this.data.state.ticketBook,
-            campaigns: this.data.state.campaigns,
-            alertPrefs: this.data.state.alertPrefs,
-            settings: {
-                theme: this.data.state.theme,
-                customProxy: this.data.state.customProxy,
-                strategyPrefs: this.data.state.strategyPrefs
-            }
-        };
+        const payload = buildBackupPayload(this.data.state, {
+            localUpdates: this.data.getLocalUpdates(),
+            strategyPresets: this.data.state.strategyPresets || []
+        });
 
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
@@ -37,25 +28,25 @@ export class DataIOModule {
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        a.download = `로또_프로_백업_v2_${ts}.json`;
+        a.download = `lotto_backup_v3_${ts}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('백업 파일(2버전)을 내보냈습니다.', 'success');
+        UIManager.toast('Backup file (v3) exported.', 'success');
     }
 
     normalizeItems(items) {
         if (!Array.isArray(items)) return [];
         return items
-            .filter(x => x && Array.isArray(x.numbers))
-            .map(x => ({
-                numbers: [...new Set(x.numbers.map(Number).filter(n => n >= 1 && n <= 45))]
+            .filter((x) => x && Array.isArray(x.numbers))
+            .map((x) => ({
+                numbers: [...new Set(x.numbers.map(Number).filter((n) => n >= 1 && n <= 45))]
                     .slice(0, 6)
                     .sort((a, b) => a - b),
                 date: typeof x.date === 'string' ? x.date : new Date().toISOString()
             }))
-            .filter(x => x.numbers.length === 6);
+            .filter((x) => x.numbers.length === 6);
     }
 
     normalizeTicketItems(items) {
@@ -74,13 +65,24 @@ export class DataIOModule {
         return items.map((x) => this.data.normalizeCampaignEntry(x)).filter(Boolean);
     }
 
+    normalizeLocalUpdates(items) {
+        if (!Array.isArray(items)) return [];
+        return items
+            .map((x) => this.data.normalizeDrawItem(x))
+            .filter(Boolean);
+    }
+
+    normalizeStrategyPresets(items) {
+        return this.data.mergeStrategyPresets(items || []);
+    }
+
     mergeByNumbers(existing, incoming) {
-        const seen = new Set(existing.map(x => x.numbers.join(',')));
+        const seen = new Set(existing.map((x) => x.numbers.join(',')));
         const merged = [...existing];
-        incoming.forEach(x => {
-            const k = x.numbers.join(',');
-            if (seen.has(k)) return;
-            seen.add(k);
+        incoming.forEach((x) => {
+            const key = x.numbers.join(',');
+            if (seen.has(key)) return;
+            seen.add(key);
             merged.unshift(x);
         });
         return merged;
@@ -98,6 +100,36 @@ export class DataIOModule {
         return merged;
     }
 
+    mergeLocalUpdates(existing, incoming) {
+        const map = new Map();
+        (existing || []).forEach((item) => {
+            if (!item) return;
+            map.set(Number(item.draw_no), item);
+        });
+        (incoming || []).forEach((item) => {
+            if (!item) return;
+            map.set(Number(item.draw_no), item);
+        });
+        return Array.from(map.values())
+            .filter((x) => Number.isFinite(Number(x?.draw_no)))
+            .sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
+    }
+
+    mergeCampaigns(existing, incoming) {
+        return [...incoming, ...existing]
+            .filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
+    }
+
+    mergeStrategyPresets(existing, incoming) {
+        return this.data.mergeStrategyPresets([...(existing || []), ...(incoming || [])]);
+    }
+
+    syncProxyInput() {
+        const proxyInput = $('#customProxyUrl');
+        if (!proxyInput) return;
+        proxyInput.value = this.data.state.customProxy || '';
+    }
+
     async importAll(e) {
         const input = e.currentTarget;
         const file = input.files?.[0];
@@ -106,56 +138,81 @@ export class DataIOModule {
         try {
             const text = await file.text();
             const json = JSON.parse(text);
-            if (!json || typeof json !== 'object') {
-                UIManager.toast('가져오기 실패: 지원하지 않는 파일 형식입니다.', 'error', 3500);
+            const normalized = normalizeBackupPayload(json);
+            if (!normalized) {
+                UIManager.toast('Import failed: unsupported backup format.', 'error', 3500);
                 return;
             }
 
-            const version = Number(json.version || 1);
-            if (version !== 1 && version !== 2) {
-                UIManager.toast('가져오기 실패: 지원하지 않는 백업 버전입니다.', 'error', 3500);
-                return;
-            }
+            const version = Number(normalized.version || 1);
+            const incomingFav = this.normalizeItems(normalized.favorites);
+            const incomingHist = this.normalizeItems(normalized.history);
+            const incomingTheme = normalized.settings?.theme === 'light' ? 'light' : 'dark';
+            const incomingProxy = typeof normalized.settings?.customProxy === 'string' ? normalized.settings.customProxy : '';
+            const incomingStrategyPrefs = normalized.settings?.strategyPrefs || null;
+            const incomingTickets = this.normalizeTicketItems(normalized.ticketBook);
+            const incomingCampaigns = this.normalizeCampaignItems(normalized.campaigns);
+            const incomingAlertPrefs = this.data.mergeAlertPrefs(normalized.alertPrefs || {});
+            const incomingLocalUpdates = this.normalizeLocalUpdates(normalized.localUpdates);
+            const incomingStrategyPresets = this.normalizeStrategyPresets(normalized.strategyPresets);
 
-            const incomingFav = this.normalizeItems(json.favorites);
-            const incomingHist = this.normalizeItems(json.history);
-            const incomingTheme = json.settings?.theme === 'light' ? 'light' : 'dark';
-            const incomingProxy = typeof json.settings?.customProxy === 'string' ? json.settings.customProxy : '';
-            const incomingStrategyPrefs = json.settings?.strategyPrefs || null;
-
-            const incomingTickets = version >= 2
-                ? this.normalizeTicketItems(json.ticketBook)
-                : [];
-            const incomingCampaigns = version >= 2
-                ? this.normalizeCampaignItems(json.campaigns)
-                : [];
-            const incomingAlertPrefs = version >= 2
-                ? this.data.mergeAlertPrefs(json.alertPrefs || {})
-                : this.data.getDefaultAlertPrefs();
-
-            const merge = confirm(`데이터를 가져옵니다.\n- 즐겨찾기: ${incomingFav.length}개\n- 히스토리: ${incomingHist.length}개\n- 티켓북: ${incomingTickets.length}개\n- 캠페인: ${incomingCampaigns.length}개\n\n기존 데이터와 병합하시겠습니까? (확인=병합, 취소=덮어쓰기)`);
+            const merge = confirm(
+                `Import backup v${version}.\n` +
+                `- Favorites: ${incomingFav.length}\n` +
+                `- History: ${incomingHist.length}\n` +
+                `- Tickets: ${incomingTickets.length}\n` +
+                `- Campaigns: ${incomingCampaigns.length}\n` +
+                `- Local updates: ${incomingLocalUpdates.length}\n` +
+                `- Strategy presets: ${incomingStrategyPresets.length}\n\n` +
+                'OK = merge, Cancel = overwrite.'
+            );
 
             if (merge) {
+                const incomingTotal = incomingFav.length
+                    + incomingHist.length
+                    + incomingTickets.length
+                    + incomingCampaigns.length
+                    + incomingLocalUpdates.length
+                    + incomingStrategyPresets.length;
+
                 const beforeFav = this.data.state.favorites.length;
                 const beforeHist = this.data.state.history.length;
                 const beforeTickets = this.data.state.ticketBook.length;
                 const beforeCampaigns = this.data.state.campaigns.length;
+                const beforeUpdates = this.data.getLocalUpdates().length;
+                const beforePresets = (this.data.state.strategyPresets || []).length;
 
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
                 this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
                 this.data.state.ticketBook = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
-                this.data.state.campaigns = [...incomingCampaigns, ...this.data.state.campaigns]
-                    .filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
+                this.data.state.campaigns = this.mergeCampaigns(this.data.state.campaigns, incomingCampaigns);
                 this.data.state.alertPrefs = this.data.mergeAlertPrefs({
                     ...this.data.state.alertPrefs,
                     ...incomingAlertPrefs
                 });
 
+                const mergedUpdates = this.mergeLocalUpdates(this.data.getLocalUpdates(), incomingLocalUpdates);
+                this.data.setLocalUpdates(mergedUpdates);
+
+                this.data.state.strategyPresets = this.mergeStrategyPresets(
+                    this.data.state.strategyPresets,
+                    incomingStrategyPresets
+                );
+
                 const newFav = this.data.state.favorites.length - beforeFav;
                 const newHist = this.data.state.history.length - beforeHist;
                 const newTickets = this.data.state.ticketBook.length - beforeTickets;
                 const newCampaigns = this.data.state.campaigns.length - beforeCampaigns;
-                UIManager.toast(`병합 완료 (신규: 즐겨찾기 ${newFav}, 히스토리 ${newHist}, 티켓 ${newTickets}, 캠페인 ${newCampaigns})`, 'success');
+                const newUpdates = mergedUpdates.length - beforeUpdates;
+                const newPresets = this.data.state.strategyPresets.length - beforePresets;
+                const addedTotal = newFav + newHist + newTickets + newCampaigns + newUpdates + newPresets;
+                const duplicateTotal = Math.max(incomingTotal - addedTotal, 0);
+                const skippedTotal = 0;
+
+                UIManager.toast(
+                    `Merge complete (added:${addedTotal}, duplicate:${duplicateTotal}, skipped:${skippedTotal})`,
+                    'success'
+                );
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
@@ -164,11 +221,17 @@ export class DataIOModule {
                 this.data.state.alertPrefs = incomingAlertPrefs;
                 this.data.state.theme = incomingTheme;
                 this.data.state.customProxy = incomingProxy;
+                this.data.state.strategyPresets = incomingStrategyPresets;
                 if (incomingStrategyPrefs) {
                     this.data.state.strategyPrefs = this.data.mergeStrategyPrefs(incomingStrategyPrefs);
                 }
+                this.data.setLocalUpdates(incomingLocalUpdates);
+                this.syncProxyInput();
                 this.app.applyTheme();
-                UIManager.toast(`덮어쓰기 완료 (즐겨찾기 ${incomingFav.length}, 히스토리 ${incomingHist.length}, 티켓 ${incomingTickets.length})`, 'success');
+                UIManager.toast(
+                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + incomingCampaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:0)`,
+                    'success'
+                );
             }
 
             if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
@@ -179,8 +242,8 @@ export class DataIOModule {
             this.data.save();
             this.app.renderDataLists();
         } catch (err) {
-            console.error('가져오기 실패', err);
-            UIManager.toast('가져오기 실패: 백업 파일 해석 오류', 'error', 3500);
+            console.error('Import failed', err);
+            UIManager.toast('Import failed: invalid backup file.', 'error', 3500);
         } finally {
             input.value = '';
         }

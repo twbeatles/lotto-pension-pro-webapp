@@ -35,6 +35,7 @@ function toCanonicalRequest(input) {
                 wheelPoolSize: null,
                 wheelGuarantee: null,
                 seed: null,
+                payoutMode: 'hybrid_dynamic_first',
                 ...(input.params || {})
             },
             filters: {
@@ -51,7 +52,8 @@ function toCanonicalRequest(input) {
             lookbackWindow: 20,
             wheelPoolSize: null,
             wheelGuarantee: null,
-            seed: null
+            seed: null,
+            payoutMode: 'hybrid_dynamic_first'
         },
         filters: {}
     };
@@ -67,9 +69,10 @@ function getStrategyRequests(payload = {}) {
     return [toCanonicalRequest(payload.strategy || 'random')];
 }
 
-function createReport(strategyId) {
+function createReport(strategyId, payoutMode = 'hybrid_dynamic_first') {
     return {
         strategyId,
+        payoutMode,
         draws: 0,
         tickets: 0,
         cost: 0,
@@ -111,7 +114,7 @@ function postWinsIfNeeded(winsBuffer, force = false) {
     winsBuffer.length = 0;
 }
 
-async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests }) {
+async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests, payoutMode }) {
     const { allStats, drawMap, drawIndex } = prepareStatsIndex(statsData);
     const requests = getStrategyRequests({ strategyRequest, strategy, strategyRequests });
     const normalizationEngine = new StrategyEngine(allStats);
@@ -154,7 +157,8 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
         const req = requests[reqIndex];
         const normalizedRequest = normalizationEngine.normalizeRequest(req);
         const filterEvaluator = createFilterEvaluator(normalizedRequest.filters);
-        const report = createReport(req.strategyId);
+        const mode = normalizedRequest?.params?.payoutMode || payoutMode || 'hybrid_dynamic_first';
+        const report = createReport(req.strategyId, mode);
         const winsBuffer = [];
 
         for (let currentDraw = Number(startDraw); currentDraw <= Number(endDraw); currentDraw++) {
@@ -184,7 +188,7 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
             }
 
             for (const ticket of tickets) {
-                const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult);
+                const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult, { payoutMode: mode });
                 report.tickets++;
                 report.cost += 1000;
                 report.totalPrize += prize;
@@ -193,6 +197,7 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
                 if (rank >= 1 && rank <= 5) {
                     winsBuffer.push({
                         strategyId: req.strategyId,
+                        payoutMode: mode,
                         drawNo: currentDraw,
                         rank,
                         prize,

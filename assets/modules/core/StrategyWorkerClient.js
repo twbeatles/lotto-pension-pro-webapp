@@ -1,4 +1,7 @@
 const DEFAULT_TIMEOUT_MS = 8000;
+const MAX_RETRY = 1;
+const GENERATE_TIMEOUT_CAP_MS = 32000;
+const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 
 function createRequestId(prefix = 'strategy') {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -17,14 +20,14 @@ export class StrategyWorkerClient {
     ensureWorker() {
         if (this.worker) return this.worker;
         if (typeof Worker === 'undefined') {
-            throw new Error('Worker API를 지원하지 않는 환경입니다.');
+            throw new Error('Worker API is not available in this environment.');
         }
 
         const url = new URL('../../strategy.worker.js', import.meta.url);
         this.worker = new Worker(url, { type: 'module' });
         this.worker.onmessage = (event) => this.handleMessage(event.data || {});
         this.worker.onerror = (err) => {
-            const message = err?.message || '전략 워커 오류가 발생했습니다.';
+            const message = err?.message || 'Strategy worker runtime error.';
             this.rejectAllPending(message);
         };
         return this.worker;
@@ -42,7 +45,7 @@ export class StrategyWorkerClient {
 
         if (message.type === 'ERROR') {
             const payload = message.payload || {};
-            task.reject(new Error(payload.message || '전략 워커 실행 오류'));
+            task.reject(new Error(payload.message || 'Strategy worker request failed.'));
             return;
         }
 
@@ -63,14 +66,39 @@ export class StrategyWorkerClient {
         this.warmupPromise = null;
     }
 
-    post(type, payload, timeoutMs = DEFAULT_TIMEOUT_MS) {
+    resetWorker() {
+        if (!this.worker) return;
+        this.worker.terminate();
+        this.worker = null;
+    }
+
+    resolveTimeoutMs(type, payload) {
+        if (type === 'GENERATE') {
+            const count = Math.max(1, Number(payload?.count || 1));
+            return Math.min(DEFAULT_TIMEOUT_MS + (count * 120), GENERATE_TIMEOUT_CAP_MS);
+        }
+        if (type === 'RECOMMEND') {
+            const simulationCount = Math.max(1000, Number(payload?.request?.params?.simulationCount || 5000));
+            return Math.min(DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200), RECOMMEND_TIMEOUT_CAP_MS);
+        }
+        return DEFAULT_TIMEOUT_MS;
+    }
+
+    createTimeoutError(timeoutMs, final = false) {
+        const code = final ? 'WORKER_TIMEOUT_FINAL' : 'WORKER_TIMEOUT';
+        const err = new Error(`[${code}] strategy worker timeout (${timeoutMs}ms)`);
+        err.code = code;
+        return err;
+    }
+
+    postOnce(type, payload, timeoutMs) {
         const worker = this.ensureWorker();
         const requestId = createRequestId(type.toLowerCase());
 
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.pending.delete(requestId);
-                reject(new Error(`전략 워커 타임아웃(${timeoutMs}ms)`));
+                reject(this.createTimeoutError(timeoutMs, false));
             }, timeoutMs);
 
             this.pending.set(requestId, { resolve, reject, timer });
@@ -78,9 +106,34 @@ export class StrategyWorkerClient {
         });
     }
 
+    async post(type, payload, timeoutMs = null, retries = MAX_RETRY) {
+        const resolvedTimeoutMs = timeoutMs ?? this.resolveTimeoutMs(type, payload);
+        let attempt = 0;
+
+        while (attempt <= retries) {
+            try {
+                return await this.postOnce(type, payload, resolvedTimeoutMs);
+            } catch (err) {
+                const isTimeout = err?.code === 'WORKER_TIMEOUT';
+                if (isTimeout && attempt < retries) {
+                    console.warn(`[WORKER_TIMEOUT_RETRY] ${type} attempt=${attempt + 1}/${retries + 1}`);
+                    this.resetWorker();
+                    attempt++;
+                    continue;
+                }
+                if (isTimeout) {
+                    throw this.createTimeoutError(resolvedTimeoutMs, true);
+                }
+                throw err;
+            }
+        }
+
+        throw this.createTimeoutError(resolvedTimeoutMs, true);
+    }
+
     warmup() {
         if (this.warmupPromise) return this.warmupPromise;
-        this.warmupPromise = this.post('WARMUP', {}, 3000)
+        this.warmupPromise = this.post('WARMUP', {}, 3000, 0)
             .catch(() => null)
             .finally(() => {
                 this.warmupPromise = null;
@@ -89,10 +142,11 @@ export class StrategyWorkerClient {
     }
 
     async generate(payload) {
-        return this.post('GENERATE', payload, DEFAULT_TIMEOUT_MS);
+        return this.post('GENERATE', payload);
     }
 
     async recommend(payload) {
-        return this.post('RECOMMEND', payload, DEFAULT_TIMEOUT_MS);
+        return this.post('RECOMMEND', payload);
     }
 }
+

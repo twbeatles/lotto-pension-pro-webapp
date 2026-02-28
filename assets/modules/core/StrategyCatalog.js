@@ -3,7 +3,8 @@ const BASE_PARAMS = Object.freeze({
     lookbackWindow: 20,
     wheelPoolSize: null,
     wheelGuarantee: null,
-    seed: null
+    seed: null,
+    payoutMode: 'hybrid_dynamic_first'
 });
 
 const EMPTY_FILTERS = Object.freeze({

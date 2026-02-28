@@ -1,4 +1,4 @@
-import { CONFIG } from '../utils/config.js';
+﻿import { CONFIG } from '../utils/config.js';
 import { $, estimateLatestDrawKST } from '../utils/utils.js';
 import { UIManager } from './UIManager.js';
 import { createDefaultStrategyRequest } from './StrategyCatalog.js';
@@ -31,7 +31,8 @@ export class DataManager {
             settings: false,
             ticketBook: false,
             campaigns: false,
-            alerts: false
+            alerts: false,
+            presets: false
         };
         this.localUpdatesCache = null;
         this.RANGE_CHUNK_SIZE = 40;
@@ -107,6 +108,41 @@ export class DataManager {
         };
     }
 
+    mergeStrategyPresets(raw) {
+        const list = Array.isArray(raw) ? raw : [];
+        const byId = new Map();
+        const byScopeName = new Set();
+
+        list.forEach((item, index) => {
+            if (!item || typeof item !== 'object') return;
+            const scope = typeof item.scope === 'string' ? item.scope.trim() : '';
+            const name = typeof item.name === 'string' ? item.name.trim() : '';
+            const request = item.request && typeof item.request === 'object'
+                ? item.request
+                : (item.strategyRequest && typeof item.strategyRequest === 'object' ? item.strategyRequest : null);
+            if (!scope || !name || !request) return;
+
+            const id = (typeof item.id === 'string' && item.id.trim())
+                ? item.id.trim()
+                : `preset_${scope}_${name}_${index}`;
+            const scopeNameKey = `${scope}|${name}`;
+            if (byId.has(id) || byScopeName.has(scopeNameKey)) return;
+
+            byId.set(id, {
+                id,
+                scope,
+                name,
+                description: typeof item.description === 'string' ? item.description.slice(0, 200) : '',
+                request,
+                createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+                updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString()
+            });
+            byScopeName.add(scopeNameKey);
+        });
+
+        return Array.from(byId.values());
+    }
+
     setStrategyPrefs(scope, request) {
         if (!['generator', 'ai', 'backtest'].includes(scope)) return;
         this.state.strategyPrefs[scope] = {
@@ -150,6 +186,7 @@ export class DataManager {
         localStorage.setItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
         localStorage.setItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
         localStorage.setItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
+        localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
     }
 
     getSettingsPayload() {
@@ -210,9 +247,9 @@ export class DataManager {
         try {
             const params = new URLSearchParams(window.location.search);
             const proxyUrl = (params.get('proxyUrl') || '').trim();
-            if (proxyUrl) return { source: 'URL 쿼리(proxyUrl)', url: proxyUrl };
+            if (proxyUrl) return { source: 'URL 荑쇰━(proxyUrl)', url: proxyUrl };
             const proxy = (params.get('proxy') || '').trim();
-            if (proxy) return { source: 'URL 쿼리(proxy)', url: proxy };
+            if (proxy) return { source: 'URL 荑쇰━(proxy)', url: proxy };
         } catch (e) {
             return null;
         }
@@ -224,12 +261,12 @@ export class DataManager {
         if (queryProxy) return queryProxy;
 
         const legacyProxy = this.readLegacyProxyUrl();
-        if (legacyProxy) return { source: '이전 설정(v1)', url: legacyProxy };
+        if (legacyProxy) return { source: '?댁쟾 ?ㅼ젙(v1)', url: legacyProxy };
 
         const v2Proxy = (this.state.customProxy || '').trim();
-        if (v2Proxy) return { source: '앱 설정(v2)', url: v2Proxy };
+        if (v2Proxy) return { source: '???ㅼ젙(v2)', url: v2Proxy };
 
-        return { source: '공용 기본값', url: '' };
+        return { source: '怨듭슜 湲곕낯媛?, url: '' };
     }
 
     safeJsonParse(raw, fallback) {
@@ -296,7 +333,7 @@ export class DataManager {
 
         return {
             id: raw.id || this.createId('campaign'),
-            name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : '캠페인',
+            name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : '罹좏럹??,
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
             weeks: Math.max(1, Math.floor(weeks)),
             setsPerWeek: Math.max(1, Math.floor(setsPerWeek)),
@@ -340,6 +377,7 @@ export class DataManager {
             const rawTickets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]', []);
             const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', []);
             const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {});
+            const rawStrategyPresets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]', []);
 
             const normalizedTickets = Array.isArray(rawTickets)
                 ? rawTickets.map((x) => this.normalizeTicketEntry(x)).filter(Boolean)
@@ -348,15 +386,17 @@ export class DataManager {
                 ? rawCampaigns.map((x) => this.normalizeCampaignEntry(x)).filter(Boolean)
                 : [];
             const normalizedAlertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
+            const normalizedStrategyPresets = this.mergeStrategyPresets(rawStrategyPresets);
 
             if (Array.isArray(rawTickets) && normalizedTickets.length !== rawTickets.length) needsPersist = true;
             if (Array.isArray(rawCampaigns) && normalizedCampaigns.length !== rawCampaigns.length) needsPersist = true;
             if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
+            if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length) needsPersist = true;
 
             this.state.ticketBook = normalizedTickets;
             this.state.campaigns = normalizedCampaigns;
             this.state.alertPrefs = normalizedAlertPrefs;
-            this.state.strategyPresets = [];
+            this.state.strategyPresets = normalizedStrategyPresets;
             this.localUpdatesCache = null;
             this.getLocalUpdates();
 
@@ -383,8 +423,8 @@ export class DataManager {
                 this._dirtyKeys[key] = false;
             });
         } catch (e) {
-            console.error('데이터 불러오기 실패', e);
-            UIManager.toast('데이터 로드 실패', 'error');
+            console.error('?곗씠??遺덈윭?ㅺ린 ?ㅽ뙣', e);
+            UIManager.toast('?곗씠??濡쒕뱶 ?ㅽ뙣', 'error');
         }
     }
 
@@ -429,8 +469,12 @@ export class DataManager {
                     localStorage.setItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
                     this._dirtyKeys.alerts = false;
                 }
+                if (this._dirtyKeys.presets) {
+                    localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
+                    this._dirtyKeys.presets = false;
+                }
             } catch (e) {
-                console.error('데이터 저장 실패', e);
+                console.error('?곗씠??????ㅽ뙣', e);
             }
         };
 
@@ -498,7 +542,7 @@ export class DataManager {
         if (inserted > 0) {
             this.markDirty('ticketBook');
             this.save();
-            if (!options.silent) UIManager.toast(`${inserted}개 티켓 추가 완료`, 'success');
+            if (!options.silent) UIManager.toast(`${inserted}媛??곗폆 異붽? ?꾨즺`, 'success');
         }
         return inserted;
     }
@@ -584,38 +628,39 @@ export class DataManager {
         return 0;
     }
 
-    async notifyTicketSettlement(summary = {}) {
+    async notifyTicketSettlement(summary = {}, options = {}) {
         const prefs = this.state.alertPrefs || this.getDefaultAlertPrefs();
         if (!prefs.notifyOnNewResult || !summary.settled) return;
+        const requestSystemNotification = options.requestSystemNotification !== false;
 
         const alertKey = `${summary.latestDrawNo || 0}:${summary.settled}:${summary.wins}`;
         if (alertKey === this.lastTicketAlertKey) return;
         this.lastTicketAlertKey = alertKey;
 
         const message = summary.wins > 0
-            ? `티켓 정산 완료: ${summary.settled}개 중 당첨 ${summary.wins}개`
-            : `티켓 정산 완료: ${summary.settled}개`;
+            ? `?곗폆 ?뺤궛 ?꾨즺: ${summary.settled}媛?以??뱀꺼 ${summary.wins}媛?
+            : `?곗폆 ?뺤궛 ?꾨즺: ${summary.settled}媛?;
 
         if (prefs.enableInApp) {
             UIManager.toast(message, summary.wins > 0 ? 'success' : 'info', 3500);
         }
 
-        if (prefs.enableSystemNotification && typeof Notification !== 'undefined') {
+        if (requestSystemNotification && prefs.enableSystemNotification && typeof Notification !== 'undefined') {
             try {
                 let permission = Notification.permission;
                 if (permission === 'default') {
                     permission = await Notification.requestPermission();
                 }
                 if (permission === 'granted') {
-                    new Notification('로또 프로 티켓 정산', { body: message });
+                    new Notification('濡쒕삉 ?꾨줈 ?곗폆 ?뺤궛', { body: message });
                 }
             } catch (e) {
-                console.warn('시스템 알림 전송 실패', e);
+                console.warn('?쒖뒪???뚮┝ ?꾩넚 ?ㅽ뙣', e);
             }
         }
     }
 
-    async settlePendingTickets({ silent = true } = {}) {
+    async settlePendingTickets({ silent = true, requestSystemNotification = true } = {}) {
         if (!this.state.ticketBook.length || !this.state.winningStats.length) {
             return { settled: 0, wins: 0, latestDrawNo: this.state.winningStats?.[0]?.draw_no || 0 };
         }
@@ -645,7 +690,12 @@ export class DataManager {
         if (settled > 0) {
             this.markDirty('ticketBook');
             this.save();
-            if (!silent) await this.notifyTicketSettlement({ settled, wins, latestDrawNo });
+            if (!silent) {
+                await this.notifyTicketSettlement(
+                    { settled, wins, latestDrawNo },
+                    { requestSystemNotification }
+                );
+            }
         }
 
         return { settled, wins, latestDrawNo };
@@ -723,6 +773,34 @@ export class DataManager {
         return this.state.analytics || this.buildAnalyticsCache();
     }
 
+    createSyncProfile(options = {}) {
+        const trigger = String(options?.trigger || '');
+        if (trigger === 'idle') {
+            return {
+                trigger,
+                silent: true,
+                settleSilent: true,
+                toast: false,
+                requestSystemNotification: false
+            };
+        }
+        return {
+            trigger: trigger === 'refresh' ? 'refresh' : 'manual',
+            silent: false,
+            settleSilent: false,
+            toast: true,
+            requestSystemNotification: true
+        };
+    }
+
+    logSync(code, message, meta = null) {
+        if (meta && typeof meta === 'object') {
+            console.log(`[${code}] ${message}`, meta);
+            return;
+        }
+        console.log(`[${code}] ${message}`);
+    }
+
     async fetchWinningStats(options = {}) {
         const statusEl = $('#syncStatus');
         const notifyTicketSettle = options.notifyTicketSettle !== false;
@@ -734,7 +812,7 @@ export class DataManager {
         };
 
         try {
-            updateStatus('로컬 확인 중', 'var(--warning)');
+            updateStatus('濡쒖뺄 ?뺤씤 以?, 'var(--warning)');
 
             const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -764,14 +842,14 @@ export class DataManager {
             const estNo = estimateLatestDrawKST();
 
             if (latestNo > 0 && estNo > 0 && latestNo < estNo) {
-                updateStatus(`업데이트 가능 (+${estNo - latestNo})`, 'var(--warning)');
+                updateStatus(`?낅뜲?댄듃 媛??(+${estNo - latestNo})`, 'var(--warning)');
             } else {
-                updateStatus('최신', 'var(--success)');
+                updateStatus('理쒖떊', 'var(--success)');
             }
             return true;
         } catch (e) {
-            console.warn('당첨 데이터 조회 실패', e);
-            updateStatus('오프라인', 'var(--danger)');
+            console.warn('?뱀꺼 ?곗씠??議고쉶 ?ㅽ뙣', e);
+            updateStatus('?ㅽ봽?쇱씤', 'var(--danger)');
             return false;
         }
     }
@@ -803,11 +881,12 @@ export class DataManager {
                 ? payload.missing.map((x) => Number(x)).filter(Number.isFinite)
                 : [];
             if (normalized.length) {
-                log(`⚡ range 동기화 성공: ${fromNo}~${toNo} (${normalized.length}개)`);
+                log(`??range ?숆린???깃났: ${fromNo}~${toNo} (${normalized.length}媛?`);
             }
             return { items: normalized, missing, failed: false };
         } catch (e) {
-            log(`ℹ️ range 동기화 실패(${fromNo}~${toNo}): ${e.message}`);
+            this.logSync('SYNC_RANGE_FAIL', `Range fetch failed ${fromNo}-${toNo}`, { message: e.message });
+            log(`?뱄툘 range ?숆린???ㅽ뙣(${fromNo}~${toNo}): ${e.message}`);
             return { items: [], missing: [], failed: true };
         }
     }
@@ -839,32 +918,42 @@ export class DataManager {
         return normalized;
     }
 
-    async fetchOneDraw(drawNo, proxyConfig) {
+    async fetchOneDraw(drawNo, proxyConfig, log = () => {}) {
         const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${drawNo}`;
-        const urls = [];
+        const internalUrls = [];
+        const externalUrls = [];
         const customProxy = proxyConfig?.url || '';
 
         if (customProxy) {
             if (customProxy.includes('{draw_no}')) {
-                urls.push(customProxy.replace('{draw_no}', String(drawNo)));
+                internalUrls.push(customProxy.replace('{draw_no}', String(drawNo)));
             } else if (customProxy.includes('/proxy/latest')) {
                 if (customProxy.includes('draw_no=')) {
-                    urls.push(customProxy.replace(/draw_no=\d*/i, `draw_no=${drawNo}`));
+                    internalUrls.push(customProxy.replace(/draw_no=\d*/i, `draw_no=${drawNo}`));
                 } else {
                     const delim = customProxy.includes('?') ? '&' : '?';
-                    urls.push(`${customProxy}${delim}draw_no=${drawNo}`);
+                    internalUrls.push(`${customProxy}${delim}draw_no=${drawNo}`);
                 }
             } else if (customProxy.includes('{url}')) {
-                urls.push(customProxy.replace('{url}', encodeURIComponent(targetUrl)));
+                internalUrls.push(customProxy.replace('{url}', encodeURIComponent(targetUrl)));
             } else {
-                urls.push(`${customProxy}${encodeURIComponent(targetUrl)}`);
+                internalUrls.push(`${customProxy}${encodeURIComponent(targetUrl)}`);
             }
+        } else {
+            internalUrls.push(`proxy/latest?draw_no=${drawNo}`);
         }
 
-        urls.push(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        urls.push(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+        externalUrls.push(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+        externalUrls.push(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
 
+        const urls = [...internalUrls, ...externalUrls];
         for (const fetchUrl of urls) {
+            const isExternalFallback = externalUrls.includes(fetchUrl);
+            if (isExternalFallback) {
+                this.logSync('SYNC_FALLBACK_EXTERNAL', `Using external fallback for draw ${drawNo}`, { fetchUrl });
+                log(`fallback(external): draw ${drawNo}`);
+            }
+
             try {
                 const res = await this.fetchWithTimeout(fetchUrl);
                 if (!res.ok) continue;
@@ -882,7 +971,7 @@ export class DataManager {
                     : (inner?.data?.[0] ? this.normalizeDrawItem(inner.data[0]) : this.normalizeDrawItem(inner));
                 if (candidate) return candidate;
             } catch (e) {
-                continue;
+                this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, { fetchUrl, message: e.message });
             }
         }
         return null;
@@ -947,17 +1036,17 @@ export class DataManager {
         if (!sorted.length) return [];
 
         const results = await this.runWithConcurrency(sorted, this.FALLBACK_FETCH_CONCURRENCY, async (drawNo) => {
-            log(`📡 ${drawNo}회차 데이터 요청 중... (fallback)`);
-            let item = await this.fetchOneDraw(drawNo, proxyConfig);
+            log(`?뱻 ${drawNo}?뚯감 ?곗씠???붿껌 以?.. (fallback)`);
+            let item = await this.fetchOneDraw(drawNo, proxyConfig, log);
             if (!item) {
                 await new Promise((resolve) => setTimeout(resolve, 180));
-                item = await this.fetchOneDraw(drawNo, proxyConfig);
+                item = await this.fetchOneDraw(drawNo, proxyConfig, log);
             }
             if (item) {
-                log(`✨ ${drawNo}회차 확보 완료! (${item.date})`);
+                log(`??${drawNo}?뚯감 ?뺣낫 ?꾨즺! (${item.date})`);
                 return item;
             }
-            log(`⚠️ ${drawNo}회차 데이터 확인 실패 (서버 응답 없음 or 아직 추첨 전)`);
+            log(`?좑툘 ${drawNo}?뚯감 ?곗씠???뺤씤 ?ㅽ뙣 (?쒕쾭 ?묐떟 ?놁쓬 or ?꾩쭅 異붿꺼 ??`);
             return null;
         });
 
@@ -966,7 +1055,8 @@ export class DataManager {
 
     async fetchLatestFromAPI(options = {}) {
         if (typeof options === 'boolean') options = { silent: options };
-        const silent = Boolean(options.silent);
+        const profile = this.createSyncProfile(options);
+        const silent = profile.silent;
         const logEl = $('#syncLog');
         const btn = $('#syncDataBtn');
         if (logEl && !silent) {
@@ -993,12 +1083,12 @@ export class DataManager {
             logFlushTimer = setTimeout(flushLog, 120);
         };
 
-        const log = (msg) => {
+        const log = (msg, code = 'SYNC_INFO', meta = null) => {
             if (logEl && !silent) {
                 logBuffer.push(msg);
                 scheduleFlush();
             }
-            console.log(`[동기화] ${msg}`);
+            this.logSync(code, msg, meta);
         };
 
         if (btn) btn.disabled = true;
@@ -1008,13 +1098,16 @@ export class DataManager {
             const estNo = estimateLatestDrawKST();
 
             if (latestKnown >= estNo) {
-                log('✅ 이미 최신 데이터입니다.');
-                if (!silent) UIManager.toast('이미 최신 데이터입니다.', 'info');
-                await this.settlePendingTickets({ silent: false });
+                log('Already up to date.', 'SYNC_UP_TO_DATE');
+                if (profile.toast) UIManager.toast('?대? 理쒖떊 ?곗씠?곗엯?덈떎.', 'info');
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
                 return;
             }
 
-            log(`🔍 최신 회차 검색: ${latestKnown + 1} ~ ${estNo}`);
+            log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
 
             const proxyInput = $('#customProxyUrl');
             if (proxyInput) {
@@ -1026,13 +1119,14 @@ export class DataManager {
                 }
             }
             const proxyConfig = this.resolveProxyConfig();
-            log(`🔗 프록시 소스: ${proxyConfig.source}`);
+            log(`Proxy source: ${proxyConfig.source}`, 'SYNC_PROXY_SOURCE');
 
             const newItems = [];
             const fetched = new Set();
             if (!proxyConfig?.url) {
-                log('ℹ️ range 동기화 미사용: 프록시 주소가 설정되지 않았습니다.');
+                log('No custom proxy configured. Using fallback chain.', 'SYNC_PROXY_NOT_CONFIGURED');
             }
+
             const chunkResult = await this.fetchRangeChunkedFromProxy(latestKnown + 1, estNo, proxyConfig, log);
             (chunkResult.items || []).forEach((item) => {
                 if (!item || fetched.has(item.draw_no)) return;
@@ -1063,18 +1157,25 @@ export class DataManager {
                 const unique = Array.from(new Map(merged.map(item => [item.draw_no, item])).values());
                 this.setLocalUpdates(unique);
 
-                log(`💾 ${updatedCount}개 회차 정보 저장 완료.`);
-                await this.fetchWinningStats();
+                log(`Applied ${updatedCount} draw updates.`, 'SYNC_APPLIED', { updatedCount });
+                await this.fetchWinningStats({ notifyTicketSettle: false });
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
                 await this.app?.refreshCurrentRoute();
-                UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
+                if (profile.toast) UIManager.toast(`${updatedCount}媛??뚯감 ?낅뜲?댄듃 ?꾨즺`, 'success');
             } else {
-                log('ℹ️ 업데이트된 데이터가 없습니다.');
-                await this.settlePendingTickets({ silent: false });
+                log('No new draw data found.', 'SYNC_NO_UPDATE');
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
             }
 
         } catch (e) {
-            log(`❌ 오류 발생: ${e.message}`);
-            UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
+            log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
+            if (profile.toast) UIManager.toast('?숆린??以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
         } finally {
             if (logFlushTimer) {
                 clearTimeout(logFlushTimer);
@@ -1088,13 +1189,13 @@ export class DataManager {
     addToFavorites(nums) {
         const key = nums.join(',');
         if (this.state.favorites.some(f => f.numbers.join(',') === key)) {
-            UIManager.toast('이미 즐겨찾기에 있습니다.', 'warning');
+            UIManager.toast('?대? 利먭꺼李얘린???덉뒿?덈떎.', 'warning');
             return false;
         }
         this.state.favorites.unshift({ numbers: nums, date: new Date().toISOString() });
         this.markDirty('fav');
         this.save();
-        UIManager.toast('즐겨찾기 저장 완료', 'success');
+        UIManager.toast('利먭꺼李얘린 ????꾨즺', 'success');
         return true;
     }
 
@@ -1110,3 +1211,4 @@ export class DataManager {
         this.save();
     }
 }
+

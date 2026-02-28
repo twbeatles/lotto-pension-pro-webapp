@@ -28,7 +28,7 @@
   - 네트워크가 없을 때도 기본 기능 사용 가능
   - 백그라운드 최신 데이터 동기화
   - 홈 화면 설치 지원
-- **데이터 백업/복원**: 2버전 백업 파일 지원, 이전 버전 호환, 중복 제거 처리
+- **데이터 백업/복원**: 백업 v1/v2/v3 가져오기 지원, v3(`localUpdates`, `strategyPresets`) 내보내기 지원
 - **프록시 지원**: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` → `lotto_webapp_settings_v1.proxyLatestUrl` → `lotto_pro_settings_v2.customProxy` → 공용 기본값
 
@@ -42,7 +42,7 @@ graph LR
 ```
 
 - **화면/로직**: 바닐라 자바스크립트(ES 모듈) + CSS 변수 (빌드 단계 없음)
-- **배포**: GitHub Actions → GitHub Pages
+- **배포**: 정적 호스팅(GitHub Pages 호환)
 - **데이터**: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소(favorites/history/ticketBook/campaign/alertPrefs)
 - **서비스 워커**: 같은 출처 리소스 중심 캐시 전략 적용
 
@@ -50,7 +50,6 @@ graph LR
 
 ```text
 lotto-webapp/
-├── .github/workflows/       # GitHub Pages 자동 배포
 ├── assets/                  # 정적 리소스(CSS, JS, 이미지)
 │   ├── modules/             # 자바스크립트 모듈
 │   │   ├── core/            # 앱/데이터/전략/UI 핵심
@@ -62,9 +61,25 @@ lotto-webapp/
 ├── data/                    # 정적 데이터
 │   └── winning_stats.json   # 로또 당첨 이력
 ├── proxy/                   # 프록시 워커 예시
+├── scripts/                 # 로컬 점검 스크립트(perf/smoke)
 ├── index.html               # 앱 진입점
 ├── manifest.json            # 웹앱 설치 설정
 └── sw.js                    # 서비스 워커
+```
+
+## 🤖 AI 핸드오프 기준 파일명
+- 표준 문서: `claude.md`
+- 호환 별칭: `cladue.md` (오탈자 호환용 안내 파일)
+- 보조 문서: `gemini.md`
+
+## 🧪 로컬 스모크 테스트
+```bash
+node scripts/smoke/smoke.mjs
+```
+
+성능 회귀를 함께 확인하려면:
+```bash
+node scripts/perf/bench.mjs
 ```
 
 ## 📝 라이선스

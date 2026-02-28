@@ -495,6 +495,13 @@
                                 <label for="btSeed">난수 시드 (선택)</label>
                                 <input type="number" id="btSeed" class="input-field" placeholder="예: 2026">
                             </div>
+                            <div class="input-group">
+                                <label for="btPayoutMode">상금 계산 모드</label>
+                                <select id="btPayoutMode" class="input-field">
+                                    <option value="hybrid_dynamic_first" selected>Hybrid (1등 동적 + 2~5등 고정)</option>
+                                    <option value="fast_fixed">Fast (1~5등 고정)</option>
+                                </select>
+                            </div>
                             <div class="input-group strategy-range">
                                 <label>홀수 개수</label>
                                 <div class="range-inputs">
@@ -532,9 +539,14 @@
                                 <input type="number" id="btEndDigitUnique" class="input-field" min="1" max="6">
                             </div>
                         </div>
-                        <button id="runBacktest" class="btn primary full-width">
-                            <i class="ph-bold ph-play"></i> 시뮬레이션 실행
-                        </button>
+                        <div class="bt-action-row">
+                            <button id="runBacktest" class="btn primary full-width">
+                                <i class="ph-bold ph-play"></i> 시뮬레이션 실행
+                            </button>
+                            <button id="stopBacktest" class="btn ghost full-width" disabled>
+                                <i class="ph ph-stop"></i> 중지
+                            </button>
+                        </div>
                     </div>
                     <div class="card glass">
                         <div class="card-header">
@@ -545,6 +557,7 @@
                             <li>실행 대기중...</li>
                         </ul>
                         <p id="btProgressMeta" class="subtitle bt-progress-meta" aria-live="polite"></p>
+                        <p id="btPayoutNotice" class="subtitle bt-payout-note" aria-live="polite"></p>
                         <button id="btExportCsv" class="btn ghost sm" style="margin-top:10px;">
                             <i class="ph ph-file-csv"></i> 비교 파일 저장
                         </button>

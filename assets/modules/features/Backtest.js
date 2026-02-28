@@ -1,4 +1,4 @@
-import { $ } from '../utils/utils.js';
+﻿import { $ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
 import { getStrategyMeta, listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 import { endMark, startMark } from '../utils/perf.js';
@@ -14,6 +14,9 @@ export class BacktestModule {
         this.lastProgressAt = 0;
         this.winRowsBuffer = [];
         this.winFlushRaf = 0;
+        this.isRunning = false;
+        this.currentPayoutMode = 'hybrid_dynamic_first';
+        this.runButtonOriginal = '';
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
@@ -21,6 +24,7 @@ export class BacktestModule {
 
     bindEvents() {
         $('#runBacktest')?.addEventListener('click', () => this.run());
+        $('#stopBacktest')?.addEventListener('click', () => this.stop());
         $('#btShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
         $('#btExportCsv')?.addEventListener('click', () => this.exportComparisonCsv());
         $('#btCompareMode')?.addEventListener('change', () => this.toggleCompareMode());
@@ -38,7 +42,7 @@ export class BacktestModule {
 
     resetUI() {
         const sum = $('#btSummaryList');
-        if (sum) sum.innerHTML = '<li>실행 대기 중...</li>';
+        if (sum) sum.innerHTML = '<li>?ㅽ뻾 ?湲?以?..</li>';
 
         const tbody = $('#btResultTable tbody');
         if (tbody) tbody.innerHTML = '';
@@ -48,11 +52,14 @@ export class BacktestModule {
         if (winner) winner.textContent = '-';
         this.setProgressStatus('');
         this.lastComparisons = [];
+        this.currentPayoutMode = this.readPayoutMode();
         this.winRowsBuffer = [];
         if (this.winFlushRaf && typeof cancelAnimationFrame === 'function') {
             cancelAnimationFrame(this.winFlushRaf);
         }
         this.winFlushRaf = 0;
+        const notice = $('#btPayoutNotice');
+        if (notice) notice.textContent = '';
     }
 
     setProgressStatus(text) {
@@ -61,12 +68,44 @@ export class BacktestModule {
         el.textContent = text || '';
     }
 
+    setRunningState(nextRunning) {
+        this.isRunning = Boolean(nextRunning);
+        const runBtn = $('#runBacktest');
+        const stopBtn = $('#stopBacktest');
+        if (runBtn) runBtn.disabled = this.isRunning;
+        if (stopBtn) stopBtn.disabled = !this.isRunning;
+    }
+
     cleanupWorker() {
         if (!this.worker) return;
         this.worker.onmessage = null;
         this.worker.onerror = null;
         this.worker.terminate();
         this.worker = null;
+    }
+
+    stop() {
+        if (!this.worker) return;
+        this.cleanupWorker();
+        if (this.winFlushRaf && typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(this.winFlushRaf);
+        }
+        this.winFlushRaf = 0;
+        this.winRowsBuffer = [];
+        this.setRunningState(false);
+        this.setProgressStatus('중지됨');
+        const runBtn = $('#runBacktest');
+        if (runBtn && this.runButtonOriginal) runBtn.innerHTML = this.runButtonOriginal;
+        UIManager.toast('Backtest stopped.', 'info');
+    }
+
+    readPayoutMode() {
+        const mode = String($('#btPayoutMode')?.value || 'hybrid_dynamic_first');
+        return mode === 'fast_fixed' ? 'fast_fixed' : 'hybrid_dynamic_first';
+    }
+
+    getPayoutModeLabel(mode) {
+        return mode === 'fast_fixed' ? 'Fast fixed' : 'Hybrid dynamic-first';
     }
 
     getStrategyLabel(strategyId) {
@@ -78,18 +117,27 @@ export class BacktestModule {
         if (!el || !stats) return;
         const pct = (n, d) => d ? ((n / d) * 100).toFixed(2) : '0.00';
         const roi = stats.cost > 0 ? (((stats.totalPrize - stats.cost) / stats.cost) * 100) : 0;
+        const payoutMode = stats.payoutMode || this.currentPayoutMode || 'hybrid_dynamic_first';
+        const payoutLabel = this.getPayoutModeLabel(payoutMode);
+        const notice = $('#btPayoutNotice');
+        if (notice) {
+            notice.textContent = payoutMode === 'fast_fixed'
+                ? 'Using fixed simulated prizes for all ranks.'
+                : 'Hybrid mode: rank-1 uses draw prize_amount, ranks 2-5 use fixed simulated values.';
+        }
 
         el.innerHTML = `
-      <li><b>전략</b>: ${stats.strategyId ? this.getStrategyLabel(stats.strategyId) : '-'}</li>
-      <li><b>검증 회차 수</b>: ${stats.draws}</li>
-      <li><b>총 티켓 수</b>: ${stats.tickets}</li>
-      <li><b>총 구매금액</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
-      <li><b>총 당첨금</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>
-      <li><b>손익</b>: ${(Number(stats.totalPrize || 0) - Number(stats.cost || 0)).toLocaleString()}</li>
-      <li><b>수익률</b>: ${roi.toFixed(2)}%</li>
-      <li><b>1등</b>: ${stats.counts[1]} / <b>2등</b>: ${stats.counts[2]} / <b>3등</b>: ${stats.counts[3]}</li>
-      <li><b>4등</b>: ${stats.counts[4]} / <b>5등</b>: ${stats.counts[5]} / <b>미당첨</b>: ${stats.counts[0]}</li>
-      <li><b>당첨률 (5등 이상)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
+      <li><b>Strategy</b>: ${stats.strategyId ? this.getStrategyLabel(stats.strategyId) : '-'}</li>
+      <li><b>Payout Mode</b>: ${payoutLabel}</li>
+      <li><b>Draws</b>: ${stats.draws}</li>
+      <li><b>Tickets</b>: ${stats.tickets}</li>
+      <li><b>Total Cost</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
+      <li><b>Total Prize</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>
+      <li><b>Net</b>: ${(Number(stats.totalPrize || 0) - Number(stats.cost || 0)).toLocaleString()}</li>
+      <li><b>ROI</b>: ${roi.toFixed(2)}%</li>
+      <li><b>Rank 1</b>: ${stats.counts[1]} / <b>Rank 2</b>: ${stats.counts[2]} / <b>Rank 3</b>: ${stats.counts[3]}</li>
+      <li><b>Rank 4</b>: ${stats.counts[4]} / <b>Rank 5</b>: ${stats.counts[5]} / <b>No Win</b>: ${stats.counts[0]}</li>
+      <li><b>Hit Rate (>=5)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
     `;
     }
 
@@ -173,17 +221,17 @@ export class BacktestModule {
         strategies.forEach((item) => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            opt.textContent = `${item.label} (?깃툒 ${item.tier})${item.experimental ? ' [?ㅽ뿕]' : ''}`;
             select.appendChild(opt);
         });
 
         const legacy = [
-            ['random', '이전 모델: 무작위'],
-            ['ensemble', '이전 모델: 앙상블'],
-            ['balance', '이전 모델: 균형'],
-            ['cold', '이전 모델: 저빈도'],
-            ['hot', '이전 모델: 고빈도'],
-            ['statistical', '이전 모델: 통계']
+            ['random', '?댁쟾 紐⑤뜽: 臾댁옉??],
+            ['ensemble', '?댁쟾 紐⑤뜽: ?숈긽釉?],
+            ['balance', '?댁쟾 紐⑤뜽: 洹좏삎'],
+            ['cold', '?댁쟾 紐⑤뜽: ?鍮덈룄'],
+            ['hot', '?댁쟾 紐⑤뜽: 怨좊퉰??],
+            ['statistical', '?댁쟾 紐⑤뜽: ?듦퀎']
         ];
         legacy.forEach(([id, label]) => {
             const opt = document.createElement('option');
@@ -239,7 +287,8 @@ export class BacktestModule {
                 lookbackWindow: this.readNumber('btLookbackWindow', 20),
                 wheelPoolSize: null,
                 wheelGuarantee: null,
-                seed: this.readNumber('btSeed', null)
+                seed: this.readNumber('btSeed', null),
+                payoutMode: this.readPayoutMode()
             },
             filters: {
                 oddEven: this.range('btOddMin', 'btOddMax'),
@@ -278,6 +327,8 @@ export class BacktestModule {
         assign('btSimulationCount', saved.params?.simulationCount);
         assign('btLookbackWindow', saved.params?.lookbackWindow);
         assign('btSeed', saved.params?.seed ?? '');
+        assign('btPayoutMode', saved.params?.payoutMode || 'hybrid_dynamic_first');
+        this.currentPayoutMode = this.readPayoutMode();
 
         const pair = (minId, maxId, values) => {
             const minEl = $(`#${minId}`);
@@ -304,11 +355,11 @@ export class BacktestModule {
 
     exportComparisonCsv() {
         if (!this.lastComparisons.length) {
-            UIManager.toast('내보낼 비교 결과가 없습니다.', 'warning');
+            UIManager.toast('?대낫??鍮꾧탳 寃곌낵媛 ?놁뒿?덈떎.', 'warning');
             return;
         }
 
-        const header = ['전략ID', '수익률', '당첨률', '검증회차', '티켓수', '총구매금액', '총당첨금', '당첨건수'];
+        const header = ['?꾨왂ID', '?섏씡瑜?, '?뱀꺼瑜?, '寃利앺쉶李?, '?곗폆??, '珥앷뎄留ㅺ툑??, '珥앸떦泥④툑', '?뱀꺼嫄댁닔'];
         const lines = [header.join(',')];
         this.lastComparisons.forEach((x) => {
             lines.push([
@@ -327,46 +378,54 @@ export class BacktestModule {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `시뮬레이션_전략비교_${Date.now()}.csv`;
+        a.download = `?쒕??덉씠???꾨왂鍮꾧탳_${Date.now()}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('비교 표 파일을 내보냈습니다.', 'success');
+        UIManager.toast('鍮꾧탳 ???뚯씪???대낫?덉뒿?덈떎.', 'success');
     }
 
     async run() {
+        if (this.isRunning) return;
         if (!this.data.state.winningStats.length) {
-            return UIManager.toast('당첨 데이터가 없습니다.', 'error', 3500);
+            return UIManager.toast('?뱀꺼 ?곗씠?곌? ?놁뒿?덈떎.', 'error', 3500);
         }
         startMark('backtest.run');
 
         const start = Number($('#btStart')?.value);
         const end = Number($('#btEnd')?.value);
         let qty = Number($('#btQty')?.value);
+        this.currentPayoutMode = this.readPayoutMode();
         const strategyRequests = this.collectStrategyRequests();
         this.data.save();
 
         if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
             endMark('backtest.run', { invalidRange: true });
-            return UIManager.toast('회차 범위를 확인해주세요. (시작 <= 종료)', 'warning', 2500);
+            return UIManager.toast('?뚯감 踰붿쐞瑜??뺤씤?댁＜?몄슂. (?쒖옉 <= 醫낅즺)', 'warning', 2500);
         }
         if (!Number.isFinite(qty) || qty < 1) qty = 1;
         qty = Math.min(qty, this.MAX_QTY);
 
-        const btn = $('#runBacktest');
-        const original = btn?.innerHTML;
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 실행 중...';
+        const runBtn = $('#runBacktest');
+        this.runButtonOriginal = runBtn?.innerHTML || '';
+        if (runBtn) {
+            runBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> ?ㅽ뻾 以?..';
         }
 
         this.resetUI();
-        this.setProgressStatus('실행 중...');
+        this.setProgressStatus('?ㅽ뻾 以?..');
         this.lastProgressAt = 0;
+        this.setRunningState(true);
 
         this.cleanupWorker();
         this.worker = new Worker('assets/backtest.worker.js', { type: 'module' });
+
+        const restoreRunButton = () => {
+            const btn = $('#runBacktest');
+            if (!btn) return;
+            btn.innerHTML = this.runButtonOriginal || btn.innerHTML;
+        };
 
         this.worker.onmessage = (e) => {
             const { type, payload } = e.data;
@@ -378,9 +437,9 @@ export class BacktestModule {
                     if (now - this.lastProgressAt >= 250) {
                         this.lastProgressAt = now;
                         const etaMs = Number(payload.etaMs || 0);
-                        const etaText = etaMs > 0 ? `, 예상 ${(etaMs / 1000).toFixed(1)}초` : '';
+                        const etaText = etaMs > 0 ? `, ?덉긽 ${(etaMs / 1000).toFixed(1)}珥?` : '';
                         const percent = Number(payload.percent || 0).toFixed(1);
-                        this.setProgressStatus(`진행률 ${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
+                        this.setProgressStatus(`吏꾪뻾瑜?${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
                     }
                 }
             }
@@ -392,26 +451,23 @@ export class BacktestModule {
             if (type === 'DONE') {
                 this.flushWinRows();
                 if (payload?.comparisons) this.renderComparisons(payload.comparisons, payload?.diagnostics || {});
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = original;
-                }
-                this.setProgressStatus(`완료 ${(Number(payload?.diagnostics?.elapsedMs || 0) / 1000).toFixed(2)}초`);
-                UIManager.toast('시뮬레이션이 완료되었습니다.', 'success');
+                this.setRunningState(false);
+                restoreRunButton();
+                this.setProgressStatus(`?꾨즺 ${(Number(payload?.diagnostics?.elapsedMs || 0) / 1000).toFixed(2)}珥?`);
+                UIManager.toast('?쒕??덉씠?섏씠 ?꾨즺?섏뿀?듬땲??', 'success');
                 this.cleanupWorker();
                 endMark('backtest.run', {
                     processedDraws: payload?.diagnostics?.processedDraws || 0,
-                    totalDraws: payload?.diagnostics?.totalDraws || 0
+                    totalDraws: payload?.diagnostics?.totalDraws || 0,
+                    payoutMode: this.currentPayoutMode
                 });
             }
 
             if (type === 'ERROR') {
-                UIManager.toast(payload?.message || '시뮬레이션 실행 중 오류가 발생했습니다.', 'error');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = original;
-                }
-                this.setProgressStatus('실패');
+                UIManager.toast(payload?.message || '?쒕??덉씠???ㅽ뻾 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+                this.setRunningState(false);
+                restoreRunButton();
+                this.setProgressStatus('?ㅽ뙣');
                 this.cleanupWorker();
                 endMark('backtest.run', { error: true });
             }
@@ -419,12 +475,10 @@ export class BacktestModule {
 
         this.worker.onerror = (err) => {
             console.error(err);
-            UIManager.toast('예상치 못한 오류가 발생했습니다.', 'error');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = original;
-            }
-            this.setProgressStatus('실패');
+            UIManager.toast('?덉긽移?紐삵븳 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+            this.setRunningState(false);
+            restoreRunButton();
+            this.setProgressStatus('?ㅽ뙣');
             this.cleanupWorker();
             endMark('backtest.run', { error: true });
         };
@@ -436,10 +490,13 @@ export class BacktestModule {
                 startDraw: start,
                 endDraw: end,
                 qty,
+                payoutMode: this.currentPayoutMode,
                 strategyRequests
             }
         });
 
-        UIManager.toast('백그라운드에서 시뮬레이션을 시작했습니다.');
+        UIManager.toast('諛깃렇?쇱슫?쒖뿉???쒕??덉씠?섏쓣 ?쒖옉?덉뒿?덈떎.');
     }
 }
+
+

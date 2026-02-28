@@ -1,4 +1,5 @@
-/gemini.md
-/claude.md
+# AI handoff docs are intentionally versioned:
+# - claude.md
+# - gemini.md
+# - cladue.md (compat alias)
 /backup
-/.github

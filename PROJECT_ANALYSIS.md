@@ -73,22 +73,31 @@
 ## 6) 상태 모델 및 저장
 - `DataManager.state` 주요 필드:
   - `winningStats`, `analytics`, `favorites`, `history`, `generated`, `aiResults`
+  - `strategyPresets`
   - `strategyPrefs` (`generator`, `ai`, `backtest` 별 기본 전략 요청 저장)
 - `lotto_pro_settings_v2`에 `strategyPrefs` 확장 저장
+- `lotto_pro_strategy_presets_v1`에 전략 프리셋 저장
 - `theme`, `customProxy` 저장 로직 유지
 
 ## 7) 시뮬레이션 워커 메시지 계약
 - 요청
 ```js
-START.payload = { statsData, startDraw, endDraw, qty, strategyRequest }
+START.payload = {
+  statsData,
+  startDraw,
+  endDraw,
+  qty,
+  payoutMode,
+  strategyRequests | strategyRequest | strategy
+}
 ```
 - 진행
 ```js
-PROGRESS.payload = { summary, processedDraws, totalDraws, etaMs, strategyId }
+PROGRESS.payload = { summary, processedDraws, totalDraws, etaMs, percent, strategyProgress }
 ```
 - 완료
 ```js
-DONE.payload = { summary, diagnostics }
+DONE.payload = { summary, comparisons, diagnostics }
 ```
 - 오류
 ```js

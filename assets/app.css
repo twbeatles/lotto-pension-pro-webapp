@@ -1975,6 +1975,23 @@ input:checked+.slider:before {
   color: var(--text-muted);
 }
 
+.bt-payout-note {
+  min-height: 1.2em;
+  margin-top: 6px;
+  margin-bottom: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.bt-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.bt-action-row .btn.full-width {
+  flex: 1;
+}
+
 #btResultTable thead th,
 #btCompareTable thead th {
   position: sticky;
@@ -2741,6 +2758,12 @@ input:checked+.slider:before {
 
 [data-theme="light"] .guide-tier-badge {
   background: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 640px) {
+  .bt-action-row {
+    flex-direction: column;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

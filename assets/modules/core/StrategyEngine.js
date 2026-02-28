@@ -22,6 +22,18 @@ function xorshift32(seed) {
     };
 }
 
+const FIXED_PRIZE_BY_RANK = Object.freeze({
+    1: 2000000000,
+    2: 50000000,
+    3: 1500000,
+    4: 50000,
+    5: 5000
+});
+
+function resolvePayoutMode(value) {
+    return value === 'fast_fixed' ? 'fast_fixed' : 'hybrid_dynamic_first';
+}
+
 export class StrategyEngine {
     constructor(winningStats = []) {
         this.data = [...(winningStats || [])]
@@ -49,6 +61,7 @@ export class StrategyEngine {
         params.seed = (raw.params && raw.params.seed !== undefined && raw.params.seed !== null && raw.params.seed !== '')
             ? Math.floor(Number(raw.params.seed))
             : null;
+        params.payoutMode = resolvePayoutMode(params.payoutMode);
 
         const filters = sanitizeFilters({
             ...base.filters,
@@ -288,16 +301,20 @@ export class StrategyEngine {
         return 0;
     }
 
-    evaluateTicketSet(ticket, draw) {
+    evaluateTicketSet(ticket, draw, options = {}) {
         if (!Array.isArray(ticket) || ticket.length !== 6) return { rank: 0, prize: 0 };
         if (!draw || !Array.isArray(draw.numbers)) return { rank: 0, prize: 0 };
         const rank = this.rankTicket(ticket, draw.numbers, draw.bonus);
-        if (rank === 1) return { rank, prize: 2000000000 };
-        if (rank === 2) return { rank, prize: 50000000 };
-        if (rank === 3) return { rank, prize: 1500000 };
-        if (rank === 4) return { rank, prize: 50000 };
-        if (rank === 5) return { rank, prize: 5000 };
-        return { rank: 0, prize: 0 };
+        if (rank < 1 || rank > 5) return { rank: 0, prize: 0 };
+
+        const payoutMode = resolvePayoutMode(options.payoutMode);
+        if (rank === 1 && payoutMode === 'hybrid_dynamic_first') {
+            const dynamicPrize = Number(draw.prize_amount || 0);
+            if (Number.isFinite(dynamicPrize) && dynamicPrize > 0) {
+                return { rank, prize: dynamicPrize };
+            }
+        }
+        return { rank, prize: FIXED_PRIZE_BY_RANK[rank] || 0 };
     }
 
     sampleWithConstraints(weights, fixed = [], exclude = [], rng = Math.random) {

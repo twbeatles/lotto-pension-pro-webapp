@@ -24,7 +24,7 @@ export class GeneratorModule {
         if (btn) btn.addEventListener('click', () => {
             this.generate().catch((err) => {
                 console.error(err);
-                UIManager.toast('踰덊샇 ?앹꽦 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+                UIManager.toast('번호 생성 중 오류가 발생했습니다.', 'error');
             });
         });
 
@@ -43,7 +43,7 @@ export class GeneratorModule {
         if (genCampaignBtn) genCampaignBtn.addEventListener('click', () => {
             this.generateCampaign().catch((err) => {
                 console.error(err);
-                UIManager.toast('罹좏럹???앹꽦 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+                UIManager.toast('캠페인 생성 중 오류가 발생했습니다.', 'error');
             });
         });
         const genCampaignResetBtn = $('#resetCampaignBtn');
@@ -90,9 +90,9 @@ export class GeneratorModule {
                         strategyRequest: request
                     });
                     if (!added) {
-                        UIManager.toast('?대? ?곗폆遺곸뿉 ?덈뒗 踰덊샇?낅땲??', 'warning');
+                        UIManager.toast('이미 티켓북에 있는 번호입니다.', 'warning');
                     } else {
-                        UIManager.toast(`${targetDrawNo}?뚯감 ?곗폆遺곸뿉 異붽??섏뿀?듬땲??`, 'success');
+                        UIManager.toast(`${targetDrawNo}회차 티켓북에 추가했습니다.`, 'success');
                         if (this.app.renderDataLists) this.app.renderDataLists();
                     }
                     return;
@@ -102,10 +102,10 @@ export class GeneratorModule {
                     try {
                         btn.disabled = true;
                         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
-                        await UIManager.saveAsImage(itemEl, `濡쒕삉_?앹꽦_${idx + 1}.png`);
+                        await UIManager.saveAsImage(itemEl, `로또_생성_${idx + 1}.png`);
                     } catch (err) {
                         console.error(err);
-                        UIManager.toast('?대?吏 ????ㅽ뙣', 'error');
+                        UIManager.toast('이미지 저장 실패', 'error');
                     } finally {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
@@ -160,7 +160,7 @@ export class GeneratorModule {
         if ($('#genStrategySelect')) $('#genStrategySelect').value = 'ensemble_weighted';
         this.data.setStrategyPrefs('generator', this.getStrategyRequestFromUI());
         this.data.save();
-        UIManager.toast('?듭뀡??珥덇린?붾릺?덉뒿?덈떎.');
+        UIManager.toast('옵션이 초기화되었습니다.');
     }
 
     populateStrategySelect() {
@@ -172,9 +172,9 @@ export class GeneratorModule {
         select.innerHTML = '';
         items.forEach((item) => {
             const opt = document.createElement('option');
-            const exp = item.experimental ? ' [?ㅽ뿕]' : '';
+            const exp = item.experimental ? ' [실험]' : '';
             opt.value = item.id;
-            opt.textContent = `${item.label} (?깃툒 ${item.tier})${exp}`;
+            opt.textContent = `${item.label} (등급 ${item.tier})${exp}`;
             select.appendChild(opt);
         });
         const resolved = resolveStrategyId(current);
@@ -304,7 +304,7 @@ export class GeneratorModule {
             const exclude = this.parseInput($('#excludeNums').value);
 
             if (fixed.length > CONFIG.LIMITS.MAX_FIXED) {
-                UIManager.toast(`怨좎젙?섎뒗 理쒕? ${CONFIG.LIMITS.MAX_FIXED}媛쒖엯?덈떎.`, 'error');
+                UIManager.toast(`고정수는 최대 ${CONFIG.LIMITS.MAX_FIXED}개입니다.`, 'error');
                 return;
             }
 
@@ -339,7 +339,7 @@ export class GeneratorModule {
                 if (this.isWorkerTimeoutError(err)) {
                     UIManager.toast('Worker timeout. Falling back to main-thread generation.', 'warning');
                 }
-                console.warn('?꾨왂 ?뚯빱 ?ъ슜 ?ㅽ뙣, 硫붿씤 ?ㅻ젅?쒕줈 ?泥댄빀?덈떎.', err);
+                console.warn('전략 워커 사용 실패, 메인 스레드로 대체합니다.', err);
                 sets = this.engine.generateMultipleSets(requested, request, { fixed, exclude, maxAttempts: 300 });
             } finally {
                 endMark('generator.worker', { count: sets.length, requested, fallback });
@@ -395,7 +395,7 @@ export class GeneratorModule {
                     if (this.isWorkerTimeoutError(err)) {
                         UIManager.toast('Worker timeout in campaign mode. Falling back to main-thread.', 'warning');
                     }
-                    console.warn('罹좏럹???앹꽦 ?뚯빱 ?ㅽ뙣, 硫붿씤 ?ㅻ젅?쒕줈 ?泥댄빀?덈떎.', err);
+                    console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
                     sets = this.engine.generateMultipleSets(setsPerWeek, request, {
                         fixed,
                         exclude,
@@ -417,7 +417,7 @@ export class GeneratorModule {
                         targetDrawNo,
                         source: 'generator',
                         strategyRequest: request,
-                        memo: `罹좏럹??${startDraw}-${startDraw + weeks - 1}`,
+                        memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
                         createdAt: new Date().toISOString(),
                         checked: null
                     });
@@ -435,7 +435,7 @@ export class GeneratorModule {
             });
             this.data.save();
 
-            UIManager.toast(`罹좏럹???앹꽦 ?꾨즺: ${inserted}/${totalCreated}媛??곗폆 異붽?`, inserted > 0 ? 'success' : 'warning');
+            UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
             if (campaign && this.app.renderDataLists) this.app.renderDataLists();
         } finally {
             endMark('generator.campaign', { inserted, totalCreated, weeks, setsPerWeek, fallbackRuns });
@@ -453,11 +453,11 @@ export class GeneratorModule {
         el.innerHTML = `
             <div class="result-balls ball-container">${UIManager.renderBalls(nums)}</div>
             <div class="result-actions">
-                <button class="icon-btn" data-action="copy" aria-label="踰덊샇 蹂듭궗" title="蹂듭궗"><i class="ph ph-copy"></i></button>
-                <button class="icon-btn" data-action="qr" aria-label="?먯븣 肄붾뱶 蹂닿린" title="?먯븣"><i class="ph ph-qr-code"></i></button>
-                <button class="icon-btn" data-action="ticket" aria-label="?곗폆遺?異붽?" title="?곗폆遺?><i class="ph ph-ticket"></i></button>
-                <button class="icon-btn" data-action="share" aria-label="?대?吏 ??? title="?대?吏 ???><i class="ph ph-download-simple"></i></button>
-                <button class="icon-btn" data-action="fav" aria-label="利먭꺼李얘린 異붽?" title="利먭꺼李얘린"><i class="ph ph-star"></i></button>
+                <button class="icon-btn" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
+                <button class="icon-btn" data-action="qr" aria-label="큐알 코드 보기" title="큐알"><i class="ph ph-qr-code"></i></button>
+                <button class="icon-btn" data-action="ticket" aria-label="티켓북 추가" title="티켓북"><i class="ph ph-ticket"></i></button>
+                <button class="icon-btn" data-action="share" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
+                <button class="icon-btn" data-action="fav" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
             </div>
         `;
 
@@ -484,7 +484,7 @@ export class GeneratorModule {
         }
         this.data.markDirty?.('hist');
         this.data.save();
-        UIManager.toast(`${count}媛??명듃 ?덉뒪?좊━ ????꾨즺`, 'success');
+        UIManager.toast(`${count}개 세트 히스토리 저장 완료`, 'success');
         if (this.app.renderDataLists) this.app.renderDataLists();
     }
 }

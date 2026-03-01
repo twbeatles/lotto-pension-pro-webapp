@@ -121,3 +121,14 @@
   - `assets/modules/features/Generator.js`
   문자열 리터럴 복구
 - 추가 조치: 캐시 잔존 대응을 위해 `sw.js` `CACHE_VERSION`을 `v7`로 상향
+
+## 13) 2026-03-01 인코딩 정리 2차
+- 증상: 화면은 동작하지만 일부 한국어 문구가 `理쒖떊` 형태로 깨져 보임.
+- 범위: 메인 상태 영역, 생성/AI/백테스트 탭의 토스트/라벨/로그/접근성 문구.
+- 조치:
+  - `assets/modules/core/DataManager.js`
+  - `assets/modules/features/Generator.js`
+  - `assets/modules/features/Backtest.js`
+  - `assets/modules/features/Ai.js`
+  내 사용자 노출 문자열을 일괄 정규화.
+- 검증: 로컬 스모크 + 실제 브라우저 탭 이동/생성/상태 텍스트 확인.

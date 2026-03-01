@@ -213,6 +213,11 @@ node scripts/perf/bench.mjs
   - `assets/modules/features/Generator.js`
 - 추가 조치: `sw.js` `CACHE_VERSION`을 `v7`로 상향
 
+## 9-1) 2026-03-01 인코딩 정리(2차)
+- 증상: 기능은 동작하지만 일부 한글 문구가 `理쒖떊`처럼 깨져 보임.
+- 조치: `DataManager/Generator/Backtest/Ai`의 사용자 노출 문자열(토스트, 상태 텍스트, 버튼 라벨, 로그 문구, 접근성 라벨) 정규화.
+- 운영 참고: 배포 후 같은 증상이 보이면 서비스워커 캐시를 먼저 의심하고 강력 새로고침/스토리지 초기화로 확인.
+
 ---
 
 ## 10) 회귀 점검 포인트

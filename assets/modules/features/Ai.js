@@ -51,7 +51,7 @@ export class AiModule {
         strategies.forEach((item) => {
             const option = document.createElement('option');
             option.value = item.id;
-            option.textContent = `${item.label} (?깃툒 ${item.tier})${item.experimental ? ' [?ㅽ뿕]' : ''}`;
+            option.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
             select.appendChild(option);
         });
 
@@ -181,9 +181,9 @@ export class AiModule {
                 targetDrawNo,
                 strategyRequest: this.lastRequest || this.buildStrategyRequest()
             });
-            if (!added) UIManager.toast('?대? ?곗폆遺곸뿉 ?덈뒗 踰덊샇?낅땲??', 'warning');
+            if (!added) UIManager.toast('이미 티켓북에 있는 번호입니다.', 'warning');
             else {
-                UIManager.toast(`${targetDrawNo}?뚯감 ?곗폆???곗폆遺곸뿉 異붽??섏뿀?듬땲??`, 'success');
+                UIManager.toast(`${targetDrawNo}회차 티켓을 티켓북에 추가했습니다.`, 'success');
                 if (this.app.renderDataLists) this.app.renderDataLists();
             }
         });
@@ -207,13 +207,13 @@ export class AiModule {
         const aiContainer = $('#page-ai .ai-container');
 
         if (!this.app.data.state.winningStats.length) {
-            UIManager.toast('?뱀꺼 ?곗씠?곌? ?놁뒿?덈떎. ?곗씠???뚯씪???뺤씤?댁＜?몄슂.', 'error', 3000);
+            UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
             return;
         }
 
         startMark('ai.run');
         btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 遺꾩꽍 以?..';
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
         out.innerHTML = '';
         log.innerHTML = '';
         aiContainer?.classList.add('fx-active');
@@ -223,20 +223,20 @@ export class AiModule {
         const strategy = request.strategyId;
 
         const strategyNames = {
-            ensemble_weighted: '?숈긽釉?媛以묒튂',
-            stat_ac_sum: '?뺣? ?듦퀎(蹂듭옟???⑷퀎)',
-            balance_oe_hl: '?吏?+ 怨좎? 洹좏삎',
-            cold_frequency: '?鍮덈룄 諛섎벑',
-            hot_frequency: '怨좊퉰??異붿쥌'
+            ensemble_weighted: '앙상블 가중치',
+            stat_ac_sum: '정밀 통계(복잡도/합계)',
+            balance_oe_hl: '홀짝/고저 밸런스',
+            cold_frequency: '저빈도 반등',
+            hot_frequency: '고빈도 추종'
         };
-        const selectedModelName = strategyNames[strategy] || getStrategyMeta(strategy).label || '?좏깮 ?꾨왂';
+        const selectedModelName = strategyNames[strategy] || getStrategyMeta(strategy).label || '선택 전략';
 
         const logs = [
-            `?좏깮 紐⑤뜽: ${selectedModelName}`,
-            '鍮덈룄/理쒓렐???⑦꽩 ?좏샇瑜?遺꾩꽍?⑸땲??..',
-            '?꾨왂 媛以묒튂瑜?諛섏쁺?⑸땲??..',
-            `紐ы뀒移대?濡쒕? ?ㅽ뻾?⑸땲??(${request.params.simulationCount.toLocaleString()}???쒕낯)...`,
-            '理쒖쟻 ?꾨낫 議고빀??異붿텧?⑸땲??..'
+            `선택 모델: ${selectedModelName}`,
+            '빈도, 최근성, 출현 간격 신호를 분석합니다...',
+            '전략 가중치를 반영합니다...',
+            `몬테카를로를 실행합니다(${request.params.simulationCount.toLocaleString()}회 샘플)...`,
+            '최적 후보 조합을 추출합니다...'
         ];
 
         try {
@@ -260,7 +260,7 @@ export class AiModule {
                 if (this.isWorkerTimeoutError(err)) {
                     UIManager.toast('Worker timeout. Falling back to main-thread recommendation.', 'warning');
                 }
-                console.warn('AI 異붿쿇 ?뚯빱 ?ㅽ뙣, 硫붿씤 ?ㅻ젅?쒕줈 ?泥댄빀?덈떎.', err);
+                console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
                 result = this.engine.recommendFromSimulation(request, { setCount: 5 });
                 results = Array.isArray(result?.sets) ? result.sets : [];
@@ -269,28 +269,28 @@ export class AiModule {
                 endMark('ai.worker', { requested: 5, count: results.length, fallback });
             }
 
-            if (!results || results.length === 0) throw new Error('?쒕??덉씠??寃곌낵媛 鍮꾩뼱 ?덉뒿?덈떎');
+            if (!results || results.length === 0) throw new Error('시뮬레이션 결과가 비어 있습니다');
             if (!explanations.length) {
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
                 explanations = results.map((set) => this.engine.explainSet(set, request));
             }
 
-            this.appendLog(log, '> 遺꾩꽍 ?꾨즺. 異붿쿇 議고빀 5媛쒕? ?앹꽦?덉뒿?덈떎.', 'var(--success)');
+            this.appendLog(log, '> 분석 완료. 추천 조합 5개를 생성했습니다.', 'var(--success)');
             const accepted = Number(result?.simulation?.diagnostics?.accepted || 0);
             const simulationCount = Number(result?.simulation?.diagnostics?.simulationCount || request.params.simulationCount || 0);
-            this.appendLog(log, `> 梨꾪깮???쒕낯: ${accepted}/${simulationCount}`);
+            this.appendLog(log, `> 채택된 샘플: ${accepted}/${simulationCount}`);
 
             this.app.data.state.aiResults = results;
             this.lastRequest = request;
             this.lastExplain = explanations;
             this.renderResults(results, explanations);
         } catch (e) {
-            console.error('?멸났吏??遺꾩꽍 ?ㅻ쪟:', e);
-            this.appendLog(log, `> ?ㅻ쪟: ${e.message}`, 'var(--danger)');
-            UIManager.toast('遺꾩꽍 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+            console.error('인공지능 분석 오류:', e);
+            this.appendLog(log, `> 오류: ${e.message}`, 'var(--danger)');
+            UIManager.toast('분석 중 오류가 발생했습니다.', 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-brain"></i> ?ㅼ떆 ?ㅽ뻾';
+            btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 실행';
             aiContainer?.classList.remove('fx-active');
             endMark('ai.run', { strategyId: request.strategyId });
         }
@@ -313,10 +313,10 @@ export class AiModule {
 
             const badgHtml = `
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
-                    ?⑷퀎: ${sum}
+                    합계: ${sum}
                 </span>
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
-                    蹂듭옟?? ${ac}
+                    복잡도: ${ac}
                 </span>
             `;
 
@@ -337,17 +337,17 @@ export class AiModule {
                 </div>
                 <div class="ball-container left">${ballsHtml}</div>
                 <div class="row-actions" style="margin-top:8px; display:flex; justify-content:flex-end;">
-                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">?앹꽦 ??쑝濡?/button>
-                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">?곗폆 ???/button>
+                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">생성 탭으로</button>
+                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓 저장</button>
                 </div>
                 ${exp ? `
                 <details class="ai-explain" style="margin-top:10px;">
-                    <summary style="cursor:pointer; color:var(--text-muted);">?곸꽭 蹂닿린</summary>
+                    <summary style="cursor:pointer; color:var(--text-muted);">상세 보기</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
-                        <div>?꾨왂: <b>${strategyLabel}</b> (洹쇨굅 ?깃툒 ${exp.evidenceTier})</div>
+                        <div>전략: <b>${strategyLabel}</b> (근거 등급 ${exp.evidenceTier})</div>
                         <div>가중치: <b>${exp.summary.setWeight}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
                         <div style="margin-top:6px; display:grid; gap:4px;">
-                            ${exp.signals.map((s) => `<div>#${s.number} 媛以묒튂:${s.weight} / 鍮덈룄:${s.frequencyScore} / 理쒓렐??${s.recencyScore} / 怨듬갚:${s.gapScore} / ?섏뼱:${s.pairScore}</div>`).join('')}
+                            ${exp.signals.map((s) => `<div>#${s.number} 가중치:${s.weight} / 빈도:${s.frequencyScore} / 최근성:${s.recencyScore} / 공백:${s.gapScore} / 페어:${s.pairScore}</div>`).join('')}
                         </div>
                     </div>
                 </details>` : ''}
@@ -373,15 +373,15 @@ export class AiModule {
         const selectedCard = `
             <div class="guide-selected">
                 <div class="guide-selected-header">
-                    <h3><i class="ph-bold ph-book-open"></i> ?꾩옱 ?좏깮 紐⑤뜽</h3>
+                    <h3><i class="ph-bold ph-book-open"></i> 현재 선택 모델</h3>
                     <span class="guide-tier-badge" style="border-color: ${tierColors[selectedMeta.tier]}; color: ${tierColors[selectedMeta.tier]};">
-                        ${tierIcons[selectedMeta.tier]} ?깃툒 ${selectedMeta.tier} - ${tierLabels[selectedMeta.tier]}
+                        ${tierIcons[selectedMeta.tier]} 등급 ${selectedMeta.tier} - ${tierLabels[selectedMeta.tier]}
                     </span>
                 </div>
                 <div class="guide-selected-body">
                     <h4>${selectedMeta.label}</h4>
                     <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
-                    ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> ?ㅽ뿕 ?④퀎 紐⑤뜽?낅땲?? ?ъ슜 ?꾩뿉 ?쒕??덉씠??寃利앹쓣 沅뚯옣?⑸땲??</div>' : ''}
+                    ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 실험 단계 모델입니다. 사용 전에 시뮬레이션 검증을 권장합니다.</div>' : ''}
                     ${this._renderDefaultFilters(selectedMeta)}
                 </div>
             </div>
@@ -394,7 +394,7 @@ export class AiModule {
                     <div class="guide-item-head">
                         <span class="guide-item-tier" style="color: ${tierColors[s.tier]};">${tierIcons[s.tier]}</span>
                         <strong>${s.label}</strong>
-                        ${s.experimental ? '<span class="guide-exp-tag">?ㅽ뿕</span>' : ''}
+                        ${s.experimental ? '<span class="guide-exp-tag">실험</span>' : ''}
                     </div>
                     <p>${s.summary}</p>
                 </div>
@@ -404,13 +404,13 @@ export class AiModule {
         container.innerHTML = `
             ${selectedCard}
             <div class="guide-all-header">
-                <h3><i class="ph-bold ph-list-bullets"></i> ?꾨왂 媛쒖슂</h3>
-                <span class="guide-count">${allStrategies.length}媛??꾨왂</span>
+                <h3><i class="ph-bold ph-list-bullets"></i> 전략 개요</h3>
+                <span class="guide-count">${allStrategies.length}개 전략</span>
             </div>
             <div class="guide-grid">${gridItems}</div>
             <div class="guide-filter-notice">
                 <i class="ph-bold ph-info"></i>
-                <span>?꾪꽣 議곌굔???덈Т ?꾧꺽?섎㈃ ?좏슚 議고빀??以꾩뼱?ㅺ퀬, 蹂댁셿 ?쒕뜡 ?앹꽦 鍮꾩쨷??而ㅼ쭏 ???덉뒿?덈떎.</span>
+                <span>필터 조건이 너무 엄격하면 유효 조합이 줄어들고, 보완 랜덤 생성 비중이 커질 수 있습니다.</span>
             </div>
         `;
 
@@ -429,14 +429,14 @@ export class AiModule {
     _renderDefaultFilters(meta) {
         const filters = meta.defaultFilters || {};
         const parts = [];
-        if (filters.oddEven) parts.push(`???${filters.oddEven[0]}-${filters.oddEven[1]}`);
-        if (filters.highLow) parts.push(`怨좎닔 ${filters.highLow[0]}-${filters.highLow[1]}`);
-        if (filters.sumRange) parts.push(`?⑷퀎 ${filters.sumRange[0]}-${filters.sumRange[1]}`);
-        if (filters.acRange) parts.push(`蹂듭옟??${filters.acRange[0]}-${filters.acRange[1]}`);
-        if (filters.maxConsecutivePairs != null) parts.push(`?곗냽????${filters.maxConsecutivePairs}`);
-        if (filters.endDigitUniqueMin != null) parts.push(`?앹닔 醫낅쪟 ??${filters.endDigitUniqueMin}`);
+        if (filters.oddEven) parts.push(`홀수 ${filters.oddEven[0]}-${filters.oddEven[1]}`);
+        if (filters.highLow) parts.push(`고수 ${filters.highLow[0]}-${filters.highLow[1]}`);
+        if (filters.sumRange) parts.push(`합계 ${filters.sumRange[0]}-${filters.sumRange[1]}`);
+        if (filters.acRange) parts.push(`복잡도 ${filters.acRange[0]}-${filters.acRange[1]}`);
+        if (filters.maxConsecutivePairs != null) parts.push(`연속쌍 <= ${filters.maxConsecutivePairs}`);
+        if (filters.endDigitUniqueMin != null) parts.push(`끝수 종류 >= ${filters.endDigitUniqueMin}`);
         if (!parts.length) return '';
-        return `<div class="guide-default-filters"><strong>湲곕낯 ?꾪꽣:</strong> ${parts.join(' / ')}</div>`;
+        return `<div class="guide-default-filters"><strong>기본 필터:</strong> ${parts.join(' / ')}</div>`;
     }
 }
 

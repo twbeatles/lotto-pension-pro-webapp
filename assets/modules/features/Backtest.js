@@ -42,7 +42,7 @@ export class BacktestModule {
 
     resetUI() {
         const sum = $('#btSummaryList');
-        if (sum) sum.innerHTML = '<li>?ㅽ뻾 ?湲?以?..</li>';
+        if (sum) sum.innerHTML = '<li>실행 대기 중...</li>';
 
         const tbody = $('#btResultTable tbody');
         if (tbody) tbody.innerHTML = '';
@@ -221,7 +221,7 @@ export class BacktestModule {
         strategies.forEach((item) => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.label} (?깃툒 ${item.tier})${item.experimental ? ' [?ㅽ뿕]' : ''}`;
+            opt.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
             select.appendChild(opt);
         });
 
@@ -355,7 +355,7 @@ export class BacktestModule {
 
     exportComparisonCsv() {
         if (!this.lastComparisons.length) {
-            UIManager.toast('?대낫??鍮꾧탳 寃곌낵媛 ?놁뒿?덈떎.', 'warning');
+            UIManager.toast('내보낼 비교 결과가 없습니다.', 'warning');
             return;
         }
 
@@ -378,18 +378,18 @@ export class BacktestModule {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `?쒕??덉씠???꾨왂鍮꾧탳_${Date.now()}.csv`;
+        a.download = `시뮬레이션_전략비교_${Date.now()}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('鍮꾧탳 ???뚯씪???대낫?덉뒿?덈떎.', 'success');
+        UIManager.toast('비교 CSV 파일을 내보냈습니다.', 'success');
     }
 
     async run() {
         if (this.isRunning) return;
         if (!this.data.state.winningStats.length) {
-            return UIManager.toast('?뱀꺼 ?곗씠?곌? ?놁뒿?덈떎.', 'error', 3500);
+            return UIManager.toast('당첨 데이터가 없습니다.', 'error', 3500);
         }
         startMark('backtest.run');
 
@@ -402,7 +402,7 @@ export class BacktestModule {
 
         if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
             endMark('backtest.run', { invalidRange: true });
-            return UIManager.toast('?뚯감 踰붿쐞瑜??뺤씤?댁＜?몄슂. (?쒖옉 <= 醫낅즺)', 'warning', 2500);
+            return UIManager.toast('회차 범위를 확인해주세요. (시작 <= 종료)', 'warning', 2500);
         }
         if (!Number.isFinite(qty) || qty < 1) qty = 1;
         qty = Math.min(qty, this.MAX_QTY);
@@ -410,11 +410,11 @@ export class BacktestModule {
         const runBtn = $('#runBacktest');
         this.runButtonOriginal = runBtn?.innerHTML || '';
         if (runBtn) {
-            runBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> ?ㅽ뻾 以?..';
+            runBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 실행 중...';
         }
 
         this.resetUI();
-        this.setProgressStatus('?ㅽ뻾 以?..');
+        this.setProgressStatus('실행 중...');
         this.lastProgressAt = 0;
         this.setRunningState(true);
 
@@ -437,9 +437,9 @@ export class BacktestModule {
                     if (now - this.lastProgressAt >= 250) {
                         this.lastProgressAt = now;
                         const etaMs = Number(payload.etaMs || 0);
-                        const etaText = etaMs > 0 ? `, ?덉긽 ${(etaMs / 1000).toFixed(1)}珥?` : '';
+                        const etaText = etaMs > 0 ? `, 예상 ${(etaMs / 1000).toFixed(1)}초` : '';
                         const percent = Number(payload.percent || 0).toFixed(1);
-                        this.setProgressStatus(`吏꾪뻾瑜?${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
+                        this.setProgressStatus(`진행률 ${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
                     }
                 }
             }
@@ -453,8 +453,8 @@ export class BacktestModule {
                 if (payload?.comparisons) this.renderComparisons(payload.comparisons, payload?.diagnostics || {});
                 this.setRunningState(false);
                 restoreRunButton();
-                this.setProgressStatus(`?꾨즺 ${(Number(payload?.diagnostics?.elapsedMs || 0) / 1000).toFixed(2)}珥?`);
-                UIManager.toast('?쒕??덉씠?섏씠 ?꾨즺?섏뿀?듬땲??', 'success');
+                this.setProgressStatus(`완료 ${(Number(payload?.diagnostics?.elapsedMs || 0) / 1000).toFixed(2)}초`);
+                UIManager.toast('시뮬레이션이 완료되었습니다.', 'success');
                 this.cleanupWorker();
                 endMark('backtest.run', {
                     processedDraws: payload?.diagnostics?.processedDraws || 0,
@@ -464,10 +464,10 @@ export class BacktestModule {
             }
 
             if (type === 'ERROR') {
-                UIManager.toast(payload?.message || '?쒕??덉씠???ㅽ뻾 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+                UIManager.toast(payload?.message || '시뮬레이션 실행 중 오류가 발생했습니다.', 'error');
                 this.setRunningState(false);
                 restoreRunButton();
-                this.setProgressStatus('?ㅽ뙣');
+                this.setProgressStatus('실패');
                 this.cleanupWorker();
                 endMark('backtest.run', { error: true });
             }
@@ -475,10 +475,10 @@ export class BacktestModule {
 
         this.worker.onerror = (err) => {
             console.error(err);
-            UIManager.toast('?덉긽移?紐삵븳 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+            UIManager.toast('예상치 못한 오류가 발생했습니다.', 'error');
             this.setRunningState(false);
             restoreRunButton();
-            this.setProgressStatus('?ㅽ뙣');
+            this.setProgressStatus('실패');
             this.cleanupWorker();
             endMark('backtest.run', { error: true });
         };
@@ -495,7 +495,7 @@ export class BacktestModule {
             }
         });
 
-        UIManager.toast('諛깃렇?쇱슫?쒖뿉???쒕??덉씠?섏쓣 ?쒖옉?덉뒿?덈떎.');
+        UIManager.toast('백그라운드에서 시뮬레이션을 시작했습니다.');
     }
 }
 

@@ -423,8 +423,8 @@ export class DataManager {
                 this._dirtyKeys[key] = false;
             });
         } catch (e) {
-            console.error('?곗씠??遺덈윭?ㅺ린 ?ㅽ뙣', e);
-            UIManager.toast('?곗씠??濡쒕뱶 ?ㅽ뙣', 'error');
+            console.error('데이터 불러오기 실패', e);
+            UIManager.toast('데이터 로드 실패', 'error');
         }
     }
 
@@ -474,7 +474,7 @@ export class DataManager {
                     this._dirtyKeys.presets = false;
                 }
             } catch (e) {
-                console.error('?곗씠??????ㅽ뙣', e);
+                console.error('데이터 저장 실패', e);
             }
         };
 
@@ -542,7 +542,7 @@ export class DataManager {
         if (inserted > 0) {
             this.markDirty('ticketBook');
             this.save();
-            if (!options.silent) UIManager.toast(`${inserted}媛??곗폆 異붽? ?꾨즺`, 'success');
+            if (!options.silent) UIManager.toast(`${inserted}개 티켓 추가 완료`, 'success');
         }
         return inserted;
     }
@@ -652,10 +652,10 @@ export class DataManager {
                     permission = await Notification.requestPermission();
                 }
                 if (permission === 'granted') {
-                    new Notification('濡쒕삉 ?꾨줈 ?곗폆 ?뺤궛', { body: message });
+                    new Notification('로또 프로 티켓 정산', { body: message });
                 }
             } catch (e) {
-                console.warn('?쒖뒪???뚮┝ ?꾩넚 ?ㅽ뙣', e);
+                console.warn('시스템 알림 전송 실패', e);
             }
         }
     }
@@ -842,14 +842,14 @@ export class DataManager {
             const estNo = estimateLatestDrawKST();
 
             if (latestNo > 0 && estNo > 0 && latestNo < estNo) {
-                updateStatus(`?낅뜲?댄듃 媛??(+${estNo - latestNo})`, 'var(--warning)');
+                updateStatus(`업데이트 가능 (+${estNo - latestNo})`, 'var(--warning)');
             } else {
-                updateStatus('理쒖떊', 'var(--success)');
+                updateStatus('최신', 'var(--success)');
             }
             return true;
         } catch (e) {
-            console.warn('?뱀꺼 ?곗씠??議고쉶 ?ㅽ뙣', e);
-            updateStatus('?ㅽ봽?쇱씤', 'var(--danger)');
+            console.warn('당첨 데이터 조회 실패', e);
+            updateStatus('오프라인', 'var(--danger)');
             return false;
         }
     }
@@ -881,12 +881,12 @@ export class DataManager {
                 ? payload.missing.map((x) => Number(x)).filter(Number.isFinite)
                 : [];
             if (normalized.length) {
-                log(`??range ?숆린???깃났: ${fromNo}~${toNo} (${normalized.length}媛?`);
+                log(`[range] 수집 성공: ${fromNo}~${toNo} (${normalized.length}개)`);
             }
             return { items: normalized, missing, failed: false };
         } catch (e) {
             this.logSync('SYNC_RANGE_FAIL', `Range fetch failed ${fromNo}-${toNo}`, { message: e.message });
-            log(`?뱄툘 range ?숆린???ㅽ뙣(${fromNo}~${toNo}): ${e.message}`);
+            log(`[range] 수집 실패 (${fromNo}~${toNo}): ${e.message}`);
             return { items: [], missing: [], failed: true };
         }
     }
@@ -1036,17 +1036,17 @@ export class DataManager {
         if (!sorted.length) return [];
 
         const results = await this.runWithConcurrency(sorted, this.FALLBACK_FETCH_CONCURRENCY, async (drawNo) => {
-            log(`?뱻 ${drawNo}?뚯감 ?곗씠???붿껌 以?.. (fallback)`);
+            log(`- ${drawNo}회차 데이터 요청 중... (fallback)`);
             let item = await this.fetchOneDraw(drawNo, proxyConfig, log);
             if (!item) {
                 await new Promise((resolve) => setTimeout(resolve, 180));
                 item = await this.fetchOneDraw(drawNo, proxyConfig, log);
             }
             if (item) {
-                log(`??${drawNo}?뚯감 ?뺣낫 ?꾨즺! (${item.date})`);
+                log(`완료: ${drawNo}회차 (${item.date})`);
                 return item;
             }
-            log(`?좑툘 ${drawNo}?뚯감 ?곗씠???뺤씤 ?ㅽ뙣 (?쒕쾭 ?묐떟 ?놁쓬 or ?꾩쭅 異붿꺼 ??`);
+            log(`실패: ${drawNo}회차 데이터 확인 실패 (응답 없음 또는 아직 추첨 전)`);
             return null;
         });
 
@@ -1099,7 +1099,7 @@ export class DataManager {
 
             if (latestKnown >= estNo) {
                 log('Already up to date.', 'SYNC_UP_TO_DATE');
-                if (profile.toast) UIManager.toast('?대? 理쒖떊 ?곗씠?곗엯?덈떎.', 'info');
+                if (profile.toast) UIManager.toast('이미 최신 데이터입니다.', 'info');
                 await this.settlePendingTickets({
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
@@ -1164,7 +1164,7 @@ export class DataManager {
                     requestSystemNotification: profile.requestSystemNotification
                 });
                 await this.app?.refreshCurrentRoute();
-                if (profile.toast) UIManager.toast(`${updatedCount}媛??뚯감 ?낅뜲?댄듃 ?꾨즺`, 'success');
+                if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
             } else {
                 log('No new draw data found.', 'SYNC_NO_UPDATE');
                 await this.settlePendingTickets({
@@ -1175,7 +1175,7 @@ export class DataManager {
 
         } catch (e) {
             log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
-            if (profile.toast) UIManager.toast('?숆린??以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.', 'error');
+            if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
         } finally {
             if (logFlushTimer) {
                 clearTimeout(logFlushTimer);
@@ -1189,13 +1189,13 @@ export class DataManager {
     addToFavorites(nums) {
         const key = nums.join(',');
         if (this.state.favorites.some(f => f.numbers.join(',') === key)) {
-            UIManager.toast('?대? 利먭꺼李얘린???덉뒿?덈떎.', 'warning');
+            UIManager.toast('이미 즐겨찾기에 있습니다.', 'warning');
             return false;
         }
         this.state.favorites.unshift({ numbers: nums, date: new Date().toISOString() });
         this.markDirty('fav');
         this.save();
-        UIManager.toast('利먭꺼李얘린 ????꾨즺', 'success');
+        UIManager.toast('즐겨찾기 추가 완료', 'success');
         return true;
     }
 

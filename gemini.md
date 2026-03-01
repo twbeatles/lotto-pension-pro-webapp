@@ -194,6 +194,11 @@ node scripts/perf/bench.mjs
   - `assets/modules/features/Generator.js`
 - 추가 대응: 서비스워커 캐시 버전 `v7` 상향
 
+## 9-1) 2026-03-01 인코딩 정리(2차)
+- 증상: 일부 한국어 UI 문구가 깨진 글자(`理쒖떊`)로 표시됨.
+- 조치: `DataManager/Generator/Backtest/Ai`에서 사용자 노출 문자열을 정리하고 탭별 실제 렌더로 검증.
+- 배포 확인: 동일 증상 재발 시 SW 캐시 초기화 후 재검증.
+
 ---
 
 ## 10) 최소 검증 루틴

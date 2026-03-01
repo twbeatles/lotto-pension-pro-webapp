@@ -52,7 +52,17 @@
 node scripts/smoke/smoke.mjs
 ```
 
-## 6) 로컬 실행
+## 6) 트러블슈팅: "문자가 깨져서 보임" (예: `理쒖떊`)
+
+1. 강력 새로고침(`Ctrl+F5`) 후 재확인
+2. DevTools > Application > Clear storage로 캐시/스토리지 정리 후 재접속
+3. 배포 브랜치의 최신 커밋 반영 여부 확인
+4. 로컬에서 화면 문구 검증:
+   - 메인 동기화 상태 텍스트
+   - 생성/AI/시뮬레이션 탭 버튼/라벨/토스트
+5. 필요 시 `sw.js`의 `CACHE_VERSION`을 상향해 캐시 강제 갱신
+
+## 7) 로컬 실행
 
 `file://` 직접 열기 대신 HTTP 서버로 실행하세요.
 
@@ -63,7 +73,7 @@ python -m http.server 5173
 접속:
 - `http://localhost:5173/`
 
-## 7) 로컬 검증 명령
+## 8) 로컬 검증 명령
 
 ```bash
 node scripts/smoke/smoke.mjs

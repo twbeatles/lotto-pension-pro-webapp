@@ -427,7 +427,7 @@ export class GeneratorModule {
 
             inserted = this.data.addTicketsBulk(tickets, { silent: true });
             const campaign = this.data.addCampaign({
-                name: `${startDraw}???쒖옉 ${weeks}二?,
+                name: `${startDraw}회 시작 ${weeks}주`,
                 startDrawNo: startDraw,
                 weeks,
                 setsPerWeek,

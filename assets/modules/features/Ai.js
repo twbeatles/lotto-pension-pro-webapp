@@ -57,11 +57,11 @@ export class AiModule {
 
         // Legacy aliases
         const legacy = [
-            ['ensemble', '?댁쟾 紐⑤뜽: ?숈긽釉?],
-            ['statistical', '?댁쟾 紐⑤뜽: ?듦퀎'],
-            ['balance', '?댁쟾 紐⑤뜽: 洹좏삎'],
-            ['cold', '?댁쟾 紐⑤뜽: ?鍮덈룄'],
-            ['hot', '?댁쟾 紐⑤뜽: 怨좊퉰??]
+            ['ensemble', 'Legacy model: Ensemble'],
+            ['statistical', 'Legacy model: Statistical'],
+            ['balance', 'Legacy model: Balance'],
+            ['cold', 'Legacy model: Cold'],
+            ['hot', 'Legacy model: Hot']
         ];
         legacy.forEach(([id, label]) => {
             const option = document.createElement('option');
@@ -345,7 +345,7 @@ export class AiModule {
                     <summary style="cursor:pointer; color:var(--text-muted);">?곸꽭 蹂닿린</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
                         <div>?꾨왂: <b>${strategyLabel}</b> (洹쇨굅 ?깃툒 ${exp.evidenceTier})</div>
-                        <div>媛以묒튂: <b>${exp.summary.setWeight}</b>, ?꾪꽣 ?듦낵: <b>${exp.filtersPass ? '?? : '?꾨땲??}</b></div>
+                        <div>가중치: <b>${exp.summary.setWeight}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
                         <div style="margin-top:6px; display:grid; gap:4px;">
                             ${exp.signals.map((s) => `<div>#${s.number} 媛以묒튂:${s.weight} / 鍮덈룄:${s.frequencyScore} / 理쒓렐??${s.recencyScore} / 怨듬갚:${s.gapScore} / ?섏뼱:${s.pairScore}</div>`).join('')}
                         </div>
@@ -367,7 +367,7 @@ export class AiModule {
         const allStrategies = Object.values(STRATEGY_CATALOG).filter((s) => includeExperimental || !s.experimental);
 
         const tierIcons = { A: 'A', B: 'B', C: 'C' };
-        const tierLabels = { A: '寃利앸맖', B: '?ъ슜 媛??, C: '?ㅽ뿕 ?④퀎' };
+        const tierLabels = { A: '검증됨', B: '사용 가능', C: '실험 단계' };
         const tierColors = { A: 'var(--success)', B: 'var(--primary)', C: 'var(--warning)' };
 
         const selectedCard = `

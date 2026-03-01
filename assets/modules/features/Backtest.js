@@ -226,12 +226,12 @@ export class BacktestModule {
         });
 
         const legacy = [
-            ['random', '?댁쟾 紐⑤뜽: 臾댁옉??],
-            ['ensemble', '?댁쟾 紐⑤뜽: ?숈긽釉?],
-            ['balance', '?댁쟾 紐⑤뜽: 洹좏삎'],
-            ['cold', '?댁쟾 紐⑤뜽: ?鍮덈룄'],
-            ['hot', '?댁쟾 紐⑤뜽: 怨좊퉰??],
-            ['statistical', '?댁쟾 紐⑤뜽: ?듦퀎']
+            ['random', 'Legacy model: Random'],
+            ['ensemble', 'Legacy model: Ensemble'],
+            ['balance', 'Legacy model: Balance'],
+            ['cold', 'Legacy model: Cold'],
+            ['hot', 'Legacy model: Hot'],
+            ['statistical', 'Legacy model: Statistical']
         ];
         legacy.forEach(([id, label]) => {
             const opt = document.createElement('option');
@@ -359,7 +359,7 @@ export class BacktestModule {
             return;
         }
 
-        const header = ['?꾨왂ID', '?섏씡瑜?, '?뱀꺼瑜?, '寃利앺쉶李?, '?곗폆??, '珥앷뎄留ㅺ툑??, '珥앸떦泥④툑', '?뱀꺼嫄댁닔'];
+        const header = ['strategy_id', 'roi', 'hit_rate', 'draws', 'tickets', 'total_cost', 'total_prize', 'win_count'];
         const lines = [header.join(',')];
         this.lastComparisons.forEach((x) => {
             lines.push([

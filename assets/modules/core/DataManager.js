@@ -261,12 +261,12 @@ export class DataManager {
         if (queryProxy) return queryProxy;
 
         const legacyProxy = this.readLegacyProxyUrl();
-        if (legacyProxy) return { source: '?댁쟾 ?ㅼ젙(v1)', url: legacyProxy };
+        if (legacyProxy) return { source: 'legacy settings (v1)', url: legacyProxy };
 
         const v2Proxy = (this.state.customProxy || '').trim();
-        if (v2Proxy) return { source: '???ㅼ젙(v2)', url: v2Proxy };
+        if (v2Proxy) return { source: 'saved settings (v2)', url: v2Proxy };
 
-        return { source: '怨듭슜 湲곕낯媛?, url: '' };
+        return { source: 'public default', url: '' };
     }
 
     safeJsonParse(raw, fallback) {
@@ -333,7 +333,7 @@ export class DataManager {
 
         return {
             id: raw.id || this.createId('campaign'),
-            name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : '罹좏럹??,
+            name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'campaign',
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
             weeks: Math.max(1, Math.floor(weeks)),
             setsPerWeek: Math.max(1, Math.floor(setsPerWeek)),
@@ -638,8 +638,8 @@ export class DataManager {
         this.lastTicketAlertKey = alertKey;
 
         const message = summary.wins > 0
-            ? `?곗폆 ?뺤궛 ?꾨즺: ${summary.settled}媛?以??뱀꺼 ${summary.wins}媛?
-            : `?곗폆 ?뺤궛 ?꾨즺: ${summary.settled}媛?;
+            ? `티켓 정산 완료: ${summary.settled}개 중 당첨 ${summary.wins}개`
+            : `티켓 정산 완료: ${summary.settled}개`;
 
         if (prefs.enableInApp) {
             UIManager.toast(message, summary.wins > 0 ? 'success' : 'info', 3500);
@@ -812,7 +812,7 @@ export class DataManager {
         };
 
         try {
-            updateStatus('濡쒖뺄 ?뺤씤 以?, 'var(--warning)');
+            updateStatus('로또 확인 중', 'var(--warning)');
 
             const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

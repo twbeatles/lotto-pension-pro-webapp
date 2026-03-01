@@ -9,13 +9,23 @@
 ## 최근 안정화 반영 (2026-03-01)
 - 모듈 파싱 오류(`SyntaxError: Invalid or unexpected token`)로 앱 초기화가 중단되던 문제를 복구했습니다.
 - 복구 대상: `DataManager`, `Ai`, `Backtest`, `Generator`의 깨진 문자열 리터럴.
-- 서비스워커 캐시 버전을 `v7`로 상향해 배포 후 구버전 캐시 잔존 가능성을 낮췄습니다.
+- 서비스워커 캐시 버전을 `v8`로 상향해 배포 후 구버전 캐시 잔존 가능성을 낮췄습니다.
 - 배포 직후 이상 동작 시 강력 새로고침(`Ctrl+F5`) 또는 사이트 데이터 삭제 후 재확인하세요.
 
 ### 인코딩 정리 2차 (2026-03-01)
 - 메인 상태 텍스트(`최신`, `업데이트 가능`, `오프라인`) 깨짐 현상을 복구했습니다.
 - 생성/시뮬레이션/AI 탭의 토스트, 버튼 라벨, 로그 메시지, 접근성 라벨(`aria-label`)의 깨진 문구를 정리했습니다.
 - 사용자 화면에서 보이는 한글 문구 기준으로 전역 점검을 수행했습니다.
+
+### 기능 품질 강화 3차 (2026-03-01)
+- 전략 엔진을 `엄격 필터 모드`로 고정했습니다. 필터를 만족하지 못하면 무필터 랜덤 조합으로 채우지 않습니다.
+- 백테스트 워커의 무필터 랜덤 대체를 제거하고, 요약에 `requestedTickets/generatedTickets/fillRate`를 추가했습니다.
+- 데이터 Import 완료 후 즉시 `fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists` 순서로 화면을 갱신합니다.
+- 회차 정규화에서 `중복 번호`, `보너스 번호 중복`을 차단했습니다(`DataManager`, `backup` 공통).
+- 캠페인 렌더링을 `textContent` 기반 DOM 조립으로 변경해 Import 경유 XSS 위험을 낮췄습니다.
+- 서비스워커 precache에 `assets/modules/utils/backup.js`를 추가했습니다(`CACHE_VERSION: v8`).
+- 스모크 테스트에 회귀 3건(엄격 필터, draw 정규화, post-import refresh 순서)을 추가했습니다.
+- 코드베이스 텍스트 파일 UTF-8 디코드 점검 결과, 인코딩 오류 파일은 발견되지 않았습니다.
 
 ## 주요 기능
 - 번호 생성: 스마트 추천, 연속수 제한, 고정수/제외수 설정, QR 생성
@@ -54,7 +64,7 @@ graph LR
 - 화면/로직: 바닐라 자바스크립트(ES 모듈) + CSS 변수 (빌드 단계 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v7`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v8`)
 
 ## 프로젝트 구조
 

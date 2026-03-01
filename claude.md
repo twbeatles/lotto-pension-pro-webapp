@@ -191,7 +191,7 @@ node scripts/perf/bench.mjs
 ## 8) 서비스워커/오프라인
 
 `sw.js` 핵심:
-- 캐시 버전: `v7`
+- 캐시 버전: `v8`
 - App Shell precache 목록 수동 관리
 - 데이터 JSON: `network-first` + timeout
 - 기타 정적 자산: `stale-while-revalidate`
@@ -211,22 +211,39 @@ node scripts/perf/bench.mjs
   - `assets/modules/features/Ai.js`
   - `assets/modules/features/Backtest.js`
   - `assets/modules/features/Generator.js`
-- 추가 조치: `sw.js` `CACHE_VERSION`을 `v7`로 상향
+- 추가 조치: `sw.js` `CACHE_VERSION`을 `v8`로 상향
 
 ## 9-1) 2026-03-01 인코딩 정리(2차)
 - 증상: 기능은 동작하지만 일부 한글 문구가 `理쒖떊`처럼 깨져 보임.
 - 조치: `DataManager/Generator/Backtest/Ai`의 사용자 노출 문자열(토스트, 상태 텍스트, 버튼 라벨, 로그 문구, 접근성 라벨) 정규화.
 - 운영 참고: 배포 후 같은 증상이 보이면 서비스워커 캐시를 먼저 의심하고 강력 새로고침/스토리지 초기화로 확인.
 
+## 9-2) 2026-03-01 기능 품질 강화(3차)
+- 전략 생성 정책:
+  - `StrategyEngine.generateSetWithExecution()`은 필터 미충족 시 `null`을 반환하고, 무필터 랜덤 세트로 보완하지 않음.
+  - `Generator/Ai`는 요청 수량 대비 실제 생성 수량을 사용자에게 명시.
+- 백테스트 정책:
+  - `backtest.worker.js`의 무필터 랜덤 대체 제거.
+  - 요약에 `requestedTickets`, `generatedTickets`, `fillRate` 포함.
+- 데이터/보안:
+  - `DataManager.normalizeDrawItem`, `backup.normalizeDrawUpdate`에서 중복 번호/보너스 중복 차단.
+  - 데이터 Import 후 `fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists` 즉시 갱신.
+  - 캠페인 렌더링은 `textContent` 기반 DOM 조립으로 변경(XSS 완화).
+- 오프라인:
+  - `sw.js` precache에 `assets/modules/utils/backup.js` 추가.
+- 회귀 테스트:
+  - `scripts/smoke/smoke.mjs`에 strict-filter, draw-normalization, post-import-refresh 회귀 케이스 추가.
+
 ---
 
 ## 10) 회귀 점검 포인트
 
 1. 탭 전환(`gen/stats/ai/bt/check/data`)
-2. 번호 생성/AI 추천/백테스트 실행
+2. 번호 생성/AI 추천/백테스트 실행 (요청 대비 생성 수량 표시 포함)
 3. 동기화 버튼 + 티켓 자동 정산
-4. 백업 내보내기/가져오기(v1/v2/v3)
+4. 백업 내보내기/가져오기(v1/v2/v3) 후 즉시 화면 반영
 5. 서비스워커 캐시 갱신 후 동작
+6. 엄격 필터 조건에서 필터 위반 조합이 출력되지 않는지 확인
 
 ---
 

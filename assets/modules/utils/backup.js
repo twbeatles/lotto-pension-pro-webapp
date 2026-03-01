@@ -20,7 +20,9 @@ function normalizeDrawUpdate(raw) {
 
     if (!Number.isInteger(drawNo) || drawNo < 1) return null;
     if (numbers.length !== 6) return null;
+    if (new Set(numbers).size !== 6) return null;
     if (!Number.isInteger(bonus) || bonus < 1 || bonus > 45) return null;
+    if (numbers.includes(bonus)) return null;
 
     return {
         draw_no: drawNo,
@@ -129,4 +131,3 @@ export function normalizeBackupPayload(raw) {
         strategyPresets: version >= 3 ? dedupePresets(toArray(source.strategyPresets)) : []
     };
 }
-

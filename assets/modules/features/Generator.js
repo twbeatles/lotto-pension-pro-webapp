@@ -350,6 +350,9 @@ export class GeneratorModule {
                 this.renderResultItem(nums, i, listEl);
             });
             produced = sets.length;
+            if (produced < requested) {
+                UIManager.toast(`필터 조건으로 ${produced}/${requested}개만 생성되었습니다. 조건을 완화해보세요.`, 'warning', 3500);
+            }
         } finally {
             endMark('generator.generate', { count: produced, requested });
         }
@@ -361,12 +364,14 @@ export class GeneratorModule {
         let totalCreated = 0;
         let weeks = 0;
         let setsPerWeek = 0;
+        let requestedTotal = 0;
         let fallbackRuns = 0;
 
         try {
             const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
             weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
             setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
+            requestedTotal = weeks * setsPerWeek;
             const fixed = this.parseInput($('#fixedNums').value);
             const exclude = this.parseInput($('#excludeNums').value);
             const request = this.getStrategyRequestFromUI();
@@ -435,10 +440,13 @@ export class GeneratorModule {
             });
             this.data.save();
 
+            if (totalCreated < requestedTotal) {
+                UIManager.toast(`필터 조건으로 ${totalCreated}/${requestedTotal}개만 생성되었습니다.`, 'warning', 3500);
+            }
             UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
             if (campaign && this.app.renderDataLists) this.app.renderDataLists();
         } finally {
-            endMark('generator.campaign', { inserted, totalCreated, weeks, setsPerWeek, fallbackRuns });
+            endMark('generator.campaign', { inserted, totalCreated, requestedTotal, weeks, setsPerWeek, fallbackRuns });
         }
     }
 

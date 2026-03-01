@@ -148,7 +148,10 @@ export class LottoApp {
         this.navItems.forEach(el => {
             el.addEventListener('click', (e) => {
                 const target = e.currentTarget.dataset.target;
-                this.route(target);
+                this.route(target).catch((err) => {
+                    console.error('페이지 전환 실패', err);
+                    UIManager.toast('페이지 전환 중 오류가 발생했습니다.', 'error');
+                });
             });
         });
     }
@@ -490,18 +493,39 @@ export class LottoApp {
                 return;
             }
 
-            renderChunk(list.slice(0, 50), {
-                datasetId: true,
-                html: (item) => {
-                    return `
-                        <div class="result-meta">${item.name}</div>
-                        <span class="result-meta">${item.startDrawNo}회 시작 · ${item.weeks}주 · 주당 ${item.setsPerWeek}세트</span>
-                        <div class="result-actions">
-                          <button class="icon-btn" data-action="delete" title="삭제"><i class="ph ph-trash"></i></button>
-                        </div>
-                    `;
-                }
-            }, el);
+            el.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            list.slice(0, 50).forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'result-item';
+                row.dataset.id = String(item.id || '');
+
+                const title = document.createElement('div');
+                title.className = 'result-meta';
+                title.textContent = String(item.name || '');
+
+                const meta = document.createElement('span');
+                meta.className = 'result-meta';
+                meta.textContent = `${item.startDrawNo}회 시작 총 ${item.weeks}주, 주당 ${item.setsPerWeek}세트`;
+
+                const actions = document.createElement('div');
+                actions.className = 'result-actions';
+                const button = document.createElement('button');
+                button.className = 'icon-btn';
+                button.dataset.action = 'delete';
+                button.title = '삭제';
+                button.setAttribute('aria-label', '캠페인 삭제');
+                const icon = document.createElement('i');
+                icon.className = 'ph ph-trash';
+                button.appendChild(icon);
+                actions.appendChild(button);
+
+                row.appendChild(title);
+                row.appendChild(meta);
+                row.appendChild(actions);
+                fragment.appendChild(row);
+            });
+            el.appendChild(fragment);
         };
 
         fill('#favList', this.data.state.favorites, '저장된 즐겨찾기가 없습니다.');

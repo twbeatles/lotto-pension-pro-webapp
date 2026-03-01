@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { StrategyEngine } from '../../assets/modules/core/StrategyEngine.js';
-import { buildBackupPayload } from '../../assets/modules/utils/backup.js';
+import { DataManager } from '../../assets/modules/core/DataManager.js';
+import { runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
+import { buildBackupPayload, normalizeBackupPayload } from '../../assets/modules/utils/backup.js';
+import { passesFilters } from '../../assets/modules/core/StrategyFilters.js';
 
 function normalizeStats(raw) {
     const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
@@ -85,6 +88,95 @@ function runBacktestSmoke(stats) {
     return { tickets, totalPrize, wins };
 }
 
+function runStrictFilterRegression(stats) {
+    const request = {
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 3000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 20260301,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {
+            oddEven: null,
+            highLow: null,
+            sumRange: [1, 10],
+            acRange: null,
+            maxConsecutivePairs: null,
+            endDigitUniqueMin: null
+        }
+    };
+    const engine = new StrategyEngine(stats);
+    const sets = engine.generateMultipleSets(5, request, { maxAttempts: 30 });
+    assert.equal(sets.length, 0, 'impossible filter must not produce fallback sets');
+    assert.ok(sets.every((set) => passesFilters(set, request.filters)), 'all generated sets must pass filters');
+}
+
+function runDrawNormalizationRegression() {
+    const dm = new DataManager();
+    const duplicateNumbers = dm.normalizeDrawItem({
+        draw_no: 9999,
+        date: '2026-03-01',
+        numbers: [1, 1, 2, 3, 4, 5],
+        bonus: 6
+    });
+    assert.equal(duplicateNumbers, null, 'duplicate numbers must be rejected');
+
+    const bonusOverlap = dm.normalizeDrawItem({
+        draw_no: 9999,
+        date: '2026-03-01',
+        numbers: [1, 2, 3, 4, 5, 6],
+        bonus: 6
+    });
+    assert.equal(bonusOverlap, null, 'bonus overlap must be rejected');
+
+    const payload = normalizeBackupPayload({
+        version: 3,
+        favorites: [],
+        history: [],
+        ticketBook: [],
+        campaigns: [],
+        alertPrefs: {},
+        settings: {},
+        localUpdates: [
+            { draw_no: 9999, date: '2026-03-01', numbers: [1, 1, 2, 3, 4, 5], bonus: 6 },
+            { draw_no: 10000, date: '2026-03-01', numbers: [1, 2, 3, 4, 5, 6], bonus: 6 },
+            { draw_no: 10001, date: '2026-03-01', numbers: [1, 2, 3, 4, 5, 6], bonus: 7 }
+        ],
+        strategyPresets: []
+    });
+    assert.equal(payload.localUpdates.length, 1, 'backup normalization must keep only valid updates');
+}
+
+async function runPostImportRefreshRegression() {
+    const calls = [];
+    const data = {
+        async fetchWinningStats(options) {
+            calls.push(`fetchWinningStats:${JSON.stringify(options)}`);
+        }
+    };
+    const app = {
+        updateLatestWin() {
+            calls.push('updateLatestWin');
+        },
+        async refreshCurrentRoute() {
+            calls.push('refreshCurrentRoute');
+        },
+        renderDataLists() {
+            calls.push('renderDataLists');
+        }
+    };
+    await runPostImportRefresh({ data, app });
+    assert.deepEqual(calls, [
+        'fetchWinningStats:{"notifyTicketSettle":false}',
+        'updateLatestWin',
+        'refreshCurrentRoute',
+        'renderDataLists'
+    ], 'post-import refresh order must be preserved');
+}
+
 function runBackupSmoke(stats) {
     const state = {
         theme: 'dark',
@@ -143,11 +235,17 @@ async function main() {
 
     const backtest = runBacktestSmoke(stats);
     runBackupSmoke(stats);
+    runStrictFilterRegression(stats.slice(-180));
+    runDrawNormalizationRegression();
+    await runPostImportRefreshRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
     console.log(`[PASS] recommend: ${recommended.sets.length} sets`);
     console.log(`[PASS] backtest-smoke: tickets=${backtest.tickets}, wins=${backtest.wins}, prize=${backtest.totalPrize}`);
     console.log('[PASS] backup-v3 schema');
+    console.log('[PASS] strict-filter regression');
+    console.log('[PASS] draw-normalization regression');
+    console.log('[PASS] post-import-refresh regression');
     console.log('[DONE] smoke checks passed');
 }
 

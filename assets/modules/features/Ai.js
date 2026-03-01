@@ -221,6 +221,7 @@ export class AiModule {
         const request = this.buildStrategyRequest();
         this.app.data.save();
         const strategy = request.strategyId;
+        const targetSetCount = 5;
 
         const strategyNames = {
             ensemble_weighted: '앙상블 가중치',
@@ -251,7 +252,7 @@ export class AiModule {
                 result = await this.workerClient.recommend({
                     statsData: this.app.data.state.winningStats,
                     request,
-                    setCount: 5
+                    setCount: targetSetCount
                 });
                 results = Array.isArray(result?.sets) ? result.sets : [];
                 explanations = Array.isArray(result?.explanations) ? result.explanations : [];
@@ -262,11 +263,11 @@ export class AiModule {
                 }
                 console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
-                result = this.engine.recommendFromSimulation(request, { setCount: 5 });
+                result = this.engine.recommendFromSimulation(request, { setCount: targetSetCount });
                 results = Array.isArray(result?.sets) ? result.sets : [];
                 explanations = results.map((set) => this.engine.explainSet(set, request));
             } finally {
-                endMark('ai.worker', { requested: 5, count: results.length, fallback });
+                endMark('ai.worker', { requested: targetSetCount, count: results.length, fallback });
             }
 
             if (!results || results.length === 0) throw new Error('시뮬레이션 결과가 비어 있습니다');
@@ -275,7 +276,12 @@ export class AiModule {
                 explanations = results.map((set) => this.engine.explainSet(set, request));
             }
 
-            this.appendLog(log, '> 분석 완료. 추천 조합 5개를 생성했습니다.', 'var(--success)');
+            if (results.length < targetSetCount) {
+                this.appendLog(log, `> 분석 완료. 추천 조합 ${results.length}/${targetSetCount}개를 생성했습니다.`, 'var(--warning)');
+                UIManager.toast(`필터 조건으로 ${results.length}/${targetSetCount}개만 생성되었습니다.`, 'warning', 3500);
+            } else {
+                this.appendLog(log, `> 분석 완료. 추천 조합 ${results.length}개를 생성했습니다.`, 'var(--success)');
+            }
             const accepted = Number(result?.simulation?.diagnostics?.accepted || 0);
             const simulationCount = Number(result?.simulation?.diagnostics?.simulationCount || request.params.simulationCount || 0);
             this.appendLog(log, `> 채택된 샘플: ${accepted}/${simulationCount}`);

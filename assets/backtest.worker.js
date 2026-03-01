@@ -75,6 +75,9 @@ function createReport(strategyId, payoutMode = 'hybrid_dynamic_first') {
         payoutMode,
         draws: 0,
         tickets: 0,
+        requestedTickets: 0,
+        generatedTickets: 0,
+        fillRate: 0,
         cost: 0,
         totalPrize: 0,
         counts: [0, 0, 0, 0, 0, 0]
@@ -85,11 +88,15 @@ function summarizeReport(report) {
     const winCount = report.counts[1] + report.counts[2] + report.counts[3] + report.counts[4] + report.counts[5];
     const roi = report.cost > 0 ? ((report.totalPrize - report.cost) / report.cost) * 100 : 0;
     const hitRate = report.tickets > 0 ? (winCount / report.tickets) * 100 : 0;
+    const fillRate = report.requestedTickets > 0
+        ? (report.generatedTickets / report.requestedTickets) * 100
+        : 100;
     return {
         ...report,
         winCount,
         roi,
-        hitRate
+        hitRate,
+        fillRate
     };
 }
 
@@ -182,10 +189,9 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
                 maxAttempts: ticketQty * 120
             });
 
-            if (!Array.isArray(tickets) || tickets.length === 0) {
-                tickets = [];
-                for (let i = 0; i < ticketQty; i++) tickets.push(generateRandomNums());
-            }
+            if (!Array.isArray(tickets)) tickets = [];
+            report.requestedTickets += ticketQty;
+            report.generatedTickets += tickets.length;
 
             for (const ticket of tickets) {
                 const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult, { payoutMode: mode });
@@ -209,6 +215,9 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
             }
 
             report.draws++;
+            report.fillRate = report.requestedTickets > 0
+                ? (report.generatedTickets / report.requestedTickets) * 100
+                : 100;
             processedTotal++;
             strategyProgress[reqIndex].draws++;
             const didPostProgress = maybePostProgress(report);
@@ -236,12 +245,4 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
             }
         }
     });
-}
-
-function generateRandomNums() {
-    const nums = new Set();
-    while (nums.size < 6) {
-        nums.add(Math.floor(Math.random() * 45) + 1);
-    }
-    return [...nums].sort((a, b) => a - b);
 }

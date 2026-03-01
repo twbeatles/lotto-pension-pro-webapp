@@ -407,7 +407,7 @@ export class StrategyEngine {
             const fallback = this.sampleWithConstraints(fallbackWeights, fixed, exclude, rng);
             if (fallback && filterEvaluator(fallback, { assumeSorted: true })) return fallback;
         }
-        return this.sampleWithConstraints(fallbackWeights, fixed, exclude, rng);
+        return null;
     }
 
     generateSet(request, options = {}) {

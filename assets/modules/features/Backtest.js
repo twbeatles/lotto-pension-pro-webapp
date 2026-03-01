@@ -130,6 +130,9 @@ export class BacktestModule {
       <li><b>Strategy</b>: ${stats.strategyId ? this.getStrategyLabel(stats.strategyId) : '-'}</li>
       <li><b>Payout Mode</b>: ${payoutLabel}</li>
       <li><b>Draws</b>: ${stats.draws}</li>
+      <li><b>Requested Tickets</b>: ${Number(stats.requestedTickets || 0).toLocaleString()}</li>
+      <li><b>Generated Tickets</b>: ${Number(stats.generatedTickets || 0).toLocaleString()}</li>
+      <li><b>Fill-rate</b>: ${Number(stats.fillRate || 0).toFixed(2)}%</li>
       <li><b>Tickets</b>: ${stats.tickets}</li>
       <li><b>Total Cost</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
       <li><b>Total Prize</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -22,6 +22,7 @@ const APP_SHELL_ASSETS = [
     './assets/modules/core/UIManager.js',
     './assets/modules/utils/utils.js',
     './assets/modules/utils/config.js',
+    './assets/modules/utils/backup.js',
     './assets/modules/utils/loader.js',
     './assets/modules/utils/perf.js',
     './assets/modules/features/Ai.js',

@@ -3,6 +3,14 @@ import { CONFIG } from '../utils/config.js';
 import { UIManager } from '../core/UIManager.js';
 import { buildBackupPayload, normalizeBackupPayload } from '../utils/backup.js';
 
+export async function runPostImportRefresh({ data, app } = {}) {
+    if (!data || !app) return;
+    await data.fetchWinningStats({ notifyTicketSettle: false });
+    app.updateLatestWin?.();
+    await app.refreshCurrentRoute?.();
+    app.renderDataLists?.();
+}
+
 export class DataIOModule {
     constructor(app) {
         this.app = app;
@@ -130,6 +138,10 @@ export class DataIOModule {
         proxyInput.value = this.data.state.customProxy || '';
     }
 
+    async runPostImportRefresh() {
+        await runPostImportRefresh({ data: this.data, app: this.app });
+    }
+
     async importAll(e) {
         const input = e.currentTarget;
         const file = input.files?.[0];
@@ -239,8 +251,8 @@ export class DataIOModule {
             }
 
             this.data.markAllDirty?.();
-            this.data.save();
-            this.app.renderDataLists();
+            this.data.save(true);
+            await this.runPostImportRefresh();
         } catch (err) {
             console.error('Import failed', err);
             UIManager.toast('Import failed: invalid backup file.', 'error', 3500);

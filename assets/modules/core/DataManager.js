@@ -333,7 +333,7 @@ export class DataManager {
 
         return {
             id: raw.id || this.createId('campaign'),
-            name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'campaign',
+            name: typeof raw.name === 'string' ? raw.name.trim().slice(0, 80) : 'campaign',
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
             weeks: Math.max(1, Math.floor(weeks)),
             setsPerWeek: Math.max(1, Math.floor(setsPerWeek)),
@@ -825,15 +825,10 @@ export class DataManager {
             staticData.forEach(d => mergedMap.set(Number(d.draw_no), d));
             localUpdates.forEach(d => mergedMap.set(Number(d.draw_no), d));
 
-            this.state.winningStats = Array.from(mergedMap.values()).map(r => ({
-                draw_no: Number(r.draw_no),
-                numbers: (r.numbers || []).map(Number).sort((a, b) => a - b),
-                bonus: Number(r.bonus),
-                date: r.date,
-                prize_amount: r.prize_amount ? Number(r.prize_amount) : 0,
-                winners_count: r.winners_count ? Number(r.winners_count) : 0,
-                total_sales: r.total_sales ? Number(r.total_sales) : 0
-            })).sort((a, b) => b.draw_no - a.draw_no);
+            this.state.winningStats = Array.from(mergedMap.values())
+                .map((row) => this.normalizeDrawItem(row))
+                .filter(Boolean)
+                .sort((a, b) => b.draw_no - a.draw_no);
             this.buildAnalyticsCache();
 
             await this.settlePendingTickets({ silent: !notifyTicketSettle });
@@ -905,16 +900,25 @@ export class DataManager {
             ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
             : dateRaw;
 
+        const normalizedNumbers = (numbers || [])
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 45)
+            .sort((a, b) => a - b);
+        const bonus = Number(raw.bonus ?? raw.bnsWnNo ?? 0);
+
         const normalized = {
             draw_no: drawNo,
             date,
-            numbers: (numbers || []).map(Number).filter(n => n >= 1 && n <= 45).sort((a, b) => a - b),
-            bonus: Number(raw.bonus ?? raw.bnsWnNo ?? 0),
+            numbers: normalizedNumbers,
+            bonus,
             prize_amount: Number(raw.prize_amount ?? raw.rnk1WnAmt ?? 0),
             winners_count: Number(raw.winners_count ?? raw.rnk1WnNope ?? 0),
             total_sales: Number(raw.total_sales ?? raw.rlvtEpsdSumNtslAmt ?? 0)
         };
-        if (normalized.numbers.length !== 6 || normalized.bonus < 1 || normalized.bonus > 45) return null;
+        if (normalized.numbers.length !== 6) return null;
+        if (new Set(normalized.numbers).size !== 6) return null;
+        if (!Number.isInteger(normalized.bonus) || normalized.bonus < 1 || normalized.bonus > 45) return null;
+        if (normalized.numbers.includes(normalized.bonus)) return null;
         return normalized;
     }
 

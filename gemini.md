@@ -16,7 +16,7 @@
 - 엔트리: `index.html` -> `assets/modules/index.js`
 - 배포 URL: `https://twbeatles.github.io/lotto---webapp/`
 - 주요 탭: `gen`, `stats`, `ai`, `bt`, `check`, `data`
-- 오프라인 지원: `sw.js` (`CACHE_VERSION: v7`)
+- 오프라인 지원: `sw.js` (`CACHE_VERSION: v8`)
 - 데이터 원천:
   - 정적: `data/winning_stats.json`
   - 동적 누적: `localStorage.lotto_pro_updates_v2`
@@ -172,7 +172,7 @@ node scripts/perf/bench.mjs
 ## 8) PWA/캐시 규칙
 
 `sw.js`:
-- 캐시 버전: `v7`
+- 캐시 버전: `v8`
 - 데이터 요청: network-first
 - 앱 셸: stale-while-revalidate
 - precache 목록: `APP_SHELL_ASSETS`
@@ -198,6 +198,13 @@ node scripts/perf/bench.mjs
 - 증상: 일부 한국어 UI 문구가 깨진 글자(`理쒖떊`)로 표시됨.
 - 조치: `DataManager/Generator/Backtest/Ai`에서 사용자 노출 문자열을 정리하고 탭별 실제 렌더로 검증.
 - 배포 확인: 동일 증상 재발 시 SW 캐시 초기화 후 재검증.
+
+## 9-2) 2026-03-01 기능 품질 강화(3차)
+- 전략 생성은 `엄격 필터` 기준으로 동작하며, 필터 미충족 시 무필터 랜덤으로 보완하지 않음.
+- 백테스트 요약은 `requestedTickets`, `generatedTickets`, `fillRate`를 포함.
+- Import 후 즉시 `fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists` 순서로 UI 반영.
+- draw 정규화에서 중복 번호/보너스 중복 차단.
+- `smoke`에 strict-filter/draw-normalization/post-import-refresh 회귀 테스트 포함.
 
 ---
 

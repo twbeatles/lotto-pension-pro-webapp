@@ -95,7 +95,7 @@
 - 시뮬레이션 기본값 5000, 상한 20000
 - 워커 진행 메시지와 ETA 기반 진행률 표시
 - 메인/워커가 동일 전략 요청 객체를 사용해 규칙 불일치 위험 감소
-- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v7`)
+- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v8`)
 
 ## 10) 데이터 관측(정적 파일 기준)
 - `data/winning_stats.json`
@@ -104,7 +104,7 @@
   - 누락 회차: 146
 
 ## 11) 위험 요소 및 권장 후속
-- 필터를 과도하게 좁히면 유효 조합 부족으로 랜덤 보완 비중 증가
+- 필터를 과도하게 좁히면 생성 수량이 요청보다 적게 반환될 수 있음(엄격 필터 모드)
 - 전략 품질은 확률 기반이며 당첨 보장과 무관
 - 권장 후속:
   - 전략별 시뮬레이션 보고서 자동 생성
@@ -120,7 +120,7 @@
   - `assets/modules/features/Backtest.js`
   - `assets/modules/features/Generator.js`
   문자열 리터럴 복구
-- 추가 조치: 캐시 잔존 대응을 위해 `sw.js` `CACHE_VERSION`을 `v7`로 상향
+- 추가 조치: 캐시 잔존 대응을 위해 `sw.js` `CACHE_VERSION`을 `v8`로 상향
 
 ## 13) 2026-03-01 인코딩 정리 2차
 - 증상: 화면은 동작하지만 일부 한국어 문구가 `理쒖떊` 형태로 깨져 보임.
@@ -132,3 +132,16 @@
   - `assets/modules/features/Ai.js`
   내 사용자 노출 문자열을 일괄 정규화.
 - 검증: 로컬 스모크 + 실제 브라우저 탭 이동/생성/상태 텍스트 확인.
+
+## 14) 2026-03-01 기능 품질 강화 3차
+- 엄격 필터 모드:
+  - `StrategyEngine`에서 필터 미충족 시 무필터 랜덤 세트로 보완하지 않음.
+  - `Generator/Ai`는 요청 수량 대비 실제 생성 수량을 안내.
+- 백테스트 투명성:
+  - 워커 결과 요약에 `requestedTickets`, `generatedTickets`, `fillRate` 추가.
+  - 무필터 랜덤 fallback 제거.
+- 데이터 정합성:
+  - 회차 정규화 시 `중복 번호`, `보너스 중복` 차단.
+  - Import 이후 즉시 화면/통계 반영(`fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists`).
+- 오프라인 캐시:
+  - `APP_SHELL_ASSETS`에 `assets/modules/utils/backup.js` 반영.

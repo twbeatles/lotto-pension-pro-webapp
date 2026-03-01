@@ -33,8 +33,9 @@
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v7`
+- 현재 `sw.js` 캐시 버전: `v8`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
+- `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 
 배포 후 반영 확인:
 1. 페이지 열기
@@ -79,3 +80,8 @@ python -m http.server 5173
 node scripts/smoke/smoke.mjs
 node scripts/perf/bench.mjs
 ```
+
+`smoke`에는 아래 회귀 항목이 포함됩니다.
+- 엄격 필터에서 필터 위반 조합이 생성되지 않는지
+- draw 정규화 시 중복 번호/보너스 중복 차단되는지
+- Import 후 즉시 반영 순서가 유지되는지

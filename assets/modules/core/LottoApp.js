@@ -431,7 +431,12 @@ export class LottoApp {
             const el = $(id);
             if (!el) return;
             if (!list.length) {
-                el.innerHTML = `<div class="empty-state">${emptyText}</div>`;
+                el.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph ph-folder-open"></i>
+                        <p>${emptyText}</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -463,7 +468,12 @@ export class LottoApp {
             };
             const list = raw.filter((item) => filter === 'all' || status(item) === filter);
             if (!list.length) {
-                el.innerHTML = '<div class="empty-state">조건에 맞는 티켓이 없습니다.</div>';
+                el.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph ph-ticket"></i>
+                        <p>조건에 맞는 티켓이 없습니다.</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -489,7 +499,12 @@ export class LottoApp {
             if (!el) return;
             const list = this.data.state.campaigns || [];
             if (!list.length) {
-                el.innerHTML = '<div class="empty-state">저장된 캠페인이 없습니다.</div>';
+                el.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph ph-calendar-blank"></i>
+                        <p>저장된 캠페인이 없습니다.</p>
+                    </div>
+                `;
                 return;
             }
 

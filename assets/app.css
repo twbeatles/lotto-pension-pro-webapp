@@ -2438,6 +2438,39 @@ input:checked+.slider:before {
     overflow: visible;
   }
 
+  /* Keep all generated balls visible on narrow screens */
+  #page-gen .result-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  #page-gen .result-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+    overflow: visible;
+  }
+
+  #page-gen .result-balls {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  #page-gen .result-actions {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #page-gen .result-actions .icon-btn {
+    font-size: 18px;
+    padding: 8px;
+  }
+
   .ball-container {
     gap: 8px;
     justify-content: center;

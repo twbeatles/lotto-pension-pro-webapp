@@ -214,13 +214,23 @@ export class LottoApp {
             this.data.fetchLatestFromAPI({ silent: false, trigger: 'manual' });
         });
 
+        $('#cancelSyncBtn')?.addEventListener('click', () => {
+            const cancelled = this.data.cancelActiveSync?.();
+            if (!cancelled) {
+                UIManager.toast('취소 가능한 동기화가 없습니다.', 'info');
+            }
+        });
+
         // Main Refresh Button
         $('#refreshDataBtn')?.addEventListener('click', async (e) => {
             const btn = e.currentTarget;
             const icon = btn.querySelector('i');
-            icon.classList.add('ph-spin');
-            await this.data.fetchLatestFromAPI({ silent: false, trigger: 'refresh' });
-            icon.classList.remove('ph-spin');
+            icon?.classList.add('ph-spin');
+            try {
+                await this.data.fetchLatestFromAPI({ silent: false, trigger: 'refresh' });
+            } finally {
+                icon?.classList.remove('ph-spin');
+            }
         });
 
         $('#customProxyUrl')?.addEventListener('change', (e) => {

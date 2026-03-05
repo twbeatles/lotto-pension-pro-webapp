@@ -235,15 +235,15 @@
                             <div class="strategy-advanced-grid compact">
                                 <div class="input-group">
                                     <label for="campStartDraw">시작 회차</label>
-                                    <input type="number" id="campStartDraw" class="input-field" min="1" placeholder="예: 1210">
+                                    <input type="number" id="campStartDraw" class="input-field" min="1" max="99999" placeholder="예: 1210">
                                 </div>
                                 <div class="input-group">
                                     <label for="campWeeks">주차 수</label>
-                                    <input type="number" id="campWeeks" class="input-field" min="1" value="4">
+                                    <input type="number" id="campWeeks" class="input-field" min="1" max="52" value="4">
                                 </div>
                                 <div class="input-group">
                                     <label for="campSetsPerWeek">주당 세트</label>
-                                    <input type="number" id="campSetsPerWeek" class="input-field" min="1" value="3">
+                                    <input type="number" id="campSetsPerWeek" class="input-field" min="1" max="20" value="3">
                                 </div>
                             </div>
                             <div class="button-group" style="margin-top:10px;">
@@ -448,15 +448,15 @@
                         <div class="options-grid">
                             <div class="input-group">
                                 <label for="btStart">시작 회차</label>
-                                <input type="number" id="btStart" value="1000">
+                                <input type="number" id="btStart" min="1" max="99999" value="1000">
                             </div>
                             <div class="input-group">
                                 <label for="btEnd">종료 회차</label>
-                                <input type="number" id="btEnd" value="1100">
+                                <input type="number" id="btEnd" min="1" max="99999" value="1100">
                             </div>
                             <div class="input-group">
                                 <label for="btQty">회차당 구매 수</label>
-                                <input type="number" id="btQty" value="5">
+                                <input type="number" id="btQty" min="1" max="1000" value="5">
                             </div>
                             <div class="input-group">
                                 <label for="btStrategy">전략</label>
@@ -717,15 +717,49 @@
                         <p class="subtitle" style="font-size:12px; margin-top:5px;">기본값: api.allorigins.win (공용)</p>
                     </div>
 
-                    <button id="syncDataBtn" class="btn primary">
-                        <i class="ph-bold ph-arrows-clockwise"></i> 최신 데이터 동기화
-                    </button>
+                    <div class="button-group">
+                        <button id="syncDataBtn" class="btn primary">
+                            <i class="ph-bold ph-arrows-clockwise"></i> 최신 데이터 동기화
+                        </button>
+                        <button id="cancelSyncBtn" class="btn ghost" style="display:none;" disabled>
+                            <i class="ph ph-stop-circle"></i> 동기화 중지
+                        </button>
+                    </div>
                     <div id="syncLog" class="log-content" style="margin-top:10px; max-height:100px; display:none;">
                     </div>
                 </div>
 
                 <div class="card glass mt-4">
                     <h3>데이터 백업/복원</h3>
+                    <div class="strategy-panel" style="margin-bottom:12px;">
+                        <div class="input-group">
+                            <label for="importMode">가져오기 모드</label>
+                            <select id="importMode" class="input-field">
+                                <option value="merge" selected>Merge (기존 데이터 유지 + 신규 병합)</option>
+                                <option value="overwrite">Overwrite (기존 데이터 덮어쓰기)</option>
+                            </select>
+                        </div>
+                        <div class="toggles" style="margin-top:8px;">
+                            <label class="check-box">
+                                <input type="checkbox" id="importApplyTheme">
+                                <span class="checkmark"></span>
+                                <span>테마 설정 적용</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="importApplyProxy">
+                                <span class="checkmark"></span>
+                                <span>프록시 설정 적용</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="importApplyStrategyPrefs">
+                                <span class="checkmark"></span>
+                                <span>전략 설정 적용</span>
+                            </label>
+                        </div>
+                        <p class="subtitle" style="font-size:12px; margin-top:6px;">
+                            기본값: Merge는 설정 미적용, Overwrite는 설정 적용
+                        </p>
+                    </div>
                     <div class="button-group">
                         <button id="exportAll" class="btn ghost">
                             <i class="ph ph-export"></i> 전체 데이터 내보내기 (백업 파일)

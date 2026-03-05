@@ -2,6 +2,7 @@
 import { UIManager } from '../core/UIManager.js';
 import { getStrategyMeta, listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 import { endMark, startMark } from '../utils/perf.js';
+import { CONFIG } from '../utils/config.js';
 
 export class BacktestModule {
     constructor(app) {
@@ -362,10 +363,11 @@ export class BacktestModule {
             return;
         }
 
-        const header = ['strategy_id', 'roi', 'hit_rate', 'draws', 'tickets', 'total_cost', 'total_prize', 'win_count'];
+        const header = ['strategy_id', 'strategy_label', 'roi', 'hit_rate', 'draws', 'tickets', 'total_cost', 'total_prize', 'win_count'];
         const lines = [header.join(',')];
         this.lastComparisons.forEach((x) => {
             lines.push([
+                x.strategyId || '',
                 this.getStrategyLabel(x.strategyId),
                 Number(x.roi || 0).toFixed(4),
                 Number(x.hitRate || 0).toFixed(4),
@@ -406,6 +408,15 @@ export class BacktestModule {
         if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
             endMark('backtest.run', { invalidRange: true });
             return UIManager.toast('회차 범위를 확인해주세요. (시작 <= 종료)', 'warning', 2500);
+        }
+        if (start < 1 || end < 1) {
+            endMark('backtest.run', { invalidRange: true });
+            return UIManager.toast('회차는 1 이상이어야 합니다.', 'warning', 2500);
+        }
+        const span = end - start + 1;
+        if (span > CONFIG.LIMITS.MAX_BACKTEST_SPAN) {
+            endMark('backtest.run', { invalidRange: true, span });
+            return UIManager.toast(`백테스트 범위는 최대 ${CONFIG.LIMITS.MAX_BACKTEST_SPAN}회차까지 가능합니다.`, 'warning', 3000);
         }
         if (!Number.isFinite(qty) || qty < 1) qty = 1;
         qty = Math.min(qty, this.MAX_QTY);

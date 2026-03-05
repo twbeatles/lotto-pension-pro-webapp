@@ -3,3 +3,16 @@
 # - gemini.md
 # - cladue.md (compat alias)
 /backup
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local temporary artifacts
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig

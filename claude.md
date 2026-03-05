@@ -4,9 +4,37 @@
 이 문서는 저장소(`lotto---webapp`)에서 Claude 계열 AI가 다음 세션에도 바로 작업을 이어갈 수 있도록 만든 운영 기준 문서입니다.
 핵심은 "빠르게 맥락 복원 -> 안전하게 수정 -> 회귀 없이 검증"입니다.
 
-- 기준일: 2026-03-01
+- 기준일: 2026-03-05
 - 정적 당첨 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
-- 정적 데이터 개수: `1208`, 누락 회차: `146`
+- 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
+
+---
+
+## 0) 2026-03-05 통합 개선 반영 (리포트 1~9 + A~E)
+
+- 제한 상수 중앙화(`CONFIG.LIMITS`)
+  - `MAX_BACKTEST_SPAN=300`
+  - `MAX_CAMPAIGN_WEEKS=52`
+  - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
+  - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
+  - `MAX_SYNC_FALLBACK_DRAWS=120`
+- 백테스트
+  - 메인/워커 양쪽에서 회차 폭 상한 검증
+  - `WINS` payload 확장: `matchedCount`, `bonusHit`, `hitText`
+  - CSV: `strategy_id`, `strategy_label` 분리
+- 캠페인
+  - 생성 단계와 저장 정규화 단계 모두 상한 검증
+- 동기화
+  - in-flight 단일 실행 가드(`syncInFlightPromise`)
+  - 수동 동기화 취소(`cancelActiveSync`, `cancelSyncBtn`)
+  - fallback 단건 요청 상한(`MAX_SYNC_FALLBACK_DRAWS`)
+- 데이터 Import
+  - 옵션 패널 기반(`merge/overwrite`, 설정 적용 체크)
+  - 기본 정책: `Merge=설정 미적용`, `Overwrite=설정 적용`
+- QR 검증 강화
+  - 공식 host 화이트리스트: `m.dhlottery.co.kr`, `www.dhlottery.co.kr`
+  - 중복 번호 게임 거부
+- 서비스워커 캐시 버전: `v9`
 
 ---
 
@@ -162,8 +190,11 @@ node scripts/perf/bench.mjs
 ### 최신 회차 동기화
 `fetchLatestFromAPI()`:
 - 추정 최신 회차: `estimateLatestDrawKST()`
+- in-flight 단일 실행 가드: 실행 중 재호출 시 기존 Promise 합류
+- 수동 동기화(`trigger=manual`)만 취소 가능
 - 우선 `/proxy/range` 청크 호출
 - 누락분은 단건 fallback 조회
+- fallback 단건 조회는 최근 `120`개로 제한
 - 성공분은 `lotto_pro_updates_v2`에 합쳐 저장
 
 ### 프록시 URL 우선순위
@@ -186,12 +217,18 @@ node scripts/perf/bench.mjs
 
 응답: `PROGRESS`, `WINS`, `DONE`, `ERROR`
 
+`WINS` payload(추가 필드 포함):
+- `strategyId`, `payoutMode`, `drawNo`, `rank`, `prize`, `nums`
+- `matchedCount:number`
+- `bonusHit:boolean`
+- `hitText:string`
+
 ---
 
 ## 8) 서비스워커/오프라인
 
 `sw.js` 핵심:
-- 캐시 버전: `v8`
+- 캐시 버전: `v9`
 - App Shell precache 목록 수동 관리
 - 데이터 JSON: `network-first` + timeout
 - 기타 정적 자산: `stale-while-revalidate`
@@ -234,6 +271,25 @@ node scripts/perf/bench.mjs
 - 회귀 테스트:
   - `scripts/smoke/smoke.mjs`에 strict-filter, draw-normalization, post-import-refresh 회귀 케이스 추가.
 
+## 9-3) 2026-03-05 통합 개선(리포트 1~9 + A~E)
+- 백테스트 상한/표시 정합성:
+  - 범위 상한(300회차) 적용
+  - `WINS.hitText` 실제 값 채움
+  - CSV 헤더/값 정합성(`strategy_id`, `strategy_label`)
+- 캠페인 상한:
+  - 생성/저장 경로 동시 검증(52주, 주당 20세트, 총 500티켓)
+- QR 검증:
+  - host allowlist + 중복 번호 거부
+- 동기화 제어:
+  - `syncInFlightPromise` 단일 실행
+  - 수동 동기화 취소 버튼/AbortController 경로
+- Import UX:
+  - 옵션 패널 기반 모드/설정 적용 선택
+- 기타:
+  - dedupe key의 stable stringify 적용
+  - 프록시 출처 라벨 깨짐 문자열 복구
+  - `sw.js` `CACHE_VERSION` `v9` 상향
+
 ---
 
 ## 10) 회귀 점검 포인트
@@ -244,6 +300,9 @@ node scripts/perf/bench.mjs
 4. 백업 내보내기/가져오기(v1/v2/v3) 후 즉시 화면 반영
 5. 서비스워커 캐시 갱신 후 동작
 6. 엄격 필터 조건에서 필터 위반 조합이 출력되지 않는지 확인
+7. 수동 동기화 중 `cancelSyncBtn`이 실제 취소 동작하는지 확인
+8. Import 옵션(`merge/overwrite`, 설정 체크)이 정책대로 동작하는지 확인
+9. 백테스트 상세표 `적중` 컬럼과 CSV `strategy_id/strategy_label` 정합성 확인
 
 ---
 

@@ -13,6 +13,10 @@
 - 기본 데이터 소스: `data/winning_stats.json`
 - 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
+- 동기화 실행 정책:
+  - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
+  - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
+  - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
 - 정적 JSON과 로컬 업데이트를 병합해 최신 상태를 구성합니다.
@@ -33,7 +37,7 @@
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v8`
+- 현재 `sw.js` 캐시 버전: `v9`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 
@@ -85,3 +89,7 @@ node scripts/perf/bench.mjs
 - 엄격 필터에서 필터 위반 조합이 생성되지 않는지
 - draw 정규화 시 중복 번호/보너스 중복 차단되는지
 - Import 후 즉시 반영 순서가 유지되는지
+- 캠페인 상한 정책이 지켜지는지(`campaign-limit`)
+- QR host/중복 번호 검증이 동작하는지(`qr-validation`)
+- strategyRequest 키 순서가 달라도 dedupe 키가 동일한지(`ticket-dedupe`)
+- 동기화 in-flight/취소 가드가 동작하는지(`sync-guard`)

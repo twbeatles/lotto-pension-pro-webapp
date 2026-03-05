@@ -1,6 +1,7 @@
 import { StrategyEngine } from './modules/core/StrategyEngine.js';
 import { resolveStrategyId } from './modules/core/StrategyCatalog.js';
 import { createFilterEvaluator } from './modules/core/StrategyFilters.js';
+import { CONFIG } from './modules/utils/config.js';
 
 const PROGRESS_INTERVAL_MS = 250;
 const WINS_BATCH_SIZE = 40;
@@ -122,10 +123,20 @@ function postWinsIfNeeded(winsBuffer, force = false) {
 }
 
 async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests, payoutMode }) {
+    const start = Number(startDraw);
+    const end = Number(endDraw);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 1 || end < 1 || start > end) {
+        throw new Error('회차 범위가 올바르지 않습니다.');
+    }
+    const span = end - start + 1;
+    if (span > CONFIG.LIMITS.MAX_BACKTEST_SPAN) {
+        throw new Error(`백테스트 범위는 최대 ${CONFIG.LIMITS.MAX_BACKTEST_SPAN}회차까지 가능합니다.`);
+    }
+
     const { allStats, drawMap, drawIndex } = prepareStatsIndex(statsData);
     const requests = getStrategyRequests({ strategyRequest, strategy, strategyRequests });
     const normalizationEngine = new StrategyEngine(allStats);
-    const strategyDrawTotal = Math.max(0, Number(endDraw) - Number(startDraw) + 1);
+    const strategyDrawTotal = Math.max(0, end - start + 1);
     const totalDraws = strategyDrawTotal * requests.length;
     const ticketQty = Math.max(1, Math.floor(Number(qty) || 1));
 
@@ -168,7 +179,7 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
         const report = createReport(req.strategyId, mode);
         const winsBuffer = [];
 
-        for (let currentDraw = Number(startDraw); currentDraw <= Number(endDraw); currentDraw++) {
+        for (let currentDraw = start; currentDraw <= end; currentDraw++) {
             const actualResult = drawMap.get(currentDraw);
             const idx = drawIndex.get(currentDraw);
             const historyData = Number.isFinite(idx) && idx > 0 ? allStats.slice(0, idx) : [];
@@ -192,6 +203,8 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
             if (!Array.isArray(tickets)) tickets = [];
             report.requestedTickets += ticketQty;
             report.generatedTickets += tickets.length;
+            const winningNumbers = new Set(actualResult.numbers || []);
+            const bonusNumber = Number(actualResult.bonus);
 
             for (const ticket of tickets) {
                 const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult, { payoutMode: mode });
@@ -201,6 +214,9 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
                 report.counts[rank]++;
 
                 if (rank >= 1 && rank <= 5) {
+                    const matchedCount = ticket.reduce((count, n) => count + (winningNumbers.has(n) ? 1 : 0), 0);
+                    const bonusHit = ticket.includes(bonusNumber);
+                    const hitText = rank === 2 ? '5+보너스' : String(matchedCount);
                     winsBuffer.push({
                         strategyId: req.strategyId,
                         payoutMode: mode,
@@ -208,7 +224,9 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
                         rank,
                         prize,
                         nums: ticket,
-                        hitText: ''
+                        matchedCount,
+                        bonusHit,
+                        hitText
                     });
                     postWinsIfNeeded(winsBuffer);
                 }

@@ -14,6 +14,11 @@ export const CONFIG = {
         MAX_SET: 20,
         RANGE: 45,
         MAX_HIST: 500,
-        MAX_FIXED: 5
+        MAX_FIXED: 5,
+        MAX_BACKTEST_SPAN: 300,
+        MAX_CAMPAIGN_WEEKS: 52,
+        MAX_CAMPAIGN_SETS_PER_WEEK: 20,
+        MAX_CAMPAIGN_TOTAL_TICKETS: 500,
+        MAX_SYNC_FALLBACK_DRAWS: 120
     }
 };

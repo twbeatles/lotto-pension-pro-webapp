@@ -39,6 +39,9 @@ export class DataManager {
         this.RANGE_CHUNK_CONCURRENCY = 2;
         this.FALLBACK_FETCH_CONCURRENCY = 3;
         this.SYNC_FETCH_TIMEOUT_MS = 4500;
+        this.syncInFlightPromise = null;
+        this.syncAbortController = null;
+        this.syncCancelable = false;
     }
 
     markDirty(...keys) {
@@ -173,6 +176,66 @@ export class DataManager {
         this.app = app;
     }
 
+    setSyncControlsState({ running = false, cancelable = false } = {}) {
+        if (typeof document === 'undefined') return;
+
+        const syncBtn = $('#syncDataBtn');
+        const refreshBtn = $('#refreshDataBtn');
+        const cancelBtn = $('#cancelSyncBtn');
+
+        if (syncBtn) syncBtn.disabled = running;
+        if (refreshBtn) refreshBtn.disabled = running;
+        if (cancelBtn) {
+            cancelBtn.disabled = !running || !cancelable;
+            cancelBtn.style.display = running ? 'inline-flex' : 'none';
+        }
+    }
+
+    createAbortError(message = 'Sync aborted') {
+        const err = new Error(message);
+        err.name = 'AbortError';
+        return err;
+    }
+
+    isAbortError(err) {
+        if (!err) return false;
+        if (err.name === 'AbortError') return true;
+        const msg = String(err.message || '');
+        return /abort/i.test(msg);
+    }
+
+    stableStringify(value) {
+        if (value === null || typeof value !== 'object') {
+            return JSON.stringify(value);
+        }
+
+        if (Array.isArray(value)) {
+            const items = value.map((item) => {
+                const serialized = this.stableStringify(item);
+                return serialized === undefined ? 'null' : serialized;
+            });
+            return `[${items.join(',')}]`;
+        }
+
+        const keys = Object.keys(value).sort();
+        const entries = [];
+        keys.forEach((key) => {
+            const next = value[key];
+            if (next === undefined || typeof next === 'function' || typeof next === 'symbol') return;
+            const serialized = this.stableStringify(next);
+            if (serialized === undefined) return;
+            entries.push(`${JSON.stringify(key)}:${serialized}`);
+        });
+        return `{${entries.join(',')}}`;
+    }
+
+    cancelActiveSync() {
+        if (!this.syncAbortController || !this.syncCancelable) return false;
+        if (this.syncAbortController.signal.aborted) return false;
+        this.syncAbortController.abort();
+        return true;
+    }
+
     getCustomProxyInput() {
         const proxyInput = $('#customProxyUrl');
         return proxyInput ? proxyInput.value.trim() : '';
@@ -209,18 +272,27 @@ export class DataManager {
         localStorage.setItem('lotto_pro_updates_v2', JSON.stringify(this.localUpdatesCache));
     }
 
-    async fetchWithTimeout(url, options = {}, timeoutMs = this.SYNC_FETCH_TIMEOUT_MS) {
+    async fetchWithTimeout(url, options = {}, timeoutMs = this.SYNC_FETCH_TIMEOUT_MS, externalSignal = null) {
         return measureAsync('sync.fetch', async () => {
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             const timer = controller
                 ? setTimeout(() => controller.abort(), timeoutMs)
                 : null;
+            let onExternalAbort = null;
 
             try {
+                if (controller && externalSignal) {
+                    if (externalSignal.aborted) throw this.createAbortError('Sync aborted');
+                    onExternalAbort = () => controller.abort();
+                    externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+                }
                 const nextOptions = controller ? { ...options, signal: controller.signal } : options;
                 return await fetch(url, nextOptions);
             } finally {
                 if (timer) clearTimeout(timer);
+                if (externalSignal && onExternalAbort) {
+                    externalSignal.removeEventListener('abort', onExternalAbort);
+                }
             }
         }, {
             timeoutMs,
@@ -247,9 +319,9 @@ export class DataManager {
         try {
             const params = new URLSearchParams(window.location.search);
             const proxyUrl = (params.get('proxyUrl') || '').trim();
-            if (proxyUrl) return { source: 'URL 荑쇰━(proxyUrl)', url: proxyUrl };
+            if (proxyUrl) return { source: 'URL 쿼리(proxyUrl)', url: proxyUrl };
             const proxy = (params.get('proxy') || '').trim();
-            if (proxy) return { source: 'URL 荑쇰━(proxy)', url: proxy };
+            if (proxy) return { source: 'URL 쿼리(proxy)', url: proxy };
         } catch (e) {
             return null;
         }
@@ -330,13 +402,18 @@ export class DataManager {
         const weeks = Number(raw.weeks);
         const setsPerWeek = Number(raw.setsPerWeek);
         if (!Number.isFinite(startDrawNo) || !Number.isFinite(weeks) || !Number.isFinite(setsPerWeek)) return null;
+        const normalizedWeeks = Math.max(1, Math.floor(weeks));
+        const normalizedSetsPerWeek = Math.max(1, Math.floor(setsPerWeek));
+        if (normalizedWeeks > CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS) return null;
+        if (normalizedSetsPerWeek > CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK) return null;
+        if (normalizedWeeks * normalizedSetsPerWeek > CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS) return null;
 
         return {
             id: raw.id || this.createId('campaign'),
             name: typeof raw.name === 'string' ? raw.name.trim().slice(0, 80) : 'campaign',
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
-            weeks: Math.max(1, Math.floor(weeks)),
-            setsPerWeek: Math.max(1, Math.floor(setsPerWeek)),
+            weeks: normalizedWeeks,
+            setsPerWeek: normalizedSetsPerWeek,
             strategyRequest: raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
             createdAt: raw.createdAt || new Date().toISOString()
         };
@@ -346,7 +423,7 @@ export class DataManager {
         if (ticket && typeof ticket.__dedupeKey === 'string') {
             return ticket.__dedupeKey;
         }
-        const strategySnapshot = ticket?.strategyRequest ? JSON.stringify(ticket.strategyRequest) : '-';
+        const strategySnapshot = ticket?.strategyRequest ? (this.stableStringify(ticket.strategyRequest) || '-') : '-';
         const key = [ticket?.targetDrawNo, ticket?.source || '-', (ticket?.numbers || []).join(','), strategySnapshot].join('|');
         if (ticket && typeof ticket === 'object') {
             try {
@@ -849,7 +926,7 @@ export class DataManager {
         }
     }
 
-    async fetchRangeFromProxy(fromNo, toNo, proxyConfig, log) {
+    async fetchRangeFromProxy(fromNo, toNo, proxyConfig, log, signal = null) {
         if (!proxyConfig?.url || fromNo > toNo) {
             return { items: [], missing: [], failed: true };
         }
@@ -867,7 +944,7 @@ export class DataManager {
             if (!baseUrl) return { items: [], missing: [], failed: true };
 
             const url = `${baseUrl}/proxy/range?from=${fromNo}&to=${toNo}`;
-            const res = await this.fetchWithTimeout(url);
+            const res = await this.fetchWithTimeout(url, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const payload = await res.json();
             const list = Array.isArray(payload?.data) ? payload.data : [];
@@ -880,6 +957,7 @@ export class DataManager {
             }
             return { items: normalized, missing, failed: false };
         } catch (e) {
+            if (this.isAbortError(e)) throw e;
             this.logSync('SYNC_RANGE_FAIL', `Range fetch failed ${fromNo}-${toNo}`, { message: e.message });
             log(`[range] 수집 실패 (${fromNo}~${toNo}): ${e.message}`);
             return { items: [], missing: [], failed: true };
@@ -922,7 +1000,7 @@ export class DataManager {
         return normalized;
     }
 
-    async fetchOneDraw(drawNo, proxyConfig, log = () => {}) {
+    async fetchOneDraw(drawNo, proxyConfig, log = () => {}, signal = null) {
         const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${drawNo}`;
         const internalUrls = [];
         const externalUrls = [];
@@ -952,6 +1030,7 @@ export class DataManager {
 
         const urls = [...internalUrls, ...externalUrls];
         for (const fetchUrl of urls) {
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
             const isExternalFallback = externalUrls.includes(fetchUrl);
             if (isExternalFallback) {
                 this.logSync('SYNC_FALLBACK_EXTERNAL', `Using external fallback for draw ${drawNo}`, { fetchUrl });
@@ -959,7 +1038,7 @@ export class DataManager {
             }
 
             try {
-                const res = await this.fetchWithTimeout(fetchUrl);
+                const res = await this.fetchWithTimeout(fetchUrl, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
                 if (!res.ok) continue;
                 const wrapper = await res.json();
 
@@ -975,6 +1054,7 @@ export class DataManager {
                     : (inner?.data?.[0] ? this.normalizeDrawItem(inner.data[0]) : this.normalizeDrawItem(inner));
                 if (candidate) return candidate;
             } catch (e) {
+                if (this.isAbortError(e)) throw e;
                 this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, { fetchUrl, message: e.message });
             }
         }
@@ -1009,13 +1089,14 @@ export class DataManager {
         return out;
     }
 
-    async fetchRangeChunkedFromProxy(fromNo, toNo, proxyConfig, log) {
+    async fetchRangeChunkedFromProxy(fromNo, toNo, proxyConfig, log, signal = null) {
         if (!proxyConfig?.url || fromNo > toNo) {
             return { items: [], missing: new Set(), failedDraws: new Set() };
         }
         const chunks = this.buildRangeChunks(fromNo, toNo, this.RANGE_CHUNK_SIZE);
         const chunkResults = await this.runWithConcurrency(chunks, this.RANGE_CHUNK_CONCURRENCY, async ([start, end]) => {
-            return this.fetchRangeFromProxy(start, end, proxyConfig, log);
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
+            return this.fetchRangeFromProxy(start, end, proxyConfig, log, signal);
         });
 
         const items = [];
@@ -1035,16 +1116,18 @@ export class DataManager {
         return { items, missing, failedDraws };
     }
 
-    async fetchMissingDraws(drawNos, proxyConfig, log) {
+    async fetchMissingDraws(drawNos, proxyConfig, log, signal = null) {
         const sorted = [...new Set((drawNos || []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
         if (!sorted.length) return [];
 
         const results = await this.runWithConcurrency(sorted, this.FALLBACK_FETCH_CONCURRENCY, async (drawNo) => {
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
             log(`- ${drawNo}회차 데이터 요청 중... (fallback)`);
-            let item = await this.fetchOneDraw(drawNo, proxyConfig, log);
+            let item = await this.fetchOneDraw(drawNo, proxyConfig, log, signal);
             if (!item) {
+                if (signal?.aborted) throw this.createAbortError('Sync aborted');
                 await new Promise((resolve) => setTimeout(resolve, 180));
-                item = await this.fetchOneDraw(drawNo, proxyConfig, log);
+                item = await this.fetchOneDraw(drawNo, proxyConfig, log, signal);
             }
             if (item) {
                 log(`완료: ${drawNo}회차 (${item.date})`);
@@ -1060,9 +1143,40 @@ export class DataManager {
     async fetchLatestFromAPI(options = {}) {
         if (typeof options === 'boolean') options = { silent: options };
         const profile = this.createSyncProfile(options);
+
+        if (this.syncInFlightPromise) {
+            if (profile.toast) UIManager.toast('이미 동기화가 진행 중입니다.', 'info');
+            return this.syncInFlightPromise;
+        }
+
+        const cancelable = profile.trigger === 'manual';
+        this.syncAbortController = cancelable ? new AbortController() : null;
+        this.syncCancelable = cancelable;
+        this.setSyncControlsState({ running: true, cancelable });
+
+        const task = this._fetchLatestFromAPIInternal(options, this.syncAbortController?.signal || null)
+            .catch((e) => {
+                if (this.isAbortError(e)) {
+                    if (profile.toast) UIManager.toast('동기화를 취소했습니다.', 'info');
+                    return false;
+                }
+                throw e;
+            })
+            .finally(() => {
+                this.syncAbortController = null;
+                this.syncCancelable = false;
+                this.setSyncControlsState({ running: false, cancelable: false });
+                this.syncInFlightPromise = null;
+            });
+
+        this.syncInFlightPromise = task;
+        return task;
+    }
+
+    async _fetchLatestFromAPIInternal(options = {}, abortSignal = null) {
+        const profile = this.createSyncProfile(options);
         const silent = profile.silent;
         const logEl = $('#syncLog');
-        const btn = $('#syncDataBtn');
         if (logEl && !silent) {
             logEl.style.display = 'block';
             logEl.innerHTML = '';
@@ -1095,8 +1209,6 @@ export class DataManager {
             this.logSync(code, msg, meta);
         };
 
-        if (btn) btn.disabled = true;
-
         try {
             const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
             const estNo = estimateLatestDrawKST();
@@ -1108,7 +1220,7 @@ export class DataManager {
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
                 });
-                return;
+                return true;
             }
 
             log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
@@ -1131,7 +1243,13 @@ export class DataManager {
                 log('No custom proxy configured. Using fallback chain.', 'SYNC_PROXY_NOT_CONFIGURED');
             }
 
-            const chunkResult = await this.fetchRangeChunkedFromProxy(latestKnown + 1, estNo, proxyConfig, log);
+            const chunkResult = await this.fetchRangeChunkedFromProxy(
+                latestKnown + 1,
+                estNo,
+                proxyConfig,
+                log,
+                abortSignal
+            );
             (chunkResult.items || []).forEach((item) => {
                 if (!item || fetched.has(item.draw_no)) return;
                 fetched.add(item.draw_no);
@@ -1146,7 +1264,19 @@ export class DataManager {
                 if (!fetched.has(drawNo)) fallbackTargets.add(drawNo);
             }
 
-            const fallbackItems = await this.fetchMissingDraws([...fallbackTargets], proxyConfig, log);
+            let fallbackTargetList = [...fallbackTargets]
+                .map(Number)
+                .filter(Number.isFinite)
+                .sort((a, b) => b - a);
+            if (fallbackTargetList.length > CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS) {
+                log(
+                    `Fallback 대상이 ${fallbackTargetList.length}개라 최근 ${CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS}개만 요청합니다.`,
+                    'SYNC_FALLBACK_LIMIT'
+                );
+                fallbackTargetList = fallbackTargetList.slice(0, CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS);
+            }
+
+            const fallbackItems = await this.fetchMissingDraws(fallbackTargetList, proxyConfig, log, abortSignal);
             fallbackItems.forEach((item) => {
                 if (!item || fetched.has(item.draw_no)) return;
                 fetched.add(item.draw_no);
@@ -1176,17 +1306,21 @@ export class DataManager {
                     requestSystemNotification: profile.requestSystemNotification
                 });
             }
-
+            return true;
         } catch (e) {
+            if (this.isAbortError(e)) {
+                log('Sync cancelled by user.', 'SYNC_ABORT');
+                throw e;
+            }
             log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
             if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
+            return false;
         } finally {
             if (logFlushTimer) {
                 clearTimeout(logFlushTimer);
                 logFlushTimer = null;
             }
             flushLog();
-            if (btn) btn.disabled = false;
         }
     }
 

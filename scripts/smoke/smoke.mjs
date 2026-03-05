@@ -7,6 +7,8 @@ import { DataManager } from '../../assets/modules/core/DataManager.js';
 import { runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
 import { buildBackupPayload, normalizeBackupPayload } from '../../assets/modules/utils/backup.js';
 import { passesFilters } from '../../assets/modules/core/StrategyFilters.js';
+import { CONFIG } from '../../assets/modules/utils/config.js';
+import { QrScannerModule } from '../../assets/modules/features/QrScanner.js';
 
 function normalizeStats(raw) {
     const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
@@ -150,6 +152,108 @@ function runDrawNormalizationRegression() {
     assert.equal(payload.localUpdates.length, 1, 'backup normalization must keep only valid updates');
 }
 
+function runCampaignLimitRegression() {
+    assert.equal(CONFIG.LIMITS.MAX_BACKTEST_SPAN, 300, 'MAX_BACKTEST_SPAN must be 300');
+    assert.equal(CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS, 52, 'MAX_CAMPAIGN_WEEKS must be 52');
+    assert.equal(CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK, 20, 'MAX_CAMPAIGN_SETS_PER_WEEK must be 20');
+    assert.equal(CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS, 500, 'MAX_CAMPAIGN_TOTAL_TICKETS must be 500');
+
+    const dm = new DataManager();
+    assert.equal(
+        dm.normalizeCampaignEntry({ startDrawNo: 1200, weeks: 53, setsPerWeek: 1 }),
+        null,
+        'campaign weeks over cap must be rejected'
+    );
+    assert.equal(
+        dm.normalizeCampaignEntry({ startDrawNo: 1200, weeks: 52, setsPerWeek: 21 }),
+        null,
+        'campaign setsPerWeek over cap must be rejected'
+    );
+    assert.equal(
+        dm.normalizeCampaignEntry({ startDrawNo: 1200, weeks: 26, setsPerWeek: 20 }),
+        null,
+        'campaign total tickets over cap must be rejected'
+    );
+
+    const valid = dm.normalizeCampaignEntry({ startDrawNo: 1200, weeks: 25, setsPerWeek: 20 });
+    assert.ok(valid, 'campaign at cap boundary must be accepted');
+}
+
+function runQrValidationRegression() {
+    const parse = (value) => QrScannerModule.prototype.parseLottoQr.call({}, value);
+
+    const ok = parse('https://m.dhlottery.co.kr/?v=0861q010203040506');
+    assert.equal(ok.length, 1, 'valid official QR must be parsed');
+
+    assert.throws(
+        () => parse('https://evil.example.com/?v=0861q010203040506'),
+        /공식 큐알 코드/,
+        'non-official host must be rejected'
+    );
+
+    assert.throws(
+        () => parse('https://m.dhlottery.co.kr/?v=0861q010101020304'),
+        /유효한 게임/,
+        'duplicate-number game must be rejected'
+    );
+}
+
+function runTicketDedupeRegression() {
+    const dm = new DataManager();
+    const base = {
+        targetDrawNo: 1210,
+        source: 'generator',
+        numbers: [1, 2, 3, 4, 5, 6]
+    };
+
+    const strategyRequestA = {
+        strategyId: 'ensemble_weighted',
+        params: { simulationCount: 5000, lookbackWindow: 20 },
+        filters: { sumRange: [100, 175], oddEven: [2, 4] }
+    };
+    const strategyRequestB = {
+        filters: { oddEven: [2, 4], sumRange: [100, 175] },
+        params: { lookbackWindow: 20, simulationCount: 5000 },
+        strategyId: 'ensemble_weighted'
+    };
+
+    const keyA = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestA });
+    const keyB = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestB });
+    assert.equal(keyA, keyB, 'ticket dedupe key must be stable across key order differences');
+}
+
+async function runSyncGuardRegression() {
+    const previousDocument = globalThis.document;
+    globalThis.document = { querySelector: () => null };
+
+    try {
+        const dm = new DataManager();
+        let callCount = 0;
+
+        dm._fetchLatestFromAPIInternal = async () => {
+            callCount++;
+            await new Promise((resolve) => setTimeout(resolve, 40));
+            return true;
+        };
+
+        const p1 = dm.fetchLatestFromAPI({ trigger: 'manual', silent: false });
+        const p2 = dm.fetchLatestFromAPI({ trigger: 'manual', silent: false });
+        await Promise.all([p1, p2]);
+        assert.equal(callCount, 1, 'sync internal runner must execute only once while in-flight');
+
+        dm.syncAbortController = new AbortController();
+        dm.syncCancelable = true;
+        assert.equal(dm.cancelActiveSync(), true, 'manual sync cancel must return true when abortable');
+        assert.equal(dm.syncAbortController.signal.aborted, true, 'manual sync cancel must abort signal');
+
+        dm.syncCancelable = false;
+        assert.equal(dm.cancelActiveSync(), false, 'cancel must return false when not cancelable');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 async function runPostImportRefreshRegression() {
     const calls = [];
     const data = {
@@ -237,6 +341,10 @@ async function main() {
     runBackupSmoke(stats);
     runStrictFilterRegression(stats.slice(-180));
     runDrawNormalizationRegression();
+    runCampaignLimitRegression();
+    runQrValidationRegression();
+    runTicketDedupeRegression();
+    await runSyncGuardRegression();
     await runPostImportRefreshRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
@@ -245,6 +353,10 @@ async function main() {
     console.log('[PASS] backup-v3 schema');
     console.log('[PASS] strict-filter regression');
     console.log('[PASS] draw-normalization regression');
+    console.log('[PASS] campaign-limit regression');
+    console.log('[PASS] qr-validation regression');
+    console.log('[PASS] ticket-dedupe regression');
+    console.log('[PASS] sync-guard regression');
     console.log('[PASS] post-import-refresh regression');
     console.log('[DONE] smoke checks passed');
 }

@@ -39,6 +39,7 @@
 - 테마 적용 후 기본 모듈 생성 및 초기 라우트 렌더
 - `fetchWinningStats()`로 정적 데이터 + 로컬 업데이트 병합
 - 유휴 시점 `fetchLatestFromAPI({ silent: true })` 백그라운드 동기화
+- 동기화 중복 실행은 `syncInFlightPromise`로 방지, 수동 실행은 `cancelActiveSync()`로 취소 가능
 
 2. 라우팅/모듈 로딩
 - `route(target)`에서 화면 섹션 활성화 및 지연 모듈 로딩
@@ -80,6 +81,7 @@
 - `backtest.worker.js`
   - 요청: `START`
   - 진행: `PROGRESS`
+  - 중간 결과: `WINS` (`matchedCount`, `bonusHit`, `hitText` 포함)
   - 완료: `DONE`
   - 오류: `ERROR`
 
@@ -93,9 +95,11 @@
 
 ## 9) 성능/호환 포인트
 - 시뮬레이션 기본값 5000, 상한 20000
+- 백테스트 범위 상한 300회차(`MAX_BACKTEST_SPAN`)
+- 캠페인 상한: 52주, 주당 20세트, 총 500티켓
 - 워커 진행 메시지와 ETA 기반 진행률 표시
 - 메인/워커가 동일 전략 요청 객체를 사용해 규칙 불일치 위험 감소
-- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v8`)
+- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v9`)
 
 ## 10) 데이터 관측(정적 파일 기준)
 - `data/winning_stats.json`
@@ -145,3 +149,28 @@
   - Import 이후 즉시 화면/통계 반영(`fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists`).
 - 오프라인 캐시:
   - `APP_SHELL_ASSETS`에 `assets/modules/utils/backup.js` 반영.
+
+## 15) 2026-03-05 통합 개선(리포트 1~9 + A~E)
+- 제한 상수 중앙화:
+  - `MAX_BACKTEST_SPAN=300`
+  - `MAX_CAMPAIGN_WEEKS=52`
+  - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
+  - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
+  - `MAX_SYNC_FALLBACK_DRAWS=120`
+- 백테스트:
+  - 메인/워커 양쪽 범위 검증
+  - CSV 계약 정합화(`strategy_id`, `strategy_label`)
+  - `WINS` payload에 적중 근거 필드 추가
+- 동기화:
+  - in-flight 단일 실행 가드
+  - 수동 동기화 취소 버튼(`cancelSyncBtn`) 연동
+  - fallback 단건 조회 상한 적용
+- Import:
+  - `merge/overwrite` + 설정 적용 체크 패널 도입
+  - 기본 정책: Merge 미적용, Overwrite 적용
+- QR:
+  - 공식 host 화이트리스트 검증
+  - 중복 번호 게임 거부
+- 품질 보강:
+  - 티켓 dedupe key stable stringify 적용
+  - 스모크 회귀 추가: `campaign-limit`, `qr-validation`, `ticket-dedupe`, `sync-guard`

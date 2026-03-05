@@ -376,6 +376,23 @@ export class GeneratorModule {
             const exclude = this.parseInput($('#excludeNums').value);
             const request = this.getStrategyRequestFromUI();
 
+            if (fixed.length > CONFIG.LIMITS.MAX_FIXED) {
+                UIManager.toast(`고정수는 최대 ${CONFIG.LIMITS.MAX_FIXED}개입니다.`, 'error');
+                return;
+            }
+            if (weeks > CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS) {
+                UIManager.toast(`캠페인 주차 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS}주입니다.`, 'warning');
+                return;
+            }
+            if (setsPerWeek > CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK) {
+                UIManager.toast(`주당 세트 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK}세트입니다.`, 'warning');
+                return;
+            }
+            if (requestedTotal > CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS) {
+                UIManager.toast(`캠페인 총 티켓 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`, 'warning');
+                return;
+            }
+
             this.engine = new StrategyEngine(this.data.state.winningStats);
 
             const tickets = [];

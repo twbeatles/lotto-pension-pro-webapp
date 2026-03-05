@@ -4,9 +4,9 @@
 이 문서는 `lotto---webapp` 저장소에서 Gemini 계열 AI가 다음 세션에도 일관되게 작업하도록 돕는 실무 가이드입니다.
 핵심은 "컨텍스트 복원, 영향 범위 통제, 검증 중심 작업"입니다.
 
-- 기준일: 2026-03-01
+- 기준일: 2026-03-05
 - 정적 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
-- 정적 데이터 개수: `1208`, 누락 회차: `146`
+- 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
 ---
 
@@ -16,7 +16,7 @@
 - 엔트리: `index.html` -> `assets/modules/index.js`
 - 배포 URL: `https://twbeatles.github.io/lotto---webapp/`
 - 주요 탭: `gen`, `stats`, `ai`, `bt`, `check`, `data`
-- 오프라인 지원: `sw.js` (`CACHE_VERSION: v8`)
+- 오프라인 지원: `sw.js` (`CACHE_VERSION: v9`)
 - 데이터 원천:
   - 정적: `data/winning_stats.json`
   - 동적 누적: `localStorage.lotto_pro_updates_v2`
@@ -141,11 +141,14 @@ node scripts/perf/bench.mjs
 ### 최신 데이터 동기화
 `fetchLatestFromAPI()`:
 - `estimateLatestDrawKST()`로 최신 회차 추정
+- in-flight 단일 실행 가드: 실행 중 재호출은 기존 Promise에 합류
 - 동기화 프로파일:
   - `idle`: silent
   - `manual/refresh`: 로그/토스트
+- 수동 동기화(`manual`)만 취소 가능(`cancelActiveSync`)
 - `/proxy/range` 우선
 - 누락 회차는 단건 fallback 조회
+- fallback 단건 조회 상한: 최근 120개(`MAX_SYNC_FALLBACK_DRAWS`)
 
 ### 프록시 우선순위
 1. URL 파라미터 `proxyUrl/proxy`
@@ -167,12 +170,18 @@ node scripts/perf/bench.mjs
 
 응답: `PROGRESS`, `WINS`, `DONE`, `ERROR`
 
+`WINS` payload 주요 필드:
+- `strategyId`, `payoutMode`, `drawNo`, `rank`, `prize`, `nums`
+- `matchedCount:number`
+- `bonusHit:boolean`
+- `hitText:string`
+
 ---
 
 ## 8) PWA/캐시 규칙
 
 `sw.js`:
-- 캐시 버전: `v8`
+- 캐시 버전: `v9`
 - 데이터 요청: network-first
 - 앱 셸: stale-while-revalidate
 - precache 목록: `APP_SHELL_ASSETS`
@@ -192,7 +201,7 @@ node scripts/perf/bench.mjs
   - `assets/modules/features/Ai.js`
   - `assets/modules/features/Backtest.js`
   - `assets/modules/features/Generator.js`
-- 추가 대응: 서비스워커 캐시 버전 `v7` 상향
+- 추가 대응: 서비스워커 캐시 버전 `v8` 상향
 
 ## 9-1) 2026-03-01 인코딩 정리(2차)
 - 증상: 일부 한국어 UI 문구가 깨진 글자(`理쒖떊`)로 표시됨.
@@ -206,6 +215,32 @@ node scripts/perf/bench.mjs
 - draw 정규화에서 중복 번호/보너스 중복 차단.
 - `smoke`에 strict-filter/draw-normalization/post-import-refresh 회귀 테스트 포함.
 
+## 9-3) 2026-03-05 통합 개선(리포트 1~9 + A~E)
+- 제한 상수 중앙화(`CONFIG.LIMITS`)
+  - `MAX_BACKTEST_SPAN=300`
+  - `MAX_CAMPAIGN_WEEKS=52`
+  - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
+  - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
+  - `MAX_SYNC_FALLBACK_DRAWS=120`
+- 백테스트:
+  - 메인/워커 회차 범위 검증 강화
+  - `WINS` payload 확장(`matchedCount`, `bonusHit`, `hitText`)
+  - CSV 헤더 정합화(`strategy_id`, `strategy_label`)
+- 캠페인/저장 정합성:
+  - 생성 단계 + `normalizeCampaignEntry` 상한 검증
+- 동기화 제어:
+  - `syncInFlightPromise` 단일 실행
+  - 수동 취소 버튼(`cancelSyncBtn`) 및 abort 경로
+- Import UX:
+  - 옵션 패널 기반(`merge/overwrite`, 설정 적용 체크)
+  - 기본 정책: `Merge=미적용`, `Overwrite=적용`
+- QR 검증:
+  - host allowlist + 중복 번호 게임 거부
+- 기타:
+  - ticket dedupe stable stringify
+  - 프록시 출처 라벨 인코딩 복구
+  - `sw.js` 캐시 버전 `v9`
+
 ---
 
 ## 10) 최소 검증 루틴
@@ -214,14 +249,14 @@ node scripts/perf/bench.mjs
 2. AI 탭: 추천 실행 + 결과 렌더 + 티켓 저장
 3. 백테스트 탭: 단일/비교 실행, 모드 전환, CSV 내보내기
 4. 데이터 탭: v3 백업 내보내기/가져오기
-5. 동기화: `syncDataBtn` 동작 및 프록시 우선순위 확인
-6. PWA: 새로고침/오프라인 기본 기능 확인
+5. 동기화: 단일 실행 가드, `cancelSyncBtn` 취소 동작 확인
+6. Import: `merge/overwrite`와 설정 체크 반영 확인
+7. PWA: 새로고침/오프라인 기본 기능 확인
 
 ---
 
 ## 11) 세션 종료 메모 포맷
 
-```md
 ```md
 ### Session Handoff (Gemini)
 - 변경 파일:
@@ -240,4 +275,4 @@ node scripts/perf/bench.mjs
 - 워커 계약 영향: 없음
 - 검증 완료 항목: CSS 반영 확인 완료, `scripts/smoke/smoke.mjs` 기능 이상 없음 확인, 즐겨찾기/티켓 등 리스트 비어있을 때 아이콘 포함 Empty State 렌더링 확인 완료.
 - 미해결 리스크: 다양한 해상도의 모바일 브라우저에서 스크롤 여백(Safe Area) 반응성 검토 필요.
-- 다음 세션 우선 작업: v8 캐시 클리어 후 PWA 구동 테스트, 실제 아이폰/안드로이드 뷰포트에서 토스트 메시지 겹침 여부 등 사용성 잔상 체크.
+- 다음 세션 우선 작업: (당시 기준) 캐시 클리어 후 PWA 구동 테스트, 실제 아이폰/안드로이드 뷰포트에서 토스트 메시지 겹침 여부 등 사용성 잔상 체크.

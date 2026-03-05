@@ -6,6 +6,26 @@
 ## 배포 주소
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 최근 통합 개선 반영 (2026-03-05)
+- 리포트 `1~9 + A~E` 권고사항을 한 번에 반영했습니다.
+- 제한 상수를 `CONFIG.LIMITS`로 중앙화했습니다.
+  - `MAX_BACKTEST_SPAN=300`
+  - `MAX_CAMPAIGN_WEEKS=52`
+  - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
+  - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
+  - `MAX_SYNC_FALLBACK_DRAWS=120`
+- 백테스트 검증을 UI/메인 스레드/워커 3단계로 강화하고, `WINS` payload에 `matchedCount`, `bonusHit`, `hitText`를 추가했습니다.
+- 백테스트 CSV를 `strategy_id`, `strategy_label` 분리 포맷으로 수정했습니다.
+- 동기화를 단일 실행(single-flight)으로 고정하고, 수동 동기화에 한해 취소 버튼(`cancelSyncBtn`)을 지원합니다.
+- QR 파서에 공식 host 화이트리스트와 중복 번호 거부 검증을 추가했습니다.
+- 데이터 Import에 옵션 패널을 추가했습니다.
+  - 모드: `merge` / `overwrite`
+  - 설정 적용: `theme`, `proxy`, `strategyPrefs`
+  - 기본 정책: `Merge=설정 미적용`, `Overwrite=설정 적용`
+- 서비스워커 캐시 버전을 `v9`로 상향했습니다.
+- 스모크 테스트에 회귀 4건을 추가했습니다.
+  - `campaign-limit`, `qr-validation`, `ticket-dedupe`, `sync-guard`
+
 ## 최근 안정화 반영 (2026-03-01)
 - 모듈 파싱 오류(`SyntaxError: Invalid or unexpected token`)로 앱 초기화가 중단되던 문제를 복구했습니다.
 - 복구 대상: `DataManager`, `Ai`, `Backtest`, `Generator`의 깨진 문자열 리터럴.
@@ -32,6 +52,7 @@
 - 티켓북/캠페인:
   - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
+  - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
   - 동기화 시 미정산 티켓 자동 정산
 - 인공지능 예측:
   - 다중 전략(앙상블, 균형, 고빈도/저빈도 등) 지원
@@ -39,6 +60,7 @@
   - 추천 조합별 근거 신호(빈도/최근성/공백/페어/필터) 표시
 - 전략 시뮬레이션:
   - 단일/다중 전략 비교(최대 5개)
+  - 백테스트 범위 상한: 최대 300회차
   - 수익률, 당첨률, 총비용, 총상금, 5등 이상 비교
   - 비교 결과 CSV 내보내기
 - 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
@@ -49,6 +71,7 @@
   - 백그라운드 최신 데이터 동기화
   - 홈 화면 설치 지원
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
+  - Import 옵션: `merge/overwrite` + 설정 적용 체크박스
 - 프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy` -> 공용 기본값
 
@@ -64,7 +87,7 @@ graph LR
 - 화면/로직: 바닐라 자바스크립트(ES 모듈) + CSS 변수 (빌드 단계 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v8`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v9`)
 
 ## 프로젝트 구조
 

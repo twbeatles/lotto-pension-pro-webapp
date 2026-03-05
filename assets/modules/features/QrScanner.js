@@ -118,10 +118,17 @@ export class QrScannerModule {
         // Expected format: http://m.dhlottery.co.kr/?v=0861q020612162843q...
 
         if (!url || typeof url !== 'string') throw new Error('잘못된 주소입니다.');
+        const allowedHosts = new Set(['m.dhlottery.co.kr', 'www.dhlottery.co.kr']);
+        let host = '';
+        try {
+            host = new URL(url).hostname.toLowerCase();
+        } catch (e) {
+            const hostMatch = String(url).match(/^(?:https?:\/\/)?([^/?#]+)/i);
+            host = hostMatch?.[1]?.toLowerCase() || '';
+        }
 
-        // Loose check for dhlottery domain
-        if (!url.includes('dhlottery')) {
-            throw new Error('로또 6/45 큐알 코드가 아닙니다.');
+        if (!host || !allowedHosts.has(host)) {
+            throw new Error('로또 6/45 공식 큐알 코드가 아닙니다.');
         }
 
         // Extract 'v' parameter
@@ -158,7 +165,7 @@ export class QrScannerModule {
                 }
             }
 
-            if (nums.length === 6) {
+            if (nums.length === 6 && new Set(nums).size === 6) {
                 nums.sort((a, b) => a - b);
                 games.push(nums);
             }

@@ -264,15 +264,9 @@ export class LottoApp {
                     return;
                 }
 
-                let item = null;
-                if (source === 'ticket') {
-                    const id = itemEl.dataset.id;
-                    item = (this.data.state.ticketBook || []).find((x) => x.id === id);
-                } else {
-                    const idx = Number(itemEl.dataset.idx);
-                    const items = source === 'fav' ? this.data.state.favorites : this.data.state.history;
-                    item = items[idx];
-                }
+                const item = source === 'ticket'
+                    ? (this.data.state.ticketBook || []).find((x) => x.id === itemEl.dataset.id)
+                    : (source === 'fav' ? this.data.state.favorites : this.data.state.history)[Number(itemEl.dataset.idx)];
                 if (!item) return;
 
                 if (action === 'copy') UIManager.copyNumbers(item.numbers);

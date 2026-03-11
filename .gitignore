@@ -7,10 +7,13 @@
 # OS / editor noise
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 
 # Local temporary artifacts
+node_modules/
+.eslintcache
 *.log
 *.tmp
 *.temp

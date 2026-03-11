@@ -54,24 +54,24 @@ export class QrScannerModule {
             }
             if (!window.Html5Qrcode) throw new Error('큐알 스캐너 라이브러리를 불러오지 못했습니다.');
 
-            this.scanner = new Html5Qrcode("qr-reader");
+            this.scanner = new window.Html5Qrcode('qr-reader');
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
             // Prefer back camera
             await this.scanner.start(
-                { facingMode: "environment" },
+                { facingMode: 'environment' },
                 config,
-                (decodedText, decodedResult) => {
-                    this.onScanSuccess(decodedText, decodedResult);
+                (decodedText) => {
+                    this.onScanSuccess(decodedText);
                 },
-                (errorMessage) => {
+                () => {
                     // parse error, ignore
                 }
             );
             this.isScanning = true;
         } catch (err) {
             console.error('스캐너 시작 오류', err);
-            UIManager.toast("카메라를 시작할 수 없습니다. 권한을 확인해주세요.", "error");
+            UIManager.toast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.', 'error');
             await this.destroyScanner();
             modal.classList.remove('active');
         }
@@ -83,7 +83,7 @@ export class QrScannerModule {
         await this.destroyScanner();
     }
 
-    async onScanSuccess(decodedText, decodedResult) {
+    async onScanSuccess(decodedText) {
         // Example format: http://m.dhlottery.co.kr/?v=0861q020612162843q030614182235q121330363842q172930333738q1123283236441316130938
         // Parse logic here
         // Parse logic here
@@ -119,7 +119,7 @@ export class QrScannerModule {
 
         if (!url || typeof url !== 'string') throw new Error('잘못된 주소입니다.');
         const allowedHosts = new Set(['m.dhlottery.co.kr', 'www.dhlottery.co.kr']);
-        let host = '';
+        let host;
         try {
             host = new URL(url).hostname.toLowerCase();
         } catch (e) {

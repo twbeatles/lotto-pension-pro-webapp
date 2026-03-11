@@ -1,16 +1,18 @@
 ﻿# gemini.md
 
 ## 문서 목적
+
 이 문서는 `lotto---webapp` 저장소에서 Gemini 계열 AI가 다음 세션에도 일관되게 작업하도록 돕는 실무 가이드입니다.
 핵심은 "컨텍스트 복원, 영향 범위 통제, 검증 중심 작업"입니다.
 
-- 기준일: 2026-03-05
+- 기준일: 2026-03-11
 - 정적 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
 ---
 
 ## 1) 프로젝트 요약
+
 - 형태: 빌드 없는 단일 페이지 웹앱
 - 핵심 스택: HTML + CSS + Vanilla JS(ESM)
 - 엔트리: `index.html` -> `assets/modules/index.js`
@@ -22,30 +24,39 @@
   - 동적 누적: `localStorage.lotto_pro_updates_v2`
 
 중요:
-- `package.json` 없음
-- 번들러/트랜스파일 단계 없음
+
+- 번들러/트랜스파일 단계는 없음
+- 대신 개발 도구용 `package.json`, `eslint.config.mjs`가 존재함
+- 기본 검증 루틴에 `npm run lint`를 포함해야 함
 
 ---
 
 ## 2) 세션 시작 체크리스트
 
 1. 문서 읽기
+
 - `README.md`
 - `PROJECT_ANALYSIS.md`
 - `gemini.md`
 
 2. 로컬 실행
+
 ```bash
 python -m http.server 5173
 ```
+
 - `http://localhost:5173/`
 
 3. 기본 검증
+
 ```bash
+npm install
+npm run lint
 node scripts/smoke/smoke.mjs
 ```
 
 4. 성능 검증(선택)
+
 ```bash
 node scripts/perf/bench.mjs
 ```
@@ -53,6 +64,7 @@ node scripts/perf/bench.mjs
 ---
 
 ## 3) 핵심 파일 지도
+
 - `index.html`: 전체 페이지 구조 + 서비스워커 등록
 - `assets/app.css`: 스타일
 - `assets/modules/core/`
@@ -73,6 +85,7 @@ node scripts/perf/bench.mjs
 ## 4) 데이터/저장소 규칙
 
 ### State 골격 (`DataManager.state`)
+
 - `winningStats`, `analytics`
 - `favorites`, `history`
 - `ticketBook`, `campaigns`
@@ -80,6 +93,7 @@ node scripts/perf/bench.mjs
 - `alertPrefs`, `customProxy`, `theme`
 
 ### localStorage 키
+
 - `lotto_pro_fav_v2`
 - `lotto_pro_hist_v2`
 - `lotto_pro_settings_v2`
@@ -91,6 +105,7 @@ node scripts/perf/bench.mjs
 - 레거시 프록시: `lotto_webapp_settings_v1.proxyLatestUrl`
 
 원칙:
+
 - 키 변경 시 마이그레이션 코드 동반
 - `load()` 정규화/호환 로직 우선 확인
 
@@ -99,6 +114,7 @@ node scripts/perf/bench.mjs
 ## 5) 전략 시스템 요약
 
 ### 표준 Strategy Request
+
 ```js
 {
   strategyId,
@@ -122,6 +138,7 @@ node scripts/perf/bench.mjs
 ```
 
 핵심:
+
 - `StrategyCatalog`가 전략 메타/별칭 제공
 - `StrategyEngine.normalizeRequest()`가 범위 보정
 - `Generator`, `Ai`, `Backtest`가 동일 스키마 사용
@@ -131,7 +148,9 @@ node scripts/perf/bench.mjs
 ## 6) 동기화/프록시 흐름
 
 ### 당첨 데이터 구성
+
 `fetchWinningStats()`:
+
 - 정적 JSON 로드
 - `lotto_pro_updates_v2` 병합
 - `draw_no` 기준 dedupe
@@ -139,7 +158,9 @@ node scripts/perf/bench.mjs
 - 티켓 미정산 자동 정산
 
 ### 최신 데이터 동기화
+
 `fetchLatestFromAPI()`:
+
 - `estimateLatestDrawKST()`로 최신 회차 추정
 - in-flight 단일 실행 가드: 실행 중 재호출은 기존 Promise에 합류
 - 동기화 프로파일:
@@ -151,6 +172,7 @@ node scripts/perf/bench.mjs
 - fallback 단건 조회 상한: 최근 120개(`MAX_SYNC_FALLBACK_DRAWS`)
 
 ### 프록시 우선순위
+
 1. URL 파라미터 `proxyUrl/proxy`
 2. v1 레거시
 3. v2 설정(`customProxy`)
@@ -161,16 +183,19 @@ node scripts/perf/bench.mjs
 ## 7) 워커 메시지 계약
 
 ### `strategy.worker.js`
+
 요청: `WARMUP`, `GENERATE`, `RECOMMEND`
 
 응답: `READY`, `DONE`, `ERROR`
 
 ### `backtest.worker.js`
+
 요청: `START`
 
 응답: `PROGRESS`, `WINS`, `DONE`, `ERROR`
 
 `WINS` payload 주요 필드:
+
 - `strategyId`, `payoutMode`, `drawNo`, `rank`, `prize`, `nums`
 - `matchedCount:number`
 - `bonusHit:boolean`
@@ -181,12 +206,14 @@ node scripts/perf/bench.mjs
 ## 8) PWA/캐시 규칙
 
 `sw.js`:
+
 - 캐시 버전: `v9`
 - 데이터 요청: network-first
 - 앱 셸: stale-while-revalidate
 - precache 목록: `APP_SHELL_ASSETS`
 
 변경 규칙:
+
 - 핵심 파일 추가/이동 시 `APP_SHELL_ASSETS` 반영
 - 캐시 불일치 이슈가 예상되면 `CACHE_VERSION` 증가
 
@@ -204,11 +231,13 @@ node scripts/perf/bench.mjs
 - 추가 대응: 서비스워커 캐시 버전 `v8` 상향
 
 ## 9-1) 2026-03-01 인코딩 정리(2차)
+
 - 증상: 일부 한국어 UI 문구가 깨진 글자(`理쒖떊`)로 표시됨.
 - 조치: `DataManager/Generator/Backtest/Ai`에서 사용자 노출 문자열을 정리하고 탭별 실제 렌더로 검증.
 - 배포 확인: 동일 증상 재발 시 SW 캐시 초기화 후 재검증.
 
 ## 9-2) 2026-03-01 기능 품질 강화(3차)
+
 - 전략 생성은 `엄격 필터` 기준으로 동작하며, 필터 미충족 시 무필터 랜덤으로 보완하지 않음.
 - 백테스트 요약은 `requestedTickets`, `generatedTickets`, `fillRate`를 포함.
 - Import 후 즉시 `fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists` 순서로 UI 반영.
@@ -216,6 +245,7 @@ node scripts/perf/bench.mjs
 - `smoke`에 strict-filter/draw-normalization/post-import-refresh 회귀 테스트 포함.
 
 ## 9-3) 2026-03-05 통합 개선(리포트 1~9 + A~E)
+
 - 제한 상수 중앙화(`CONFIG.LIMITS`)
   - `MAX_BACKTEST_SPAN=300`
   - `MAX_CAMPAIGN_WEEKS=52`
@@ -245,6 +275,7 @@ node scripts/perf/bench.mjs
 
 ## 10) 최소 검증 루틴
 
+0. `npm run lint`
 1. 생성 탭: 전략 선택 + 번호 생성 + 티켓 저장
 2. AI 탭: 추천 실행 + 결과 렌더 + 티켓 저장
 3. 백테스트 탭: 단일/비교 실행, 모드 전환, CSV 내보내기
@@ -253,12 +284,22 @@ node scripts/perf/bench.mjs
 6. Import: `merge/overwrite`와 설정 체크 반영 확인
 7. PWA: 새로고침/오프라인 기본 기능 확인
 
+## 10-1) 개발 도구 메모
+
+- `package.json`
+  - `lint`, `lint:fix`, `format:check`, `format:write`
+- `eslint.config.mjs`
+  - `index.html` inline script까지 lint 대상
+- `.vscode/settings.json`
+  - 저장 시 ESLint auto-fix 설정 포함
+
 ---
 
 ## 11) 세션 종료 메모 포맷
 
 ```md
 ### Session Handoff (Gemini)
+
 - 변경 파일:
 - 변경 목적:
 - 데이터 스키마 영향:
@@ -269,6 +310,7 @@ node scripts/perf/bench.mjs
 ```
 
 ### Session Handoff (Gemini - 2026-03-02)
+
 - 변경 파일: `assets/app.css`, `assets/modules/core/LottoApp.js`, `index.html` (일부 속성 변경)
 - 변경 목적: 전반적인 UI/UX 프리미엄 리팩토링 (가독성 향상, Glassmorphism 보강, Empty State 컨테이너 디자인 통일, 마이크로 애니메이션 강화, 모바일 네비게이션 인디케이터 도입)
 - 데이터 스키마 영향: 없음 (디자인 레이어 변경에 국한)

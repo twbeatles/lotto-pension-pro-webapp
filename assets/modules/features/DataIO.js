@@ -181,7 +181,6 @@ export class DataIOModule {
                 return;
             }
 
-            const version = Number(normalized.version || 1);
             const incomingFav = this.normalizeItems(normalized.favorites);
             const incomingHist = this.normalizeItems(normalized.history);
             const incomingTheme = normalized.settings?.theme === 'light' ? 'light' : 'dark';

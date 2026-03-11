@@ -22,21 +22,33 @@ wrangler deploy proxy/worker.js
 - 구간 조회: `https://<your-worker>.workers.dev/proxy/range?from=1175&to=1180`
 
 `/proxy/latest` 응답 형식:
+
 - 기본값: `hybrid` (기존 형식 + 정규화 형식 동시 제공)
 - `?format=legacy`: 기존 형식 (`data.list[0]`)
 - `?format=normalized`: 정규화 형식 (`data: [{ draw_no, numbers, ... }]`)
 
 `/proxy/range` 응답 형식:
+
 - 기본값: 정규화 배열 (`data: []`)
 - `?format=legacy`: 기존 형식 배열 (`data.list`)
 - `?format=hybrid`: 정규화 + 기존 형식 동시 제공
 - 최대 구간 폭: `40` (예: `from=1200&to=1240` 허용, `to=1241` 거부)
 
 앱에서 사용하는 방법:
+
 - 주소 파라미터: `?proxyUrl=...` 또는 `?proxy=...`
 - 이전 저장 키: `lotto_webapp_settings_v1.proxyLatestUrl`
 - 2버전 설정 키: `lotto_pro_settings_v2.customProxy`
 - 해석 우선순위: `query` > `v1` > `v2` > `public fallback`
+
+## 로컬 점검
+
+프록시 워커 코드는 저장소 루트 ESLint 설정에 포함됩니다.
+
+```bash
+npm install
+npm run lint
+```
 
 ## 참고
 

@@ -1,0 +1,22 @@
+{
+  "name": "lotto-webapp",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Lotto 6/45 webapp",
+  "scripts": {
+    "lint": "eslint assets proxy scripts sw.js index.html",
+    "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",
+    "format:check": "prettier --check \"**/*.{js,mjs,json,md,css,html}\"",
+    "format:write": "prettier --write \"**/*.{js,mjs,json,md,css,html}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@html-eslint/eslint-plugin": "^0.58.1",
+    "@html-eslint/parser": "^0.58.1",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-html": "^8.1.4",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1"
+  }
+}

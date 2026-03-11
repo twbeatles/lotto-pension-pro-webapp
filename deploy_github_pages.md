@@ -19,6 +19,7 @@
   - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
+
 - 정적 JSON과 로컬 업데이트를 병합해 최신 상태를 구성합니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
 
@@ -30,6 +31,7 @@
 `https://twbeatles.github.io/lotto---webapp/?proxyUrl=https://<worker>.workers.dev/proxy/latest?draw_no=1200`
 
 우선순위:
+
 1. `?proxyUrl=...` 또는 `?proxy=...`
 2. `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
@@ -42,6 +44,7 @@
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 
 배포 후 반영 확인:
+
 1. 페이지 열기
 2. 강력 새로고침(`Ctrl+F5`)
 3. DevTools > Application > Service Workers에서 새 버전 활성화 여부 확인
@@ -76,16 +79,27 @@ python -m http.server 5173
 ```
 
 접속:
+
 - `http://localhost:5173/`
 
 ## 8) 로컬 검증 명령
 
 ```bash
+npm install
+npm run lint
 node scripts/smoke/smoke.mjs
 node scripts/perf/bench.mjs
 ```
 
+선택:
+
+```bash
+npm run lint:fix
+npm run format:check
+```
+
 `smoke`에는 아래 회귀 항목이 포함됩니다.
+
 - 엄격 필터에서 필터 위반 조합이 생성되지 않는지
 - draw 정규화 시 중복 번호/보너스 중복 차단되는지
 - Import 후 즉시 반영 순서가 유지되는지

@@ -1,10 +1,11 @@
 ﻿# claude.md
 
 ## 문서 목적
+
 이 문서는 저장소(`lotto---webapp`)에서 Claude 계열 AI가 다음 세션에도 바로 작업을 이어갈 수 있도록 만든 운영 기준 문서입니다.
 핵심은 "빠르게 맥락 복원 -> 안전하게 수정 -> 회귀 없이 검증"입니다.
 
-- 기준일: 2026-03-05
+- 기준일: 2026-03-11
 - 정적 당첨 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
@@ -53,31 +54,39 @@
 - 오프라인: `sw.js` 서비스워커 캐시
 
 중요 사실:
-- 이 저장소에는 `package.json`이 없고 빌드 파이프라인도 없습니다.
-- 기능 검증은 로컬 HTTP 서버 + 수동 점검이 기본입니다.
+
+- 배포 번들링 파이프라인은 없지만, 개발 도구용 `package.json`과 `eslint.config.mjs`는 존재합니다.
+- 기능 검증은 로컬 HTTP 서버 + `npm run lint` + 스모크 점검 조합이 기본입니다.
 
 ---
 
 ## 2) 빠른 시작 (세션 시작 루틴)
 
 1. 문서 확인
+
 - `README.md`
 - `PROJECT_ANALYSIS.md`
 - `claude.md` (이 문서)
 
 2. 로컬 실행
+
 ```bash
 python -m http.server 5173
 ```
+
 - 접속: `http://localhost:5173/`
 - `file://` 직접 오픈 금지
 
 3. 기본 검증
+
 ```bash
+npm install
+npm run lint
 node scripts/smoke/smoke.mjs
 ```
 
 4. 성능 점검(선택)
+
 ```bash
 node scripts/perf/bench.mjs
 ```
@@ -113,7 +122,9 @@ node scripts/perf/bench.mjs
 ## 4) 런타임 흐름 핵심
 
 ### 앱 초기화
+
 `LottoApp.init()`에서 수행:
+
 - `data.load()`
 - 테마 적용
 - Generator eager 생성
@@ -122,13 +133,16 @@ node scripts/perf/bench.mjs
 - idle 시점 `fetchLatestFromAPI({ silent: true })`
 
 ### 모듈 로딩
+
 - Generator만 즉시 생성
 - 나머지는 `ensureModule()`로 지연 import
 - `pendingModulePromises`로 중복 로딩 방지
 - `routeToken`으로 stale async 결과 무시
 
 ### 전략 처리 공통화
+
 `Generator/Ai/Backtest` 모두 strategy request 포맷 공유:
+
 ```js
 {
   strategyId,
@@ -156,6 +170,7 @@ node scripts/perf/bench.mjs
 ## 5) 상태/저장소 스키마
 
 `DataManager.state` 주요 필드:
+
 - `theme`, `favorites`, `history`
 - `winningStats`, `analytics`
 - `generated`, `aiResults`
@@ -164,7 +179,9 @@ node scripts/perf/bench.mjs
 - `customProxy`
 
 ### localStorage 키
+
 `assets/modules/utils/config.js` 기준:
+
 - `lotto_pro_fav_v2`
 - `lotto_pro_hist_v2`
 - `lotto_pro_settings_v2`
@@ -180,7 +197,9 @@ node scripts/perf/bench.mjs
 ## 6) 데이터 동기화 규칙
 
 ### 기본 병합
+
 `fetchWinningStats()`:
+
 1. `data/winning_stats.json` 로드
 2. `lotto_pro_updates_v2` 병합
 3. `draw_no` 기준 dedupe
@@ -188,7 +207,9 @@ node scripts/perf/bench.mjs
 5. analytics 재계산 + 티켓 자동 정산
 
 ### 최신 회차 동기화
+
 `fetchLatestFromAPI()`:
+
 - 추정 최신 회차: `estimateLatestDrawKST()`
 - in-flight 단일 실행 가드: 실행 중 재호출 시 기존 Promise 합류
 - 수동 동기화(`trigger=manual`)만 취소 가능
@@ -198,6 +219,7 @@ node scripts/perf/bench.mjs
 - 성공분은 `lotto_pro_updates_v2`에 합쳐 저장
 
 ### 프록시 URL 우선순위
+
 1. URL 쿼리 `?proxyUrl=` 또는 `?proxy=`
 2. v1 레거시 설정
 3. v2 설정(`settings.customProxy`)
@@ -208,16 +230,19 @@ node scripts/perf/bench.mjs
 ## 7) 워커 계약
 
 ### `strategy.worker.js`
+
 요청 타입: `WARMUP`, `GENERATE`, `RECOMMEND`
 
 응답 타입: `READY`, `DONE`, `ERROR`
 
 ### `backtest.worker.js`
+
 요청: `START`
 
 응답: `PROGRESS`, `WINS`, `DONE`, `ERROR`
 
 `WINS` payload(추가 필드 포함):
+
 - `strategyId`, `payoutMode`, `drawNo`, `rank`, `prize`, `nums`
 - `matchedCount:number`
 - `bonusHit:boolean`
@@ -228,12 +253,14 @@ node scripts/perf/bench.mjs
 ## 8) 서비스워커/오프라인
 
 `sw.js` 핵심:
+
 - 캐시 버전: `v9`
 - App Shell precache 목록 수동 관리
 - 데이터 JSON: `network-first` + timeout
 - 기타 정적 자산: `stale-while-revalidate`
 
 수정 규칙:
+
 - 신규 핵심 JS/CSS/워커 추가 시 `APP_SHELL_ASSETS` 반영
 - 캐시 무효화가 필요하면 `CACHE_VERSION` 올리기
 
@@ -251,11 +278,13 @@ node scripts/perf/bench.mjs
 - 추가 조치: `sw.js` `CACHE_VERSION`을 `v8`로 상향
 
 ## 9-1) 2026-03-01 인코딩 정리(2차)
+
 - 증상: 기능은 동작하지만 일부 한글 문구가 `理쒖떊`처럼 깨져 보임.
 - 조치: `DataManager/Generator/Backtest/Ai`의 사용자 노출 문자열(토스트, 상태 텍스트, 버튼 라벨, 로그 문구, 접근성 라벨) 정규화.
 - 운영 참고: 배포 후 같은 증상이 보이면 서비스워커 캐시를 먼저 의심하고 강력 새로고침/스토리지 초기화로 확인.
 
 ## 9-2) 2026-03-01 기능 품질 강화(3차)
+
 - 전략 생성 정책:
   - `StrategyEngine.generateSetWithExecution()`은 필터 미충족 시 `null`을 반환하고, 무필터 랜덤 세트로 보완하지 않음.
   - `Generator/Ai`는 요청 수량 대비 실제 생성 수량을 사용자에게 명시.
@@ -272,6 +301,7 @@ node scripts/perf/bench.mjs
   - `scripts/smoke/smoke.mjs`에 strict-filter, draw-normalization, post-import-refresh 회귀 케이스 추가.
 
 ## 9-3) 2026-03-05 통합 개선(리포트 1~9 + A~E)
+
 - 백테스트 상한/표시 정합성:
   - 범위 상한(300회차) 적용
   - `WINS.hitText` 실제 값 채움
@@ -294,6 +324,7 @@ node scripts/perf/bench.mjs
 
 ## 10) 회귀 점검 포인트
 
+0. `npm run lint` 통과 여부
 1. 탭 전환(`gen/stats/ai/bt/check/data`)
 2. 번호 생성/AI 추천/백테스트 실행 (요청 대비 생성 수량 표시 포함)
 3. 동기화 버튼 + 티켓 자동 정산
@@ -304,12 +335,23 @@ node scripts/perf/bench.mjs
 8. Import 옵션(`merge/overwrite`, 설정 체크)이 정책대로 동작하는지 확인
 9. 백테스트 상세표 `적중` 컬럼과 CSV `strategy_id/strategy_label` 정합성 확인
 
+## 10-1) 개발 도구 메모
+
+- `package.json`
+  - `lint`, `lint:fix`, `format:check`, `format:write`
+- `eslint.config.mjs`
+  - JS, Worker, Service Worker, Node 스크립트, `index.html`까지 검증
+- `.vscode/settings.json`
+  - 저장 시 `source.fixAll.eslint` 실행
+- HTML lint는 과도한 포맷 강제를 피하도록 구조 규칙 위주로 조정되어 있음
+
 ---
 
 ## 11) 세션 종료 시 남길 항목
 
 ```md
 ### Session Handoff
+
 - 변경 파일:
 - 핵심 변경:
 - 검증 완료:

@@ -42,10 +42,13 @@ export class UIManager {
     }
 
     static renderBalls(nums, size = '') {
-        const key = nums.join(',') + '|' + size;
+        const list = Array.isArray(nums) ? nums : [];
+        if (!list.length) return '';
+
+        const key = list.join(',') + '|' + size;
         if (this._ballCache.has(key)) return this._ballCache.get(key);
 
-        const html = nums.map(n =>
+        const html = list.map(n =>
             `<span class="ball ${this.getBallColor(n)} ${size}">${n}</span>`
         ).join('');
 
@@ -60,7 +63,8 @@ export class UIManager {
     }
 
     static formatNumbers(nums) {
-        return (nums || []).map(n => String(n).padStart(2, '0')).join(' ');
+        const list = Array.isArray(nums) ? nums : [];
+        return list.map(n => String(n).padStart(2, '0')).join(' ');
     }
 
     static async copyNumbers(nums) {

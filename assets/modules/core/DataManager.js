@@ -356,6 +356,21 @@ export class DataManager {
         return clean.sort((a, b) => a - b);
     }
 
+    normalizeStoredNumberEntry(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const numbers = this.normalizeNumbers(raw.numbers || []);
+        if (numbers.length !== 6) return null;
+
+        const rawDate = typeof raw.date === 'string'
+            ? raw.date
+            : (typeof raw.created_at === 'string' ? raw.created_at : '');
+
+        return {
+            numbers,
+            date: rawDate || new Date().toISOString()
+        };
+    }
+
     createId(prefix = 'id') {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return `${prefix}_${crypto.randomUUID()}`;
@@ -380,6 +395,9 @@ export class DataManager {
             numbers,
             targetDrawNo: Math.floor(targetDrawNo),
             source,
+            campaignId: (typeof raw.campaignId === 'string' && raw.campaignId.trim())
+                ? raw.campaignId.trim().slice(0, 120)
+                : '',
             strategyRequest: raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
             memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 200) : '',
             createdAt: raw.createdAt || new Date().toISOString(),
@@ -443,12 +461,25 @@ export class DataManager {
     load() {
         try {
             let needsPersist = false;
-            this.state.favorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', []);
-            this.state.history = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', []);
+            const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', []);
+            const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', []);
+
+            const normalizedFavorites = Array.isArray(rawFavorites)
+                ? rawFavorites.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
+                : [];
+            const normalizedHistory = Array.isArray(rawHistory)
+                ? rawHistory.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
+                : [];
+
+            if (!Array.isArray(rawFavorites) || JSON.stringify(normalizedFavorites) !== JSON.stringify(rawFavorites)) needsPersist = true;
+            if (!Array.isArray(rawHistory) || JSON.stringify(normalizedHistory) !== JSON.stringify(rawHistory)) needsPersist = true;
+
+            this.state.favorites = normalizedFavorites;
+            this.state.history = normalizedHistory;
 
             const settings = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}', {});
-            this.state.theme = settings.theme || 'dark';
-            this.state.customProxy = settings.customProxy || '';
+            this.state.theme = settings.theme === 'light' ? 'light' : 'dark';
+            this.state.customProxy = typeof settings.customProxy === 'string' ? settings.customProxy : '';
             this.state.strategyPrefs = this.mergeStrategyPrefs(settings.strategyPrefs);
 
             const rawTickets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]', []);
@@ -492,6 +523,8 @@ export class DataManager {
             }
 
             if (needsPersist) {
+                localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
+                localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
                 this.persistSettings();
                 this.persistExtendedData();
             }

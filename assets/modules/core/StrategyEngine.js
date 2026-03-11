@@ -351,7 +351,7 @@ export class StrategyEngine {
     }
 
     generateWheelSet(weights, request, options = {}) {
-        const fixed = options.fixed || [];
+        const fixed = [...new Set((options.fixed || []).map(Number).filter((n) => n >= 1 && n <= 45))];
         const exclude = options.exclude || [];
         const rng = options.rng || Math.random;
         const poolSize = request.params.wheelPoolSize || 10;
@@ -375,15 +375,20 @@ export class StrategyEngine {
             if (!excludeSet.has(n) && !candidates.includes(n)) candidates.push(n);
         }
 
-        const wheelBase = seedSet.slice(0, Math.max(guarantee, 1));
-        const set = [...wheelBase];
+        const set = [...fixed];
+        const seedExtras = seedSet.filter((n) => !set.includes(n));
+        const minBaseSize = Math.max(Math.min(Math.max(guarantee, 1), 6), set.length);
+        while (set.length < minBaseSize && seedExtras.length) {
+            set.push(seedExtras.shift());
+        }
+
         const dynamicPool = candidates.filter((n) => !set.includes(n));
         while (set.length < 6 && dynamicPool.length) {
             const idx = Math.floor(rng() * dynamicPool.length);
             set.push(dynamicPool[idx]);
             dynamicPool.splice(idx, 1);
         }
-        return set.sort((a, b) => a - b);
+        return set.length === 6 ? set.sort((a, b) => a - b) : null;
     }
 
     generateSetWithExecution(execution, options = {}) {

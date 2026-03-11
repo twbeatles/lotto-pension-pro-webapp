@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 import { StrategyEngine } from '../../assets/modules/core/StrategyEngine.js';
 import { DataManager } from '../../assets/modules/core/DataManager.js';
 import { runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
+import { GeneratorModule } from '../../assets/modules/features/Generator.js';
+import { CheckModule } from '../../assets/modules/features/Check.js';
 import { buildBackupPayload, normalizeBackupPayload } from '../../assets/modules/utils/backup.js';
 import { passesFilters } from '../../assets/modules/core/StrategyFilters.js';
 import { CONFIG } from '../../assets/modules/utils/config.js';
@@ -116,6 +118,29 @@ function runStrictFilterRegression(stats) {
     assert.ok(sets.every((set) => passesFilters(set, request.filters)), 'all generated sets must pass filters');
 }
 
+function runWheelFixedNumbersRegression(stats) {
+    const engine = new StrategyEngine(stats);
+    const fixed = [10, 20, 30, 40, 45];
+    const request = {
+        strategyId: 'wheel_full',
+        params: {
+            simulationCount: 5000,
+            lookbackWindow: 20,
+            wheelPoolSize: 10,
+            wheelGuarantee: 4,
+            seed: 12345,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    };
+
+    const set = engine.generateSet(request, { fixed, maxAttempts: 40 });
+    assert.ok(Array.isArray(set), 'wheel strategy must generate a set');
+    fixed.forEach((n) => {
+        assert.ok(set.includes(n), `wheel strategy must preserve fixed number ${n}`);
+    });
+}
+
 function runDrawNormalizationRegression() {
     const dm = new DataManager();
     const duplicateNumbers = dm.normalizeDrawItem({
@@ -184,6 +209,8 @@ function runQrValidationRegression() {
 
     const ok = parse('https://m.dhlottery.co.kr/?v=0861q010203040506');
     assert.equal(ok.length, 1, 'valid official QR must be parsed');
+    assert.equal(ok[0].targetDrawNo, 861, 'QR parser must preserve draw number');
+    assert.deepEqual(ok[0].numbers, [1, 2, 3, 4, 5, 6], 'QR parser must preserve ticket numbers');
 
     assert.throws(
         () => parse('https://evil.example.com/?v=0861q010203040506'),
@@ -220,6 +247,241 @@ function runTicketDedupeRegression() {
     const keyA = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestA });
     const keyB = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestB });
     assert.equal(keyA, keyB, 'ticket dedupe key must be stable across key order differences');
+}
+
+function runCheckTargetDrawRegression() {
+    const previousDocument = globalThis.document;
+    const area = {
+        innerHTML: '',
+        classList: {
+            add() {},
+            remove() {}
+        }
+    };
+
+    globalThis.document = {
+        querySelector(selector) {
+            if (selector === '#checkResultArea') return area;
+            return null;
+        },
+        querySelectorAll() {
+            return [];
+        }
+    };
+
+    try {
+        const ctx = {
+            data: {
+                state: {
+                    winningStats: [{
+                        draw_no: 1209,
+                        date: '2026-03-07',
+                        numbers: [1, 2, 3, 4, 5, 6],
+                        bonus: 7
+                    }]
+                }
+            },
+            currentTicket: null,
+            currentDrawNo: null,
+            _rank: CheckModule.prototype._rank,
+            renderTicketBalls: CheckModule.prototype.renderTicketBalls,
+            renderMissingTargetDraw: CheckModule.prototype.renderMissingTargetDraw
+        };
+
+        CheckModule.prototype.runLatest.call(ctx, {
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1210
+        });
+
+        assert.match(area.innerHTML, /1210회 결과 데이터가 없습니다/, 'missing target draw must show unavailable state');
+        assert.ok(!area.innerHTML.includes('1209회'), 'missing target draw must not fall back to latest draw');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runStoredListNormalizationRegression() {
+    const previousDocument = globalThis.document;
+    const previousStorage = globalThis.localStorage;
+    const store = new Map([
+        [CONFIG.KEYS.FAV, JSON.stringify([
+            { numbers: [6, 5, 4, 3, 2, 1], date: '2026-03-01T00:00:00.000Z' },
+            { foo: 'bar' }
+        ])],
+        [CONFIG.KEYS.HIST, JSON.stringify([
+            { numbers: 'oops' }
+        ])],
+        [CONFIG.KEYS.SETTINGS, '{}'],
+        [CONFIG.KEYS.TICKET_BOOK, '[]'],
+        [CONFIG.KEYS.CAMPAIGNS, '[]'],
+        [CONFIG.KEYS.ALERT_PREFS, '{}'],
+        [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
+        ['lotto_pro_updates_v2', '[]']
+    ]);
+
+    globalThis.document = {
+        querySelector() {
+            return null;
+        }
+    };
+    globalThis.localStorage = {
+        getItem(key) {
+            return store.has(key) ? store.get(key) : null;
+        },
+        setItem(key, value) {
+            store.set(key, String(value));
+        }
+    };
+
+    try {
+        const dm = new DataManager();
+        dm.load();
+
+        assert.deepEqual(dm.state.favorites, [{
+            numbers: [1, 2, 3, 4, 5, 6],
+            date: '2026-03-01T00:00:00.000Z'
+        }], 'favorites must be normalized during load');
+        assert.deepEqual(dm.state.history, [], 'invalid history entries must be dropped during load');
+        assert.deepEqual(JSON.parse(store.get(CONFIG.KEYS.FAV)), dm.state.favorites, 'normalized favorites must be persisted back');
+        assert.deepEqual(JSON.parse(store.get(CONFIG.KEYS.HIST)), [], 'normalized history must be persisted back');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+
+        if (previousStorage === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = previousStorage;
+    }
+}
+
+async function runCampaignEmptySaveRegression() {
+    const previousDocument = globalThis.document;
+    const calls = [];
+
+    globalThis.document = {
+        querySelector(selector) {
+            if (selector === '#fixedNums' || selector === '#excludeNums') {
+                return { value: '' };
+            }
+            return null;
+        },
+        querySelectorAll() {
+            return [];
+        }
+    };
+
+    try {
+        const ctx = {
+            data: {
+                state: { winningStats: [] },
+                createId(prefix) {
+                    return `${prefix}_test`;
+                },
+                addTicketsBulk() {
+                    calls.push('addTicketsBulk');
+                    return 0;
+                },
+                addCampaign() {
+                    calls.push('addCampaign');
+                    return { id: 'campaign_test' };
+                },
+                save() {
+                    calls.push('save');
+                }
+            },
+            app: {
+                data: { state: { winningStats: [] } },
+                renderDataLists() {
+                    calls.push('renderDataLists');
+                }
+            },
+            workerClient: {
+                async generate() {
+                    return { sets: [] };
+                }
+            },
+            readNumberInput(id, fallback) {
+                const values = {
+                    campStartDraw: 1210,
+                    campWeeks: 4,
+                    campSetsPerWeek: 3
+                };
+                return values[id] ?? fallback;
+            },
+            parseInput() {
+                return [];
+            },
+            getStrategyRequestFromUI() {
+                return {
+                    strategyId: 'ensemble_weighted',
+                    params: { simulationCount: 5000, lookbackWindow: 20 },
+                    filters: {}
+                };
+            },
+            isWorkerTimeoutError() {
+                return false;
+            }
+        };
+
+        await GeneratorModule.prototype.generateCampaign.call(ctx);
+
+        assert.ok(!calls.includes('addCampaign'), 'campaign must not be saved when no tickets were inserted');
+        assert.ok(!calls.includes('renderDataLists'), 'empty campaign must not trigger rerender');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runQrScanReentryGuardRegression() {
+    const previousDocument = globalThis.document;
+    const calls = [];
+
+    globalThis.document = {
+        querySelector() {
+            return null;
+        },
+        querySelectorAll() {
+            return [];
+        }
+    };
+
+    try {
+        const ctx = {
+            isHandlingSuccess: false,
+            parseLottoQr() {
+                calls.push('parse');
+                return [{ targetDrawNo: 861, numbers: [1, 2, 3, 4, 5, 6] }];
+            },
+            async stop() {
+                calls.push('stop');
+                await new Promise((resolve) => setTimeout(resolve, 30));
+            },
+            app: {
+                async route(target) {
+                    calls.push(`route:${target}`);
+                },
+                check: {
+                    setScannedNumbers(items) {
+                        calls.push(`set:${items.length}`);
+                    }
+                }
+            }
+        };
+
+        await Promise.all([
+            QrScannerModule.prototype.onScanSuccess.call(ctx, 'qr'),
+            QrScannerModule.prototype.onScanSuccess.call(ctx, 'qr')
+        ]);
+
+        assert.equal(calls.filter((x) => x === 'parse').length, 1, 'QR success handler must parse only once while busy');
+        assert.equal(calls.filter((x) => x === 'stop').length, 1, 'QR success handler must stop scanner only once');
+        assert.equal(calls.filter((x) => x === 'route:check').length, 1, 'QR success handler must route only once');
+        assert.equal(calls.filter((x) => x === 'set:1').length, 1, 'QR success handler must set scanned numbers only once');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
 }
 
 async function runSyncGuardRegression() {
@@ -340,11 +602,16 @@ async function main() {
     const backtest = runBacktestSmoke(stats);
     runBackupSmoke(stats);
     runStrictFilterRegression(stats.slice(-180));
+    runWheelFixedNumbersRegression(stats.slice(-180));
     runDrawNormalizationRegression();
     runCampaignLimitRegression();
     runQrValidationRegression();
     runTicketDedupeRegression();
+    runCheckTargetDrawRegression();
+    runStoredListNormalizationRegression();
     await runSyncGuardRegression();
+    await runCampaignEmptySaveRegression();
+    await runQrScanReentryGuardRegression();
     await runPostImportRefreshRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
@@ -352,11 +619,16 @@ async function main() {
     console.log(`[PASS] backtest-smoke: tickets=${backtest.tickets}, wins=${backtest.wins}, prize=${backtest.totalPrize}`);
     console.log('[PASS] backup-v3 schema');
     console.log('[PASS] strict-filter regression');
+    console.log('[PASS] wheel-fixed regression');
     console.log('[PASS] draw-normalization regression');
     console.log('[PASS] campaign-limit regression');
     console.log('[PASS] qr-validation regression');
     console.log('[PASS] ticket-dedupe regression');
+    console.log('[PASS] check-target-draw regression');
+    console.log('[PASS] stored-list-normalization regression');
     console.log('[PASS] sync-guard regression');
+    console.log('[PASS] campaign-empty-save regression');
+    console.log('[PASS] qr-reentry-guard regression');
     console.log('[PASS] post-import-refresh regression');
     console.log('[DONE] smoke checks passed');
 }

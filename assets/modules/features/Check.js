@@ -63,7 +63,22 @@ export class CheckModule {
   }
 
   setScannedNumbers(games) {
-    this.scanned = games.map(nums => ({ numbers: nums, date: new Date().toISOString() }));
+    const now = new Date().toISOString();
+    this.scanned = (Array.isArray(games) ? games : [])
+      .map((entry) => {
+        const rawNumbers = Array.isArray(entry) ? entry : entry?.numbers;
+        const numbers = [...new Set((rawNumbers || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))]
+          .sort((a, b) => a - b);
+        if (numbers.length !== 6) return null;
+
+        const drawNo = Array.isArray(entry) ? null : Number(entry?.targetDrawNo);
+        return {
+          numbers,
+          targetDrawNo: Number.isFinite(drawNo) && drawNo > 0 ? Math.floor(drawNo) : null,
+          date: now
+        };
+      })
+      .filter(Boolean);
 
     // Show/Enable Scanned tab
     const scanBtn = $(`.seg-btn[data-source="scanned"]`);
@@ -113,7 +128,11 @@ export class CheckModule {
       opt.value = String(i);
       let label = '즐겨찾기';
       if (this.source === 'history') label = '히스토리';
-      if (this.source === 'scanned') label = '스캔결과';
+      if (this.source === 'scanned') {
+        label = Number(item?.targetDrawNo) > 0
+          ? `스캔결과 ${item.targetDrawNo}회`
+          : '스캔결과';
+      }
       if (this.source === 'tickets') {
         label = `티켓 ${item.targetDrawNo}회`;
         opt.textContent = `[${label}][${this.getTicketStatusLabel(item)}] ${item.numbers.join(', ')}`;
@@ -167,11 +186,45 @@ export class CheckModule {
     return 0;
   }
 
+  renderMissingTargetDraw(ticket, targetDrawNo) {
+    this.currentTicket = ticket.numbers;
+    this.currentDrawNo = targetDrawNo;
+
+    const area = $('#checkResultArea');
+    if (!area) return;
+    area.classList.remove('check-result-placeholder');
+    area.innerHTML = `
+      <div class="check-result">
+        <div class="check-head">
+          <div class="title">${targetDrawNo}회 결과 확인 불가</div>
+          <div class="badge no">미추첨/데이터 없음</div>
+        </div>
+        <div class="check-actions">
+          <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
+        </div>
+        <div class="check-section">
+          <div class="label">내 번호</div>
+          <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
+          <div class="meta">${targetDrawNo}회 결과 데이터가 없습니다. 아직 추첨 전이거나 동기화되지 않았습니다.</div>
+        </div>
+      </div>
+    `;
+  }
+
   runLatest(ticket) {
     const preferredDrawNo = Number(ticket?.targetDrawNo || 0);
-    const latest = (preferredDrawNo > 0
+    const latest = preferredDrawNo > 0
       ? this.data.state.winningStats.find((x) => Number(x.draw_no) === preferredDrawNo)
-      : null) || this.data.state.winningStats[0];
+      : this.data.state.winningStats[0];
+    if (!latest) {
+      if (preferredDrawNo > 0) {
+        this.renderMissingTargetDraw(ticket, preferredDrawNo);
+      } else {
+        UIManager.toast('비교 가능한 회차 데이터가 없습니다.', 'warning');
+      }
+      return;
+    }
     this.currentTicket = ticket.numbers;
     this.currentDrawNo = latest.draw_no;
     const winSet = new Set(latest.numbers);

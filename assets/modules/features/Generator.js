@@ -396,6 +396,7 @@ export class GeneratorModule {
             this.engine = new StrategyEngine(this.data.state.winningStats);
 
             const tickets = [];
+            const campaignId = this.data.createId('campaign');
             for (let i = 0; i < weeks; i++) {
                 const targetDrawNo = startDraw + i;
                 let sets = [];
@@ -438,6 +439,7 @@ export class GeneratorModule {
                         numbers,
                         targetDrawNo,
                         source: 'generator',
+                        campaignId,
                         strategyRequest: request,
                         memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
                         createdAt: new Date().toISOString(),
@@ -448,19 +450,29 @@ export class GeneratorModule {
             }
 
             inserted = this.data.addTicketsBulk(tickets, { silent: true });
-            const campaign = this.data.addCampaign({
-                name: `${startDraw}회 시작 ${weeks}주`,
-                startDrawNo: startDraw,
-                weeks,
-                setsPerWeek,
-                strategyRequest: request
-            });
+            let campaign = null;
+            if (inserted > 0) {
+                campaign = this.data.addCampaign({
+                    id: campaignId,
+                    name: `${startDraw}회 시작 ${weeks}주`,
+                    startDrawNo: startDraw,
+                    weeks,
+                    setsPerWeek,
+                    strategyRequest: request
+                });
+            }
             this.data.save();
 
             if (totalCreated < requestedTotal) {
                 UIManager.toast(`필터 조건으로 ${totalCreated}/${requestedTotal}개만 생성되었습니다.`, 'warning', 3500);
             }
-            UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, inserted > 0 ? 'success' : 'warning');
+            if (inserted > 0) {
+                UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, 'success');
+            } else if (totalCreated > 0) {
+                UIManager.toast('생성된 티켓이 모두 중복되어 캠페인을 저장하지 않았습니다.', 'warning', 3500);
+            } else {
+                UIManager.toast('생성된 티켓이 없어 캠페인을 저장하지 않았습니다.', 'warning', 3500);
+            }
             if (campaign && this.app.renderDataLists) this.app.renderDataLists();
         } finally {
             endMark('generator.campaign', { inserted, totalCreated, requestedTotal, weeks, setsPerWeek, fallbackRuns });

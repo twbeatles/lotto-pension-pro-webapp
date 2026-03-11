@@ -7,6 +7,7 @@ export class QrScannerModule {
         this.app = app;
         this.scanner = null;
         this.isScanning = false;
+        this.isHandlingSuccess = false;
         this.bindEvents();
     }
 
@@ -23,6 +24,7 @@ export class QrScannerModule {
         const current = this.scanner;
         this.scanner = null;
         this.isScanning = false;
+        this.isHandlingSuccess = false;
 
         try {
             // stop() may throw when scanner wasn't fully started.
@@ -69,6 +71,7 @@ export class QrScannerModule {
                 }
             );
             this.isScanning = true;
+            this.isHandlingSuccess = false;
         } catch (err) {
             console.error('스캐너 시작 오류', err);
             UIManager.toast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.', 'error');
@@ -84,14 +87,17 @@ export class QrScannerModule {
     }
 
     async onScanSuccess(decodedText) {
+        if (this.isHandlingSuccess) return;
+        this.isHandlingSuccess = true;
+
         // Example format: http://m.dhlottery.co.kr/?v=0861q020612162843q030614182235q121330363842q172930333738q1123283236441316130938
         // Parse logic here
         // Parse logic here
         // console.log(`Scan result: ${decodedText}`);
 
         try {
-            const numbers = this.parseLottoQr(decodedText);
-            if (numbers && numbers.length > 0) {
+            const scannedGames = this.parseLottoQr(decodedText);
+            if (scannedGames && scannedGames.length > 0) {
                 await this.stop();
                 UIManager.toast('큐알 스캔 성공!', 'success');
 
@@ -102,7 +108,7 @@ export class QrScannerModule {
                 // We need a way to pass these numbers to CheckModule.
                 // Option 1: Call a method on CheckModule
                 if (this.app.check) {
-                    this.app.check.setScannedNumbers(numbers);
+                    this.app.check.setScannedNumbers(scannedGames);
                 }
             } else {
                 // Valid QR but not Lotto? or parse failed
@@ -111,6 +117,8 @@ export class QrScannerModule {
         } catch (e) {
             console.error(e);
             UIManager.toast('큐알 코드 해석 실패', 'error');
+        } finally {
+            this.isHandlingSuccess = false;
         }
     }
 
@@ -148,6 +156,10 @@ export class QrScannerModule {
         // Format: [DrawNo]q[Game1]q[Game2]...
         const parts = vParam.split('q');
         if (parts.length < 2) throw new Error('데이터 형식이 올바르지 않습니다.');
+        const drawNo = Number.parseInt(parts[0], 10);
+        if (!Number.isInteger(drawNo) || drawNo < 1) {
+            throw new Error('큐알 코드에 유효한 회차 정보가 없습니다.');
+        }
 
         const games = [];
         for (let i = 1; i < parts.length; i++) {
@@ -167,7 +179,10 @@ export class QrScannerModule {
 
             if (nums.length === 6 && new Set(nums).size === 6) {
                 nums.sort((a, b) => a - b);
-                games.push(nums);
+                games.push({
+                    targetDrawNo: drawNo,
+                    numbers: nums
+                });
             }
         }
 

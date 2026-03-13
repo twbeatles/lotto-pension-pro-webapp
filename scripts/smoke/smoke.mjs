@@ -4,13 +4,15 @@ import { resolve } from 'node:path';
 
 import { StrategyEngine } from '../../assets/modules/core/StrategyEngine.js';
 import { DataManager } from '../../assets/modules/core/DataManager.js';
-import { runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
+import { LottoApp } from '../../assets/modules/core/LottoApp.js';
+import { DataIOModule, runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
 import { GeneratorModule } from '../../assets/modules/features/Generator.js';
 import { CheckModule } from '../../assets/modules/features/Check.js';
 import { buildBackupPayload, normalizeBackupPayload } from '../../assets/modules/utils/backup.js';
 import { passesFilters } from '../../assets/modules/core/StrategyFilters.js';
 import { CONFIG } from '../../assets/modules/utils/config.js';
 import { QrScannerModule } from '../../assets/modules/features/QrScanner.js';
+import { estimateLatestDrawKST } from '../../assets/modules/utils/utils.js';
 
 function normalizeStats(raw) {
     const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
@@ -61,6 +63,36 @@ function assertTicketShape(sets, expectedCount) {
         assert.equal(new Set(set).size, 6, 'set must contain unique numbers');
         for (const n of set) assert.ok(n >= 1 && n <= 45, 'numbers must be in [1, 45]');
     }
+}
+
+function createField(overrides = {}) {
+    return {
+        value: '',
+        checked: false,
+        disabled: false,
+        innerHTML: '',
+        textContent: '',
+        style: {},
+        classList: {
+            add() {},
+            remove() {}
+        },
+        addEventListener() {},
+        appendChild() {},
+        setAttribute() {},
+        ...overrides
+    };
+}
+
+function createDocumentStub(map = {}) {
+    return {
+        querySelector(selector) {
+            return map[selector] ?? null;
+        },
+        querySelectorAll() {
+            return [];
+        }
+    };
 }
 
 function runBacktestSmoke(stats) {
@@ -249,6 +281,38 @@ function runTicketDedupeRegression() {
     assert.equal(keyA, keyB, 'ticket dedupe key must be stable across key order differences');
 }
 
+function runCampaignCascadeRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+    dm.markDirty = () => {};
+    dm.state.campaigns = [
+        { id: 'camp_a', name: 'A', startDrawNo: 1200, weeks: 2, setsPerWeek: 2 },
+        { id: 'camp_b', name: 'B', startDrawNo: 1202, weeks: 1, setsPerWeek: 1 }
+    ];
+    dm.state.ticketBook = [
+        { id: 'ticket_a1', campaignId: 'camp_a' },
+        { id: 'ticket_a2', campaignId: 'camp_a' },
+        { id: 'ticket_b1', campaignId: 'camp_b' },
+        { id: 'ticket_orphan', campaignId: 'camp_orphan' },
+        { id: 'ticket_manual', campaignId: '' }
+    ];
+
+    const single = dm.removeCampaign('camp_a', { cascadeTickets: true });
+    assert.equal(single.removedCampaign, true, 'single campaign delete must remove campaign');
+    assert.equal(single.removedTickets, 2, 'single campaign delete must cascade linked tickets');
+    assert.equal(dm.state.campaigns.length, 1, 'single campaign delete must keep unrelated campaigns');
+    assert.equal(dm.state.ticketBook.some((ticket) => ticket.campaignId === 'camp_a'), false, 'linked camp_a tickets must be removed');
+    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'), true, 'orphan tickets must be preserved');
+
+    const cleared = dm.clearCampaigns({ cascadeTickets: true });
+    assert.equal(cleared.removedCampaigns, 1, 'bulk campaign delete must report removed campaign count');
+    assert.equal(cleared.removedTickets, 1, 'bulk campaign delete must remove remaining linked tickets');
+    assert.equal(dm.state.campaigns.length, 0, 'all campaigns must be cleared');
+    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_b1'), false, 'linked camp_b tickets must be removed');
+    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'), true, 'orphan tickets must remain after bulk delete');
+    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_manual'), true, 'manual tickets must remain after bulk delete');
+}
+
 function runCheckTargetDrawRegression() {
     const previousDocument = globalThis.document;
     const area = {
@@ -351,6 +415,353 @@ function runStoredListNormalizationRegression() {
 
         if (previousStorage === undefined) delete globalThis.localStorage;
         else globalThis.localStorage = previousStorage;
+    }
+}
+
+async function runRequestNumbersRegression() {
+    const previousDocument = globalThis.document;
+    const list = createField({ innerHTML: '<div>old</div>' });
+
+    globalThis.document = createDocumentStub({
+        '#genResultList': list,
+        '#toast-container': null
+    });
+
+    try {
+        const routeCalls = [];
+        const ctx = {
+            data: {
+                state: {
+                    generated: [[7, 8, 9, 10, 11, 12]]
+                }
+            },
+            generator: {
+                renderResultItem(nums, index, container) {
+                    container.innerHTML += `<div class="result-item" data-idx="${index}">${nums.join(',')}</div>`;
+                }
+            },
+            async route(target) {
+                routeCalls.push(target);
+            }
+        };
+
+        await LottoApp.prototype.requestNumbers.call(ctx, [1, 2, 3, 4, 5, 6]);
+
+        assert.deepEqual(routeCalls, ['gen'], 'AI import must route to generator tab');
+        assert.deepEqual(ctx.data.state.generated, [[1, 2, 3, 4, 5, 6]], 'AI import must replace generated state');
+        assert.ok(!list.innerHTML.includes('old'), 'AI import must clear previous generator DOM rows');
+        assert.equal((list.innerHTML.match(/data-idx=/g) || []).length, 1, 'AI import must render a single result row');
+        assert.match(list.innerHTML, /1,2,3,4,5,6/, 'AI import must render the incoming numbers');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runLatestWinPlaceholderRegression() {
+    const previousDocument = globalThis.document;
+    const latestDrawNo = createField();
+    const latestWinBalls = createField();
+    const latestWinMeta = createField();
+
+    globalThis.document = createDocumentStub({
+        '#latestDrawNo': latestDrawNo,
+        '#latestWinBalls': latestWinBalls,
+        '#latestWinMeta': latestWinMeta
+    });
+
+    try {
+        const ctx = {
+            data: {
+                state: {
+                    winningStats: []
+                }
+            },
+            renderLatestWinPlaceholder: LottoApp.prototype.renderLatestWinPlaceholder
+        };
+        LottoApp.prototype.updateLatestWin.call(ctx, { offline: true });
+        assert.equal(latestDrawNo.textContent, '오프라인', 'latest draw badge must show offline state');
+        assert.match(latestWinBalls.innerHTML, /최신 당첨결과를 불러오지 못했습니다/, 'latest win card must render offline placeholder');
+        assert.match(latestWinMeta.innerHTML, /오프라인 상태입니다/, 'latest win card must explain offline placeholder');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runSyncLatestWinRefreshRegression() {
+    const previousDocument = globalThis.document;
+    globalThis.document = createDocumentStub({
+        '#toast-container': null
+    });
+
+    try {
+        const dm = new DataManager();
+        const estNo = estimateLatestDrawKST();
+        const calls = [];
+
+        dm.state.winningStats = [{
+            draw_no: estNo - 1,
+            date: '2026-03-07',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7,
+            prize_amount: 0,
+            winners_count: 0,
+            total_sales: 0
+        }];
+        dm.resolveProxyConfig = () => ({ source: 'test', url: 'https://proxy.example/proxy/latest' });
+        dm.fetchRangeChunkedFromProxy = async () => ({
+            items: [{
+                draw_no: estNo,
+                date: '2026-03-14',
+                numbers: [2, 4, 6, 8, 10, 12],
+                bonus: 14,
+                prize_amount: 0,
+                winners_count: 0,
+                total_sales: 0
+            }],
+            missing: new Set(),
+            failedDraws: new Set()
+        });
+        dm.fetchMissingDraws = async () => [];
+        dm.getLocalUpdates = () => [];
+        dm.setLocalUpdates = (items) => {
+            calls.push(`setLocalUpdates:${items.length}`);
+        };
+        dm.fetchWinningStats = async () => {
+            calls.push('fetchWinningStats');
+            return true;
+        };
+        dm.settlePendingTickets = async () => {
+            calls.push('settlePendingTickets');
+            return { settled: 0, wins: 0, latestDrawNo: estNo };
+        };
+        dm.app = {
+            updateLatestWin() {
+                calls.push('updateLatestWin');
+            },
+            async refreshCurrentRoute() {
+                calls.push('refreshCurrentRoute');
+            }
+        };
+
+        const result = await dm._fetchLatestFromAPIInternal({ trigger: 'manual' }, null);
+        assert.equal(result, true, 'sync must succeed in regression scenario');
+        assert.deepEqual(calls, [
+            'setLocalUpdates:1',
+            'fetchWinningStats',
+            'settlePendingTickets',
+            'updateLatestWin',
+            'refreshCurrentRoute'
+        ], 'sync success must refresh latest win card before route refresh');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runImportAlertOptionRegression() {
+    const previousDocument = globalThis.document;
+    const importMode = createField({ value: 'merge' });
+    const importApplyTheme = createField();
+    const importApplyProxy = createField();
+    const importApplyStrategyPrefs = createField();
+    const importApplyAlerts = createField();
+
+    globalThis.document = createDocumentStub({
+        '#importMode': importMode,
+        '#importApplyTheme': importApplyTheme,
+        '#importApplyProxy': importApplyProxy,
+        '#importApplyStrategyPrefs': importApplyStrategyPrefs,
+        '#importApplyAlerts': importApplyAlerts,
+        '#customProxyUrl': createField(),
+        '#toast-container': null
+    });
+
+    try {
+        const payload = {
+            version: 3,
+            favorites: [],
+            history: [],
+            ticketBook: [],
+            campaigns: [],
+            alertPrefs: {
+                enableInApp: true,
+                enableSystemNotification: true,
+                notifyOnNewResult: false
+            },
+            settings: {
+                theme: 'light',
+                customProxy: 'https://proxy.example/proxy/latest',
+                strategyPrefs: {
+                    generator: buildSmokeRequest()
+                }
+            },
+            localUpdates: [],
+            strategyPresets: []
+        };
+        const file = {
+            async text() {
+                return JSON.stringify(payload);
+            }
+        };
+
+        const createImportContext = (data) => {
+            const ctx = Object.create(DataIOModule.prototype);
+            ctx.data = data;
+            ctx.app = { applyTheme() {} };
+            ctx.syncProxyInput = () => {};
+            ctx.refreshPresetSelectors = () => {};
+            ctx.runPostImportRefresh = async () => {};
+            return ctx;
+        };
+
+        const mergeData = new DataManager();
+        mergeData.state.alertPrefs = {
+            enableInApp: false,
+            enableSystemNotification: false,
+            notifyOnNewResult: true
+        };
+        mergeData.save = () => {};
+        mergeData.setLocalUpdates = () => {};
+        mergeData.getLocalUpdates = () => [];
+        const mergeCtx = createImportContext(mergeData);
+
+        DataIOModule.prototype.applyImportModeDefaults.call(mergeCtx, 'merge');
+        assert.equal(importApplyTheme.checked, false, 'merge default must not apply theme');
+        assert.equal(importApplyProxy.checked, false, 'merge default must not apply proxy');
+        assert.equal(importApplyStrategyPrefs.checked, false, 'merge default must not apply strategy prefs');
+        assert.equal(importApplyAlerts.checked, false, 'merge default must not apply alerts');
+
+        await DataIOModule.prototype.importAll.call(mergeCtx, {
+            currentTarget: {
+                files: [file],
+                value: 'merge.json'
+            }
+        });
+        assert.deepEqual(mergeData.state.alertPrefs, {
+            enableInApp: false,
+            enableSystemNotification: false,
+            notifyOnNewResult: true
+        }, 'merge import must keep current alert prefs when alerts option is off');
+
+        importMode.value = 'overwrite';
+        const overwriteData = new DataManager();
+        overwriteData.state.alertPrefs = {
+            enableInApp: false,
+            enableSystemNotification: false,
+            notifyOnNewResult: true
+        };
+        overwriteData.save = () => {};
+        overwriteData.setLocalUpdates = () => {};
+        overwriteData.getLocalUpdates = () => [];
+        const overwriteCtx = createImportContext(overwriteData);
+
+        DataIOModule.prototype.applyImportModeDefaults.call(overwriteCtx, 'overwrite');
+        assert.equal(importApplyTheme.checked, true, 'overwrite default must apply theme');
+        assert.equal(importApplyProxy.checked, true, 'overwrite default must apply proxy');
+        assert.equal(importApplyStrategyPrefs.checked, true, 'overwrite default must apply strategy prefs');
+        assert.equal(importApplyAlerts.checked, true, 'overwrite default must apply alerts');
+
+        await DataIOModule.prototype.importAll.call(overwriteCtx, {
+            currentTarget: {
+                files: [file],
+                value: 'overwrite.json'
+            }
+        });
+        assert.deepEqual(
+            overwriteData.state.alertPrefs,
+            overwriteData.mergeAlertPrefs(payload.alertPrefs),
+            'overwrite import must apply incoming alert prefs when alerts option is on'
+        );
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runStrategyPresetCrudRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+
+    const baseRequest = buildSmokeRequest();
+    const first = dm.saveStrategyPreset('generator', '테스트 프리셋', baseRequest);
+    assert.ok(first?.preset, 'preset save must return created preset');
+    assert.equal(first.replaced, false, 'first preset save must not report replace');
+    assert.equal(dm.getStrategyPresets('generator').length, 1, 'generator scope must contain saved preset');
+
+    const overwrittenRequest = {
+        ...baseRequest,
+        strategyId: 'cold_frequency',
+        params: {
+            ...baseRequest.params,
+            simulationCount: 9000
+        }
+    };
+    const overwrite = dm.saveStrategyPreset('generator', '테스트 프리셋', overwrittenRequest);
+    assert.equal(overwrite.replaced, true, 'preset overwrite must report replace');
+    assert.equal(dm.findStrategyPreset('generator', '테스트 프리셋').request.strategyId, 'cold_frequency', 'preset overwrite must update request');
+
+    const secondScope = dm.saveStrategyPreset('ai', 'AI 프리셋', baseRequest);
+    assert.ok(secondScope?.preset, 'different scope preset must also save');
+    assert.equal(dm.getStrategyPresets('ai').length, 1, 'AI scope must isolate its presets');
+
+    const previousDocument = globalThis.document;
+    const fields = {
+        '#genSimulationCount': createField(),
+        '#genLookbackWindow': createField(),
+        '#genSeed': createField(),
+        '#genOddMin': createField(),
+        '#genOddMax': createField(),
+        '#genHighMin': createField(),
+        '#genHighMax': createField(),
+        '#genSumMin': createField(),
+        '#genSumMax': createField(),
+        '#genAcMin': createField(),
+        '#genAcMax': createField(),
+        '#genMaxConsecutive': createField(),
+        '#genEndDigitUnique': createField(),
+        '#genStrategySelect': createField({
+            value: 'ensemble_weighted',
+            options: [
+                { value: 'ensemble_weighted' },
+                { value: 'cold_frequency' }
+            ]
+        })
+    };
+    globalThis.document = createDocumentStub(fields);
+
+    try {
+        let synced = 0;
+        GeneratorModule.prototype.applyStrategyRequest.call({
+            syncLegacyTogglesFromStrategy() {
+                synced++;
+            }
+        }, dm.findStrategyPreset('generator', '테스트 프리셋').request);
+
+        assert.equal(fields['#genStrategySelect'].value, 'cold_frequency', 'preset load must update strategy select');
+        assert.equal(Number(fields['#genSimulationCount'].value), 9000, 'preset load must apply numeric params');
+        assert.equal(Number(fields['#genLookbackWindow'].value), baseRequest.params.lookbackWindow, 'preset load must apply lookback window');
+        assert.equal(synced, 1, 'preset load must resync legacy toggles');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+
+    const generatorPresetId = dm.findStrategyPreset('generator', '테스트 프리셋').id;
+    assert.equal(dm.deleteStrategyPreset(generatorPresetId), true, 'preset delete must succeed');
+    assert.equal(dm.getStrategyPresets('generator').length, 0, 'preset delete must remove generator preset');
+}
+
+async function runRuntimeAssetLocalizationRegression() {
+    const targets = [
+        'index.html',
+        'assets/app.css',
+        'assets/modules/utils/loader.js'
+    ];
+    for (const target of targets) {
+        const text = await readFile(resolve(process.cwd(), target), 'utf8');
+        assert.ok(!/cdn\.jsdelivr\.net|unpkg\.com|@import url\(/.test(text), `${target} must not reference runtime CDN assets`);
     }
 }
 
@@ -605,14 +1016,21 @@ async function main() {
     runWheelFixedNumbersRegression(stats.slice(-180));
     runDrawNormalizationRegression();
     runCampaignLimitRegression();
+    runCampaignCascadeRegression();
     runQrValidationRegression();
     runTicketDedupeRegression();
     runCheckTargetDrawRegression();
     runStoredListNormalizationRegression();
+    runLatestWinPlaceholderRegression();
+    runStrategyPresetCrudRegression();
     await runSyncGuardRegression();
+    await runRequestNumbersRegression();
+    await runSyncLatestWinRefreshRegression();
+    await runImportAlertOptionRegression();
     await runCampaignEmptySaveRegression();
     await runQrScanReentryGuardRegression();
     await runPostImportRefreshRegression();
+    await runRuntimeAssetLocalizationRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
     console.log(`[PASS] recommend: ${recommended.sets.length} sets`);
@@ -622,14 +1040,21 @@ async function main() {
     console.log('[PASS] wheel-fixed regression');
     console.log('[PASS] draw-normalization regression');
     console.log('[PASS] campaign-limit regression');
+    console.log('[PASS] campaign-cascade regression');
     console.log('[PASS] qr-validation regression');
     console.log('[PASS] ticket-dedupe regression');
     console.log('[PASS] check-target-draw regression');
     console.log('[PASS] stored-list-normalization regression');
+    console.log('[PASS] latest-win-placeholder regression');
+    console.log('[PASS] strategy-preset-crud regression');
     console.log('[PASS] sync-guard regression');
+    console.log('[PASS] requestNumbers replace regression');
+    console.log('[PASS] sync-latest-win refresh regression');
+    console.log('[PASS] import-alert-options regression');
     console.log('[PASS] campaign-empty-save regression');
     console.log('[PASS] qr-reentry-guard regression');
     console.log('[PASS] post-import-refresh regression');
+    console.log('[PASS] runtime-asset-localization regression');
     console.log('[DONE] smoke checks passed');
 }
 

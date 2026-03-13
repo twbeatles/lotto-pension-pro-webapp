@@ -4,9 +4,14 @@
 
 현재 저장소는 루트(`.`) 정적 파일을 GitHub Pages에 배포하는 구조입니다.
 
-- 배포 대상: `index.html`, `assets/`, `data/`, `manifest.json`, `sw.js`, `.nojekyll`
+- 배포 대상: `index.html`, `assets/`, `data/`, `manifest.json`, `sw.js`, `.nojekyll`, `THIRD_PARTY_NOTICES.md`
 - 저장소: `https://github.com/twbeatles/lotto---webapp`
 - 배포 URL: `https://twbeatles.github.io/lotto---webapp/`
+
+메모:
+
+- 런타임 외부 의존 자산은 모두 `assets/vendor/` same-origin 경로로 포함됩니다.
+- Pages 배포 시 CDN 링크가 아니라 저장소에 커밋된 vendor 자산이 그대로 서빙되어야 합니다.
 
 ## 2) 데이터 운영
 
@@ -39,9 +44,10 @@
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v9`
+- 현재 `sw.js` 캐시 버전: `v10`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
+- 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산과 `assets/modules/utils/strategyPresets.js`도 precache 대상입니다.
 
 배포 후 반영 확인:
 
@@ -104,6 +110,12 @@ npm run format:check
 - draw 정규화 시 중복 번호/보너스 중복 차단되는지
 - Import 후 즉시 반영 순서가 유지되는지
 - 캠페인 상한 정책이 지켜지는지(`campaign-limit`)
+- 캠페인 삭제 시 연결 티켓이 같이 제거되는지(`campaign-cascade`)
 - QR host/중복 번호 검증이 동작하는지(`qr-validation`)
 - strategyRequest 키 순서가 달라도 dedupe 키가 동일한지(`ticket-dedupe`)
 - 동기화 in-flight/취소 가드가 동작하는지(`sync-guard`)
+- AI `생성 탭으로`가 기존 결과를 교체하는지(`requestNumbers replace`)
+- sync 성공 후 최신 당첨결과 카드가 항상 갱신되는지(`sync-latest-win refresh`)
+- Import `alerts` 옵션 기본값과 적용 여부가 맞는지(`import-alert-options`)
+- 전략 프리셋 CRUD가 scope별로 동작하는지(`strategy-preset-crud`)
+- 런타임 HTML/loader에서 CDN 경로가 남지 않는지(`runtime-asset-localization`)

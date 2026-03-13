@@ -144,12 +144,14 @@ export class DataIOModule {
         const applyTheme = $('#importApplyTheme');
         const applyProxy = $('#importApplyProxy');
         const applyStrategyPrefs = $('#importApplyStrategyPrefs');
-        if (!applyTheme || !applyProxy || !applyStrategyPrefs) return;
+        const applyAlerts = $('#importApplyAlerts');
+        if (!applyTheme || !applyProxy || !applyStrategyPrefs || !applyAlerts) return;
 
         const isOverwrite = mode === 'overwrite';
         applyTheme.checked = isOverwrite;
         applyProxy.checked = isOverwrite;
         applyStrategyPrefs.checked = isOverwrite;
+        applyAlerts.checked = isOverwrite;
     }
 
     getImportOptionsFromUI() {
@@ -159,12 +161,28 @@ export class DataIOModule {
             mode,
             applyTheme: Boolean($('#importApplyTheme')?.checked),
             applyProxy: Boolean($('#importApplyProxy')?.checked),
-            applyStrategyPrefs: Boolean($('#importApplyStrategyPrefs')?.checked)
+            applyStrategyPrefs: Boolean($('#importApplyStrategyPrefs')?.checked),
+            applyAlerts: Boolean($('#importApplyAlerts')?.checked)
         };
+    }
+
+    describeAppliedSettings(importOptions = {}) {
+        const labels = [];
+        if (importOptions.applyTheme) labels.push('테마');
+        if (importOptions.applyProxy) labels.push('프록시');
+        if (importOptions.applyStrategyPrefs) labels.push('전략 설정');
+        if (importOptions.applyAlerts) labels.push('알림 설정');
+        return labels;
     }
 
     async runPostImportRefresh() {
         await runPostImportRefresh({ data: this.data, app: this.app });
+    }
+
+    refreshPresetSelectors() {
+        this.app.generator?.presetController?.render();
+        this.app.ai?.presetController?.render();
+        this.app.backtest?.presetController?.render();
     }
 
     async importAll(e) {
@@ -213,10 +231,12 @@ export class DataIOModule {
                 this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
                 this.data.state.ticketBook = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
                 this.data.state.campaigns = this.mergeCampaigns(this.data.state.campaigns, incomingCampaigns);
-                this.data.state.alertPrefs = this.data.mergeAlertPrefs({
-                    ...this.data.state.alertPrefs,
-                    ...incomingAlertPrefs
-                });
+                if (importOptions.applyAlerts) {
+                    this.data.state.alertPrefs = this.data.mergeAlertPrefs({
+                        ...this.data.state.alertPrefs,
+                        ...incomingAlertPrefs
+                    });
+                }
 
                 const mergedUpdates = this.mergeLocalUpdates(this.data.getLocalUpdates(), incomingLocalUpdates);
                 this.data.setLocalUpdates(mergedUpdates);
@@ -245,10 +265,11 @@ export class DataIOModule {
                 const addedTotal = newFav + newHist + newTickets + newCampaigns + newUpdates + newPresets;
                 const duplicateTotal = Math.max(incomingTotal - addedTotal, 0);
                 const skippedTotal = 0;
+                const appliedSettings = this.describeAppliedSettings(importOptions);
 
                 UIManager.toast(
                     `Merge complete (added:${addedTotal}, duplicate:${duplicateTotal}, skipped:${skippedTotal})` +
-                    (importOptions.applyTheme || importOptions.applyProxy || importOptions.applyStrategyPrefs ? ', settings applied' : ''),
+                    (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
                     'success'
                 );
             } else {
@@ -256,7 +277,9 @@ export class DataIOModule {
                 this.data.state.history = incomingHist;
                 this.data.state.ticketBook = incomingTickets;
                 this.data.state.campaigns = incomingCampaigns;
-                this.data.state.alertPrefs = incomingAlertPrefs;
+                if (importOptions.applyAlerts) {
+                    this.data.state.alertPrefs = incomingAlertPrefs;
+                }
                 this.data.state.strategyPresets = incomingStrategyPresets;
                 if (importOptions.applyTheme) this.data.state.theme = incomingTheme;
                 if (importOptions.applyProxy) this.data.state.customProxy = incomingProxy;
@@ -266,8 +289,10 @@ export class DataIOModule {
                 this.data.setLocalUpdates(incomingLocalUpdates);
                 if (importOptions.applyProxy) this.syncProxyInput();
                 if (importOptions.applyTheme) this.app.applyTheme();
+                const appliedSettings = this.describeAppliedSettings(importOptions);
                 UIManager.toast(
-                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + incomingCampaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:0)`,
+                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + incomingCampaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:0)` +
+                    (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
                     'success'
                 );
             }
@@ -278,6 +303,7 @@ export class DataIOModule {
 
             this.data.markAllDirty?.();
             this.data.save(true);
+            this.refreshPresetSelectors();
             await this.runPostImportRefresh();
         } catch (err) {
             console.error('Import failed', err);

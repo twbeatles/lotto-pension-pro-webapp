@@ -3,6 +3,7 @@ import { UIManager } from '../core/UIManager.js';
 import { getStrategyMeta, listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 import { endMark, startMark } from '../utils/perf.js';
 import { CONFIG } from '../utils/config.js';
+import { StrategyPresetController } from '../utils/strategyPresets.js';
 
 export class BacktestModule {
     constructor(app) {
@@ -21,6 +22,16 @@ export class BacktestModule {
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
+        this.presetController = new StrategyPresetController({
+            data: this.data,
+            scope: 'backtest',
+            selectId: 'btPresetSelect',
+            loadBtnId: 'btPresetLoadBtn',
+            saveBtnId: 'btPresetSaveBtn',
+            deleteBtnId: 'btPresetDeleteBtn',
+            getRequest: () => this.buildStrategyRequest(),
+            applyRequest: (request) => this.applyStrategyRequest(request)
+        });
     }
 
     bindEvents() {
@@ -321,8 +332,7 @@ export class BacktestModule {
         return ids.map((id, idx) => this.buildStrategyRequest(id, idx === 0));
     }
 
-    applySavedStrategyPrefs() {
-        const saved = this.data.state.strategyPrefs?.backtest;
+    applyStrategyRequest(saved) {
         if (!saved) return;
         const assign = (id, value) => {
             const el = $(`#${id}`);
@@ -355,6 +365,10 @@ export class BacktestModule {
         if (select && [...select.options].some((x) => x.value === strategyId)) {
             select.value = strategyId;
         }
+    }
+
+    applySavedStrategyPrefs() {
+        this.applyStrategyRequest(this.data.state.strategyPrefs?.backtest);
     }
 
     exportComparisonCsv() {

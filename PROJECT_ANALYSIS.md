@@ -1,4 +1,4 @@
-﻿# 로또 웹앱 구조 재분석 (2026-03-01)
+﻿# 로또 웹앱 구조 재분석 (2026-03-13)
 
 ## 1) 범위
 
@@ -34,6 +34,8 @@
   - `MonteCarlo.js`: 샘플링/통계 보조
 - `assets/modules/features`
   - `Generator.js`, `Ai.js`, `Backtest.js`, `Stats.js`, `Check.js`, `DataIO.js`, `QrScanner.js`
+- `assets/modules/utils/strategyPresets.js`: 전략 프리셋 공통 컨트롤러
+- `assets/vendor/`: same-origin 런타임 vendor 자산(font/icon/QR/캡처)
 - `data/winning_stats.json`: 당첨 이력 정적 데이터
 - `proxy/worker.js`: 프록시 API 래퍼
 - `eslint.config.mjs`: JS/HTML 정적 검증 규칙
@@ -85,6 +87,10 @@
 - 설정 저장 키: `lotto_pro_settings_v2`
 - 프리셋 저장 키: `lotto_pro_strategy_presets_v1`
 - 로컬 업데이트 저장 키: `lotto_pro_updates_v2`
+- 운영 정책:
+  - 캠페인 삭제/전체삭제는 연결 티켓 cascade 삭제
+  - Import는 `theme/proxy/strategyPrefs/alerts`별 선택 적용
+  - 기존 orphan ticket은 자동 정리하지 않음
 
 ## 7) 워커 메시지 계약
 
@@ -102,7 +108,9 @@
 
 - `index.html`
   - 생성/예측/시뮬레이션 탭 모두 전략 선택 + 상세 필터 패널 제공
+  - 생성/예측/시뮬레이션 탭 모두 전략 프리셋 바 제공
   - 실험 전략 표시 토글(`*ShowExperimental`) 제공
+  - 모바일 하단 탐색은 `gen/stats/ai/bt/check/data` 6탭 구조
 - `assets/app.css`
   - `strategy-panel`, `strategy-advanced-grid`, `range-inputs` 등 전략 전용 스타일
   - 모바일 1열 레이아웃 보강
@@ -114,7 +122,7 @@
 - 캠페인 상한: 52주, 주당 20세트, 총 500티켓
 - 워커 진행 메시지와 ETA 기반 진행률 표시
 - 메인/워커가 동일 전략 요청 객체를 사용해 규칙 불일치 위험 감소
-- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v9`)
+- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v10`)
 
 ## 9-1) 개발 도구/정적 검증
 
@@ -219,3 +227,13 @@
 - `.vscode/settings.json` 추가
 - lint 대상에 `index.html` 포함
 - 현재 기준 `npm run lint` 통과
+
+## 17) 2026-03-13 기능/오프라인 자산 통합
+
+- 전략 프리셋 CRUD를 `Generator/Ai/Backtest`에 공통 컨트롤러로 연결
+- AI 추천의 `생성 탭으로`는 generator 결과 replace semantics로 정리
+- 최신 당첨결과 카드는 오프라인/데이터 없음 placeholder를 렌더
+- sync 성공 후 현재 라우트와 무관하게 최신 카드 갱신
+- 런타임 외부 의존 자산을 `assets/vendor/`로 로컬화
+- `THIRD_PARTY_NOTICES.md` 추가
+- `sw.js` 캐시 버전 `v10` 및 vendor precache 반영

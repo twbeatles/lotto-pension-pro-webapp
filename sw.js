@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -25,13 +25,49 @@ const APP_SHELL_ASSETS = [
     './assets/modules/utils/backup.js',
     './assets/modules/utils/loader.js',
     './assets/modules/utils/perf.js',
+    './assets/modules/utils/strategyPresets.js',
     './assets/modules/features/Ai.js',
     './assets/modules/features/Backtest.js',
     './assets/modules/features/Check.js',
     './assets/modules/features/DataIO.js',
     './assets/modules/features/Generator.js',
     './assets/modules/features/QrScanner.js',
-    './assets/modules/features/Stats.js'
+    './assets/modules/features/Stats.js',
+    './assets/vendor/pretendard/PretendardVariable.woff2',
+    './assets/vendor/qrcode/qrcode.min.js',
+    './assets/vendor/html2canvas/html2canvas.min.js',
+    './assets/vendor/html5-qrcode/html5-qrcode.min.js',
+    './assets/vendor/html5-qrcode/third_party/zxing-js.umd.js',
+    './assets/vendor/phosphor/src/regular/style.css',
+    './assets/vendor/phosphor/src/regular/Phosphor.woff2',
+    './assets/vendor/phosphor/src/regular/Phosphor.woff',
+    './assets/vendor/phosphor/src/regular/Phosphor.ttf',
+    './assets/vendor/phosphor/src/regular/Phosphor.svg',
+    './assets/vendor/phosphor/src/bold/style.css',
+    './assets/vendor/phosphor/src/bold/Phosphor-Bold.woff2',
+    './assets/vendor/phosphor/src/bold/Phosphor-Bold.woff',
+    './assets/vendor/phosphor/src/bold/Phosphor-Bold.ttf',
+    './assets/vendor/phosphor/src/bold/Phosphor-Bold.svg',
+    './assets/vendor/phosphor/src/fill/style.css',
+    './assets/vendor/phosphor/src/fill/Phosphor-Fill.woff2',
+    './assets/vendor/phosphor/src/fill/Phosphor-Fill.woff',
+    './assets/vendor/phosphor/src/fill/Phosphor-Fill.ttf',
+    './assets/vendor/phosphor/src/fill/Phosphor-Fill.svg',
+    './assets/vendor/phosphor/src/thin/style.css',
+    './assets/vendor/phosphor/src/thin/Phosphor-Thin.woff2',
+    './assets/vendor/phosphor/src/thin/Phosphor-Thin.woff',
+    './assets/vendor/phosphor/src/thin/Phosphor-Thin.ttf',
+    './assets/vendor/phosphor/src/thin/Phosphor-Thin.svg',
+    './assets/vendor/phosphor/src/light/style.css',
+    './assets/vendor/phosphor/src/light/Phosphor-Light.woff2',
+    './assets/vendor/phosphor/src/light/Phosphor-Light.woff',
+    './assets/vendor/phosphor/src/light/Phosphor-Light.ttf',
+    './assets/vendor/phosphor/src/light/Phosphor-Light.svg',
+    './assets/vendor/phosphor/src/duotone/style.css',
+    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.woff2',
+    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.woff',
+    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.ttf',
+    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.svg'
 ];
 
 self.addEventListener('message', (event) => {

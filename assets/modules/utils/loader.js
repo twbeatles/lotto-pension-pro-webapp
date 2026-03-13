@@ -2,13 +2,13 @@ const scriptPromises = new Map();
 const stylePromises = new Map();
 
 export const EXTERNAL_ASSETS = {
-    qrcode: 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js',
-    html5QrCode: 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
-    html2canvas: 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+    qrcode: './assets/vendor/qrcode/qrcode.min.js',
+    html5QrCode: './assets/vendor/html5-qrcode/html5-qrcode.min.js',
+    html2canvas: './assets/vendor/html2canvas/html2canvas.min.js',
     phosphor: {
-        thin: 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/thin/style.css',
-        light: 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css',
-        duotone: 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/duotone/style.css'
+        thin: './assets/vendor/phosphor/src/thin/style.css',
+        light: './assets/vendor/phosphor/src/light/style.css',
+        duotone: './assets/vendor/phosphor/src/duotone/style.css'
     }
 };
 

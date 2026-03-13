@@ -53,19 +53,18 @@ export class LottoApp {
         await this.route('gen');
 
         // Async Load
+        let latestLoaded = false;
         try {
-            await this.data.fetchWinningStats();
-            this.updateLatestWin();
-
-            // Auto-Sync in background (silent, idle)
-            runWhenIdle(() => {
-                this.data.fetchLatestFromAPI({ silent: true, trigger: 'idle' });
-            });
+            latestLoaded = await this.data.fetchWinningStats();
         } catch (error) {
             console.error('당첨 데이터 조회 실패:', error);
-            // Fallback for offline mode or error
-            $('#latestWinMeta').innerHTML = `<span class="error-msg">데이터 동기화 실패 (오프라인)</span>`;
         }
+        this.updateLatestWin({ offline: !latestLoaded });
+
+        // Auto-Sync in background (silent, idle)
+        runWhenIdle(() => {
+            this.data.fetchLatestFromAPI({ silent: true, trigger: 'idle' });
+        });
 
         await this.refreshCurrentRoute();
         this.preloadLikelyModules();
@@ -193,8 +192,19 @@ export class LottoApp {
         });
 
         $('#clearCampaigns')?.addEventListener('click', () => {
-            if (!confirm('캠페인을 모두 삭제하시겠습니까?')) return;
-            this.data.clearCampaigns();
+            const campaigns = this.data.state.campaigns || [];
+            if (!campaigns.length) {
+                UIManager.toast('삭제할 캠페인이 없습니다.', 'info');
+                return;
+            }
+            const linkedTickets = this.data.countTicketsByCampaignIds(campaigns.map((item) => item.id));
+            const detail = linkedTickets > 0 ? ` 연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '';
+            if (!confirm(`캠페인 ${campaigns.length}개를 모두 삭제하시겠습니까?${detail}`)) return;
+            const result = this.data.clearCampaigns({ cascadeTickets: true });
+            UIManager.toast(
+                `캠페인 ${result.removedCampaigns}개, 연결 티켓 ${result.removedTickets}개 삭제`,
+                result.removedCampaigns > 0 ? 'success' : 'info'
+            );
             this.renderDataLists();
         });
 
@@ -258,7 +268,16 @@ export class LottoApp {
                     const campaign = (this.data.state.campaigns || []).find((x) => x.id === id);
                     if (!campaign) return;
                     if (action === 'delete') {
-                        this.data.removeCampaign(campaign.id);
+                        const linkedTickets = this.data.countTicketsByCampaignId(campaign.id);
+                        const detail = linkedTickets > 0 ? ` 연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '';
+                        if (!confirm(`'${campaign.name}' 캠페인을 삭제하시겠습니까?${detail}`)) return;
+                        const result = this.data.removeCampaign(campaign.id, { cascadeTickets: true });
+                        if (result.removedCampaign) {
+                            UIManager.toast(
+                                `캠페인 1개, 연결 티켓 ${result.removedTickets}개 삭제`,
+                                'success'
+                            );
+                        }
                         this.renderDataLists();
                     }
                     return;
@@ -314,6 +333,9 @@ export class LottoApp {
             const isStale = () => localToken !== this.routeToken;
 
             // Page specific renders
+            if (target === 'gen') {
+                this.updateLatestWin();
+            }
             if (target === 'stats') {
                 await this.ensureModule('stats');
                 if (isStale()) return;
@@ -363,9 +385,43 @@ export class LottoApp {
         }
     }
 
-    updateLatestWin() {
+    renderLatestWinPlaceholder({
+        badge = '데이터 없음',
+        title = '표시할 최신 당첨결과가 없습니다.',
+        meta = '데이터 파일을 확인한 뒤 다시 시도하세요.',
+        icon = 'ph-database'
+    } = {}) {
+        const badgeEl = $('#latestDrawNo');
+        const ballsEl = $('#latestWinBalls');
+        const metaEl = $('#latestWinMeta');
+        if (badgeEl) badgeEl.textContent = badge;
+        if (ballsEl) {
+            ballsEl.innerHTML = `
+                <div class="latest-win-placeholder">
+                    <i class="ph ${icon}"></i>
+                    <span>${title}</span>
+                </div>
+            `;
+        }
+        if (metaEl) {
+            metaEl.innerHTML = `<div class="latest-win-placeholder-meta">${meta}</div>`;
+        }
+    }
+
+    updateLatestWin(options = {}) {
         const latest = this.data.state.winningStats[0];
-        if (!latest) return;
+        if (!latest) {
+            const offline = Boolean(options?.offline);
+            this.renderLatestWinPlaceholder({
+                badge: offline ? '오프라인' : '데이터 없음',
+                title: offline ? '최신 당첨결과를 불러오지 못했습니다.' : '표시할 최신 당첨결과가 없습니다.',
+                meta: offline
+                    ? '오프라인 상태입니다. 연결 후 다시 동기화하세요.'
+                    : '당첨 데이터 파일을 확인한 뒤 다시 시도하세요.',
+                icon: offline ? 'ph-cloud-slash' : 'ph-database'
+            });
+            return;
+        }
 
         $('#latestDrawNo').textContent = `${latest.draw_no}회`;
         $('#latestWinBalls').innerHTML = UIManager.renderBalls(latest.numbers) +
@@ -571,10 +627,12 @@ export class LottoApp {
     async requestNumbers(nums) {
         if (!Array.isArray(nums) || nums.length !== 6) return;
         await this.route('gen');
-        const list = $('#genResultList');
-        if (!list) return;
-        this.generator?.renderResultItem(nums, 0, list);
         this.data.state.generated = [nums];
-        UIManager.toast('인공지능 추천 번호를 생성 탭으로 가져왔습니다.', 'success');
+        const list = $('#genResultList');
+        if (list) {
+            list.innerHTML = '';
+            this.generator?.renderResultItem(nums, 0, list);
+        }
+        UIManager.toast('인공지능 추천 번호로 생성 결과를 교체했습니다.', 'success');
     }
 }

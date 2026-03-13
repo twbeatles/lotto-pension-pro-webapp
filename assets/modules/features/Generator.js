@@ -5,6 +5,7 @@ import { StrategyEngine } from '../core/StrategyEngine.js';
 import { listStrategies, resolveStrategyId } from '../core/StrategyCatalog.js';
 import { endMark, startMark } from '../utils/perf.js';
 import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
+import { StrategyPresetController } from '../utils/strategyPresets.js';
 
 export class GeneratorModule {
     constructor(app) {
@@ -16,6 +17,16 @@ export class GeneratorModule {
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
+        this.presetController = new StrategyPresetController({
+            data: this.data,
+            scope: 'generator',
+            selectId: 'genPresetSelect',
+            loadBtnId: 'genPresetLoadBtn',
+            saveBtnId: 'genPresetSaveBtn',
+            deleteBtnId: 'genPresetDeleteBtn',
+            getRequest: () => this.getStrategyRequestFromUI(),
+            applyRequest: (request) => this.applyStrategyRequest(request)
+        });
         this.resetCampaignOptions(false);
     }
 
@@ -158,6 +169,7 @@ export class GeneratorModule {
             if (el) el.value = v;
         });
         if ($('#genStrategySelect')) $('#genStrategySelect').value = 'ensemble_weighted';
+        this.syncLegacyTogglesFromStrategy();
         this.data.setStrategyPrefs('generator', this.getStrategyRequestFromUI());
         this.data.save();
         UIManager.toast('옵션이 초기화되었습니다.');
@@ -261,8 +273,7 @@ export class GeneratorModule {
         return { strategyId, params, filters };
     }
 
-    applySavedStrategyPrefs() {
-        const saved = this.data.state.strategyPrefs?.generator;
+    applyStrategyRequest(saved) {
         if (!saved) return;
         const assign = (id, value) => {
             const el = $(`#${id}`);
@@ -293,6 +304,11 @@ export class GeneratorModule {
         if (select && [...select.options].some((x) => x.value === strategyId)) {
             select.value = strategyId;
         }
+        this.syncLegacyTogglesFromStrategy();
+    }
+
+    applySavedStrategyPrefs() {
+        this.applyStrategyRequest(this.data.state.strategyPrefs?.generator);
     }
 
     async generate() {

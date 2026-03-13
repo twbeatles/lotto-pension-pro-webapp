@@ -5,7 +5,7 @@
 이 문서는 저장소(`lotto---webapp`)에서 Claude 계열 AI가 다음 세션에도 바로 작업을 이어갈 수 있도록 만든 운영 기준 문서입니다.
 핵심은 "빠르게 맥락 복원 -> 안전하게 수정 -> 회귀 없이 검증"입니다.
 
-- 기준일: 2026-03-11
+- 기준일: 2026-03-13
 - 정적 당첨 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
@@ -38,6 +38,24 @@
 - 서비스워커 캐시 버전: `v9`
 
 ---
+
+## 0-1) 2026-03-13 기능/오프라인 자산 통합 반영
+
+- 모바일 하단 탐색을 `gen/stats/ai/bt/check/data` 6탭으로 통일
+- `Generator/Ai/Backtest`에 전략 프리셋 CRUD 추가
+  - scope별 저장소
+  - `prompt()/confirm()` 기반 저장/overwrite/delete
+- AI 추천의 `생성 탭으로`는 append가 아니라 기존 생성 결과 교체
+- 캠페인 삭제/전체삭제는 연결된 `campaignId` 티켓 cascade 삭제
+- 최신 당첨결과 카드는 오프라인/데이터 없음 placeholder를 명시적으로 렌더
+- 동기화 성공 직후 현재 라우트와 무관하게 `updateLatestWin()` 실행
+- Import 옵션에 `alertPrefs` 적용 체크 추가
+  - 기본 정책: `merge=theme/proxy/strategyPrefs/alerts 미적용`
+  - 기본 정책: `overwrite=theme/proxy/strategyPrefs/alerts 적용`
+- 런타임 외부 자산을 `assets/vendor/`로 로컬화
+  - `Pretendard`, `Phosphor`, `qrcode`, `html2canvas`, `html5-qrcode`
+- 서비스워커 캐시 버전: `v10`
+- 제3자 자산 고지 문서: `THIRD_PARTY_NOTICES.md`
 
 ## 1) 프로젝트 한눈에 보기
 
@@ -107,11 +125,14 @@ node scripts/perf/bench.mjs
   - `MonteCarlo.js`, `UIManager.js`
 - `assets/modules/features/`
   - `Generator.js`, `Ai.js`, `Backtest.js`, `Stats.js`, `Check.js`, `DataIO.js`, `QrScanner.js`
+- `assets/modules/utils/strategyPresets.js`: 전략 프리셋 공통 컨트롤러
 - 워커
   - `assets/strategy.worker.js`
   - `assets/backtest.worker.js`
 - 데이터
   - `data/winning_stats.json`
+- 로컬 vendor 자산
+  - `assets/vendor/`
 - 프록시 예시
   - `proxy/worker.js`
 
@@ -192,6 +213,12 @@ node scripts/perf/bench.mjs
 - `lotto_pro_updates_v2`
 - 레거시: `lotto_webapp_settings_v1.proxyLatestUrl`, `lotto_webapp_settings_v1`
 
+운영 규칙:
+
+- `strategyPresets`는 scope(`generator/ai/backtest`)별로 분리해 관리
+- 캠페인 삭제/전체삭제는 연결 티켓 cascade 삭제가 현재 정책
+- 기존 orphan ticket은 자동 정리하지 않음
+
 ---
 
 ## 6) 데이터 동기화 규칙
@@ -254,10 +281,11 @@ node scripts/perf/bench.mjs
 
 `sw.js` 핵심:
 
-- 캐시 버전: `v9`
+- 캐시 버전: `v10`
 - App Shell precache 목록 수동 관리
 - 데이터 JSON: `network-first` + timeout
 - 기타 정적 자산: `stale-while-revalidate`
+- 런타임 라이브러리/font/icon은 `assets/vendor/` same-origin 경로로 캐시
 
 수정 규칙:
 
@@ -332,8 +360,13 @@ node scripts/perf/bench.mjs
 5. 서비스워커 캐시 갱신 후 동작
 6. 엄격 필터 조건에서 필터 위반 조합이 출력되지 않는지 확인
 7. 수동 동기화 중 `cancelSyncBtn`이 실제 취소 동작하는지 확인
-8. Import 옵션(`merge/overwrite`, 설정 체크)이 정책대로 동작하는지 확인
-9. 백테스트 상세표 `적중` 컬럼과 CSV `strategy_id/strategy_label` 정합성 확인
+8. Import 옵션(`merge/overwrite`, `theme/proxy/strategyPrefs/alerts`)이 정책대로 동작하는지 확인
+9. 모바일 하단 6탭에서 `data` 화면 진입이 가능한지 확인
+10. 캠페인 삭제/전체삭제 시 연결 티켓이 함께 제거되는지 확인
+11. AI `생성 탭으로`가 기존 생성 결과를 교체하는지 확인
+12. 전략 프리셋 저장/불러오기/삭제가 각 scope에서 분리 동작하는지 확인
+13. 최신 당첨결과 카드가 오프라인에서도 blank가 아니라 placeholder를 표시하는지 확인
+14. 백테스트 상세표 `적중` 컬럼과 CSV `strategy_id/strategy_label` 정합성 확인
 
 ## 10-1) 개발 도구 메모
 

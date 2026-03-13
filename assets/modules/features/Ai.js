@@ -5,6 +5,7 @@ import { listStrategies, resolveStrategyId, getStrategyMeta, STRATEGY_CATALOG } 
 import { AdvancedMonteCarlo } from '../core/MonteCarlo.js';
 import { endMark, startMark } from '../utils/perf.js';
 import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
+import { StrategyPresetController } from '../utils/strategyPresets.js';
 
 export class AiModule {
     constructor(app) {
@@ -26,6 +27,16 @@ export class AiModule {
 
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();
+        this.presetController = new StrategyPresetController({
+            data: this.app.data,
+            scope: 'ai',
+            selectId: 'aiPresetSelect',
+            loadBtnId: 'aiPresetLoadBtn',
+            saveBtnId: 'aiPresetSaveBtn',
+            deleteBtnId: 'aiPresetDeleteBtn',
+            getRequest: () => this.buildStrategyRequest(),
+            applyRequest: (request) => this.applyStrategyRequest(request)
+        });
         this.renderModelGuide();
         this.bindOutputDelegation();
 
@@ -122,8 +133,7 @@ export class AiModule {
         return request;
     }
 
-    applySavedStrategyPrefs() {
-        const saved = this.app.data.state.strategyPrefs?.ai;
+    applyStrategyRequest(saved) {
         if (!saved) return;
         const assign = (id, value) => {
             const el = $(`#${id}`);
@@ -155,6 +165,11 @@ export class AiModule {
         if (select && [...select.options].some((x) => x.value === strategyId)) {
             select.value = strategyId;
         }
+        this.renderModelGuide();
+    }
+
+    applySavedStrategyPrefs() {
+        this.applyStrategyRequest(this.app.data.state.strategyPrefs?.ai);
     }
 
     bindOutputDelegation() {

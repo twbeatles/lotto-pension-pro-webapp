@@ -6,6 +6,11 @@ Cloudflare Worker 예시가 포함되어 있습니다.
 웹앱의 `proxy/latest`는 설정 가능한 주소를 읽기 때문에,
 앱 코드를 바꾸지 않고도 정적 모드와 프록시 모드를 전환할 수 있습니다.
 
+참고:
+
+- 메인 웹앱 런타임 자산(font/icon/QR/캡처 라이브러리)은 현재 `assets/vendor/` same-origin 경로로 로컬화되어 있습니다.
+- 따라서 프록시는 최신 회차 동기화 강화를 위한 선택 기능이며, UI 런타임은 프록시/CDN 의존 없이 동작합니다.
+
 ## 배포 (Cloudflare Workers)
 
 1. Wrangler를 설치합니다.

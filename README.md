@@ -7,6 +7,26 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 최근 기능/오프라인 자산 통합 반영 (2026-03-13)
+
+- 모바일 하단 탐색을 `gen/stats/ai/bt/check/data` 6탭으로 통일해 모바일에서도 `data` 화면에 직접 진입할 수 있습니다.
+- 생성/AI/백테스트 화면에 전략 프리셋 CRUD를 추가했습니다.
+  - 현재값 저장/불러오기/삭제
+  - scope별 저장소 분리(`generator`, `ai`, `backtest`)
+- AI 추천의 `생성 탭으로` 동작은 기존 생성 결과를 교체하는 정책으로 고정했습니다.
+- 캠페인 삭제/전체삭제는 연결된 `campaignId` 티켓을 함께 삭제합니다.
+- 최신 당첨결과 카드는 오프라인/데이터 없음 상태를 명시적으로 표시하며, 동기화 직후 현재 탭과 무관하게 즉시 갱신됩니다.
+- 백업 Import 옵션에 `alertPrefs` 적용 체크를 추가했습니다.
+  - 기본 정책: `Merge=theme/proxy/strategyPrefs/alerts 미적용`, `Overwrite=전부 적용`
+- 런타임 외부 자산을 `assets/vendor/`로 로컬화했습니다.
+  - 대상: `Pretendard`, `Phosphor Icons`, `qrcode`, `html2canvas`, `html5-qrcode`
+  - 제3자 고지: `THIRD_PARTY_NOTICES.md`
+- 서비스워커 캐시 버전을 `v10`으로 상향했습니다.
+- 스모크 테스트에 회귀를 추가했습니다.
+  - `campaign-cascade`, `requestNumbers replace`, `latest-win-placeholder`
+  - `sync-latest-win refresh`, `import-alert-options`, `strategy-preset-crud`
+  - `runtime-asset-localization`
+
 ## 최근 통합 개선 반영 (2026-03-05)
 
 - 리포트 `1~9 + A~E` 권고사항을 한 번에 반영했습니다.
@@ -68,11 +88,16 @@
   - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
   - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
+  - 캠페인 삭제 시 연결 티켓 cascade 삭제
   - 동기화 시 미정산 티켓 자동 정산
 - 인공지능 예측:
   - 다중 전략(앙상블, 균형, 고빈도/저빈도 등) 지원
   - 몬테카를로 기반 정밀 시뮬레이션
   - 추천 조합별 근거 신호(빈도/최근성/공백/페어/필터) 표시
+  - 결과를 생성 탭으로 교체 가져오기 지원
+- 전략 프리셋:
+  - 생성/AI/백테스트별 저장·불러오기·삭제
+  - 백업 v3의 `strategyPresets`와 같은 저장소 사용
 - 전략 시뮬레이션:
   - 단일/다중 전략 비교(최대 5개)
   - 백테스트 범위 상한: 최대 300회차
@@ -85,8 +110,9 @@
   - 네트워크가 없을 때도 기본 기능 사용 가능
   - 백그라운드 최신 데이터 동기화
   - 홈 화면 설치 지원
+  - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
-  - Import 옵션: `merge/overwrite` + 설정 적용 체크박스
+  - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
 - 프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy` -> 공용 기본값
 
@@ -103,7 +129,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v9`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v10`)
 
 ## 프로젝트 구조
 
@@ -115,6 +141,7 @@ lotto---webapp/
 │   │   ├── features/        # 기능 모듈(예측/시뮬레이션/검증/통계 등)
 │   │   └── utils/           # 공통 유틸리티
 │   ├── icons/               # 앱 아이콘
+│   ├── vendor/              # 로컬 런타임 vendor 자산(font/icon/QR/캡처)
 │   ├── app.css              # 통합 스타일
 │   ├── backtest.worker.js   # 시뮬레이션 워커
 │   └── strategy.worker.js   # 생성/추천 워커
@@ -128,6 +155,7 @@ lotto---webapp/
 ├── manifest.json            # 웹앱 설치 설정
 ├── package.json             # 개발 스크립트/의존성
 ├── package-lock.json        # npm lockfile
+├── THIRD_PARTY_NOTICES.md   # 로컬 vendor 자산 고지
 └── sw.js                    # 서비스워커
 ```
 

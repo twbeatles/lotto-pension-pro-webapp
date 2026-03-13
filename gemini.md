@@ -5,7 +5,7 @@
 이 문서는 `lotto---webapp` 저장소에서 Gemini 계열 AI가 다음 세션에도 일관되게 작업하도록 돕는 실무 가이드입니다.
 핵심은 "컨텍스트 복원, 영향 범위 통제, 검증 중심 작업"입니다.
 
-- 기준일: 2026-03-11
+- 기준일: 2026-03-13
 - 정적 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
@@ -18,7 +18,7 @@
 - 엔트리: `index.html` -> `assets/modules/index.js`
 - 배포 URL: `https://twbeatles.github.io/lotto---webapp/`
 - 주요 탭: `gen`, `stats`, `ai`, `bt`, `check`, `data`
-- 오프라인 지원: `sw.js` (`CACHE_VERSION: v9`)
+- 오프라인 지원: `sw.js` (`CACHE_VERSION: v10`)
 - 데이터 원천:
   - 정적: `data/winning_stats.json`
   - 동적 누적: `localStorage.lotto_pro_updates_v2`
@@ -28,6 +28,16 @@
 - 번들러/트랜스파일 단계는 없음
 - 대신 개발 도구용 `package.json`, `eslint.config.mjs`가 존재함
 - 기본 검증 루틴에 `npm run lint`를 포함해야 함
+
+## 1-1) 2026-03-13 반영 메모
+
+- 모바일 하단 탐색은 6탭(`gen/stats/ai/bt/check/data`) 기준
+- `Generator/Ai/Backtest`에 전략 프리셋 CRUD 추가
+- AI 추천의 `생성 탭으로`는 기존 생성 결과 교체
+- 캠페인 삭제/전체삭제는 연결 티켓 cascade 삭제
+- Import 옵션에 `alertPrefs` 적용 체크 추가
+- 런타임 외부 자산은 `assets/vendor/` same-origin 경로로 로컬화
+- 제3자 자산 고지 문서: `THIRD_PARTY_NOTICES.md`
 
 ---
 
@@ -74,9 +84,12 @@ node scripts/perf/bench.mjs
   - `StrategyWorkerClient.js`, `UIManager.js`, `MonteCarlo.js`
 - `assets/modules/features/`
   - `Generator.js`, `Ai.js`, `Backtest.js`, `Stats.js`, `Check.js`, `DataIO.js`, `QrScanner.js`
+- `assets/modules/utils/strategyPresets.js`: 전략 프리셋 공통 컨트롤러
 - 워커:
   - `assets/strategy.worker.js`
   - `assets/backtest.worker.js`
+- vendor 자산:
+  - `assets/vendor/`
 - 프록시 예시:
   - `proxy/worker.js`
 
@@ -108,6 +121,8 @@ node scripts/perf/bench.mjs
 
 - 키 변경 시 마이그레이션 코드 동반
 - `load()` 정규화/호환 로직 우선 확인
+- 캠페인 삭제 정책은 현재 cascade delete
+- 기존 orphan ticket은 자동 정리하지 않음
 
 ---
 
@@ -207,10 +222,11 @@ node scripts/perf/bench.mjs
 
 `sw.js`:
 
-- 캐시 버전: `v9`
+- 캐시 버전: `v10`
 - 데이터 요청: network-first
 - 앱 셸: stale-while-revalidate
 - precache 목록: `APP_SHELL_ASSETS`
+- 런타임 라이브러리/font/icon은 `assets/vendor/` same-origin 경로 사용
 
 변경 규칙:
 
@@ -271,6 +287,15 @@ node scripts/perf/bench.mjs
   - 프록시 출처 라벨 인코딩 복구
   - `sw.js` 캐시 버전 `v9`
 
+## 9-4) 2026-03-13 기능/오프라인 자산 통합
+
+- 모바일 `data` 탭 추가
+- 전략 프리셋 CRUD 및 backup 연동 유지
+- `requestNumbers()` replace semantics 적용
+- Import alerts 옵션 및 기본값 정렬
+- 최신 당첨결과 placeholder 렌더링 추가
+- `sw.js` 캐시 버전 `v10`, 로컬 vendor 자산 precache
+
 ---
 
 ## 10) 최소 검증 루틴
@@ -278,6 +303,10 @@ node scripts/perf/bench.mjs
 0. `npm run lint`
 1. 생성 탭: 전략 선택 + 번호 생성 + 티켓 저장
 2. AI 탭: 추천 실행 + 결과 렌더 + 티켓 저장
+3. 캠페인 삭제/전체삭제 시 연결 티켓 cascade 확인
+4. Import 옵션(`theme/proxy/strategyPrefs/alerts`) 정책 확인
+5. 모바일 하단 6탭과 `data` 진입 확인
+6. 전략 프리셋 저장/불러오기/삭제 확인
 3. 백테스트 탭: 단일/비교 실행, 모드 전환, CSV 내보내기
 4. 데이터 탭: v3 백업 내보내기/가져오기
 5. 동기화: 단일 실행 가드, `cancelSyncBtn` 취소 동작 확인

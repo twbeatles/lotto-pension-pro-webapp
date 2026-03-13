@@ -74,6 +74,10 @@ export class DataManager {
         };
     }
 
+    isStrategyScope(scope) {
+        return ['generator', 'ai', 'backtest'].includes(String(scope || '').trim());
+    }
+
     mergeStrategyPrefs(raw) {
         const defaults = this.getDefaultStrategyPrefs();
         const input = raw && typeof raw === 'object' ? raw : {};
@@ -124,6 +128,10 @@ export class DataManager {
                 ? item.request
                 : (item.strategyRequest && typeof item.strategyRequest === 'object' ? item.strategyRequest : null);
             if (!scope || !name || !request) return;
+            if (!this.isStrategyScope(scope)) return;
+
+            const normalizedRequest = this.normalizeStrategyPresetRequest(scope, request);
+            if (!normalizedRequest) return;
 
             const id = (typeof item.id === 'string' && item.id.trim())
                 ? item.id.trim()
@@ -136,7 +144,7 @@ export class DataManager {
                 scope,
                 name,
                 description: typeof item.description === 'string' ? item.description.slice(0, 200) : '',
-                request,
+                request: normalizedRequest,
                 createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
                 updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString()
             });
@@ -144,6 +152,87 @@ export class DataManager {
         });
 
         return Array.from(byId.values());
+    }
+
+    normalizeStrategyPresetRequest(scope, request) {
+        if (!this.isStrategyScope(scope)) return null;
+        if (!request || typeof request !== 'object') return null;
+        const merged = this.mergeStrategyPrefs({ [scope]: request });
+        return merged[scope] || null;
+    }
+
+    getStrategyPresets(scope = '') {
+        const targetScope = String(scope || '').trim();
+        const list = this.mergeStrategyPresets(this.state.strategyPresets || []);
+        const filtered = targetScope
+            ? list.filter((item) => item.scope === targetScope)
+            : list;
+        return filtered.sort((a, b) => {
+            const byUpdated = String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+            if (byUpdated !== 0) return byUpdated;
+            const byCreated = String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+            if (byCreated !== 0) return byCreated;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+        });
+    }
+
+    getStrategyPresetById(id) {
+        if (!id) return null;
+        return this.getStrategyPresets().find((item) => item.id === id) || null;
+    }
+
+    findStrategyPreset(scope, name) {
+        const targetScope = String(scope || '').trim();
+        const targetName = String(name || '').trim();
+        if (!targetScope || !targetName) return null;
+        return this.getStrategyPresets(targetScope).find((item) => item.name === targetName) || null;
+    }
+
+    saveStrategyPreset(scope, name, request, description = '') {
+        const normalizedScope = String(scope || '').trim();
+        const normalizedName = String(name || '').trim().slice(0, 80);
+        const normalizedRequest = this.normalizeStrategyPresetRequest(normalizedScope, request);
+        if (!this.isStrategyScope(normalizedScope) || !normalizedName || !normalizedRequest) return null;
+
+        const existing = this.findStrategyPreset(normalizedScope, normalizedName);
+        const now = new Date().toISOString();
+        const nextPreset = existing
+            ? {
+                ...existing,
+                description: String(description || existing.description || '').slice(0, 200),
+                request: normalizedRequest,
+                updatedAt: now
+            }
+            : {
+                id: this.createId('preset'),
+                scope: normalizedScope,
+                name: normalizedName,
+                description: String(description || '').slice(0, 200),
+                request: normalizedRequest,
+                createdAt: now,
+                updatedAt: now
+            };
+
+        const remaining = (this.state.strategyPresets || []).filter((item) => item?.id !== nextPreset.id);
+        this.state.strategyPresets = this.mergeStrategyPresets([nextPreset, ...remaining]);
+        this.markDirty('presets');
+        this.save();
+
+        return {
+            preset: this.getStrategyPresetById(nextPreset.id),
+            replaced: Boolean(existing)
+        };
+    }
+
+    deleteStrategyPreset(id) {
+        const before = (this.state.strategyPresets || []).length;
+        this.state.strategyPresets = (this.state.strategyPresets || []).filter((item) => item?.id !== id);
+        const removed = before - this.state.strategyPresets.length;
+        if (removed > 0) {
+            this.markDirty('presets');
+            this.save();
+        }
+        return removed > 0;
     }
 
     setStrategyPrefs(scope, request) {
@@ -705,21 +794,74 @@ export class DataManager {
         return normalized;
     }
 
-    removeCampaign(id) {
-        const before = this.state.campaigns.length;
-        this.state.campaigns = this.state.campaigns.filter((x) => x.id !== id);
-        const removed = before - this.state.campaigns.length;
-        if (removed > 0) {
-            this.markDirty('campaigns');
-            this.save();
-        }
-        return removed > 0;
+    countTicketsByCampaignId(campaignId) {
+        const targetId = String(campaignId || '').trim();
+        if (!targetId) return 0;
+        return (this.state.ticketBook || []).filter((ticket) => ticket?.campaignId === targetId).length;
     }
 
-    clearCampaigns() {
+    countTicketsByCampaignIds(campaignIds = []) {
+        const ids = new Set((campaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        if (!ids.size) return 0;
+        return (this.state.ticketBook || []).filter((ticket) => ids.has(String(ticket?.campaignId || '').trim())).length;
+    }
+
+    removeCampaign(id, { cascadeTickets = true } = {}) {
+        const targetId = String(id || '').trim();
+        const campaign = (this.state.campaigns || []).find((item) => item?.id === targetId) || null;
+        if (!campaign) {
+            return {
+                removedCampaign: false,
+                removedTickets: 0,
+                campaign: null
+            };
+        }
+
+        const beforeCampaigns = this.state.campaigns.length;
+        const beforeTickets = this.state.ticketBook.length;
+        this.state.campaigns = this.state.campaigns.filter((item) => item?.id !== targetId);
+
+        let removedTickets = 0;
+        if (cascadeTickets) {
+            this.state.ticketBook = this.state.ticketBook.filter((ticket) => ticket?.campaignId !== targetId);
+            removedTickets = beforeTickets - this.state.ticketBook.length;
+        }
+
+        const removedCampaign = beforeCampaigns !== this.state.campaigns.length;
+        if (removedCampaign || removedTickets > 0) {
+            this.markDirty('campaigns');
+            if (removedTickets > 0) this.markDirty('ticketBook');
+            this.save();
+        }
+
+        return {
+            removedCampaign,
+            removedTickets,
+            campaign
+        };
+    }
+
+    clearCampaigns({ cascadeTickets = true } = {}) {
+        const campaignIds = (this.state.campaigns || []).map((item) => item?.id).filter(Boolean);
+        const removedCampaigns = campaignIds.length;
+        if (!removedCampaigns) {
+            return { removedCampaigns: 0, removedTickets: 0 };
+        }
+
+        const beforeTickets = this.state.ticketBook.length;
         this.state.campaigns = [];
+
+        let removedTickets = 0;
+        if (cascadeTickets) {
+            const idSet = new Set(campaignIds.map((item) => String(item)));
+            this.state.ticketBook = this.state.ticketBook.filter((ticket) => !idSet.has(String(ticket?.campaignId || '')));
+            removedTickets = beforeTickets - this.state.ticketBook.length;
+        }
+
         this.markDirty('campaigns');
+        if (removedTickets > 0) this.markDirty('ticketBook');
         this.save();
+        return { removedCampaigns, removedTickets };
     }
 
     rankTicket(myNums, winNums, bonus) {
@@ -1330,6 +1472,7 @@ export class DataManager {
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
                 });
+                this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
                 if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
             } else {

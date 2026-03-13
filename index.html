@@ -10,11 +10,9 @@
     <title>로또 6/45 프로</title>
     <link rel="stylesheet" href="assets/app.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/src/regular/style.css">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/src/bold/style.css">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/src/fill/style.css">
     <link rel="modulepreload" href="assets/modules/core/LottoApp.js">
     <link rel="modulepreload" href="assets/modules/core/DataManager.js">
     <link rel="modulepreload" href="assets/modules/core/UIManager.js">
@@ -161,12 +159,20 @@
 
                         <div class="strategy-panel">
                             <div class="card-header">
-                                <h3>전략 프리셋</h3>
+                                <h3>전략 설정</h3>
                                 <label class="check-box" style="padding:0;">
                                     <input type="checkbox" id="genShowExperimental">
                                     <span class="checkmark"></span>
                                     <span>실험 전략 보기</span>
                                 </label>
+                            </div>
+                            <div class="preset-bar">
+                                <select id="genPresetSelect" class="input-field preset-select" aria-label="생성 전략 프리셋"></select>
+                                <div class="preset-actions">
+                                    <button id="genPresetLoadBtn" class="btn ghost sm" type="button">불러오기</button>
+                                    <button id="genPresetSaveBtn" class="btn ghost sm" type="button">현재값 저장</button>
+                                    <button id="genPresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                                </div>
                             </div>
                             <div class="input-group">
                                 <label for="genStrategySelect">전략 선택</label>
@@ -360,6 +366,14 @@
                                 <span class="checkmark"></span>
                                 <span>실험 전략 보기</span>
                             </label>
+                            <div class="preset-bar">
+                                <select id="aiPresetSelect" class="input-field preset-select" aria-label="AI 전략 프리셋"></select>
+                                <div class="preset-actions">
+                                    <button id="aiPresetLoadBtn" class="btn ghost sm" type="button">불러오기</button>
+                                    <button id="aiPresetSaveBtn" class="btn ghost sm" type="button">현재값 저장</button>
+                                    <button id="aiPresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                                </div>
+                            </div>
                             <div class="strategy-advanced-grid compact">
                                 <div class="input-group">
                                     <label for="aiSimulationCount">시뮬레이션 수</label>
@@ -475,6 +489,14 @@
                             <span class="checkmark"></span>
                             <span>전략 비교 모드 (최대 5개)</span>
                         </label>
+                        <div class="preset-bar">
+                            <select id="btPresetSelect" class="input-field preset-select" aria-label="백테스트 전략 프리셋"></select>
+                            <div class="preset-actions">
+                                <button id="btPresetLoadBtn" class="btn ghost sm" type="button">불러오기</button>
+                                <button id="btPresetSaveBtn" class="btn ghost sm" type="button">현재값 저장</button>
+                                <button id="btPresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                            </div>
+                        </div>
                         <div id="btComparePanel" class="strategy-panel" style="display:none;">
                             <div class="card-header">
                                 <h3>비교 전략 선택</h3>
@@ -755,6 +777,11 @@
                                 <span class="checkmark"></span>
                                 <span>전략 설정 적용</span>
                             </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="importApplyAlerts">
+                                <span class="checkmark"></span>
+                                <span>알림 설정 적용</span>
+                            </label>
                         </div>
                         <p class="subtitle" style="font-size:12px; margin-top:6px;">
                             기본값: Merge는 설정 미적용, Overwrite는 설정 적용
@@ -794,6 +821,10 @@
             <button class="nav-item" data-target="check">
                 <i class="ph ph-check-circle"></i>
                 <span>확인</span>
+            </button>
+            <button class="nav-item" data-target="data">
+                <i class="ph ph-database"></i>
+                <span>데이터</span>
             </button>
         </nav>
     </div>

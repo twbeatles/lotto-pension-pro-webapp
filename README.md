@@ -32,12 +32,12 @@
 - 최신 회차 동기화는 `프록시 옵트인` 정책으로 변경했습니다.
   - 프록시 미설정 시 앱은 `data/winning_stats.json` 기반으로만 동작합니다.
   - 기본 `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` fallback은 사용하지 않습니다.
-- 데이터 탭에 동기화 메타를 추가했습니다.
+- 설정 모달에 동기화 메타를 통합했습니다.
   - 현재 모드/소스, 마지막 성공 시각, 마지막 반영 회차, 마지막 실패 원인, 최신성 경고
-- 데이터 탭 리스트에 검색 + 페이지네이션을 추가했습니다.
+- 데이터 관리 화면 리스트에 검색 + 페이지네이션을 추가했습니다.
   - 대상: 즐겨찾기, 히스토리, 티켓, 캠페인
   - 기본 페이지 크기: `20`
-- 저장 상태 요약과 권장 정리 경고를 추가했습니다.
+- 설정 모달에 저장 상태 요약과 권장 정리 경고를 추가했습니다.
   - 자동 삭제는 하지 않고, 백업/수동 정리를 유도합니다.
 - 시스템 알림 UX를 정리했습니다.
   - 토글 on 시 즉시 권한 요청
@@ -45,6 +45,25 @@
   - 정산 시점에는 권한 재요청 없이 허용 상태에서만 발송
 - `pagehide`, `visibilitychange(hidden)`에서 즉시 저장 flush를 수행합니다.
 - 서비스워커 업데이트는 사용자가 `업데이트`를 눌러 `skipWaiting`을 수락한 경우에만 reload합니다.
+
+## 최근 구조/UX 리팩토링 반영 (2026-03-14)
+
+- 생성 화면에서 저장 상태와 `localStorage` 관련 직접 노출을 제거하고, 전역 설정 모달로 이동했습니다.
+- 설정 모달에서 아래 항목을 한곳에서 관리합니다.
+  - 테마
+  - 인앱/시스템 알림
+  - 사용자 프록시 주소와 동기화 메타
+  - 앱 저장 공간 사용량/정리 권장 상태
+- 데이터 관리 화면은 백업/복원과 즐겨찾기/히스토리/티켓/캠페인 목록 중심으로 단순화했습니다.
+- 핵심 JS는 퍼사드 + 내부 전용 모듈 구조로 분리했습니다.
+  - `assets/modules/core/app`
+  - `assets/modules/core/data`
+  - `assets/modules/core/strategy`
+  - `assets/modules/features/{ai,backtest,dataio,generator}`
+- PWA 부트스트랩을 `assets/modules/bootstrap/pwa.js`로 분리했습니다.
+- 스타일은 `assets/styles/*.css`로 분리하고 `assets/app.css`는 집계 엔트리로 유지했습니다.
+- 스모크 테스트는 `scripts/smoke/helpers`, `scripts/smoke/cases` 구조로 분리했습니다.
+- 서비스워커 캐시 버전을 `v11`로 상향했습니다.
 
 ## 최근 통합 개선 반영 (2026-03-05)
 
@@ -72,7 +91,7 @@
 - `package.json`, `package-lock.json`, `eslint.config.mjs`를 추가해 로컬 정적 검증 루틴을 명시했습니다.
 - ESLint flat config를 도입했습니다.
   - 대상: `assets/**/*.js`, `proxy/**/*.js`, `scripts/**/*.mjs`, `sw.js`, `index.html`
-  - `index.html`은 HTML 구조 규칙 + inline `<script>` JavaScript lint를 함께 검증합니다.
+  - `index.html`은 HTML 구조와 module 진입점 참조를 함께 검증합니다.
 - Prettier를 개발 의존성으로 추가하고 VS Code 저장 시 ESLint auto-fix 설정(`.vscode/settings.json`)을 정리했습니다.
 - 현재 기준 `npm run lint`가 통과합니다.
 
@@ -124,6 +143,8 @@
   - 비교 결과 CSV 내보내기
 - 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
 - 모바일 최적화 화면: 세이프 영역 대응, 하단 탐색, 반응형 레이아웃
+- 설정 모달:
+  - 테마, 알림, 프록시, 동기화 상태, 저장 공간 요약을 한곳에서 관리
 - 알림 관리: 인앱 알림과 시스템 알림 설정
   - 시스템 알림 권한 배지 및 테스트 알림 지원
 - 오프라인 앱 지원:
@@ -152,7 +173,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v10`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v11`)
 
 ## 프로젝트 구조
 
@@ -160,18 +181,28 @@ graph LR
 lotto---webapp/
 ├── assets/                  # 정적 리소스(CSS, JS, 이미지)
 │   ├── modules/             # 자바스크립트 모듈
-│   │   ├── core/            # 앱/데이터/전략/UI 핵심
-│   │   ├── features/        # 기능 모듈(예측/시뮬레이션/검증/통계 등)
+│   │   ├── bootstrap/       # PWA/앱 부트스트랩
+│   │   ├── core/            # 퍼사드 + 내부 core 모듈
+│   │   │   ├── app/         # 앱 라우팅/설정/데이터 리스트/최신 회차
+│   │   │   ├── data/        # 저장/동기화/레코드/분석
+│   │   │   └── strategy/    # 요청/컨텍스트/가중치/평가/생성
+│   │   ├── features/        # 기능 퍼사드 + 내부 분리 모듈
+│   │   │   ├── ai/
+│   │   │   ├── backtest/
+│   │   │   ├── dataio/
+│   │   │   └── generator/
 │   │   └── utils/           # 공통 유틸리티
 │   ├── icons/               # 앱 아이콘
+│   ├── styles/              # 분리된 스타일 조각
 │   ├── vendor/              # 로컬 런타임 vendor 자산(font/icon/QR/캡처)
-│   ├── app.css              # 통합 스타일
+│   ├── app.css              # 스타일 집계 엔트리
 │   ├── backtest.worker.js   # 시뮬레이션 워커
 │   └── strategy.worker.js   # 생성/추천 워커
 ├── data/                    # 정적 데이터
 │   └── winning_stats.json   # 로또 당첨 이력
 ├── proxy/                   # 프록시 워커 예시
 ├── scripts/                 # 로컬 점검 스크립트(perf/smoke)
+│   └── smoke/               # helpers + cases + 엔트리
 ├── .vscode/settings.json    # VS Code 저장 시 ESLint auto-fix 설정
 ├── eslint.config.mjs        # ESLint flat config
 ├── index.html               # 앱 진입점

@@ -63,9 +63,14 @@
             </div>
 
             <div class="sidebar-footer">
-                <button id="themeToggle" class="icon-btn" aria-label="테마 전환">
-                    <i class="ph ph-moon"></i>
-                </button>
+                <div class="sidebar-actions">
+                    <button id="themeToggle" class="icon-btn" aria-label="테마 전환" type="button">
+                        <i class="ph ph-moon"></i>
+                    </button>
+                    <button id="openSettingsBtn" class="icon-btn" aria-label="설정 열기" type="button">
+                        <i class="ph ph-gear-six"></i>
+                    </button>
+                </div>
                 <div class="sync-status" id="syncStatus">
                     <span class="dot"></span>
                     <span class="text">준비됨</span>
@@ -81,9 +86,14 @@
                     <i class="ph-fill ph-clover"></i>
                     <span>로또 프로</span>
                 </div>
-                <button id="mobileThemeToggle" class="icon-btn">
-                    <i class="ph ph-moon"></i>
-                </button>
+                <div class="header-actions">
+                    <button id="mobileThemeToggle" class="icon-btn" aria-label="테마 전환" type="button">
+                        <i class="ph ph-moon"></i>
+                    </button>
+                    <button id="mobileOpenSettingsBtn" class="icon-btn" aria-label="설정 열기" type="button">
+                        <i class="ph ph-gear-six"></i>
+                    </button>
+                </div>
             </header>
 
             <!-- Pages -->
@@ -94,23 +104,6 @@
                     <p class="subtitle">나만의 행운 번호를 조합해보세요.</p>
                 </header>
 
-                <div class="card glass">
-                    <div class="card-header">
-                        <h3>저장 상태 요약</h3>
-                        <span id="storageHealthBadge" class="badge status-badge">정상</span>
-                    </div>
-                    <div class="data-summary-grid">
-                        <div class="data-summary-item">
-                            <span class="data-summary-label">localStorage 사용량</span>
-                            <strong id="storageUsageValue">-</strong>
-                        </div>
-                        <div class="data-summary-item">
-                            <span class="data-summary-label">저장 항목 요약</span>
-                            <strong id="storageCountsValue">-</strong>
-                        </div>
-                    </div>
-                    <p id="storageHealthNote" class="subtitle" style="margin-top:12px;">현재 저장 상태를 확인하는 중입니다.</p>
-                </div>
                 <div class="dashboard-grid">
                     <!-- Generator Card -->
                     <div class="card glass">
@@ -680,7 +673,7 @@
             <section id="page-data" class="page">
                 <header class="page-header">
                     <h2>데이터 관리</h2>
-                    <p class="subtitle">즐겨찾기, 생성 기록 및 데이터를 관리합니다.</p>
+                    <p class="subtitle">즐겨찾기, 티켓, 캠페인과 백업 파일을 관리합니다.</p>
                 </header>
                 <div class="dashboard-grid">
                     <div class="card glass">
@@ -729,80 +722,6 @@
                         <input type="search" id="campaignSearch" class="input-field list-search" placeholder="이름 또는 시작 회차 검색">
                         <div id="campaignList" class="data-list"></div>
                         <div id="campaignPagination" class="list-pagination"></div>
-                    </div>
-                </div>
-
-                <div class="card glass mt-4">
-                    <h3>로컬 알림 센터</h3>
-                    <div style="display:flex; justify-content:flex-end; margin-top:-8px; margin-bottom:12px;">
-                        <span id="systemNotificationStatusBadge" class="badge status-badge">권한 필요</span>
-                    </div>
-                    <div class="toggles">
-                        <label class="check-box">
-                            <input type="checkbox" id="alertEnableInApp" checked>
-                            <span class="checkmark"></span>
-                            <span>인앱 토스트 알림</span>
-                        </label>
-                        <label class="check-box">
-                            <input type="checkbox" id="alertEnableSystem">
-                            <span class="checkmark"></span>
-                            <span>시스템 알림</span>
-                        </label>
-                        <label class="check-box">
-                            <input type="checkbox" id="alertNotifyOnResult" checked>
-                            <span class="checkmark"></span>
-                            <span>신규 정산 결과 알림</span>
-                        </label>
-                    </div>
-                    <div class="button-group" style="margin-top:12px;">
-                        <button id="testSystemNotificationBtn" class="btn ghost sm">
-                            <i class="ph ph-bell-ringing"></i> 테스트 알림
-                        </button>
-                    </div>
-                    <p id="systemNotificationHelp" class="subtitle" style="margin-top:10px;">시스템 알림 상태를 확인하는 중입니다.</p>
-                </div>
-
-                <div class="card glass mt-4">
-                    <h3>데이터 동기화</h3>
-                    <p class="subtitle" style="margin-bottom:15px">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 실시간 최신 회차 조회는 프록시 설정 시에만 시도합니다.</p>
-
-                    <div class="input-group" style="margin-bottom:15px">
-                        <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
-                        <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
-                            style="font-size:14px">
-                        <p class="subtitle" style="font-size:12px; margin-top:5px;">프록시를 설정한 경우에만 앱 실행 중 최신 회차 동기화를 시도합니다.</p>
-                    </div>
-
-                    <div class="sync-meta-grid">
-                        <div class="sync-meta-item">
-                            <span class="sync-meta-label">현재 모드</span>
-                            <strong id="syncMetaMode">-</strong>
-                        </div>
-                        <div class="sync-meta-item">
-                            <span class="sync-meta-label">현재 소스</span>
-                            <strong id="syncMetaSource">-</strong>
-                        </div>
-                        <div class="sync-meta-item">
-                            <span class="sync-meta-label">마지막 성공</span>
-                            <strong id="syncMetaLastSuccess">-</strong>
-                        </div>
-                        <div class="sync-meta-item">
-                            <span class="sync-meta-label">마지막 반영 회차</span>
-                            <strong id="syncMetaLastDraw">-</strong>
-                        </div>
-                    </div>
-                    <p id="syncMetaLastFailure" class="subtitle" style="margin-top:12px;">-</p>
-                    <p id="syncMetaWarning" class="subtitle" style="margin-top:6px;">현재 데이터 상태를 확인하는 중입니다.</p>
-
-                    <div class="button-group">
-                        <button id="syncDataBtn" class="btn primary">
-                            <i class="ph-bold ph-arrows-clockwise"></i> 최신 데이터 동기화
-                        </button>
-                        <button id="cancelSyncBtn" class="btn ghost" style="display:none;" disabled>
-                            <i class="ph ph-stop-circle"></i> 동기화 중지
-                        </button>
-                    </div>
-                    <div id="syncLog" class="log-content" style="margin-top:10px; max-height:100px; display:none;">
                     </div>
                 </div>
 
@@ -888,6 +807,149 @@
     <div id="toast-container"></div>
 
     <!-- Modals -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content settings-modal-content" role="dialog" aria-modal="true"
+            aria-labelledby="settingsModalTitle">
+            <div class="settings-modal-header">
+                <div>
+                    <p class="settings-eyebrow">앱 설정</p>
+                    <h3 id="settingsModalTitle">사용 환경과 데이터 상태를 한곳에서 관리하세요.</h3>
+                    <p class="subtitle">테마, 알림, 동기화, 저장 공간을 빠르게 점검할 수 있습니다.</p>
+                </div>
+                <button id="closeSettingsBtn" class="icon-btn" aria-label="설정 닫기" type="button">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <div class="settings-modal-body">
+                <div class="settings-grid settings-grid-top">
+                    <section class="settings-panel">
+                        <div class="settings-panel-head">
+                            <div>
+                                <h4>앱 설정</h4>
+                                <p class="subtitle">빠른 테마 전환과 현재 사용 중인 모드를 확인합니다.</p>
+                            </div>
+                            <span id="settingsThemeBadge" class="badge status-badge">다크 모드</span>
+                        </div>
+                        <div class="settings-theme-switch" role="group" aria-label="테마 선택">
+                            <button id="settingsThemeLight" class="theme-choice" type="button" data-theme-choice="light">
+                                라이트
+                            </button>
+                            <button id="settingsThemeDark" class="theme-choice" type="button" data-theme-choice="dark">
+                                다크
+                            </button>
+                        </div>
+                        <p id="settingsThemeSummary" class="settings-note">현재 테마를 불러오는 중입니다.</p>
+                    </section>
+
+                    <section class="settings-panel">
+                        <div class="settings-panel-head">
+                            <div>
+                                <h4>알림</h4>
+                                <p class="subtitle">당첨 결과와 시스템 알림 상태를 관리합니다.</p>
+                            </div>
+                            <span id="systemNotificationStatusBadge" class="badge status-badge">권한 확인 중</span>
+                        </div>
+                        <div class="toggles">
+                            <label class="check-box">
+                                <input type="checkbox" id="alertEnableInApp" checked>
+                                <span class="checkmark"></span>
+                                <span>인앱 토스트 알림</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="alertEnableSystem">
+                                <span class="checkmark"></span>
+                                <span>시스템 알림</span>
+                            </label>
+                            <label class="check-box">
+                                <input type="checkbox" id="alertNotifyOnResult" checked>
+                                <span class="checkmark"></span>
+                                <span>신규 정산 결과 알림</span>
+                            </label>
+                        </div>
+                        <div class="button-group settings-button-group">
+                            <button id="testSystemNotificationBtn" class="btn ghost sm" type="button">
+                                <i class="ph ph-bell-ringing"></i> 테스트 알림
+                            </button>
+                        </div>
+                        <p id="systemNotificationHelp" class="settings-note">시스템 알림 상태를 확인하는 중입니다.</p>
+                    </section>
+                </div>
+
+                <div class="settings-grid settings-grid-bottom">
+                    <section class="settings-panel settings-panel-sync">
+                        <div class="settings-panel-head">
+                            <div>
+                                <h4>데이터 동기화</h4>
+                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 실시간 최신 회차 조회는 프록시 설정 시에만 시도합니다.</p>
+                            </div>
+                            <span id="settingsSyncStateBadge" class="badge status-badge">상태 확인 중</span>
+                        </div>
+
+                        <div class="input-group settings-field">
+                            <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
+                            <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
+                                class="settings-proxy-input">
+                            <p class="subtitle settings-caption">프록시를 설정한 경우에만 앱 실행 중 최신 회차 동기화를 시도합니다.</p>
+                        </div>
+
+                        <div class="sync-meta-grid">
+                            <div class="sync-meta-item">
+                                <span class="sync-meta-label">현재 모드</span>
+                                <strong id="syncMetaMode">-</strong>
+                            </div>
+                            <div class="sync-meta-item">
+                                <span class="sync-meta-label">현재 소스</span>
+                                <strong id="syncMetaSource">-</strong>
+                            </div>
+                            <div class="sync-meta-item">
+                                <span class="sync-meta-label">마지막 성공</span>
+                                <strong id="syncMetaLastSuccess">-</strong>
+                            </div>
+                            <div class="sync-meta-item">
+                                <span class="sync-meta-label">마지막 반영 회차</span>
+                                <strong id="syncMetaLastDraw">-</strong>
+                            </div>
+                        </div>
+                        <p id="syncMetaLastFailure" class="settings-note">-</p>
+                        <p id="syncMetaWarning" class="settings-note settings-warning-note">현재 데이터 상태를 확인하는 중입니다.</p>
+
+                        <div class="button-group settings-button-group">
+                            <button id="syncDataBtn" class="btn primary" type="button">
+                                <i class="ph-bold ph-arrows-clockwise"></i> 최신 데이터 동기화
+                            </button>
+                            <button id="cancelSyncBtn" class="btn ghost" type="button" style="display:none;" disabled>
+                                <i class="ph ph-stop-circle"></i> 동기화 취소
+                            </button>
+                        </div>
+                        <div id="syncLog" class="log-content settings-sync-log" style="display:none;"></div>
+                    </section>
+
+                    <section class="settings-panel">
+                        <div class="settings-panel-head">
+                            <div>
+                                <h4>저장 공간</h4>
+                                <p class="subtitle">앱에 저장된 데이터 용량과 정리 필요 여부를 확인합니다.</p>
+                            </div>
+                            <span id="storageHealthBadge" class="badge status-badge">정상</span>
+                        </div>
+                        <div class="data-summary-grid">
+                            <div class="data-summary-item">
+                                <span class="data-summary-label">앱 저장 공간 사용량</span>
+                                <strong id="storageUsageValue">-</strong>
+                            </div>
+                            <div class="data-summary-item">
+                                <span class="data-summary-label">저장된 항목 수</span>
+                                <strong id="storageCountsValue">-</strong>
+                            </div>
+                        </div>
+                        <p id="storageHealthNote" class="settings-note">현재 저장 상태를 확인하는 중입니다.</p>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="qrModal" class="modal">
         <div class="modal-content center-content">
             <h3>큐알 코드</h3>
@@ -907,66 +969,7 @@
         </div>
     </div>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            const registerSW = () => {
-                navigator.serviceWorker.register('sw.js').then((reg) => {
-                    console.log('서비스 워커 등록 완료:', reg.scope);
-
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        if (!newWorker) return;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                showUpdateToast(newWorker);
-                            }
-                        });
-                    });
-                }).catch((err) => console.log('서비스 워커 등록 실패:', err));
-            };
-
-            let reloadOnControllerChange = false;
-            const showUpdateToast = (worker) => {
-                const toast = document.createElement('div');
-                toast.className = 'update-toast';
-                toast.innerHTML = `
-                    <span>새 버전이 준비되었습니다.</span>
-                    <button id="reloadBtn">업데이트</button>
-                    <button id="dismissBtn">닫기</button>
-                `;
-                document.body.appendChild(toast);
-
-                const reloadBtn = document.getElementById('reloadBtn');
-                const dismissBtn = document.getElementById('dismissBtn');
-                if (reloadBtn) {
-                    reloadBtn.onclick = () => {
-                        reloadOnControllerChange = true;
-                        worker.postMessage({ action: 'skipWaiting' });
-                    };
-                }
-                if (dismissBtn) {
-                    dismissBtn.onclick = () => toast.remove();
-                }
-            };
-
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing || !reloadOnControllerChange) return;
-                refreshing = true;
-                window.location.reload();
-            });
-
-            window.addEventListener('load', () => {
-                if ('requestIdleCallback' in window) {
-                    window.requestIdleCallback(registerSW, { timeout: 1200 });
-                } else {
-                    setTimeout(registerSW, 250);
-                }
-            });
-        }
-    </script>
-
-    <!-- Main Logic (Module) -->
+        <!-- Main Logic (Module) -->
     <script type="module" src="assets/modules/index.js"></script>
 </body>
 

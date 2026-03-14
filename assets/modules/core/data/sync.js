@@ -1,0 +1,536 @@
+import { CONFIG } from '../../utils/config.js';
+import { $, estimateLatestDrawKST } from '../../utils/utils.js';
+import { UIManager } from '../UIManager.js';
+import { measureAsync } from '../../utils/perf.js';
+export const dataSyncMethods = {
+    async fetchWithTimeout(url, options = {}, timeoutMs = this.SYNC_FETCH_TIMEOUT_MS, externalSignal = null) {
+        return measureAsync('sync.fetch', async () => {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timer = controller
+                ? setTimeout(() => controller.abort(), timeoutMs)
+                : null;
+            let onExternalAbort = null;
+
+            try {
+                if (controller && externalSignal) {
+                    if (externalSignal.aborted) throw this.createAbortError('Sync aborted');
+                    onExternalAbort = () => controller.abort();
+                    externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+                }
+                const nextOptions = controller ? { ...options, signal: controller.signal } : options;
+                return await fetch(url, nextOptions);
+            } finally {
+                if (timer) clearTimeout(timer);
+                if (externalSignal && onExternalAbort) {
+                    externalSignal.removeEventListener('abort', onExternalAbort);
+                }
+            }
+        }, {
+            timeoutMs,
+            url: String(url).slice(0, 120)
+        });
+    },
+
+    createSyncProfile(options = {}) {
+        const trigger = String(options?.trigger || '');
+        if (trigger === 'idle') {
+            return {
+                trigger,
+                silent: true,
+                settleSilent: true,
+                toast: false,
+                requestSystemNotification: false
+            };
+        }
+        return {
+            trigger: trigger === 'refresh' ? 'refresh' : 'manual',
+            silent: false,
+            settleSilent: false,
+            toast: true,
+            requestSystemNotification: true
+        };
+    },
+
+    logSync(code, message, meta = null) {
+        if (meta && typeof meta === 'object') {
+            console.log(`[${code}] ${message}`, meta);
+            return;
+        }
+        console.log(`[${code}] ${message}`);
+    },
+
+    async fetchWinningStats(options = {}) {
+        const statusEl = $('#syncStatus');
+        const notifyTicketSettle = options.notifyTicketSettle !== false;
+        const updateStatus = (text, color) => {
+            if (statusEl) {
+                statusEl.querySelector('.text') && (statusEl.querySelector('.text').textContent = text);
+                statusEl.querySelector('.dot') && (statusEl.querySelector('.dot').style.background = color);
+            }
+        };
+
+        try {
+            updateStatus('로또 확인 중', 'var(--warning)');
+
+            const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            const staticData = json.data || json || [];
+            const normalizedStatic = (Array.isArray(staticData) ? staticData : [])
+                .map((row) => this.normalizeDrawItem(row))
+                .filter(Boolean)
+                .sort((a, b) => b.draw_no - a.draw_no);
+            this.state.staticLatestDrawNo = normalizedStatic[0]?.draw_no || 0;
+
+            const localUpdates = this.getLocalUpdates();
+
+            const mergedMap = new Map();
+            normalizedStatic.forEach((d) => mergedMap.set(Number(d.draw_no), d));
+            localUpdates.forEach(d => mergedMap.set(Number(d.draw_no), d));
+
+            this.state.winningStats = Array.from(mergedMap.values())
+                .map((row) => this.normalizeDrawItem(row))
+                .filter(Boolean)
+                .sort((a, b) => b.draw_no - a.draw_no);
+            this.buildAnalyticsCache();
+
+            this.setSyncMeta({
+                mode: this.getSyncMode(),
+                currentSource: localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON'
+            });
+
+            await this.settlePendingTickets({ silent: !notifyTicketSettle });
+
+            const freshness = this.getDataFreshness();
+            if (freshness.latestDrawNo > 0 && freshness.isStale) {
+                updateStatus(`${freshness.behindBy}회차 지연`, 'var(--warning)');
+            } else {
+                updateStatus('최신', 'var(--success)');
+            }
+            return true;
+        } catch (e) {
+            console.warn('당첨 데이터 조회 실패', e);
+            updateStatus('오프라인', 'var(--danger)');
+            return false;
+        }
+    },
+
+    async fetchRangeFromProxy(fromNo, toNo, proxyConfig, log, signal = null) {
+        if (!proxyConfig?.url || fromNo > toNo) {
+            return { items: [], missing: [], failed: true };
+        }
+
+        try {
+            let baseUrl = '';
+            const customProxy = proxyConfig.url;
+            const proxyIndex = customProxy.indexOf('/proxy/');
+            if (proxyIndex >= 0) {
+                baseUrl = customProxy.slice(0, proxyIndex);
+            } else {
+                const u = new URL(customProxy);
+                baseUrl = `${u.origin}`;
+            }
+            if (!baseUrl) return { items: [], missing: [], failed: true };
+
+            const url = `${baseUrl}/proxy/range?from=${fromNo}&to=${toNo}`;
+            const res = await this.fetchWithTimeout(url, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const payload = await res.json();
+            const list = Array.isArray(payload?.data) ? payload.data : [];
+            const normalized = list.map(item => this.normalizeDrawItem(item)).filter(Boolean);
+            const missing = Array.isArray(payload?.missing)
+                ? payload.missing.map((x) => Number(x)).filter(Number.isFinite)
+                : [];
+            if (normalized.length) {
+                log(`[range] 수집 성공: ${fromNo}~${toNo} (${normalized.length}개)`);
+            }
+            return { items: normalized, missing, failed: false };
+        } catch (e) {
+            if (this.isAbortError(e)) throw e;
+            this.logSync('SYNC_RANGE_FAIL', `Range fetch failed ${fromNo}-${toNo}`, { message: e.message });
+            log(`[range] 수집 실패 (${fromNo}~${toNo}): ${e.message}`);
+            return { items: [], missing: [], failed: true };
+        }
+    },
+
+    normalizeDrawItem(raw) {
+        if (!raw) return null;
+        const drawNo = Number(raw.draw_no ?? raw.ltEpsd);
+        if (!drawNo || !Number.isFinite(drawNo)) return null;
+
+        const numbers = Array.isArray(raw.numbers)
+            ? raw.numbers
+            : [raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo, raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo];
+
+        const dateRaw = String(raw.date ?? raw.ltRflYmd ?? '');
+        const date = dateRaw.length === 8
+            ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
+            : dateRaw;
+
+        const normalizedNumbers = (numbers || [])
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 45)
+            .sort((a, b) => a - b);
+        const bonus = Number(raw.bonus ?? raw.bnsWnNo ?? 0);
+
+        const normalized = {
+            draw_no: drawNo,
+            date,
+            numbers: normalizedNumbers,
+            bonus,
+            prize_amount: Number(raw.prize_amount ?? raw.rnk1WnAmt ?? 0),
+            winners_count: Number(raw.winners_count ?? raw.rnk1WnNope ?? 0),
+            total_sales: Number(raw.total_sales ?? raw.rlvtEpsdSumNtslAmt ?? 0)
+        };
+        if (normalized.numbers.length !== 6) return null;
+        if (new Set(normalized.numbers).size !== 6) return null;
+        if (!Number.isInteger(normalized.bonus) || normalized.bonus < 1 || normalized.bonus > 45) return null;
+        if (normalized.numbers.includes(normalized.bonus)) return null;
+        return normalized;
+    },
+
+    async fetchOneDraw(drawNo, proxyConfig, _log = () => {}, signal = null) {
+        const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${drawNo}`;
+        const internalUrls = [];
+        const customProxy = proxyConfig?.url || '';
+
+        if (customProxy) {
+            if (customProxy.includes('{draw_no}')) {
+                internalUrls.push(customProxy.replace('{draw_no}', String(drawNo)));
+            } else if (customProxy.includes('/proxy/latest')) {
+                if (customProxy.includes('draw_no=')) {
+                    internalUrls.push(customProxy.replace(/draw_no=\d*/i, `draw_no=${drawNo}`));
+                } else {
+                    const delim = customProxy.includes('?') ? '&' : '?';
+                    internalUrls.push(`${customProxy}${delim}draw_no=${drawNo}`);
+                }
+            } else if (customProxy.includes('{url}')) {
+                internalUrls.push(customProxy.replace('{url}', encodeURIComponent(targetUrl)));
+            } else {
+                internalUrls.push(`${customProxy}${encodeURIComponent(targetUrl)}`);
+            }
+        }
+
+        const urls = [...internalUrls];
+        for (const fetchUrl of urls) {
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
+            try {
+                const res = await this.fetchWithTimeout(fetchUrl, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
+                if (!res.ok) continue;
+                const wrapper = await res.json();
+
+                let inner = wrapper;
+                if (wrapper?.contents && typeof wrapper.contents === 'string') {
+                    inner = JSON.parse(wrapper.contents);
+                } else if (wrapper?.contents) {
+                    inner = wrapper.contents;
+                }
+
+                const candidate = inner?.data?.list?.[0]
+                    ? this.normalizeDrawItem(inner.data.list[0])
+                    : (inner?.data?.[0] ? this.normalizeDrawItem(inner.data[0]) : this.normalizeDrawItem(inner));
+                if (candidate) return candidate;
+            } catch (e) {
+                if (this.isAbortError(e)) throw e;
+                this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, { fetchUrl, message: e.message });
+            }
+        }
+        return null;
+    },
+
+    buildRangeChunks(fromNo, toNo, chunkSize = this.RANGE_CHUNK_SIZE) {
+        const chunks = [];
+        for (let start = fromNo; start <= toNo; start += chunkSize) {
+            const end = Math.min(start + chunkSize - 1, toNo);
+            chunks.push([start, end]);
+        }
+        return chunks;
+    },
+
+    async runWithConcurrency(items, concurrency, handler) {
+        const list = Array.isArray(items) ? items : [];
+        if (!list.length) return [];
+        const out = new Array(list.length);
+        let cursor = 0;
+
+        const worker = async () => {
+            while (true) {
+                const index = cursor++;
+                if (index >= list.length) return;
+                out[index] = await handler(list[index], index);
+            }
+        };
+
+        const workers = Array.from({ length: Math.max(1, Math.min(concurrency, list.length)) }, () => worker());
+        await Promise.all(workers);
+        return out;
+    },
+
+    async fetchRangeChunkedFromProxy(fromNo, toNo, proxyConfig, log, signal = null) {
+        if (!proxyConfig?.url || fromNo > toNo) {
+            return { items: [], missing: new Set(), failedDraws: new Set() };
+        }
+        const chunks = this.buildRangeChunks(fromNo, toNo, this.RANGE_CHUNK_SIZE);
+        const chunkResults = await this.runWithConcurrency(chunks, this.RANGE_CHUNK_CONCURRENCY, async ([start, end]) => {
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
+            return this.fetchRangeFromProxy(start, end, proxyConfig, log, signal);
+        });
+
+        const items = [];
+        const missing = new Set();
+        const failedDraws = new Set();
+
+        chunkResults.forEach((result, idx) => {
+            const [start, end] = chunks[idx];
+            if (!result || result.failed) {
+                for (let no = start; no <= end; no++) failedDraws.add(no);
+                return;
+            }
+            (result.items || []).forEach((item) => items.push(item));
+            (result.missing || []).forEach((drawNo) => missing.add(Number(drawNo)));
+        });
+
+        return { items, missing, failedDraws };
+    },
+
+    async fetchMissingDraws(drawNos, proxyConfig, log, signal = null) {
+        const sorted = [...new Set((drawNos || []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
+        if (!sorted.length) return [];
+
+        const results = await this.runWithConcurrency(sorted, this.FALLBACK_FETCH_CONCURRENCY, async (drawNo) => {
+            if (signal?.aborted) throw this.createAbortError('Sync aborted');
+            log(`- ${drawNo}회차 데이터 요청 중... (fallback)`);
+            let item = await this.fetchOneDraw(drawNo, proxyConfig, log, signal);
+            if (!item) {
+                if (signal?.aborted) throw this.createAbortError('Sync aborted');
+                await new Promise((resolve) => setTimeout(resolve, 180));
+                item = await this.fetchOneDraw(drawNo, proxyConfig, log, signal);
+            }
+            if (item) {
+                log(`완료: ${drawNo}회차 (${item.date})`);
+                return item;
+            }
+            log(`실패: ${drawNo}회차 데이터 확인 실패 (응답 없음 또는 아직 추첨 전)`);
+            return null;
+        });
+
+        return results.filter(Boolean);
+    },
+
+    async fetchLatestFromAPI(options = {}) {
+        if (typeof options === 'boolean') options = { silent: options };
+        const profile = this.createSyncProfile(options);
+
+        if (this.syncInFlightPromise) {
+            if (profile.toast) UIManager.toast('이미 동기화가 진행 중입니다.', 'info');
+            return this.syncInFlightPromise;
+        }
+
+        const cancelable = profile.trigger === 'manual';
+        this.syncAbortController = cancelable ? new AbortController() : null;
+        this.syncCancelable = cancelable;
+        this.setSyncControlsState({ running: true, cancelable });
+
+        const task = this._fetchLatestFromAPIInternal(options, this.syncAbortController?.signal || null)
+            .catch((e) => {
+                if (this.isAbortError(e)) {
+                    if (profile.toast) UIManager.toast('동기화를 취소했습니다.', 'info');
+                    return false;
+                }
+                throw e;
+            })
+            .finally(() => {
+                this.syncAbortController = null;
+                this.syncCancelable = false;
+                this.setSyncControlsState({ running: false, cancelable: false });
+                this.syncInFlightPromise = null;
+            });
+
+        this.syncInFlightPromise = task;
+        return task;
+    },
+
+    async _fetchLatestFromAPIInternal(options = {}, abortSignal = null) {
+        const profile = this.createSyncProfile(options);
+        const silent = profile.silent;
+        const logEl = $('#syncLog');
+        if (logEl && !silent) {
+            logEl.style.display = 'block';
+            logEl.innerHTML = '';
+        }
+
+        const logBuffer = [];
+        let logFlushTimer = null;
+        const flushLog = () => {
+            if (!logEl || silent || !logBuffer.length) return;
+            const fragment = document.createDocumentFragment();
+            while (logBuffer.length) {
+                const line = document.createElement('div');
+                line.textContent = logBuffer.shift();
+                fragment.appendChild(line);
+            }
+            logEl.appendChild(fragment);
+            logEl.scrollTop = logEl.scrollHeight;
+            logFlushTimer = null;
+        };
+        const scheduleFlush = () => {
+            if (logFlushTimer) return;
+            logFlushTimer = setTimeout(flushLog, 120);
+        };
+
+        const log = (msg, code = 'SYNC_INFO', meta = null) => {
+            if (logEl && !silent) {
+                logBuffer.push(msg);
+                scheduleFlush();
+            }
+            this.logSync(code, msg, meta);
+        };
+
+        try {
+            const proxyConfig = this.resolveProxyConfig();
+            const syncMode = this.getSyncMode(proxyConfig);
+            const syncSource = this.getSyncSourceLabel(proxyConfig);
+            this.setSyncMeta({
+                mode: syncMode,
+                currentSource: syncSource
+            });
+
+            const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
+            const estNo = estimateLatestDrawKST();
+
+            if (latestKnown >= estNo) {
+                log('Already up to date.', 'SYNC_UP_TO_DATE');
+                if (profile.trigger !== 'idle') {
+                    this.markSyncSuccess({
+                        drawNo: latestKnown,
+                        source: syncSource,
+                        mode: syncMode
+                    });
+                }
+                if (profile.toast) UIManager.toast('이미 최신 데이터입니다.', 'info');
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                return true;
+            }
+
+            log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
+            log(`Proxy source: ${proxyConfig.source}`, 'SYNC_PROXY_SOURCE');
+
+            if (!proxyConfig?.url) {
+                const skipMessage = '프록시 URL이 없어 실시간 최신 회차 동기화를 건너뜁니다.';
+                log(skipMessage, 'SYNC_PROXY_NOT_CONFIGURED');
+                this.markSyncFailure(skipMessage, {
+                    source: syncSource,
+                    mode: syncMode
+                });
+                if (profile.toast) {
+                    UIManager.toast('프록시 URL을 설정하면 최신 회차 동기화를 사용할 수 있습니다.', 'info', 3600);
+                }
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                return false;
+            }
+
+            const newItems = [];
+            const fetched = new Set();
+
+            const chunkResult = await this.fetchRangeChunkedFromProxy(
+                latestKnown + 1,
+                estNo,
+                proxyConfig,
+                log,
+                abortSignal
+            );
+            (chunkResult.items || []).forEach((item) => {
+                if (!item || fetched.has(item.draw_no)) return;
+                fetched.add(item.draw_no);
+                newItems.push(item);
+            });
+
+            const fallbackTargets = new Set([
+                ...(chunkResult.missing || []),
+                ...(chunkResult.failedDraws || [])
+            ]);
+            for (let drawNo = latestKnown + 1; drawNo <= estNo; drawNo++) {
+                if (!fetched.has(drawNo)) fallbackTargets.add(drawNo);
+            }
+
+            let fallbackTargetList = [...fallbackTargets]
+                .map(Number)
+                .filter(Number.isFinite)
+                .sort((a, b) => b - a);
+            if (fallbackTargetList.length > CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS) {
+                log(
+                    `Fallback 대상이 ${fallbackTargetList.length}개라 최근 ${CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS}개만 요청합니다.`,
+                    'SYNC_FALLBACK_LIMIT'
+                );
+                fallbackTargetList = fallbackTargetList.slice(0, CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS);
+            }
+
+            const fallbackItems = await this.fetchMissingDraws(fallbackTargetList, proxyConfig, log, abortSignal);
+            fallbackItems.forEach((item) => {
+                if (!item || fetched.has(item.draw_no)) return;
+                fetched.add(item.draw_no);
+                newItems.push(item);
+            });
+
+            const updatedCount = newItems.length;
+
+            if (updatedCount > 0) {
+                const currentUpdates = this.getLocalUpdates();
+                const merged = [...currentUpdates, ...newItems];
+                const unique = Array.from(new Map(merged.map(item => [item.draw_no, item])).values());
+                this.setLocalUpdates(unique);
+
+                log(`Applied ${updatedCount} draw updates.`, 'SYNC_APPLIED', { updatedCount });
+                await this.fetchWinningStats({ notifyTicketSettle: false });
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                this.markSyncSuccess({
+                    drawNo: this.state.winningStats[0]?.draw_no || latestKnown,
+                    source: syncSource,
+                    mode: syncMode
+                });
+                this.app?.updateLatestWin?.();
+                await this.app?.refreshCurrentRoute();
+                if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
+            } else {
+                log('No new draw data found.', 'SYNC_NO_UPDATE');
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                this.markSyncSuccess({
+                    drawNo: latestKnown,
+                    source: syncSource,
+                    mode: syncMode
+                });
+            }
+            return true;
+        } catch (e) {
+            if (this.isAbortError(e)) {
+                log('Sync cancelled by user.', 'SYNC_ABORT');
+                throw e;
+            }
+            log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
+            this.markSyncFailure(e.message, {
+                source: this.getSyncSourceLabel(),
+                mode: this.getSyncMode()
+            });
+            if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
+            return false;
+        } finally {
+            if (logFlushTimer) {
+                clearTimeout(logFlushTimer);
+                logFlushTimer = null;
+            }
+            flushLog();
+        }
+    }
+};

@@ -1,0 +1,68 @@
+import { $ } from '../../utils/utils.js';
+import { UIManager } from '../UIManager.js';
+export const appLatestDrawMethods = {
+    renderLatestWinPlaceholder({
+        badge = '데이터 없음',
+        title = '표시할 최신 당첨결과가 없습니다.',
+        meta = '데이터 파일을 확인한 뒤 다시 시도하세요.',
+        icon = 'ph-database'
+    } = {}) {
+        const badgeEl = $('#latestDrawNo');
+        const ballsEl = $('#latestWinBalls');
+        const metaEl = $('#latestWinMeta');
+        if (badgeEl) badgeEl.textContent = badge;
+        if (ballsEl) {
+            ballsEl.innerHTML = `
+                <div class="latest-win-placeholder">
+                    <i class="ph ${icon}"></i>
+                    <span>${title}</span>
+                </div>
+            `;
+        }
+        if (metaEl) {
+            metaEl.innerHTML = `<div class="latest-win-placeholder-meta">${meta}</div>`;
+        }
+    },
+
+    updateLatestWin(options = {}) {
+        const latest = this.data.state.winningStats[0];
+        if (!latest) {
+            const offline = Boolean(options?.offline);
+            this.renderLatestWinPlaceholder({
+                badge: offline ? '오프라인' : '데이터 없음',
+                title: offline ? '최신 당첨결과를 불러오지 못했습니다.' : '표시할 최신 당첨결과가 없습니다.',
+                meta: offline
+                    ? '오프라인 상태입니다. 연결 후 다시 동기화하세요.'
+                    : '당첨 데이터 파일을 확인한 뒤 다시 시도하세요.',
+                icon: offline ? 'ph-cloud-slash' : 'ph-database'
+            });
+            return;
+        }
+
+        $('#latestDrawNo').textContent = `${latest.draw_no}회`;
+        $('#latestWinBalls').innerHTML = UIManager.renderBalls(latest.numbers) +
+            `<span style="margin:0 8px; color:var(--text-muted); font-weight:bold; font-size:1.2em;">+</span>` +
+            `<span class="ball ${UIManager.getBallColor(latest.bonus)}">${latest.bonus}</span>`;
+
+        // Format Currency
+        const fmtMoney = (n) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(n);
+        const fmtCount = (n) => new Intl.NumberFormat('ko-KR').format(n);
+
+        $('#latestWinMeta').innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+                <span>${latest.date} 추첨</span>
+                ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
+            </div>
+        `;
+
+        const nextDrawNo = Number(latest.draw_no) + 1;
+        ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'].forEach((id) => {
+            const el = $(`#${id}`);
+            if (!el) return;
+            const current = Number(el.value);
+            if (!Number.isFinite(current) || current <= 1) {
+                el.value = String(nextDrawNo);
+            }
+        });
+    }
+};

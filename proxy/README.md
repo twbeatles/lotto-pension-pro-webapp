@@ -46,6 +46,9 @@ wrangler deploy proxy/worker.js
 - 2버전 설정 키: `lotto_pro_settings_v2.customProxy`
 - 해석 우선순위: `query` > `v1` > `v2`
 - 프록시가 없으면 앱은 정적 JSON 전용 모드로 동작하며, 공개 fallback 프록시는 기본 사용하지 않습니다.
+- 앱 UI 경로:
+  - 사이드바 또는 모바일 헤더의 `설정` 버튼
+  - 설정 모달의 `사용자 프록시 주소 (선택)` 입력란
 
 권장 설정 예시:
 

@@ -12,6 +12,8 @@
 
 - 런타임 외부 의존 자산은 모두 `assets/vendor/` same-origin 경로로 포함됩니다.
 - Pages 배포 시 CDN 링크가 아니라 저장소에 커밋된 vendor 자산이 그대로 서빙되어야 합니다.
+- 현재 앱 셸은 분할된 내부 모듈과 `assets/styles/*.css`까지 함께 배포되는 구조입니다.
+- 서비스워커 등록/업데이트 UX는 `index.html` inline script가 아니라 `assets/modules/bootstrap/pwa.js`에서 시작됩니다.
 
 ## 2) 데이터 운영
 
@@ -48,14 +50,14 @@
 
 - `?proxyUrl=`에 넣는 값은 `https://<worker>.workers.dev/proxy/latest`처럼 최신 단건 엔드포인트를 권장합니다.
 - 브라우저 주소창에 직접 넣을 때는 프록시 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
-- 앱 설정 입력란에는 `https://<worker>.workers.dev/proxy/latest`, `https://<worker>.workers.dev/?url=`, `{draw_no}` 또는 `{url}` 플레이스홀더 형식도 사용할 수 있습니다.
+- 앱의 설정 모달 입력란에는 `https://<worker>.workers.dev/proxy/latest`, `https://<worker>.workers.dev/?url=`, `{draw_no}` 또는 `{url}` 플레이스홀더 형식도 사용할 수 있습니다.
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v10`
+- 현재 `sw.js` 캐시 버전: `v11`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
-- 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산과 `assets/modules/utils/strategyPresets.js`도 precache 대상입니다.
+- 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산, `assets/styles/*.css`, 분할된 `assets/modules/core/*`, `assets/modules/features/*` 내부 모듈도 precache 대상입니다.
 - 첫 설치에서는 자동 reload 하지 않으며, 업데이트 reload은 사용자가 토스트에서 수락한 경우에만 수행됩니다.
 
 배포 후 반영 확인:

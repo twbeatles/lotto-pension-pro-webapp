@@ -1260,6 +1260,20 @@ input:checked+.slider:before {
   flex: 1;
 }
 
+.result-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .result-meta {
   font-size: 13px;
   color: var(--text-muted);
@@ -1281,6 +1295,101 @@ input:checked+.slider:before {
 .result-item:hover .meta-badge {
   background: rgba(139, 92, 246, 0.1);
   color: var(--primary);
+}
+
+.list-search {
+  margin-bottom: 12px;
+}
+
+.list-pagination {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pagination-summary,
+.pagination-page {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.data-summary-grid,
+.sync-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.data-summary-item,
+.sync-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.data-summary-label,
+.sync-meta-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.data-summary-item strong,
+.sync-meta-item strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.status-badge {
+  border: 1px solid transparent;
+}
+
+.status-badge.is-good {
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.status-badge.is-warn {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.status-badge.is-bad {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+[data-theme="light"] .data-summary-item,
+[data-theme="light"] .sync-meta-item {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #dbe2ea;
+}
+
+[data-theme="light"] .status-badge.is-good {
+  color: #047857;
+}
+
+[data-theme="light"] .status-badge.is-warn {
+  color: #b45309;
+}
+
+[data-theme="light"] .status-badge.is-bad {
+  color: #b91c1c;
 }
 
 /* Pairs Analysis */

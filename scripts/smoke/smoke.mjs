@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { StrategyEngine } from '../../assets/modules/core/StrategyEngine.js';
 import { DataManager } from '../../assets/modules/core/DataManager.js';
 import { LottoApp } from '../../assets/modules/core/LottoApp.js';
+import { UIManager } from '../../assets/modules/core/UIManager.js';
 import { DataIOModule, runPostImportRefresh } from '../../assets/modules/features/DataIO.js';
 import { GeneratorModule } from '../../assets/modules/features/Generator.js';
 import { CheckModule } from '../../assets/modules/features/Check.js';
@@ -954,6 +955,175 @@ async function runPostImportRefreshRegression() {
     ], 'post-import refresh order must be preserved');
 }
 
+async function runProxyOptInSyncRegression() {
+    const previousDocument = globalThis.document;
+    const dm = new DataManager();
+    const est = estimateLatestDrawKST();
+    dm.save = () => {};
+    dm.state.winningStats = [{
+        draw_no: Math.max(1, est - 2),
+        date: '2026-03-07',
+        numbers: [1, 2, 3, 4, 5, 6],
+        bonus: 7
+    }];
+    dm.state.staticLatestDrawNo = dm.state.winningStats[0].draw_no;
+
+    let rangeCalls = 0;
+    let fallbackCalls = 0;
+    dm.fetchRangeChunkedFromProxy = async () => {
+        rangeCalls++;
+        return { items: [], missing: [], failedDraws: [] };
+    };
+    dm.fetchMissingDraws = async () => {
+        fallbackCalls++;
+        return [];
+    };
+
+    globalThis.document = {
+        querySelector(selector) {
+            if (selector === '#customProxyUrl') return { value: '' };
+            return null;
+        }
+    };
+
+    try {
+        const result = await dm._fetchLatestFromAPIInternal({ trigger: 'manual', silent: true }, null);
+        assert.equal(result, false, 'manual sync without proxy must return false without network sync');
+        assert.equal(rangeCalls, 0, 'range sync must not run without configured proxy');
+        assert.equal(fallbackCalls, 0, 'fallback sync must not run without configured proxy');
+        assert.match(dm.state.syncMeta.lastFailureMessage, /프록시/, 'sync meta must explain proxy opt-in requirement');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runPersistenceFlushRegression() {
+    const previousWindow = globalThis.window;
+    const previousDocument = globalThis.document;
+    const windowListeners = new Map();
+    const documentListeners = new Map();
+    const saveCalls = [];
+
+    globalThis.window = {
+        addEventListener(type, handler) {
+            windowListeners.set(type, handler);
+        }
+    };
+    globalThis.document = {
+        visibilityState: 'visible',
+        addEventListener(type, handler) {
+            documentListeners.set(type, handler);
+        }
+    };
+
+    try {
+        LottoApp.prototype.bindPersistenceEvents.call({
+            data: {
+                save(immediate) {
+                    saveCalls.push(immediate);
+                }
+            }
+        });
+
+        windowListeners.get('pagehide')?.();
+        globalThis.document.visibilityState = 'hidden';
+        documentListeners.get('visibilitychange')?.();
+
+        assert.deepEqual(saveCalls, [true, true], 'pagehide/visibilitychange must flush save(true)');
+    } finally {
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
+
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runNotificationPermissionRegression() {
+    const previousToast = UIManager.toast;
+    const toasts = [];
+    UIManager.toast = (message, type = 'info') => {
+        toasts.push(`${type}:${message}`);
+    };
+
+    try {
+        const deniedCalls = [];
+        await LottoApp.prototype.handleSystemNotificationToggle.call({
+            data: {
+                async requestNotificationPermission() {
+                    deniedCalls.push('request');
+                    return { code: 'denied', label: '차단됨' };
+                },
+                setAlertPrefs(next) {
+                    deniedCalls.push(`set:${JSON.stringify(next)}`);
+                }
+            },
+            renderDataLists() {
+                deniedCalls.push('render');
+            }
+        }, true);
+
+        assert.deepEqual(deniedCalls, [
+            'request',
+            'set:{"enableSystemNotification":false}',
+            'render'
+        ], 'denied notification permission must revert the toggle state');
+        assert.ok(toasts.some((item) => item.startsWith('info:')), 'denied flow must show 안내 toast');
+
+        toasts.length = 0;
+        const grantedCalls = [];
+        await LottoApp.prototype.handleSystemNotificationToggle.call({
+            data: {
+                async requestNotificationPermission() {
+                    grantedCalls.push('request');
+                    return { code: 'granted', label: '허용됨' };
+                },
+                setAlertPrefs(next) {
+                    grantedCalls.push(`set:${JSON.stringify(next)}`);
+                }
+            },
+            renderDataLists() {
+                grantedCalls.push('render');
+            }
+        }, true);
+
+        assert.deepEqual(grantedCalls, [
+            'request',
+            'set:{"enableSystemNotification":true}',
+            'render'
+        ], 'granted notification permission must keep system notifications enabled');
+        assert.ok(toasts.some((item) => item.startsWith('success:')), 'granted flow must show success toast');
+    } finally {
+        UIManager.toast = previousToast;
+    }
+}
+
+function runDataListPaginationRegression() {
+    const ctx = {
+        dataListPageSize: 20,
+        dataListState: {
+            ticket: { query: '', page: 3 }
+        },
+        getDataListState: LottoApp.prototype.getDataListState
+    };
+    const items = Array.from({ length: 55 }, (_, idx) => idx + 1);
+    const page = LottoApp.prototype.paginateItems.call(ctx, 'ticket', items);
+    assert.equal(page.page, 3, 'existing page must be preserved when in range');
+    assert.equal(page.items.length, 15, 'last page must render only remaining items');
+    assert.equal(page.items[0], 41, 'last page must start from the correct offset');
+
+    LottoApp.prototype.setDataListQuery.call(ctx, 'ticket', '1210');
+    assert.equal(ctx.dataListState.ticket.page, 1, 'changing search query must reset the page to 1');
+}
+
+async function runServiceWorkerReloadPolicyRegression() {
+    const html = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
+    assert.match(html, /let reloadOnControllerChange = false;/, 'SW script must gate reloads behind explicit update acceptance');
+    assert.match(html, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
+    assert.match(html, /if \(refreshing \|\| !reloadOnControllerChange\) return;/, 'controllerchange must ignore first-install activation');
+}
+
 function runBackupSmoke(stats) {
     const state = {
         theme: 'dark',
@@ -1031,6 +1201,11 @@ async function main() {
     await runQrScanReentryGuardRegression();
     await runPostImportRefreshRegression();
     await runRuntimeAssetLocalizationRegression();
+    await runProxyOptInSyncRegression();
+    runPersistenceFlushRegression();
+    await runNotificationPermissionRegression();
+    runDataListPaginationRegression();
+    await runServiceWorkerReloadPolicyRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
     console.log(`[PASS] recommend: ${recommended.sets.length} sets`);
@@ -1055,6 +1230,11 @@ async function main() {
     console.log('[PASS] qr-reentry-guard regression');
     console.log('[PASS] post-import-refresh regression');
     console.log('[PASS] runtime-asset-localization regression');
+    console.log('[PASS] proxy-opt-in sync regression');
+    console.log('[PASS] persistence-flush regression');
+    console.log('[PASS] notification-permission regression');
+    console.log('[PASS] data-list pagination regression');
+    console.log('[PASS] service-worker reload policy regression');
     console.log('[DONE] smoke checks passed');
 }
 

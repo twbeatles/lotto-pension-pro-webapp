@@ -5,7 +5,7 @@
 이 문서는 저장소(`lotto---webapp`)에서 Claude 계열 AI가 다음 세션에도 바로 작업을 이어갈 수 있도록 만든 운영 기준 문서입니다.
 핵심은 "빠르게 맥락 복원 -> 안전하게 수정 -> 회귀 없이 검증"입니다.
 
-- 기준일: 2026-03-13
+- 기준일: 2026-03-14
 - 정적 당첨 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
@@ -56,6 +56,29 @@
   - `Pretendard`, `Phosphor`, `qrcode`, `html2canvas`, `html5-qrcode`
 - 서비스워커 캐시 버전: `v10`
 - 제3자 자산 고지 문서: `THIRD_PARTY_NOTICES.md`
+
+## 0-2) 2026-03-14 운영 안정화/데이터 관리 개선
+
+- 동기화 정책:
+  - 최신 회차 동기화는 `프록시 옵트인`
+  - 프록시 미설정 시 정적 JSON만 사용
+  - 기본 `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` fallback 제거
+- 동기화 메타:
+  - 저장 키 `lotto_pro_sync_meta_v1`
+  - `mode`, `currentSource`, `lastSuccessAt`, `lastSuccessDrawNo`, `lastFailureAt`, `lastFailureMessage`
+- 데이터 탭:
+  - 즐겨찾기/히스토리/티켓/캠페인 검색 + 페이지네이션
+  - 저장 상태 요약, 동기화 메타 카드, 최신성 경고, 시스템 알림 권한 배지 추가
+- 알림 UX:
+  - 시스템 알림 토글 on 시 즉시 권한 요청
+  - 테스트 알림 버튼 추가
+  - 정산 시점에는 권한 재요청 없이 허용 상태에서만 시스템 알림 발송
+- 저장 신뢰성:
+  - `pagehide`, `visibilitychange(hidden)` flush
+  - 즐겨찾기/티켓/캠페인/알림/프리셋 CRUD는 즉시 저장
+- 서비스워커:
+  - 첫 설치에서는 자동 reload 하지 않음
+  - 업데이트 토스트에서 수락한 경우에만 reload
 
 ## 1) 프로젝트 한눈에 보기
 
@@ -151,7 +174,7 @@ node scripts/perf/bench.mjs
 - Generator eager 생성
 - 초기 라우트(`gen`)
 - `fetchWinningStats()`로 정적 데이터 + 로컬 업데이트 병합
-- idle 시점 `fetchLatestFromAPI({ silent: true })`
+- idle 시점 프록시가 설정된 경우에만 `fetchLatestFromAPI({ silent: true, trigger: 'idle' })`
 
 ### 모듈 로딩
 
@@ -193,10 +216,10 @@ node scripts/perf/bench.mjs
 `DataManager.state` 주요 필드:
 
 - `theme`, `favorites`, `history`
-- `winningStats`, `analytics`
+- `winningStats`, `staticLatestDrawNo`, `analytics`
 - `generated`, `aiResults`
 - `strategyPrefs`, `strategyPresets`
-- `ticketBook`, `campaigns`, `alertPrefs`
+- `ticketBook`, `campaigns`, `alertPrefs`, `syncMeta`
 - `customProxy`
 
 ### localStorage 키
@@ -210,6 +233,7 @@ node scripts/perf/bench.mjs
 - `lotto_pro_campaigns_v1`
 - `lotto_pro_alerts_v1`
 - `lotto_pro_strategy_presets_v1`
+- `lotto_pro_sync_meta_v1`
 - `lotto_pro_updates_v2`
 - 레거시: `lotto_webapp_settings_v1.proxyLatestUrl`, `lotto_webapp_settings_v1`
 
@@ -240,17 +264,21 @@ node scripts/perf/bench.mjs
 - 추정 최신 회차: `estimateLatestDrawKST()`
 - in-flight 단일 실행 가드: 실행 중 재호출 시 기존 Promise 합류
 - 수동 동기화(`trigger=manual`)만 취소 가능
+- 프록시 미설정 시 네트워크 호출 없이 종료하고 정적 JSON 모드 안내만 표시
 - 우선 `/proxy/range` 청크 호출
 - 누락분은 단건 fallback 조회
+- 단건 fallback도 사용자 프록시 URL만 사용
 - fallback 단건 조회는 최근 `120`개로 제한
 - 성공분은 `lotto_pro_updates_v2`에 합쳐 저장
+- 동기화 메타는 `lotto_pro_sync_meta_v1`에 저장
+  - `mode`, `currentSource`, `lastSuccessAt`, `lastSuccessDrawNo`, `lastFailureAt`, `lastFailureMessage`
 
 ### 프록시 URL 우선순위
 
 1. URL 쿼리 `?proxyUrl=` 또는 `?proxy=`
 2. v1 레거시 설정
 3. v2 설정(`settings.customProxy`)
-4. 공용 fallback
+4. 그 외는 정적 JSON 전용 모드
 
 ---
 
@@ -286,6 +314,7 @@ node scripts/perf/bench.mjs
 - 데이터 JSON: `network-first` + timeout
 - 기타 정적 자산: `stale-while-revalidate`
 - 런타임 라이브러리/font/icon은 `assets/vendor/` same-origin 경로로 캐시
+- `controllerchange` reload은 사용자가 업데이트 토스트에서 `skipWaiting`을 수락한 경우에만 수행
 
 수정 규칙:
 

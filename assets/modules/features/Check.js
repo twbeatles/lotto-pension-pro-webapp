@@ -166,6 +166,8 @@ export class CheckModule {
     }
 
     const listEl = $('#checkTargetList');
+    this.data.warnIfDataStale?.('번호 확인');
+
     const idx = listEl?.selectedIndex ?? -1;
     if (idx < 0) return UIManager.toast('비교할 번호를 선택하세요.', 'warning');
 

@@ -13,6 +13,7 @@ export class DataManager {
             favorites: [],
             history: [],
             winningStats: [],
+            staticLatestDrawNo: 0,
             generated: [],
             customProxy: '',
             aiResults: [],
@@ -21,7 +22,8 @@ export class DataManager {
             ticketBook: [],
             campaigns: [],
             strategyPresets: [],
-            alertPrefs: this.getDefaultAlertPrefs()
+            alertPrefs: this.getDefaultAlertPrefs(),
+            syncMeta: this.getDefaultSyncMeta()
         };
         // Debounce timer for storage I/O
         this._saveTimer = null;
@@ -32,13 +34,16 @@ export class DataManager {
             ticketBook: false,
             campaigns: false,
             alerts: false,
-            presets: false
+            presets: false,
+            syncMeta: false
         };
         this.localUpdatesCache = null;
         this.RANGE_CHUNK_SIZE = 40;
         this.RANGE_CHUNK_CONCURRENCY = 2;
         this.FALLBACK_FETCH_CONCURRENCY = 3;
         this.SYNC_FETCH_TIMEOUT_MS = 4500;
+        this.STORAGE_WARNING_BYTES = 350000;
+        this.STORAGE_DANGER_BYTES = 900000;
         this.syncInFlightPromise = null;
         this.syncAbortController = null;
         this.syncCancelable = false;
@@ -72,6 +77,48 @@ export class DataManager {
             enableSystemNotification: false,
             notifyOnNewResult: true
         };
+    }
+
+    getDefaultSyncMeta() {
+        return {
+            mode: 'static_only',
+            currentSource: '정적 JSON',
+            lastSuccessAt: '',
+            lastSuccessDrawNo: 0,
+            lastFailureAt: '',
+            lastFailureMessage: ''
+        };
+    }
+
+    mergeSyncMeta(raw) {
+        const defaults = this.getDefaultSyncMeta();
+        const input = raw && typeof raw === 'object' ? raw : {};
+        const lastSuccessDrawNo = Math.max(0, Math.floor(Number(input.lastSuccessDrawNo || 0)));
+        return {
+            mode: typeof input.mode === 'string' && input.mode.trim() ? input.mode.trim() : defaults.mode,
+            currentSource: typeof input.currentSource === 'string' && input.currentSource.trim()
+                ? input.currentSource.trim()
+                : defaults.currentSource,
+            lastSuccessAt: typeof input.lastSuccessAt === 'string' ? input.lastSuccessAt : defaults.lastSuccessAt,
+            lastSuccessDrawNo,
+            lastFailureAt: typeof input.lastFailureAt === 'string' ? input.lastFailureAt : defaults.lastFailureAt,
+            lastFailureMessage: typeof input.lastFailureMessage === 'string'
+                ? input.lastFailureMessage.slice(0, 240)
+                : defaults.lastFailureMessage
+        };
+    }
+
+    getSyncMode(proxyConfig = this.resolveProxyConfig()) {
+        return proxyConfig?.url ? 'proxy_opt_in' : 'static_only';
+    }
+
+    getSyncModeLabel(mode = this.state.syncMeta?.mode) {
+        return mode === 'proxy_opt_in' ? '프록시 옵트인' : '정적 JSON 전용';
+    }
+
+    getSyncSourceLabel(proxyConfig = this.resolveProxyConfig()) {
+        if (proxyConfig?.url) return proxyConfig.source || '사용자 프록시';
+        return '정적 JSON';
     }
 
     isStrategyScope(scope) {
@@ -216,7 +263,7 @@ export class DataManager {
         const remaining = (this.state.strategyPresets || []).filter((item) => item?.id !== nextPreset.id);
         this.state.strategyPresets = this.mergeStrategyPresets([nextPreset, ...remaining]);
         this.markDirty('presets');
-        this.save();
+        this.save(true);
 
         return {
             preset: this.getStrategyPresetById(nextPreset.id),
@@ -230,7 +277,7 @@ export class DataManager {
         const removed = before - this.state.strategyPresets.length;
         if (removed > 0) {
             this.markDirty('presets');
-            this.save();
+            this.save(true);
         }
         return removed > 0;
     }
@@ -258,7 +305,7 @@ export class DataManager {
             ...(next || {})
         });
         this.markDirty('alerts');
-        this.save();
+        this.save(true);
     }
 
     setApp(app) {
@@ -331,14 +378,21 @@ export class DataManager {
     }
 
     persistSettings() {
+        if (typeof localStorage === 'undefined') return;
         localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
     }
 
     persistExtendedData() {
+        if (typeof localStorage === 'undefined') return;
         localStorage.setItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
         localStorage.setItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
         localStorage.setItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
         localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
+    }
+
+    persistSyncMeta() {
+        if (typeof localStorage === 'undefined') return;
+        localStorage.setItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
     }
 
     getSettingsPayload() {
@@ -349,7 +403,194 @@ export class DataManager {
         };
     }
 
+    setSyncMeta(next, { immediate = false } = {}) {
+        const merged = this.mergeSyncMeta({
+            ...(this.state.syncMeta || this.getDefaultSyncMeta()),
+            ...(next || {})
+        });
+        const prevSerialized = JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta());
+        const nextSerialized = JSON.stringify(merged);
+        this.state.syncMeta = merged;
+        if (prevSerialized !== nextSerialized) {
+            this.markDirty('syncMeta');
+            this.save(immediate);
+        }
+        return this.state.syncMeta;
+    }
+
+    markSyncSuccess({ drawNo = 0, source = '', mode = this.getSyncMode() } = {}) {
+        return this.setSyncMeta({
+            mode,
+            currentSource: source || this.getSyncSourceLabel(),
+            lastSuccessAt: new Date().toISOString(),
+            lastSuccessDrawNo: Math.max(0, Math.floor(Number(drawNo || 0))),
+            lastFailureAt: '',
+            lastFailureMessage: ''
+        });
+    }
+
+    markSyncFailure(message, { source = '', mode = this.getSyncMode() } = {}) {
+        return this.setSyncMeta({
+            mode,
+            currentSource: source || this.getSyncSourceLabel(),
+            lastFailureAt: new Date().toISOString(),
+            lastFailureMessage: String(message || '').slice(0, 240)
+        });
+    }
+
+    getDataFreshness() {
+        const latestDrawNo = Math.max(0, Math.floor(Number(this.state.winningStats?.[0]?.draw_no || 0)));
+        const staticLatestDrawNo = Math.max(0, Math.floor(Number(this.state.staticLatestDrawNo || 0)));
+        const estimatedLatestDrawNo = Math.max(0, Math.floor(Number(estimateLatestDrawKST() || 0)));
+        const behindBy = latestDrawNo > 0 && estimatedLatestDrawNo > 0
+            ? Math.max(0, estimatedLatestDrawNo - latestDrawNo)
+            : 0;
+        const staticBehindBy = staticLatestDrawNo > 0 && estimatedLatestDrawNo > 0
+            ? Math.max(0, estimatedLatestDrawNo - staticLatestDrawNo)
+            : 0;
+        const hasProxy = Boolean(this.resolveProxyConfig()?.url);
+        return {
+            latestDrawNo,
+            staticLatestDrawNo,
+            estimatedLatestDrawNo,
+            behindBy,
+            staticBehindBy,
+            hasProxy,
+            isStale: behindBy > 0
+        };
+    }
+
+    getStaleDataMessage(featureLabel = '기능') {
+        const freshness = this.getDataFreshness();
+        if (!freshness.isStale) return '';
+        return `${featureLabel}을 계속 진행할 수 있지만 최신 데이터가 ${freshness.behindBy}회차 뒤처져 있을 수 있습니다.`;
+    }
+
+    warnIfDataStale(featureLabel = '기능') {
+        const message = this.getStaleDataMessage(featureLabel);
+        if (message) {
+            UIManager.toast(message, 'warning', 4200);
+        }
+        return this.getDataFreshness();
+    }
+
+    getNotificationPermissionState() {
+        if (typeof Notification === 'undefined') {
+            return { code: 'unsupported', label: '지원 안 함' };
+        }
+        if (Notification.permission === 'granted') {
+            return { code: 'granted', label: '허용됨' };
+        }
+        if (Notification.permission === 'denied') {
+            return { code: 'denied', label: '차단됨' };
+        }
+        return { code: 'prompt', label: '권한 필요' };
+    }
+
+    async requestNotificationPermission() {
+        if (typeof Notification === 'undefined') {
+            return this.getNotificationPermissionState();
+        }
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            try {
+                permission = await Notification.requestPermission();
+            } catch (e) {
+                permission = Notification.permission || 'default';
+            }
+        }
+        if (permission === 'granted') return { code: 'granted', label: '허용됨' };
+        if (permission === 'denied') return { code: 'denied', label: '차단됨' };
+        return { code: 'prompt', label: '권한 필요' };
+    }
+
+    sendSystemNotification(title, body) {
+        const permission = this.getNotificationPermissionState();
+        if (permission.code !== 'granted') return false;
+        try {
+            new Notification(title, { body });
+            return true;
+        } catch (e) {
+            console.warn('시스템 알림 전송 실패', e);
+            return false;
+        }
+    }
+
+    sendTestSystemNotification() {
+        return this.sendSystemNotification('로또 프로 테스트 알림', '시스템 알림 권한과 연결 상태가 정상입니다.');
+    }
+
+    getStorageSummary() {
+        if (typeof localStorage === 'undefined') {
+            return {
+                bytes: 0,
+                status: 'normal',
+                counts: {
+                    favorites: this.state.favorites?.length || 0,
+                    history: this.state.history?.length || 0,
+                    tickets: this.state.ticketBook?.length || 0,
+                    campaigns: this.state.campaigns?.length || 0,
+                    presets: this.state.strategyPresets?.length || 0,
+                    localUpdates: Array.isArray(this.localUpdatesCache) ? this.localUpdatesCache.length : 0
+                },
+                warnings: []
+            };
+        }
+        const entries = [
+            [CONFIG.KEYS.FAV, this.state.favorites?.length || 0],
+            [CONFIG.KEYS.HIST, this.state.history?.length || 0],
+            [CONFIG.KEYS.SETTINGS, 1],
+            [CONFIG.KEYS.TICKET_BOOK, this.state.ticketBook?.length || 0],
+            [CONFIG.KEYS.CAMPAIGNS, this.state.campaigns?.length || 0],
+            [CONFIG.KEYS.ALERT_PREFS, 1],
+            [CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets?.length || 0],
+            [CONFIG.KEYS.SYNC_META, 1],
+            ['lotto_pro_updates_v2', this.getLocalUpdates().length]
+        ];
+        const bytes = entries.reduce((sum, [key]) => {
+            try {
+                const raw = localStorage.getItem(key) || '';
+                return sum + key.length + raw.length;
+            } catch (e) {
+                return sum;
+            }
+        }, 0);
+
+        const counts = {
+            favorites: this.state.favorites?.length || 0,
+            history: this.state.history?.length || 0,
+            tickets: this.state.ticketBook?.length || 0,
+            campaigns: this.state.campaigns?.length || 0,
+            presets: this.state.strategyPresets?.length || 0,
+            localUpdates: this.getLocalUpdates().length
+        };
+
+        const warnings = [];
+        if (counts.history > 300) warnings.push(`히스토리 ${counts.history}개`);
+        if (counts.tickets > 200) warnings.push(`티켓 ${counts.tickets}개`);
+        if (counts.campaigns > 60) warnings.push(`캠페인 ${counts.campaigns}개`);
+        if (counts.localUpdates > 60) warnings.push(`로컬 업데이트 ${counts.localUpdates}개`);
+
+        let status = 'normal';
+        if (bytes >= this.STORAGE_DANGER_BYTES || counts.tickets > 400 || counts.history > 450 || counts.campaigns > 120) {
+            status = 'danger';
+        } else if (bytes >= this.STORAGE_WARNING_BYTES || warnings.length) {
+            status = 'warning';
+        }
+
+        return {
+            bytes,
+            status,
+            counts,
+            warnings
+        };
+    }
+
     getLocalUpdates() {
+        if (typeof localStorage === 'undefined') {
+            if (!Array.isArray(this.localUpdatesCache)) this.localUpdatesCache = [];
+            return this.localUpdatesCache;
+        }
         if (Array.isArray(this.localUpdatesCache)) return this.localUpdatesCache;
         const parsed = this.safeJsonParse(localStorage.getItem('lotto_pro_updates_v2') || '[]', []);
         this.localUpdatesCache = Array.isArray(parsed) ? parsed : [];
@@ -358,6 +599,7 @@ export class DataManager {
 
     setLocalUpdates(items = []) {
         this.localUpdatesCache = Array.isArray(items) ? items : [];
+        if (typeof localStorage === 'undefined') return;
         localStorage.setItem('lotto_pro_updates_v2', JSON.stringify(this.localUpdatesCache));
     }
 
@@ -390,6 +632,7 @@ export class DataManager {
     }
 
     readLegacyProxyUrl() {
+        if (typeof localStorage === 'undefined') return '';
         const direct = (localStorage.getItem(CONFIG.KEYS.LEGACY_PROXY) || '').trim();
         if (direct) return direct;
 
@@ -427,7 +670,7 @@ export class DataManager {
         const v2Proxy = (this.state.customProxy || '').trim();
         if (v2Proxy) return { source: 'saved settings (v2)', url: v2Proxy };
 
-        return { source: 'public default', url: '' };
+        return { source: '미설정', url: '' };
     }
 
     safeJsonParse(raw, fallback) {
@@ -549,6 +792,7 @@ export class DataManager {
 
     load() {
         try {
+            if (typeof localStorage === 'undefined') return;
             let needsPersist = false;
             const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', []);
             const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', []);
@@ -575,6 +819,7 @@ export class DataManager {
             const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', []);
             const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {});
             const rawStrategyPresets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]', []);
+            const rawSyncMeta = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}', {});
 
             const normalizedTickets = Array.isArray(rawTickets)
                 ? rawTickets.map((x) => this.normalizeTicketEntry(x)).filter(Boolean)
@@ -584,16 +829,19 @@ export class DataManager {
                 : [];
             const normalizedAlertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
             const normalizedStrategyPresets = this.mergeStrategyPresets(rawStrategyPresets);
+            const normalizedSyncMeta = this.mergeSyncMeta(rawSyncMeta);
 
             if (Array.isArray(rawTickets) && normalizedTickets.length !== rawTickets.length) needsPersist = true;
             if (Array.isArray(rawCampaigns) && normalizedCampaigns.length !== rawCampaigns.length) needsPersist = true;
             if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
             if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length) needsPersist = true;
+            if (JSON.stringify(normalizedSyncMeta) !== JSON.stringify(rawSyncMeta || {})) needsPersist = true;
 
             this.state.ticketBook = normalizedTickets;
             this.state.campaigns = normalizedCampaigns;
             this.state.alertPrefs = normalizedAlertPrefs;
             this.state.strategyPresets = normalizedStrategyPresets;
+            this.state.syncMeta = normalizedSyncMeta;
             this.localUpdatesCache = null;
             this.getLocalUpdates();
 
@@ -616,6 +864,7 @@ export class DataManager {
                 localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
                 this.persistSettings();
                 this.persistExtendedData();
+                this.persistSyncMeta();
             }
 
             Object.keys(this._dirtyKeys).forEach((key) => {
@@ -635,6 +884,7 @@ export class DataManager {
 
         const executeSave = () => {
             try {
+                if (typeof localStorage === 'undefined') return;
                 const proxyInput = $('#customProxyUrl');
                 if (proxyInput) {
                     const nextProxy = proxyInput.value.trim();
@@ -672,6 +922,10 @@ export class DataManager {
                     localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
                     this._dirtyKeys.presets = false;
                 }
+                if (this._dirtyKeys.syncMeta) {
+                    this.persistSyncMeta();
+                    this._dirtyKeys.syncMeta = false;
+                }
             } catch (e) {
                 console.error('데이터 저장 실패', e);
             }
@@ -684,7 +938,7 @@ export class DataManager {
 
         // Debounce storage I/O using requestIdleCallback if available, fallback to setTimeout
         this._saveTimer = setTimeout(() => {
-            if (typeof window.requestIdleCallback === 'function') {
+            if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
                 window.requestIdleCallback(() => executeSave(), { timeout: 1000 });
             } else {
                 executeSave();
@@ -717,7 +971,7 @@ export class DataManager {
 
         this.state.ticketBook.unshift(ticket);
         this.markDirty('ticketBook');
-        this.save();
+        this.save(true);
         return ticket;
     }
 
@@ -740,7 +994,7 @@ export class DataManager {
 
         if (inserted > 0) {
             this.markDirty('ticketBook');
-            this.save();
+            this.save(true);
             if (!options.silent) UIManager.toast(`${inserted}개 티켓 추가 완료`, 'success');
         }
         return inserted;
@@ -752,7 +1006,7 @@ export class DataManager {
         const removed = before - this.state.ticketBook.length;
         if (removed > 0) {
             this.markDirty('ticketBook');
-            this.save();
+            this.save(true);
         }
         return removed > 0;
     }
@@ -762,7 +1016,7 @@ export class DataManager {
         if (!target) return false;
         target.memo = typeof memo === 'string' ? memo.slice(0, 200) : '';
         this.markDirty('ticketBook');
-        this.save();
+        this.save(true);
         return true;
     }
 
@@ -780,7 +1034,7 @@ export class DataManager {
         const removed = before - this.state.ticketBook.length;
         if (removed > 0) {
             this.markDirty('ticketBook');
-            this.save();
+            this.save(true);
         }
         return removed;
     }
@@ -790,7 +1044,7 @@ export class DataManager {
         if (!normalized) return null;
         this.state.campaigns.unshift(normalized);
         this.markDirty('campaigns');
-        this.save();
+        this.save(true);
         return normalized;
     }
 
@@ -831,7 +1085,7 @@ export class DataManager {
         if (removedCampaign || removedTickets > 0) {
             this.markDirty('campaigns');
             if (removedTickets > 0) this.markDirty('ticketBook');
-            this.save();
+            this.save(true);
         }
 
         return {
@@ -860,7 +1114,7 @@ export class DataManager {
 
         this.markDirty('campaigns');
         if (removedTickets > 0) this.markDirty('ticketBook');
-        this.save();
+        this.save(true);
         return { removedCampaigns, removedTickets };
     }
 
@@ -897,18 +1151,8 @@ export class DataManager {
             UIManager.toast(message, summary.wins > 0 ? 'success' : 'info', 3500);
         }
 
-        if (requestSystemNotification && prefs.enableSystemNotification && typeof Notification !== 'undefined') {
-            try {
-                let permission = Notification.permission;
-                if (permission === 'default') {
-                    permission = await Notification.requestPermission();
-                }
-                if (permission === 'granted') {
-                    new Notification('로또 프로 티켓 정산', { body: message });
-                }
-            } catch (e) {
-                console.warn('시스템 알림 전송 실패', e);
-            }
+        if (requestSystemNotification && prefs.enableSystemNotification) {
+            this.sendSystemNotification('로또 프로 티켓 정산', message);
         }
     }
 
@@ -941,7 +1185,7 @@ export class DataManager {
 
         if (settled > 0) {
             this.markDirty('ticketBook');
-            this.save();
+            this.save(true);
             if (!silent) {
                 await this.notifyTicketSettlement(
                     { settled, wins, latestDrawNo },
@@ -1070,11 +1314,16 @@ export class DataManager {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
             const staticData = json.data || json || [];
+            const normalizedStatic = (Array.isArray(staticData) ? staticData : [])
+                .map((row) => this.normalizeDrawItem(row))
+                .filter(Boolean)
+                .sort((a, b) => b.draw_no - a.draw_no);
+            this.state.staticLatestDrawNo = normalizedStatic[0]?.draw_no || 0;
 
             const localUpdates = this.getLocalUpdates();
 
             const mergedMap = new Map();
-            staticData.forEach(d => mergedMap.set(Number(d.draw_no), d));
+            normalizedStatic.forEach((d) => mergedMap.set(Number(d.draw_no), d));
             localUpdates.forEach(d => mergedMap.set(Number(d.draw_no), d));
 
             this.state.winningStats = Array.from(mergedMap.values())
@@ -1083,13 +1332,16 @@ export class DataManager {
                 .sort((a, b) => b.draw_no - a.draw_no);
             this.buildAnalyticsCache();
 
+            this.setSyncMeta({
+                mode: this.getSyncMode(),
+                currentSource: localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON'
+            });
+
             await this.settlePendingTickets({ silent: !notifyTicketSettle });
 
-            const latestNo = this.state.winningStats[0]?.draw_no || 0;
-            const estNo = estimateLatestDrawKST();
-
-            if (latestNo > 0 && estNo > 0 && latestNo < estNo) {
-                updateStatus(`업데이트 가능 (+${estNo - latestNo})`, 'var(--warning)');
+            const freshness = this.getDataFreshness();
+            if (freshness.latestDrawNo > 0 && freshness.isStale) {
+                updateStatus(`${freshness.behindBy}회차 지연`, 'var(--warning)');
             } else {
                 updateStatus('최신', 'var(--success)');
             }
@@ -1175,10 +1427,9 @@ export class DataManager {
         return normalized;
     }
 
-    async fetchOneDraw(drawNo, proxyConfig, log = () => {}, signal = null) {
+    async fetchOneDraw(drawNo, proxyConfig, _log = () => {}, signal = null) {
         const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${drawNo}`;
         const internalUrls = [];
-        const externalUrls = [];
         const customProxy = proxyConfig?.url || '';
 
         if (customProxy) {
@@ -1196,22 +1447,11 @@ export class DataManager {
             } else {
                 internalUrls.push(`${customProxy}${encodeURIComponent(targetUrl)}`);
             }
-        } else {
-            internalUrls.push(`proxy/latest?draw_no=${drawNo}`);
         }
 
-        externalUrls.push(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        externalUrls.push(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-
-        const urls = [...internalUrls, ...externalUrls];
+        const urls = [...internalUrls];
         for (const fetchUrl of urls) {
             if (signal?.aborted) throw this.createAbortError('Sync aborted');
-            const isExternalFallback = externalUrls.includes(fetchUrl);
-            if (isExternalFallback) {
-                this.logSync('SYNC_FALLBACK_EXTERNAL', `Using external fallback for draw ${drawNo}`, { fetchUrl });
-                log(`fallback(external): draw ${drawNo}`);
-            }
-
             try {
                 const res = await this.fetchWithTimeout(fetchUrl, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
                 if (!res.ok) continue;
@@ -1385,21 +1625,6 @@ export class DataManager {
         };
 
         try {
-            const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
-            const estNo = estimateLatestDrawKST();
-
-            if (latestKnown >= estNo) {
-                log('Already up to date.', 'SYNC_UP_TO_DATE');
-                if (profile.toast) UIManager.toast('이미 최신 데이터입니다.', 'info');
-                await this.settlePendingTickets({
-                    silent: profile.settleSilent,
-                    requestSystemNotification: profile.requestSystemNotification
-                });
-                return true;
-            }
-
-            log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
-
             const proxyInput = $('#customProxyUrl');
             if (proxyInput) {
                 const typedProxy = proxyInput.value.trim();
@@ -1409,14 +1634,57 @@ export class DataManager {
                     this.save();
                 }
             }
+
             const proxyConfig = this.resolveProxyConfig();
+            const syncMode = this.getSyncMode(proxyConfig);
+            const syncSource = this.getSyncSourceLabel(proxyConfig);
+            this.setSyncMeta({
+                mode: syncMode,
+                currentSource: syncSource
+            });
+
+            const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
+            const estNo = estimateLatestDrawKST();
+
+            if (latestKnown >= estNo) {
+                log('Already up to date.', 'SYNC_UP_TO_DATE');
+                if (profile.trigger !== 'idle') {
+                    this.markSyncSuccess({
+                        drawNo: latestKnown,
+                        source: syncSource,
+                        mode: syncMode
+                    });
+                }
+                if (profile.toast) UIManager.toast('이미 최신 데이터입니다.', 'info');
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                return true;
+            }
+
+            log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
             log(`Proxy source: ${proxyConfig.source}`, 'SYNC_PROXY_SOURCE');
+
+            if (!proxyConfig?.url) {
+                const skipMessage = '프록시 URL이 없어 실시간 최신 회차 동기화를 건너뜁니다.';
+                log(skipMessage, 'SYNC_PROXY_NOT_CONFIGURED');
+                this.markSyncFailure(skipMessage, {
+                    source: syncSource,
+                    mode: syncMode
+                });
+                if (profile.toast) {
+                    UIManager.toast('프록시 URL을 설정하면 최신 회차 동기화를 사용할 수 있습니다.', 'info', 3600);
+                }
+                await this.settlePendingTickets({
+                    silent: profile.settleSilent,
+                    requestSystemNotification: profile.requestSystemNotification
+                });
+                return false;
+            }
 
             const newItems = [];
             const fetched = new Set();
-            if (!proxyConfig?.url) {
-                log('No custom proxy configured. Using fallback chain.', 'SYNC_PROXY_NOT_CONFIGURED');
-            }
 
             const chunkResult = await this.fetchRangeChunkedFromProxy(
                 latestKnown + 1,
@@ -1472,6 +1740,11 @@ export class DataManager {
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
                 });
+                this.markSyncSuccess({
+                    drawNo: this.state.winningStats[0]?.draw_no || latestKnown,
+                    source: syncSource,
+                    mode: syncMode
+                });
                 this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
                 if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
@@ -1481,6 +1754,11 @@ export class DataManager {
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
                 });
+                this.markSyncSuccess({
+                    drawNo: latestKnown,
+                    source: syncSource,
+                    mode: syncMode
+                });
             }
             return true;
         } catch (e) {
@@ -1489,6 +1767,10 @@ export class DataManager {
                 throw e;
             }
             log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
+            this.markSyncFailure(e.message, {
+                source: this.getSyncSourceLabel(),
+                mode: this.getSyncMode()
+            });
             if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
             return false;
         } finally {
@@ -1508,7 +1790,7 @@ export class DataManager {
         }
         this.state.favorites.unshift({ numbers: nums, date: new Date().toISOString() });
         this.markDirty('fav');
-        this.save();
+        this.save(true);
         UIManager.toast('즐겨찾기 추가 완료', 'success');
         return true;
     }
@@ -1516,13 +1798,13 @@ export class DataManager {
     clearFavorites() {
         this.state.favorites = [];
         this.markDirty('fav');
-        this.save();
+        this.save(true);
     }
 
     clearHistory() {
         this.state.history = [];
         this.markDirty('hist');
-        this.save();
+        this.save(true);
     }
 }
 

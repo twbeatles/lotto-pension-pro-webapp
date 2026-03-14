@@ -16,11 +16,13 @@
 ## 2) 데이터 운영
 
 - 기본 데이터 소스: `data/winning_stats.json`
-- 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 동기화
+- 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 동기화(프록시 설정 시)
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
+- 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
   - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
+  - 프록시 미설정 시 실시간 최신 회차 네트워크 호출은 시도하지 않음
   - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
@@ -33,14 +35,20 @@
 정적 JSON 외 외부 API 동기화를 강화하려면 프록시를 사용할 수 있습니다.
 
 예시:
-`https://twbeatles.github.io/lotto---webapp/?proxyUrl=https://<worker>.workers.dev/proxy/latest?draw_no=1200`
+`https://twbeatles.github.io/lotto---webapp/?proxyUrl=https%3A%2F%2F<worker>.workers.dev%2Fproxy%2Flatest`
 
 우선순위:
 
 1. `?proxyUrl=...` 또는 `?proxy=...`
 2. `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
-4. 공용 기본값(내부 우선, 외부 CORS는 최후순위)
+4. 그 외는 정적 JSON 전용 모드
+
+메모:
+
+- `?proxyUrl=`에 넣는 값은 `https://<worker>.workers.dev/proxy/latest`처럼 최신 단건 엔드포인트를 권장합니다.
+- 브라우저 주소창에 직접 넣을 때는 프록시 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
+- 앱 설정 입력란에는 `https://<worker>.workers.dev/proxy/latest`, `https://<worker>.workers.dev/?url=`, `{draw_no}` 또는 `{url}` 플레이스홀더 형식도 사용할 수 있습니다.
 
 ## 4) 서비스워커/캐시 운영
 
@@ -48,6 +56,7 @@
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 - 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산과 `assets/modules/utils/strategyPresets.js`도 precache 대상입니다.
+- 첫 설치에서는 자동 reload 하지 않으며, 업데이트 reload은 사용자가 토스트에서 수락한 경우에만 수행됩니다.
 
 배포 후 반영 확인:
 
@@ -119,3 +128,8 @@ npm run format:check
 - Import `alerts` 옵션 기본값과 적용 여부가 맞는지(`import-alert-options`)
 - 전략 프리셋 CRUD가 scope별로 동작하는지(`strategy-preset-crud`)
 - 런타임 HTML/loader에서 CDN 경로가 남지 않는지(`runtime-asset-localization`)
+- 프록시 미설정 상태에서 실시간 동기화 네트워크 호출이 발생하지 않는지(`proxy-opt-in sync`)
+- `pagehide`/`visibilitychange(hidden)`에서 즉시 저장 flush가 동작하는지(`persistence-flush`)
+- 시스템 알림 토글이 권한 요청/원복/테스트 알림 흐름대로 동작하는지(`notification-permission`)
+- 데이터 탭 검색/페이지네이션이 100개 초과 데이터에서도 동작하는지(`data-list pagination`)
+- 서비스워커가 첫 설치에서 자동 reload 하지 않는지(`service-worker reload policy`)

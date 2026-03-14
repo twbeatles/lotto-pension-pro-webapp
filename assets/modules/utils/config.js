@@ -7,6 +7,7 @@ export const CONFIG = {
         CAMPAIGNS: 'lotto_pro_campaigns_v1',
         ALERT_PREFS: 'lotto_pro_alerts_v1',
         STRATEGY_PRESETS: 'lotto_pro_strategy_presets_v1',
+        SYNC_META: 'lotto_pro_sync_meta_v1',
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
         LEGACY_SETTINGS: 'lotto_webapp_settings_v1'
     },

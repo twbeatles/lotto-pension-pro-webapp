@@ -410,6 +410,7 @@ export class BacktestModule {
         if (!this.data.state.winningStats.length) {
             return UIManager.toast('당첨 데이터가 없습니다.', 'error', 3500);
         }
+        this.data.warnIfDataStale?.('백테스트');
         startMark('backtest.run');
 
         const start = Number($('#btStart')?.value);

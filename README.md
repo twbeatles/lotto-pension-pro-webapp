@@ -27,6 +27,25 @@
   - `sync-latest-win refresh`, `import-alert-options`, `strategy-preset-crud`
   - `runtime-asset-localization`
 
+## 최근 기능 개선 반영 (2026-03-14)
+
+- 최신 회차 동기화는 `프록시 옵트인` 정책으로 변경했습니다.
+  - 프록시 미설정 시 앱은 `data/winning_stats.json` 기반으로만 동작합니다.
+  - 기본 `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` fallback은 사용하지 않습니다.
+- 데이터 탭에 동기화 메타를 추가했습니다.
+  - 현재 모드/소스, 마지막 성공 시각, 마지막 반영 회차, 마지막 실패 원인, 최신성 경고
+- 데이터 탭 리스트에 검색 + 페이지네이션을 추가했습니다.
+  - 대상: 즐겨찾기, 히스토리, 티켓, 캠페인
+  - 기본 페이지 크기: `20`
+- 저장 상태 요약과 권장 정리 경고를 추가했습니다.
+  - 자동 삭제는 하지 않고, 백업/수동 정리를 유도합니다.
+- 시스템 알림 UX를 정리했습니다.
+  - 토글 on 시 즉시 권한 요청
+  - 권한 배지/테스트 알림 버튼 추가
+  - 정산 시점에는 권한 재요청 없이 허용 상태에서만 발송
+- `pagehide`, `visibilitychange(hidden)`에서 즉시 저장 flush를 수행합니다.
+- 서비스워커 업데이트는 사용자가 `업데이트`를 눌러 `skipWaiting`을 수락한 경우에만 reload합니다.
+
 ## 최근 통합 개선 반영 (2026-03-05)
 
 - 리포트 `1~9 + A~E` 권고사항을 한 번에 반영했습니다.
@@ -106,15 +125,19 @@
 - 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
 - 모바일 최적화 화면: 세이프 영역 대응, 하단 탐색, 반응형 레이아웃
 - 알림 관리: 인앱 알림과 시스템 알림 설정
+  - 시스템 알림 권한 배지 및 테스트 알림 지원
 - 오프라인 앱 지원:
   - 네트워크가 없을 때도 기본 기능 사용 가능
-  - 백그라운드 최신 데이터 동기화
+  - 앱 실행 중 백그라운드 최신 데이터 동기화(프록시 설정 시)
   - 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
 - 프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
-  - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy` -> 공용 기본값
+  - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy`
+  - 프록시 미설정 시 실시간 최신 회차 동기화는 시도하지 않고 정적 JSON만 사용
+  - 권장 입력 예시: `https://<worker>.workers.dev/proxy/latest`
+  - 앱 URL에 `?proxyUrl=`로 직접 넣을 때는 프록시 주소 전체를 URL 인코딩하는 편이 안전합니다.
 
 ## 구성 개요
 
@@ -189,6 +212,18 @@ npm run format:check
 ```bash
 node scripts/smoke/smoke.mjs
 ```
+
+현재 `smoke`에는 아래 회귀 항목이 포함됩니다.
+
+- `strict-filter`, `wheel-fixed`, `draw-normalization`
+- `campaign-limit`, `campaign-cascade`, `campaign-empty-save`
+- `qr-validation`, `qr-reentry-guard`
+- `ticket-dedupe`, `requestNumbers replace`
+- `sync-guard`, `sync-latest-win refresh`, `proxy-opt-in sync`
+- `persistence-flush`, `notification-permission`, `data-list pagination`
+- `import-alert-options`, `post-import-refresh`
+- `strategy-preset-crud`, `runtime-asset-localization`
+- `service-worker reload policy`
 
 성능 회귀를 함께 확인하려면:
 

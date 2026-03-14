@@ -94,7 +94,7 @@ export class StrategyPresetController {
         if (!preset) return;
         this.applyRequest?.(preset.request);
         this.data.setStrategyPrefs(this.scope, preset.request);
-        this.data.save();
+        this.data.save(true);
         this.render(preset.id);
         UIManager.toast(`'${preset.name}' 프리셋을 불러왔습니다.`, 'success');
     }

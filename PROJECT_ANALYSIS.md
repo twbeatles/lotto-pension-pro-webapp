@@ -1,239 +1,199 @@
-﻿# 로또 웹앱 구조 재분석 (2026-03-13)
+# 로또 웹앱 구조 재분석 (2026-03-14)
 
 ## 1) 범위
 
 - 대상: `lotto---webapp`
-- 목적: 최신 코드 기준 구조, 모듈 역할, 데이터 흐름 재정리
-- 포함: 전략 공통 엔진(`StrategyCatalog/StrategyEngine/StrategyFilters`), 워커, 동기화 경로, 정적 검증 도구
+- 목적: 최신 코드 기준 구조, 모듈 역할, 데이터 흐름, 운영 규칙 재정리
+- 포함: 전략 엔진, 워커, 동기화 경로, 서비스워커, 데이터 관리 UX, 정적 검증 도구
 
 ## 2) 현재 구조 요약
 
-- 형태: 빌드 없는 단일 페이지 앱(바닐라 자바스크립트 + ES 모듈)
+- 형태: 빌드 없는 단일 페이지 앱(HTML + CSS + Vanilla JS ES Modules)
 - 진입 흐름: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
 - 개발 도구: `package.json` 기반 ESLint/Prettier, 배포 번들링 단계는 없음
 - 핵심 계층:
-  - 앱 조율: `LottoApp.js`
-  - 상태/동기화: `DataManager.js`
-  - UI 유틸: `UIManager.js`
+  - 앱 조율: `assets/modules/core/LottoApp.js`
+  - 상태/저장/동기화: `assets/modules/core/DataManager.js`
+  - UI 보조: `assets/modules/core/UIManager.js`
   - 전략 코어: `StrategyCatalog.js`, `StrategyEngine.js`, `StrategyFilters.js`, `MonteCarlo.js`
   - 기능 모듈: `assets/modules/features/*.js`
-  - 시뮬레이션 워커: `assets/backtest.worker.js`, `assets/strategy.worker.js`
-  - 오프라인 지원: `sw.js`
+  - 워커: `assets/strategy.worker.js`, `assets/backtest.worker.js`
+  - 오프라인/PWA: `sw.js`
 
 ## 3) 디렉터리 핵심
 
-- `index.html`: 단일 페이지 화면 구성 및 라우팅 대상 섹션
-- `assets/app.css`: 전역 스타일 + 전략 패널 스타일
+- `index.html`: 단일 페이지 구조, 데이터 탭 UI, 서비스워커 등록/업데이트 토스트
+- `assets/app.css`: 전역 스타일, 데이터 탭 검색/페이지네이션/상태 카드 스타일
 - `assets/modules/core`
-  - `LottoApp.js`: 라우팅, 지연 모듈 로딩, 전역 이벤트
-  - `DataManager.js`: 로컬 상태, 동기화, 분석 캐시, 백업/복원 연동
-  - `UIManager.js`: 토스트, 번호 렌더링, QR/이미지 보조
-  - `StrategyCatalog.js`: 전략 메타 정보, 등급, 기본 파라미터
-  - `StrategyFilters.js`: 공통 필터 체인(합계/복잡도/홀짝/고저/연속쌍/끝수)
-  - `StrategyEngine.js`: 전략 요청 정규화, 가중치 계산, 세트 생성, 시뮬레이션
-  - `MonteCarlo.js`: 샘플링/통계 보조
+  - `LottoApp.js`: 초기화, 라우팅, 전역 이벤트, 데이터 탭 렌더링
+  - `DataManager.js`: 상태, localStorage, 동기화, 티켓 정산, 최신성 계산
+  - `StrategyCatalog.js`, `StrategyEngine.js`, `StrategyFilters.js`: 전략 메타/계산/필터
+  - `StrategyWorkerClient.js`: 생성/추천 워커 래퍼
 - `assets/modules/features`
   - `Generator.js`, `Ai.js`, `Backtest.js`, `Stats.js`, `Check.js`, `DataIO.js`, `QrScanner.js`
 - `assets/modules/utils/strategyPresets.js`: 전략 프리셋 공통 컨트롤러
-- `assets/vendor/`: same-origin 런타임 vendor 자산(font/icon/QR/캡처)
-- `data/winning_stats.json`: 당첨 이력 정적 데이터
-- `proxy/worker.js`: 프록시 API 래퍼
-- `eslint.config.mjs`: JS/HTML 정적 검증 규칙
-- `.vscode/settings.json`: 저장 시 ESLint auto-fix용 에디터 설정
+- `assets/vendor/`: same-origin 런타임 vendor 자산
+- `data/winning_stats.json`: 정적 당첨 이력
+- `proxy/worker.js`: 선택형 최신 회차 프록시 예시
 
 ## 4) 실행 흐름
 
 1. 앱 초기화
 
-- `LottoApp.init()`에서 `DataManager.load()` 실행
-- 테마 적용 후 기본 모듈 생성 및 초기 라우트 렌더
-- `fetchWinningStats()`로 정적 데이터 + 로컬 업데이트 병합
-- 유휴 시점 `fetchLatestFromAPI({ silent: true })` 백그라운드 동기화
-- 동기화 중복 실행은 `syncInFlightPromise`로 방지, 수동 실행은 `cancelActiveSync()`로 취소 가능
+- `LottoApp.init()`에서 `data.load()` 수행
+- 테마 적용 후 Generator eager 생성
+- 초기 라우트 렌더 후 `fetchWinningStats()`로 정적 JSON + 로컬 업데이트 병합
+- 유휴 시점에는 프록시가 설정된 경우에만 `fetchLatestFromAPI({ silent: true, trigger: 'idle' })` 실행
+- `pagehide`, `visibilitychange(hidden)`에서 `save(true)`로 즉시 flush
 
 2. 라우팅/모듈 로딩
 
-- `route(target)`에서 화면 섹션 활성화 및 지연 모듈 로딩
+- `route(target)`에서 섹션 활성화 + 필요한 기능 모듈 지연 로딩
 - `pendingModulePromises`로 중복 import 방지
-- `routeToken`으로 오래된 비동기 완료 무시
+- `routeToken`으로 stale async 결과 무시
 
-3. 전략 공통 처리
+3. 데이터 탭 렌더링
 
-- 화면에서 전략 요청 객체 생성: `strategyId`, `params`, `filters`
-- `Generator/Ai/Backtest` 모두 같은 형식으로 `StrategyEngine` 호출
-- `StrategyEngine.normalizeRequest()`에서
-  - 이전 전략 별칭 매핑
-  - 파라미터 범위 보정(예: 시뮬레이션 1000~20000)
-  - 필터 정규화 수행
+- 즐겨찾기/히스토리/티켓/캠페인을 각각 검색 + 페이지네이션으로 렌더
+- 페이지 크기: `20`
+- 저장 상태 요약, 동기화 메타, 시스템 알림 권한 상태를 함께 노출
 
 ## 5) 전략 엔진 확장 지점
 
 - 전략 메타/등급 정책: `StrategyCatalog.js`
-  - 기본 전략 + 실험 전략 분리
-  - 이전 전략 값(`ensemble/statistical/balance/cold/hot/random`) 하위호환
-- 필터 체인: `StrategyFilters.js`
-  - `passesFilters()` 단일 진입으로 화면/워커 공통 검증
+- 공통 필터 체인: `StrategyFilters.js`
 - 계산 엔진: `StrategyEngine.js`
-  - `computeWeights()`
+  - `normalizeRequest()`
   - `generateSet()`, `generateMultipleSets()`
   - `simulateWeights()`, `recommendFromSimulation()`
+- 현재 정책:
+  - 엄격 필터 모드
+  - 필터 미충족 시 무필터 랜덤 세트로 보완하지 않음
 
 ## 6) 상태 모델 및 저장
 
-- `DataManager.state` 주요 필드:
-  - `winningStats`, `analytics`, `favorites`, `history`, `generated`, `aiResults`
-  - `strategyPresets`, `strategyPrefs`
-  - `ticketBook`, `campaigns`, `alertPrefs`, `customProxy`
-- 설정 저장 키: `lotto_pro_settings_v2`
-- 프리셋 저장 키: `lotto_pro_strategy_presets_v1`
-- 로컬 업데이트 저장 키: `lotto_pro_updates_v2`
-- 운영 정책:
-  - 캠페인 삭제/전체삭제는 연결 티켓 cascade 삭제
-  - Import는 `theme/proxy/strategyPrefs/alerts`별 선택 적용
-  - 기존 orphan ticket은 자동 정리하지 않음
+`DataManager.state` 주요 필드:
 
-## 7) 워커 메시지 계약
+- `theme`, `favorites`, `history`
+- `winningStats`, `staticLatestDrawNo`, `analytics`
+- `generated`, `aiResults`
+- `strategyPrefs`, `strategyPresets`
+- `ticketBook`, `campaigns`, `alertPrefs`
+- `customProxy`, `syncMeta`
+
+주요 localStorage 키:
+
+- `lotto_pro_fav_v2`
+- `lotto_pro_hist_v2`
+- `lotto_pro_settings_v2`
+- `lotto_pro_ticketbook_v1`
+- `lotto_pro_campaigns_v1`
+- `lotto_pro_alerts_v1`
+- `lotto_pro_strategy_presets_v1`
+- `lotto_pro_sync_meta_v1`
+- `lotto_pro_updates_v2`
+- 레거시 프록시: `lotto_webapp_settings_v1.proxyLatestUrl`
+
+운영 규칙:
+
+- 즐겨찾기/티켓/캠페인/알림/전략 프리셋 CRUD는 즉시 저장
+- 프록시 URL 입력처럼 잦은 입력은 debounce 저장 유지
+- 백업 스키마는 그대로 유지하고 `syncMeta`는 백업 대상에 포함하지 않음
+
+## 7) 동기화/프록시 정책
+
+`fetchWinningStats()`:
+
+- `data/winning_stats.json` 로드
+- `lotto_pro_updates_v2` 병합
+- `draw_no` 기준 dedupe
+- `staticLatestDrawNo`와 최신성 계산 기반 상태 갱신
+- 티켓 자동 정산
+
+`fetchLatestFromAPI()`:
+
+- 추정 최신 회차: `estimateLatestDrawKST()`
+- in-flight 단일 실행 가드
+- 수동 동기화(`manual`)만 취소 가능
+- 프록시 미설정 시 네트워크 호출 없이 종료하고 안내 메시지만 표시
+- 프록시 설정 시 `/proxy/range` 우선, 누락분은 사용자 프록시로 단건 조회
+- 성공/실패/모드/소스는 `lotto_pro_sync_meta_v1`에 기록
+
+프록시 해석 우선순위:
+
+1. URL 파라미터 `proxyUrl` / `proxy`
+2. v1 레거시 저장 키
+3. v2 설정(`customProxy`)
+4. 그 외는 정적 JSON 전용 모드
+
+## 8) 워커 메시지 계약
 
 - `strategy.worker.js`
   - 요청: `WARMUP`, `GENERATE`, `RECOMMEND`
   - 응답: `READY`, `DONE`, `ERROR`
 - `backtest.worker.js`
   - 요청: `START`
-  - 진행: `PROGRESS`
-  - 중간 결과: `WINS` (`matchedCount`, `bonusHit`, `hitText` 포함)
-  - 완료: `DONE`
-  - 오류: `ERROR`
+  - 응답: `PROGRESS`, `WINS`, `DONE`, `ERROR`
+  - `WINS` payload: `matchedCount`, `bonusHit`, `hitText` 포함
 
-## 8) 화면 구조 요약
+## 9) 서비스워커/오프라인
 
-- `index.html`
-  - 생성/예측/시뮬레이션 탭 모두 전략 선택 + 상세 필터 패널 제공
-  - 생성/예측/시뮬레이션 탭 모두 전략 프리셋 바 제공
-  - 실험 전략 표시 토글(`*ShowExperimental`) 제공
-  - 모바일 하단 탐색은 `gen/stats/ai/bt/check/data` 6탭 구조
-- `assets/app.css`
-  - `strategy-panel`, `strategy-advanced-grid`, `range-inputs` 등 전략 전용 스타일
-  - 모바일 1열 레이아웃 보강
+- 캐시 버전: `v10`
+- 앱 셸: precache + stale-while-revalidate
+- 데이터 JSON: network-first + timeout
+- 런타임 vendor 자산은 `assets/vendor/` same-origin 경로 사용
+- 첫 설치에서는 `controllerchange`로 자동 reload 하지 않음
+- 사용자가 업데이트 토스트에서 `skipWaiting`을 수락한 경우에만 reload
 
-## 9) 성능/호환 포인트
+## 10) 데이터 관리 UX 요약
 
-- 시뮬레이션 기본값 5000, 상한 20000
-- 백테스트 범위 상한 300회차(`MAX_BACKTEST_SPAN`)
-- 캠페인 상한: 52주, 주당 20세트, 총 500티켓
-- 워커 진행 메시지와 ETA 기반 진행률 표시
-- 메인/워커가 동일 전략 요청 객체를 사용해 규칙 불일치 위험 감소
-- 서비스워커 캐시 버전: `sw.js`의 `CACHE_VERSION` (현재 `v10`)
+- 리스트: 즐겨찾기, 히스토리, 티켓, 캠페인
+- 기능:
+  - 검색
+  - 페이지네이션
+  - 티켓 상태 필터
+  - 저장 상태 요약
+  - 동기화 메타 카드
+  - 시스템 알림 권한 배지/테스트 버튼
+- 장기 사용 정책:
+  - 자동 삭제 없음
+  - 경고 + 백업/수동 정리 유도
 
-## 9-1) 개발 도구/정적 검증
+## 11) 검증 도구
 
-- `npm install` 후 아래 검증 루틴 사용:
-  - `npm run lint`
-  - `npm run lint:fix`
-  - `npm run format:check`
-- ESLint 범위:
-  - 앱 모듈: `assets/modules/**/*.js`
-  - 워커/서비스워커: `assets/*.worker.js`, `sw.js`, `proxy/**/*.js`
-  - 스크립트: `scripts/**/*.mjs`
-  - HTML: `index.html`
-- HTML 검증은 두 층으로 분리:
-  - `@html-eslint`: HTML 구조/중복/접근성 계열 규칙
-  - `eslint-plugin-html`: inline `<script>` JavaScript lint
-- 포맷 규칙은 과도한 HTML 재정렬을 피하도록 최소화해 기존 마크업 스타일과 충돌하지 않게 구성
+기본 루틴:
 
-## 10) 데이터 관측(정적 파일 기준)
+```bash
+npm install
+npm run lint
+node scripts/smoke/smoke.mjs
+```
+
+추가 성능 점검:
+
+```bash
+node scripts/perf/bench.mjs
+```
+
+현재 `smoke`에는 아래 유형의 회귀가 포함됩니다.
+
+- 전략/필터/정규화
+- 캠페인/티켓 cascade 및 dedupe
+- 동기화 가드/프록시 옵트인/최신 카드 갱신
+- 저장 flush
+- 알림 권한 토글
+- 데이터 탭 페이지네이션
+- 서비스워커 reload 정책
+
+## 12) 데이터 관측(정적 파일 기준)
 
 - `data/winning_stats.json`
-  - 범위: 1 ~ 1209
-  - 총 1208개
-  - 누락 회차: 146
+  - 최신 회차: `1209`
+  - 총 데이터 수: `1208`
+  - 누락 회차: `146`
 
-## 11) 위험 요소 및 권장 후속
+## 13) 후속 관심사
 
-- 필터를 과도하게 좁히면 생성 수량이 요청보다 적게 반환될 수 있음(엄격 필터 모드)
-- 전략 품질은 확률 기반이며 당첨 보장과 무관
-- 권장 후속:
-  - 전략별 시뮬레이션 보고서 자동 생성
-  - `strategyPrefs` 마이그레이션 버전 태그 도입
-  - 전략별 결과 분포(합계/복잡도/홀짝) 시각화 카드 추가
-
-## 12) 2026-03-01 안정화 메모
-
-- 증상: 페이지 렌더링은 되지만 기능이 동작하지 않음
-- 원인: 일부 모듈 문자열 리터럴 인코딩 손상으로 ESM 파싱 오류 발생
-- 조치:
-  - `assets/modules/core/DataManager.js`
-  - `assets/modules/features/Ai.js`
-  - `assets/modules/features/Backtest.js`
-  - `assets/modules/features/Generator.js`
-    문자열 리터럴 복구
-- 추가 조치: 캐시 잔존 대응을 위해 `sw.js` `CACHE_VERSION`을 `v8`로 상향
-
-## 13) 2026-03-01 인코딩 정리 2차
-
-- 증상: 화면은 동작하지만 일부 한국어 문구가 `理쒖떊` 형태로 깨져 보임.
-- 범위: 메인 상태 영역, 생성/AI/백테스트 탭의 토스트/라벨/로그/접근성 문구.
-- 조치:
-  - `assets/modules/core/DataManager.js`
-  - `assets/modules/features/Generator.js`
-  - `assets/modules/features/Backtest.js`
-  - `assets/modules/features/Ai.js`
-    내 사용자 노출 문자열을 일괄 정규화.
-- 검증: 로컬 스모크 + 실제 브라우저 탭 이동/생성/상태 텍스트 확인.
-
-## 14) 2026-03-01 기능 품질 강화 3차
-
-- 엄격 필터 모드:
-  - `StrategyEngine`에서 필터 미충족 시 무필터 랜덤 세트로 보완하지 않음.
-  - `Generator/Ai`는 요청 수량 대비 실제 생성 수량을 안내.
-- 백테스트 투명성:
-  - 워커 결과 요약에 `requestedTickets`, `generatedTickets`, `fillRate` 추가.
-  - 무필터 랜덤 fallback 제거.
-- 데이터 정합성:
-  - 회차 정규화 시 `중복 번호`, `보너스 중복` 차단.
-  - Import 이후 즉시 화면/통계 반영(`fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists`).
-- 오프라인 캐시:
-  - `APP_SHELL_ASSETS`에 `assets/modules/utils/backup.js` 반영.
-
-## 15) 2026-03-05 통합 개선(리포트 1~9 + A~E)
-
-- 제한 상수 중앙화:
-  - `MAX_BACKTEST_SPAN=300`
-  - `MAX_CAMPAIGN_WEEKS=52`
-  - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
-  - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
-  - `MAX_SYNC_FALLBACK_DRAWS=120`
-- 백테스트:
-  - 메인/워커 양쪽 범위 검증
-  - CSV 계약 정합화(`strategy_id`, `strategy_label`)
-  - `WINS` payload에 적중 근거 필드 추가
-- 동기화:
-  - in-flight 단일 실행 가드
-  - 수동 동기화 취소 버튼(`cancelSyncBtn`) 연동
-  - fallback 단건 조회 상한 적용
-- Import:
-  - `merge/overwrite` + 설정 적용 체크 패널 도입
-  - 기본 정책: Merge 미적용, Overwrite 적용
-- QR:
-  - 공식 host 화이트리스트 검증
-  - 중복 번호 게임 거부
-- 품질 보강:
-  - 티켓 dedupe key stable stringify 적용
-  - 스모크 회귀 추가: `campaign-limit`, `qr-validation`, `ticket-dedupe`, `sync-guard`
-
-## 16) 2026-03-11 개발 도구 정리
-
-- `package.json`/`package-lock.json` 추가
-- `eslint.config.mjs` 추가
-- `.vscode/settings.json` 추가
-- lint 대상에 `index.html` 포함
-- 현재 기준 `npm run lint` 통과
-
-## 17) 2026-03-13 기능/오프라인 자산 통합
-
-- 전략 프리셋 CRUD를 `Generator/Ai/Backtest`에 공통 컨트롤러로 연결
-- AI 추천의 `생성 탭으로`는 generator 결과 replace semantics로 정리
-- 최신 당첨결과 카드는 오프라인/데이터 없음 placeholder를 렌더
-- sync 성공 후 현재 라우트와 무관하게 최신 카드 갱신
-- 런타임 외부 의존 자산을 `assets/vendor/`로 로컬화
-- `THIRD_PARTY_NOTICES.md` 추가
-- `sw.js` 캐시 버전 `v10` 및 vendor precache 반영
+- 실제 브라우저/배포 환경에서 서비스워커 업데이트 UX 수동 확인
+- 장기 사용 시 localStorage 사용량 경고 기준 보정
+- `package.json`에 `"type": "module"` 도입 여부 검토

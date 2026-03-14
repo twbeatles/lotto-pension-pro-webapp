@@ -5,7 +5,7 @@
 이 문서는 `lotto---webapp` 저장소에서 Gemini 계열 AI가 다음 세션에도 일관되게 작업하도록 돕는 실무 가이드입니다.
 핵심은 "컨텍스트 복원, 영향 범위 통제, 검증 중심 작업"입니다.
 
-- 기준일: 2026-03-13
+- 기준일: 2026-03-14
 - 정적 데이터 최신 회차: `1209` (`data/winning_stats.json` 기준)
 - 정적 데이터 개수: `1208`, 누락 회차 번호: `146`
 
@@ -38,6 +38,18 @@
 - Import 옵션에 `alertPrefs` 적용 체크 추가
 - 런타임 외부 자산은 `assets/vendor/` same-origin 경로로 로컬화
 - 제3자 자산 고지 문서: `THIRD_PARTY_NOTICES.md`
+
+## 1-2) 2026-03-14 반영 메모
+
+- 최신 회차 동기화는 `프록시 옵트인` 정책으로 전환
+  - 프록시 미설정 시 정적 JSON만 사용
+  - `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` 기본 fallback 제거
+- 동기화 메타 저장소 `lotto_pro_sync_meta_v1` 추가
+  - `mode`, `currentSource`, `lastSuccessAt`, `lastSuccessDrawNo`, `lastFailureAt`, `lastFailureMessage`
+- 데이터 탭에 검색/페이지네이션/저장 상태 요약/동기화 메타/알림 권한 배지 추가
+- 시스템 알림은 토글 on 시 즉시 권한 요청, 테스트 알림 버튼 제공
+- `pagehide`, `visibilitychange(hidden)`에서 `save(true)` flush 수행
+- 서비스워커는 사용자가 업데이트를 수락한 경우에만 reload
 
 ---
 
@@ -100,6 +112,7 @@ node scripts/perf/bench.mjs
 ### State 골격 (`DataManager.state`)
 
 - `winningStats`, `analytics`
+- `staticLatestDrawNo`, `syncMeta`
 - `favorites`, `history`
 - `ticketBook`, `campaigns`
 - `strategyPresets`, `strategyPrefs`
@@ -114,6 +127,7 @@ node scripts/perf/bench.mjs
 - `lotto_pro_campaigns_v1`
 - `lotto_pro_alerts_v1`
 - `lotto_pro_strategy_presets_v1`
+- `lotto_pro_sync_meta_v1`
 - `lotto_pro_updates_v2`
 - 레거시 프록시: `lotto_webapp_settings_v1.proxyLatestUrl`
 
@@ -171,6 +185,7 @@ node scripts/perf/bench.mjs
 - `draw_no` 기준 dedupe
 - 최신순 정렬
 - 티켓 미정산 자동 정산
+- `staticLatestDrawNo`와 동기화 메타 갱신
 
 ### 최신 데이터 동기화
 
@@ -182,16 +197,19 @@ node scripts/perf/bench.mjs
   - `idle`: silent
   - `manual/refresh`: 로그/토스트
 - 수동 동기화(`manual`)만 취소 가능(`cancelActiveSync`)
+- 프록시 미설정 시 네트워크 호출 없이 종료하고 안내 메시지만 표시
 - `/proxy/range` 우선
 - 누락 회차는 단건 fallback 조회
+- 단건 fallback도 사용자 프록시 URL만 사용
 - fallback 단건 조회 상한: 최근 120개(`MAX_SYNC_FALLBACK_DRAWS`)
+- 성공/실패 정보는 `lotto_pro_sync_meta_v1`에 저장
 
 ### 프록시 우선순위
 
 1. URL 파라미터 `proxyUrl/proxy`
 2. v1 레거시
 3. v2 설정(`customProxy`)
-4. 공용 fallback
+4. 그 외는 정적 JSON 전용 모드
 
 ---
 
@@ -227,6 +245,7 @@ node scripts/perf/bench.mjs
 - 앱 셸: stale-while-revalidate
 - precache 목록: `APP_SHELL_ASSETS`
 - 런타임 라이브러리/font/icon은 `assets/vendor/` same-origin 경로 사용
+- `controllerchange` reload은 사용자가 업데이트를 수락했을 때만 수행
 
 변경 규칙:
 
@@ -312,6 +331,8 @@ node scripts/perf/bench.mjs
 5. 동기화: 단일 실행 가드, `cancelSyncBtn` 취소 동작 확인
 6. Import: `merge/overwrite`와 설정 체크 반영 확인
 7. PWA: 새로고침/오프라인 기본 기능 확인
+8. 프록시 미설정 상태에서 최신 동기화가 네트워크 호출 없이 종료되는지 확인
+9. 데이터 탭 검색/페이지네이션/저장 상태 요약/알림 권한 배지 확인
 
 ## 10-1) 개발 도구 메모
 

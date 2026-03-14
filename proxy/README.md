@@ -44,7 +44,19 @@ wrangler deploy proxy/worker.js
 - 주소 파라미터: `?proxyUrl=...` 또는 `?proxy=...`
 - 이전 저장 키: `lotto_webapp_settings_v1.proxyLatestUrl`
 - 2버전 설정 키: `lotto_pro_settings_v2.customProxy`
-- 해석 우선순위: `query` > `v1` > `v2` > `public fallback`
+- 해석 우선순위: `query` > `v1` > `v2`
+- 프록시가 없으면 앱은 정적 JSON 전용 모드로 동작하며, 공개 fallback 프록시는 기본 사용하지 않습니다.
+
+권장 설정 예시:
+
+- 앱 설정 입력란: `https://<your-worker>.workers.dev/proxy/latest`
+- 앱 설정 입력란: `https://<your-worker>.workers.dev/?url=`
+- 주소창 직접 테스트: `?proxyUrl=https%3A%2F%2F<your-worker>.workers.dev%2Fproxy%2Flatest`
+
+메모:
+
+- `?proxyUrl=` 값은 URL 인코딩한 전체 주소를 넣는 편이 안전합니다.
+- 앱은 `/proxy/latest`, `{draw_no}`, `{url}`, 일반 prefix(`...?url=`) 형식을 모두 해석합니다.
 
 ## 로컬 점검
 

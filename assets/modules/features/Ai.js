@@ -434,7 +434,7 @@ export class AiModule {
             <div class="guide-grid">${gridItems}</div>
             <div class="guide-filter-notice">
                 <i class="ph-bold ph-info"></i>
-                <span>필터 조건이 너무 엄격하면 유효 조합이 줄어들고, 보완 랜덤 생성 비중이 커질 수 있습니다.</span>
+                <span>조건이 너무 엄격하면 요청 수량보다 적게 생성될 수 있으며, 필터를 통과한 조합만 반환됩니다.</span>
             </div>
         `;
 

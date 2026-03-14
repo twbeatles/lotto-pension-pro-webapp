@@ -94,6 +94,23 @@
                     <p class="subtitle">나만의 행운 번호를 조합해보세요.</p>
                 </header>
 
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3>저장 상태 요약</h3>
+                        <span id="storageHealthBadge" class="badge status-badge">정상</span>
+                    </div>
+                    <div class="data-summary-grid">
+                        <div class="data-summary-item">
+                            <span class="data-summary-label">localStorage 사용량</span>
+                            <strong id="storageUsageValue">-</strong>
+                        </div>
+                        <div class="data-summary-item">
+                            <span class="data-summary-label">저장 항목 요약</span>
+                            <strong id="storageCountsValue">-</strong>
+                        </div>
+                    </div>
+                    <p id="storageHealthNote" class="subtitle" style="margin-top:12px;">현재 저장 상태를 확인하는 중입니다.</p>
+                </div>
                 <div class="dashboard-grid">
                     <!-- Generator Card -->
                     <div class="card glass">
@@ -671,14 +688,18 @@
                             <h3>⭐ 즐겨찾기</h3>
                             <button id="clearFavorites" class="btn text-danger">전체 삭제</button>
                         </div>
+                        <input type="search" id="favSearch" class="input-field list-search" placeholder="번호 또는 날짜 검색">
                         <div id="favList" class="data-list"></div>
+                        <div id="favPagination" class="list-pagination"></div>
                     </div>
                     <div class="card glass">
                         <div class="card-header">
                             <h3>📜 생성 히스토리</h3>
                             <button id="clearHistory" class="btn text-danger">전체 삭제</button>
                         </div>
+                        <input type="search" id="historySearch" class="input-field list-search" placeholder="번호 또는 날짜 검색">
                         <div id="historyList" class="data-list"></div>
+                        <div id="historyPagination" class="list-pagination"></div>
                     </div>
                 </div>
 
@@ -696,19 +717,26 @@
                                 <button id="clearTickets" class="btn text-danger">삭제</button>
                             </div>
                         </div>
+                        <input type="search" id="ticketSearch" class="input-field list-search" placeholder="번호, 회차 또는 상태 검색">
                         <div id="ticketList" class="data-list"></div>
+                        <div id="ticketPagination" class="list-pagination"></div>
                     </div>
                     <div class="card glass">
                         <div class="card-header">
                             <h3>🗓️ 캠페인</h3>
                             <button id="clearCampaigns" class="btn text-danger">전체 삭제</button>
                         </div>
+                        <input type="search" id="campaignSearch" class="input-field list-search" placeholder="이름 또는 시작 회차 검색">
                         <div id="campaignList" class="data-list"></div>
+                        <div id="campaignPagination" class="list-pagination"></div>
                     </div>
                 </div>
 
                 <div class="card glass mt-4">
                     <h3>로컬 알림 센터</h3>
+                    <div style="display:flex; justify-content:flex-end; margin-top:-8px; margin-bottom:12px;">
+                        <span id="systemNotificationStatusBadge" class="badge status-badge">권한 필요</span>
+                    </div>
                     <div class="toggles">
                         <label class="check-box">
                             <input type="checkbox" id="alertEnableInApp" checked>
@@ -726,18 +754,45 @@
                             <span>신규 정산 결과 알림</span>
                         </label>
                     </div>
+                    <div class="button-group" style="margin-top:12px;">
+                        <button id="testSystemNotificationBtn" class="btn ghost sm">
+                            <i class="ph ph-bell-ringing"></i> 테스트 알림
+                        </button>
+                    </div>
+                    <p id="systemNotificationHelp" class="subtitle" style="margin-top:10px;">시스템 알림 상태를 확인하는 중입니다.</p>
                 </div>
 
                 <div class="card glass mt-4">
                     <h3>데이터 동기화</h3>
-                    <p class="subtitle" style="margin-bottom:15px">최신 회차 정보를 비동기로 가져옵니다.</p>
+                    <p class="subtitle" style="margin-bottom:15px">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 실시간 최신 회차 조회는 프록시 설정 시에만 시도합니다.</p>
 
                     <div class="input-group" style="margin-bottom:15px">
                         <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
                         <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
                             style="font-size:14px">
-                        <p class="subtitle" style="font-size:12px; margin-top:5px;">기본값: api.allorigins.win (공용)</p>
+                        <p class="subtitle" style="font-size:12px; margin-top:5px;">프록시를 설정한 경우에만 앱 실행 중 최신 회차 동기화를 시도합니다.</p>
                     </div>
+
+                    <div class="sync-meta-grid">
+                        <div class="sync-meta-item">
+                            <span class="sync-meta-label">현재 모드</span>
+                            <strong id="syncMetaMode">-</strong>
+                        </div>
+                        <div class="sync-meta-item">
+                            <span class="sync-meta-label">현재 소스</span>
+                            <strong id="syncMetaSource">-</strong>
+                        </div>
+                        <div class="sync-meta-item">
+                            <span class="sync-meta-label">마지막 성공</span>
+                            <strong id="syncMetaLastSuccess">-</strong>
+                        </div>
+                        <div class="sync-meta-item">
+                            <span class="sync-meta-label">마지막 반영 회차</span>
+                            <strong id="syncMetaLastDraw">-</strong>
+                        </div>
+                    </div>
+                    <p id="syncMetaLastFailure" class="subtitle" style="margin-top:12px;">-</p>
+                    <p id="syncMetaWarning" class="subtitle" style="margin-top:6px;">현재 데이터 상태를 확인하는 중입니다.</p>
 
                     <div class="button-group">
                         <button id="syncDataBtn" class="btn primary">
@@ -870,6 +925,7 @@
                 }).catch((err) => console.log('서비스 워커 등록 실패:', err));
             };
 
+            let reloadOnControllerChange = false;
             const showUpdateToast = (worker) => {
                 const toast = document.createElement('div');
                 toast.className = 'update-toast';
@@ -883,7 +939,10 @@
                 const reloadBtn = document.getElementById('reloadBtn');
                 const dismissBtn = document.getElementById('dismissBtn');
                 if (reloadBtn) {
-                    reloadBtn.onclick = () => worker.postMessage({ action: 'skipWaiting' });
+                    reloadBtn.onclick = () => {
+                        reloadOnControllerChange = true;
+                        worker.postMessage({ action: 'skipWaiting' });
+                    };
                 }
                 if (dismissBtn) {
                     dismissBtn.onclick = () => toast.remove();
@@ -892,7 +951,7 @@
 
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
+                if (refreshing || !reloadOnControllerChange) return;
                 refreshing = true;
                 window.location.reload();
             });

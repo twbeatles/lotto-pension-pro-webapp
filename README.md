@@ -7,6 +7,40 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 안정성·접근성 강화 반영 (2026-03-17)
+
+- **스토리지 안전성 강화** (`persistence.js`)
+  - 모든 `localStorage.setItem()` 호출을 `_safeSetItem()` 헬퍼로 통일, `QuotaExceededError` 시 사용자에게 toast 경고를 표시합니다.
+  - 저장 공간 임계치(`STORAGE_WARNING_BYTES` / `STORAGE_DANGER_BYTES`) 초과 시 세션 당 한 번 경고 toast를 자동으로 표시합니다.
+  - `safeJsonParse()` 에 key 라벨 파라미터를 추가해 손상된 데이터 감지 시 어떤 키인지 콘솔에 명시합니다.
+- **네트워크 응답 검증** (`sync.js`)
+  - `fetchRangeFromProxy()` 에 Content-Type 검증을 추가했습니다. HTML 에러 페이지를 JSON으로 파싱하는 시도를 조기 차단합니다.
+  - 동기화 중 프록시 설정이 변경되면 기존 in-flight 요청을 취소하고 새 설정으로 재시작합니다 (proxy fingerprint 가드).
+- **데이터 리스트 상태 유지** (`dataLists.js`, `LottoApp.js`)
+  - 검색어·페이지 번호가 `sessionStorage`에 저장되며, 새로고침 후에도 복원됩니다.
+  - `CONFIG.KEYS.SESSION_DATA_LIST_STATE` (`lotto_pro_datalist_state`) 키를 사용합니다.
+- **오프라인 배너** (`index.html`, `LottoApp.js`)
+  - 네트워크가 끊기면 상단 고정 배너가 즉시 표시되고, 재연결 시 자동으로 숨겨집니다.
+  - `online` / `offline` window 이벤트와 toast를 함께 표시합니다.
+- **PWA 설치 유도** (`LottoApp.js`, `index.html`)
+  - `beforeinstallprompt` 이벤트를 캡처해 사이드바에 설치 버튼(`#pwaInstallBtn`)을 표시합니다.
+  - 설치 완료 후 버튼을 자동으로 숨기고 toast로 안내합니다.
+- **SW 업데이트 멀티탭 전파** (`pwa.js`)
+  - `BroadcastChannel('lotto-sw-update')` 를 도입해 SW 업데이트를 수락한 탭이 나머지 모든 탭에 reload 신호를 전파합니다.
+- **접근성 개선** (`UIManager.js`, `index.html`)
+  - `#toast-live-region` (`aria-live="polite"`) 영역을 추가해 스크린 리더가 toast 알림을 읽을 수 있습니다.
+  - toast 요소에 `role="status"` 를 추가했습니다.
+  - LRU 볼 렌더링 캐시가 전체 초기화 대신 200개 단위로 점진적으로 제거됩니다.
+- **설정 모달 포커스 폴백** (`settingsPanel.js`)
+  - `#closeSettingsBtn` 이 없을 경우 첫 번째 포커스 가능 요소 또는 모달 자체로 포커스가 이동합니다.
+- **워커 타임아웃 모바일 적응** (`StrategyWorkerClient.js`)
+  - `navigator.connection.effectiveType` 을 감지해 2G 환경에서 ×2.5, 3G 환경에서 ×1.5 배로 타임아웃을 자동 확장합니다.
+- **config 상수 정비** (`config.js`)
+  - `CONFIG.LIMITS.MISSING_DRAWS = [146]`: 정적 JSON에 없는 회차를 명시적으로 관리합니다.
+  - `CONFIG.KEYS.SESSION_DATA_LIST_STATE`: sessionStorage 키를 중앙화했습니다.
+- **최신 회차 카드 안전성** (`latestDraw.js`)
+  - `winningStats` 배열 자체가 null/undefined인 경우를 `Array.isArray()` 로 추가 방어합니다.
+
 ## 최근 안정화/정합성 반영 (2026-03-16)
 
 - 데이터 관리 화면의 검색/페이지네이션과 즐겨찾기/히스토리 액션 위임을 실제 렌더러 기준으로 복구했습니다.

@@ -3,6 +3,19 @@ const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 
+/** 저속 네트워크(2G/slow-2G) 감지 시 타임아웃을 배수로 확장 */
+function getNetworkSlowFactor() {
+    try {
+        const conn = navigator?.connection || navigator?.mozConnection || navigator?.webkitConnection;
+        if (!conn) return 1;
+        if (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g') return 2.5;
+        if (conn.effectiveType === '3g') return 1.5;
+    } catch (_e) {
+        // navigator.connection 미지원 환경은 무시
+    }
+    return 1;
+}
+
 function createRequestId(prefix = 'strategy') {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return `${prefix}_${crypto.randomUUID()}`;
@@ -73,15 +86,18 @@ export class StrategyWorkerClient {
     }
 
     resolveTimeoutMs(type, payload) {
+        const slowFactor = getNetworkSlowFactor();
         if (type === 'GENERATE') {
             const count = Math.max(1, Number(payload?.count || 1));
-            return Math.min(DEFAULT_TIMEOUT_MS + (count * 120), GENERATE_TIMEOUT_CAP_MS);
+            const base = Math.min(DEFAULT_TIMEOUT_MS + (count * 120), GENERATE_TIMEOUT_CAP_MS);
+            return Math.min(Math.ceil(base * slowFactor), GENERATE_TIMEOUT_CAP_MS);
         }
         if (type === 'RECOMMEND') {
             const simulationCount = Math.max(1000, Number(payload?.request?.params?.simulationCount || 5000));
-            return Math.min(DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200), RECOMMEND_TIMEOUT_CAP_MS);
+            const base = Math.min(DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200), RECOMMEND_TIMEOUT_CAP_MS);
+            return Math.min(Math.ceil(base * slowFactor), RECOMMEND_TIMEOUT_CAP_MS);
         }
-        return DEFAULT_TIMEOUT_MS;
+        return Math.min(Math.ceil(DEFAULT_TIMEOUT_MS * slowFactor), RECOMMEND_TIMEOUT_CAP_MS);
     }
 
     createTimeoutError(timeoutMs, final = false) {

@@ -34,7 +34,16 @@ export const appSettingsMethods = {
         const modal = $('#settingsModal');
         if (!modal) return;
         modal.classList.add('active');
-        $('#closeSettingsBtn')?.focus();
+        // 포커스 우선순위: 닫기 버튼 → 모달 내 첫 포커스 가능 요소 → 모달 자체
+        const closeBtn = $('#closeSettingsBtn');
+        if (closeBtn) {
+            closeBtn.focus();
+        } else {
+            const focusable = modal.querySelector(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            (focusable || modal).focus();
+        }
     },
 
     closeSettingsModal() {

@@ -152,6 +152,13 @@ export const dataSyncMethods = {
             const url = `${baseUrl}/proxy/range?from=${fromNo}&to=${toNo}`;
             const res = await this.fetchWithTimeout(url, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            // Content-Type 검증: JSON이 아닌 응답(HTML 에러 페이지 등)을 조기 차단
+            const ct = res.headers.get('Content-Type') || '';
+            if (!ct.includes('application/json') && !ct.includes('text/plain') && !ct.includes('text/json')) {
+                throw new Error(`예상치 못한 응답 형식 (Content-Type: ${ct || '없음'})`);
+            }
+
             const payload = await res.json();
             const list = Array.isArray(payload?.data) ? payload.data : [];
             const normalized = list.map(item => this.normalizeDrawItem(item)).filter(Boolean);
@@ -401,14 +408,21 @@ export const dataSyncMethods = {
         if (typeof options === 'boolean') options = { silent: options };
         const profile = this.createSyncProfile(options);
 
+        // 프록시 설정 fingerprint: 설정이 바뀐 경우 기존 in-flight 요청을 재사용하지 않음
+        const currentProxyFingerprint = (this.resolveProxyConfig()?.url || '');
         if (this.syncInFlightPromise) {
-            if (profile.toast) UIManager.toast('이미 동기화가 진행 중입니다.', 'info');
-            return this.syncInFlightPromise;
+            if (currentProxyFingerprint === (this._syncInFlightProxyFingerprint || '')) {
+                if (profile.toast) UIManager.toast('이미 동기화가 진행 중입니다.', 'info');
+                return this.syncInFlightPromise;
+            }
+            // 설정이 바뀌었으므로 기존 요청을 취소하고 새로 시작
+            this.cancelActiveSync?.();
         }
 
         const cancelable = profile.trigger === 'manual';
         this.syncAbortController = cancelable ? new AbortController() : null;
         this.syncCancelable = cancelable;
+        this._syncInFlightProxyFingerprint = currentProxyFingerprint;
         this.setSyncControlsState({ running: true, cancelable });
 
         const task = this._fetchLatestFromAPIInternal(options, this.syncAbortController?.signal || null)
@@ -422,6 +436,7 @@ export const dataSyncMethods = {
             .finally(() => {
                 this.syncAbortController = null;
                 this.syncCancelable = false;
+                this._syncInFlightProxyFingerprint = null;
                 this.setSyncControlsState({ running: false, cancelable: false });
                 this.syncInFlightPromise = null;
             });

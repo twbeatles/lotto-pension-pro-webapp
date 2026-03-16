@@ -25,7 +25,7 @@ export const appLatestDrawMethods = {
     },
 
     updateLatestWin(options = {}) {
-        const latest = this.data.state.winningStats[0];
+        const latest = Array.isArray(this.data.state.winningStats) ? this.data.state.winningStats[0] : null;
         if (!latest) {
             const offline = Boolean(options?.offline);
             this.renderLatestWinPlaceholder({

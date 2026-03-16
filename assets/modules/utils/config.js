@@ -9,7 +9,8 @@ export const CONFIG = {
         STRATEGY_PRESETS: 'lotto_pro_strategy_presets_v1',
         SYNC_META: 'lotto_pro_sync_meta_v1',
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
-        LEGACY_SETTINGS: 'lotto_webapp_settings_v1'
+        LEGACY_SETTINGS: 'lotto_webapp_settings_v1',
+        SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state'
     },
     LIMITS: {
         MAX_SET: 20,
@@ -20,6 +21,8 @@ export const CONFIG = {
         MAX_CAMPAIGN_WEEKS: 52,
         MAX_CAMPAIGN_SETS_PER_WEEK: 20,
         MAX_CAMPAIGN_TOTAL_TICKETS: 500,
-        MAX_SYNC_FALLBACK_DRAWS: 120
+        MAX_SYNC_FALLBACK_DRAWS: 120,
+        // 정적 데이터에서 누락된 것이 확인된 회차 목록
+        MISSING_DRAWS: [146]
     }
 };

@@ -8,9 +8,14 @@ export class UIManager {
         const container = $('#toast-container');
         if (!container) return;
 
+        // aria-live 영역에 메시지를 반영해 스크린 리더가 알림을 읽도록 함
+        const liveEl = document.getElementById('toast-live-region');
+        if (liveEl) liveEl.textContent = msg;
+
         const el = document.createElement('div');
         el.className = `toast ${type}`;
         el.textContent = msg;
+        el.setAttribute('role', 'status');
 
         // Premium animation timing
         el.style.opacity = '0';
@@ -29,7 +34,11 @@ export class UIManager {
         setTimeout(() => {
             el.style.opacity = '0';
             el.style.transform = 'translateY(15px) scale(0.98)';
-            setTimeout(() => el.remove(), 400);
+            setTimeout(() => {
+                el.remove();
+                // 라이브 영역 초기화 (다음 동일 메시지도 감지되도록)
+                if (liveEl && liveEl.textContent === msg) liveEl.textContent = '';
+            }, 400);
         }, duration);
     }
 
@@ -52,10 +61,14 @@ export class UIManager {
             `<span class="ball ${this.getBallColor(n)} ${size}">${n}</span>`
         ).join('');
 
-        // 캐시 크기 관리 (최대 1000개)
-        if (this._ballCache.size > 1000) {
-            const firstKey = this._ballCache.keys().next().value;
-            this._ballCache.delete(firstKey);
+        // LRU 캐시 관리: 1000개 초과 시 가장 오래된 항목부터 제거
+        if (this._ballCache.size >= 1000) {
+            const iter = this._ballCache.keys();
+            for (let i = 0; i < 200; i++) {
+                const oldest = iter.next().value;
+                if (oldest === undefined) break;
+                this._ballCache.delete(oldest);
+            }
         }
 
         this._ballCache.set(key, html);

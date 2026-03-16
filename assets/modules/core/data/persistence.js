@@ -67,22 +67,35 @@ export const dataPersistenceMethods = {
         };
     },
 
+    _safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.error(`[persistence] localStorage 저장 공간 초과 (${key})`, e);
+                UIManager.toast('저장 공간이 가득 찼습니다. 데이터를 정리해 주세요.', 'error');
+            } else {
+                console.error(`[persistence] localStorage 저장 실패 (${key})`, e);
+            }
+        }
+    },
+
     persistSettings() {
         if (typeof localStorage === 'undefined') return;
-        localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
+        this._safeSetItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
     },
 
     persistExtendedData() {
         if (typeof localStorage === 'undefined') return;
-        localStorage.setItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
-        localStorage.setItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
-        localStorage.setItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
-        localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
+        this._safeSetItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
+        this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
+        this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
+        this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
     },
 
     persistSyncMeta() {
         if (typeof localStorage === 'undefined') return;
-        localStorage.setItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
+        this._safeSetItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
     },
 
     getSettingsPayload() {
@@ -209,7 +222,7 @@ export const dataPersistenceMethods = {
     setLocalUpdates(items = []) {
         this.localUpdatesCache = Array.isArray(items) ? items : [];
         if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('lotto_pro_updates_v2', JSON.stringify(this.localUpdatesCache));
+            this._safeSetItem('lotto_pro_updates_v2', JSON.stringify(this.localUpdatesCache));
         }
         this.app?.renderSettingsPanel?.();
     },
@@ -262,10 +275,11 @@ export const dataPersistenceMethods = {
         };
     },
 
-    safeJsonParse(raw, fallback) {
+    safeJsonParse(raw, fallback, label = '') {
         try {
             return JSON.parse(raw);
         } catch (e) {
+            if (label) console.warn(`[persistence] 손상된 데이터 감지 (${label}), 기본값으로 복구합니다.`, e);
             return fallback;
         }
     },
@@ -274,8 +288,8 @@ export const dataPersistenceMethods = {
         try {
             if (typeof localStorage === 'undefined') return;
             let needsPersist = false;
-            const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', []);
-            const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', []);
+            const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', [], CONFIG.KEYS.FAV);
+            const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', [], CONFIG.KEYS.HIST);
 
             const normalizedFavorites = Array.isArray(rawFavorites)
                 ? rawFavorites.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
@@ -290,16 +304,16 @@ export const dataPersistenceMethods = {
             this.state.favorites = normalizedFavorites;
             this.state.history = normalizedHistory;
 
-            const settings = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}', {});
+            const settings = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}', {}, CONFIG.KEYS.SETTINGS);
             this.state.theme = settings.theme === 'light' ? 'light' : 'dark';
             this.state.customProxy = typeof settings.customProxy === 'string' ? settings.customProxy : '';
             this.state.strategyPrefs = this.mergeStrategyPrefs(settings.strategyPrefs);
 
-            const rawTickets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]', []);
-            const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', []);
-            const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {});
-            const rawStrategyPresets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]', []);
-            const rawSyncMeta = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}', {});
+            const rawTickets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]', [], CONFIG.KEYS.TICKET_BOOK);
+            const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', [], CONFIG.KEYS.CAMPAIGNS);
+            const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {}, CONFIG.KEYS.ALERT_PREFS);
+            const rawStrategyPresets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]', [], CONFIG.KEYS.STRATEGY_PRESETS);
+            const rawSyncMeta = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}', {}, CONFIG.KEYS.SYNC_META);
 
             const normalizedTickets = Array.isArray(rawTickets)
                 ? rawTickets.map((x) => this.normalizeTicketEntry(x)).filter(Boolean)
@@ -333,8 +347,8 @@ export const dataPersistenceMethods = {
             }
 
             if (needsPersist) {
-                localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
-                localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
+                this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
+                this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
                 this.persistSettings();
                 this.persistExtendedData();
                 this.persistSyncMeta();
@@ -356,44 +370,43 @@ export const dataPersistenceMethods = {
         }
 
         const executeSave = () => {
-            try {
-                if (typeof localStorage === 'undefined') return;
+            if (typeof localStorage === 'undefined') return;
 
-                if (this._dirtyKeys.fav) {
-                    localStorage.setItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
-                    this._dirtyKeys.fav = false;
-                }
-                if (this._dirtyKeys.hist) {
-                    localStorage.setItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
-                    this._dirtyKeys.hist = false;
-                }
-                if (this._dirtyKeys.settings) {
-                    localStorage.setItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
-                    this._dirtyKeys.settings = false;
-                }
-                if (this._dirtyKeys.ticketBook) {
-                    localStorage.setItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
-                    this._dirtyKeys.ticketBook = false;
-                }
-                if (this._dirtyKeys.campaigns) {
-                    localStorage.setItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
-                    this._dirtyKeys.campaigns = false;
-                }
-                if (this._dirtyKeys.alerts) {
-                    localStorage.setItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
-                    this._dirtyKeys.alerts = false;
-                }
-                if (this._dirtyKeys.presets) {
-                    localStorage.setItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
-                    this._dirtyKeys.presets = false;
-                }
-                if (this._dirtyKeys.syncMeta) {
-                    this.persistSyncMeta();
-                    this._dirtyKeys.syncMeta = false;
-                }
-            } catch (e) {
-                console.error('데이터 저장 실패', e);
+            if (this._dirtyKeys.fav) {
+                this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
+                this._dirtyKeys.fav = false;
             }
+            if (this._dirtyKeys.hist) {
+                this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
+                this._dirtyKeys.hist = false;
+            }
+            if (this._dirtyKeys.settings) {
+                this._safeSetItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
+                this._dirtyKeys.settings = false;
+            }
+            if (this._dirtyKeys.ticketBook) {
+                this._safeSetItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
+                this._dirtyKeys.ticketBook = false;
+            }
+            if (this._dirtyKeys.campaigns) {
+                this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
+                this._dirtyKeys.campaigns = false;
+            }
+            if (this._dirtyKeys.alerts) {
+                this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
+                this._dirtyKeys.alerts = false;
+            }
+            if (this._dirtyKeys.presets) {
+                this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
+                this._dirtyKeys.presets = false;
+            }
+            if (this._dirtyKeys.syncMeta) {
+                this.persistSyncMeta();
+                this._dirtyKeys.syncMeta = false;
+            }
+
+            // 저장 공간 경고: 위험 임계치 근접 시 한 번만 알림
+            this._checkStorageQuotaWarning();
         };
 
         if (immediate) {
@@ -409,5 +422,22 @@ export const dataPersistenceMethods = {
                 executeSave();
             }
         }, 300);
+    },
+
+    _checkStorageQuotaWarning() {
+        // 저장 공간 80% 이상 사용 시 한 세션에 한 번만 경고
+        if (this._quotaWarnShown) return;
+        try {
+            const summary = this.getStorageSummary();
+            if (summary.bytes >= this.STORAGE_DANGER_BYTES) {
+                this._quotaWarnShown = true;
+                UIManager.toast('저장 공간이 위험 수준입니다. 백업 후 오래된 데이터를 정리해 주세요.', 'error');
+            } else if (summary.bytes >= this.STORAGE_WARNING_BYTES && !this._quotaWarnShownWeak) {
+                this._quotaWarnShownWeak = true;
+                UIManager.toast('저장 공간 사용량이 증가하고 있습니다. 설정에서 확인해 주세요.', 'warning');
+            }
+        } catch (_e) {
+            // 경고 실패는 조용히 무시
+        }
     }
 };

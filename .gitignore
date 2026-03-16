@@ -22,3 +22,12 @@ node_modules/
 *.temp
 *.bak
 *.orig
+
+# Editor swap files
+*.swp
+*.swo
+
+# Environment / secrets (precautionary — no .env currently used)
+.env
+.env.*
+!.env.example

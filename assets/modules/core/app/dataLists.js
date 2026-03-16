@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
 import { endMark, startMark } from '../../utils/perf.js';
+import { CONFIG } from '../../utils/config.js';
 export const appDataListMethods = {
     bindDataEvents() {
         $('#clearFavorites')?.addEventListener('click', () => {
@@ -339,12 +340,27 @@ export const appDataListMethods = {
         if (state.query === normalized) return;
         state.query = normalized;
         state.page = 1;
+        this._persistDataListState?.();
     },
 
     setDataListPage(scope, page) {
         const state = this.getDataListState(scope);
         const nextPage = Math.max(1, Math.floor(Number(page) || 1));
         state.page = nextPage;
+        this._persistDataListState?.();
+    },
+
+    _persistDataListState() {
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem(
+                    CONFIG.KEYS.SESSION_DATA_LIST_STATE,
+                    JSON.stringify(this.dataListState)
+                );
+            }
+        } catch (_e) {
+            // sessionStorage 저장 실패는 조용히 무시
+        }
     },
 
     matchesSearch(query, values = []) {

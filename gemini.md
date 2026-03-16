@@ -20,7 +20,7 @@ Use it as the fast-start reference for the current structure and workflow.
 - PWA bootstrap:
   - `assets/modules/bootstrap/pwa.js`
 - Service worker cache version:
-  - `v11`
+  - `v12`
 - Styles:
   - `assets/app.css` is the aggregate entrypoint
   - actual style slices live in `assets/styles/*.css`
@@ -43,9 +43,12 @@ Use it as the fast-start reference for the current structure and workflow.
 - Storage, proxy, sync, alert, and theme settings are handled from the global settings modal.
 - On mobile, the settings modal is intentionally rendered as a single-column sheet.
 - The data page is focused on backup/import and list management.
+- Data list rendering is aligned with actual search/pagination state again.
 - Latest draw sync defaults to automatic fallback.
-- A configured user proxy is preferred over built-in fallback providers.
+- A configured user proxy is preferred only when it matches the official `/proxy/latest` contract.
+- Unsupported proxy formats are ignored at runtime and surfaced as warnings in settings.
 - If no user proxy is set, the app still attempts runtime sync and falls back to static JSON plus local updates on failure.
+- `data/winning_stats.json` is install-precached for offline stability.
 
 ## Key Map
 
@@ -86,6 +89,12 @@ Proxy priority:
 2. legacy `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
 4. otherwise automatic fallback sync
+
+Official supported custom proxy shape:
+
+- absolute `http(s)` URL
+- path contains `/proxy/latest`
+- unsupported shapes (`?url=`, `{url}`, `{draw_no}`) are ignored at runtime
 
 ## Quick Commands
 

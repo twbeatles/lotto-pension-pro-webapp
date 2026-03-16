@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v11';
+const CACHE_VERSION = 'v12';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -102,6 +102,10 @@ const APP_SHELL_ASSETS = [
     './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.svg'
 ];
 
+const DATA_CORE_ASSETS = [
+    './data/winning_stats.json'
+];
+
 self.addEventListener('message', (event) => {
     if (event.data?.action === 'skipWaiting') {
         self.skipWaiting();
@@ -109,14 +113,24 @@ self.addEventListener('message', (event) => {
 });
 
 async function safePrecache() {
-    const cache = await caches.open(CACHE_APP_SHELL);
-    const jobs = APP_SHELL_ASSETS.map(async (url) => {
-        try {
-            await cache.add(url);
-        } catch (e) {
-            // Ignore individual failures to avoid install rejection
-        }
-    });
+    const appShellCache = await caches.open(CACHE_APP_SHELL);
+    const dataCache = await caches.open(CACHE_DATA);
+    const jobs = [
+        ...APP_SHELL_ASSETS.map(async (url) => {
+            try {
+                await appShellCache.add(url);
+            } catch (e) {
+                // Ignore individual failures to avoid install rejection
+            }
+        }),
+        ...DATA_CORE_ASSETS.map(async (url) => {
+            try {
+                await dataCache.add(url);
+            } catch (e) {
+                // Ignore individual failures to avoid install rejection
+            }
+        })
+    ];
     await Promise.allSettled(jobs);
 }
 

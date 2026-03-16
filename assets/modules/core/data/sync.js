@@ -498,7 +498,12 @@ export const dataSyncMethods = {
             log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
             log(`Sync source: ${syncSource}`, 'SYNC_PROXY_SOURCE');
 
-            if (!proxyConfig?.url) {
+            if (proxyConfig?.invalid) {
+                log(
+                    `지원되지 않는 프록시 형식(${proxyConfig.source})은 무시하고 기본 자동 동기화를 사용합니다.`,
+                    'SYNC_PROXY_UNSUPPORTED'
+                );
+            } else if (!proxyConfig?.url) {
                 log('사용자 프록시 없이 기본 자동 동기화 소스를 사용합니다.', 'SYNC_FALLBACK_SOURCE');
             }
 

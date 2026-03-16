@@ -14,8 +14,11 @@
 - 설정 모달 기반 테마/알림/프록시/저장 상태 관리
 - 모바일 설정 모달 단일 열 레이아웃
 - 데이터 관리 화면 검색/페이지네이션
+- 공식 지원 커스텀 프록시는 `/proxy/latest` 형식만 허용
+- 비지원 프록시 형식은 설정 경고 후 기본 자동 동기화로 전환
+- `data/winning_stats.json` install precache
 - 코어/기능 코드 분할(`core/app`, `core/data`, `core/strategy`, `features/*`)
 - `skipWaiting` 수락 시에만 서비스워커 reload
-- 서비스워커 캐시 버전 `v11`
+- 서비스워커 캐시 버전 `v12`
 
 새로운 세션에서는 반드시 `claude.md`를 기준 문서로 참조하세요.

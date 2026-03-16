@@ -11,7 +11,7 @@
 - Current direction:
   - settings and operational state are managed from a global settings modal
   - large files were split into facade entry files plus internal modules
-  - latest draw sync now uses automatic fallback by default and prefers a user proxy when configured
+  - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
   - deployment target is GitHub Pages
 
 ## Current Layout
@@ -86,7 +86,8 @@ Main storage keys:
 Operational rules:
 
 - latest draw sync defaults to automatic fallback
-- a configured custom proxy is preferred over built-in fallback providers
+- a configured custom proxy is preferred over built-in fallback providers only when it matches the official `/proxy/latest` contract
+- unsupported proxy formats are ignored at runtime and surfaced as warnings in settings
 - if automatic sync providers fail, the app stays on static JSON plus local updates
 - proxy resolution order is `query -> v1 legacy -> v2 settings`
 - favorites, tickets, campaigns, alerts, and presets save immediately
@@ -95,8 +96,9 @@ Operational rules:
 ## Service Worker and Deploy
 
 - Service worker file: `sw.js`
-- Cache version: `v11`
+- Cache version: `v12`
 - App shell precache now includes the split core/feature modules and `assets/styles/*.css`
+- Core data precache now includes `data/winning_stats.json`
 - Reload after update only happens after explicit user acceptance
 - Production URL:
   - `https://twbeatles.github.io/lotto---webapp/`
@@ -133,4 +135,4 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-14.md` remains in the repo as the historical review, with a 2026-03-16 consistency addendum.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-16.md` is the current functional review artifact and now includes an implementation status addendum.

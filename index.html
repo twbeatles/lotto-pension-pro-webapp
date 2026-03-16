@@ -881,16 +881,17 @@
                         <div class="settings-panel-head">
                             <div>
                                 <h4>데이터 동기화</h4>
-                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 기본 자동 경로로 최신 회차를 확인합니다. 사용자 프록시를 입력하면 해당 주소를 우선 사용합니다.</p>
+                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 기본 자동 경로로 최신 회차를 확인합니다. 사용자 프록시는 공식 지원 형식(`/proxy/latest`)만 우선 사용합니다.</p>
                             </div>
                             <span id="settingsSyncStateBadge" class="badge status-badge">상태 확인 중</span>
                         </div>
 
                         <div class="input-group settings-field">
                             <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
-                            <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
+                            <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/proxy/latest"
                                 class="settings-proxy-input">
-                            <p class="subtitle settings-caption">비워두면 기본 자동 동기화를 사용하고, 입력하면 해당 프록시를 우선 사용합니다.</p>
+                            <p id="customProxyHelp" class="subtitle settings-caption">비워두면 기본 자동 동기화를 사용합니다. 공식 지원 형식: https://&lt;worker&gt;.workers.dev/proxy/latest</p>
+                            <p id="customProxyStatusNote" class="settings-note settings-warning-note" style="display:none"></p>
                         </div>
 
                         <div class="sync-meta-grid">

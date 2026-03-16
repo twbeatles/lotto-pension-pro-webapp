@@ -9,6 +9,7 @@
 
 ## 최근 안정화/정합성 반영 (2026-03-16)
 
+- 데이터 관리 화면의 검색/페이지네이션과 즐겨찾기/히스토리 액션 위임을 실제 렌더러 기준으로 복구했습니다.
 - 설정 모달 모바일 레이아웃을 단일 열 중심으로 다시 정리했습니다.
   - 가로 스크롤 제거
   - 패널/배지/버튼 폭 정리
@@ -16,10 +17,13 @@
 - `예측`, `실험`, `확인` 탭의 lazy import 경로를 수정해 탭 전환 오류를 복구했습니다.
 - 최신 회차 동기화 정책은 현재 `기본 자동 동기화 + 사용자 프록시 우선`입니다.
   - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 조회합니다.
-  - 사용자 프록시가 있으면 해당 주소를 우선 사용합니다.
+  - 사용자 프록시는 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용합니다.
   - 동기화 결과는 `localUpdates`에 누적되어 정적 JSON보다 최신 회차를 로컬에서 보완할 수 있습니다.
+- 비지원 프록시 형식(`?url=`, `{url}`, `{draw_no}` 등)은 설정에서 경고를 표시하고 기본 자동 동기화로 내려갑니다.
 - 설정 모달 안내 문구와 동기화 상태 표기를 현재 정책 기준으로 정리했습니다.
-- same-origin Pretendard 폰트 경로를 바로잡아 런타임 폰트 로딩 경고를 줄였습니다.
+- Pretendard 폰트 경로를 절대 same-origin 경로(`/assets/vendor/pretendard/PretendardVariable.woff2`)로 고정했습니다.
+- 서비스워커 install precache에 `data/winning_stats.json`을 추가했습니다.
+- 수동 검증 기준으로 데이터 관리 화면의 검색, 페이지 이동, 복사, QR, 삭제 동작을 다시 확인했습니다.
 
 ## 최근 기능/오프라인 자산 통합 반영 (2026-03-13)
 
@@ -168,12 +172,14 @@
   - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 사용자 프록시 우선)
   - 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
+  - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
 - 최신 회차 동기화/프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy`
   - 프록시 미설정 시 앱은 기본 자동 동기화 fallback을 사용하고, 실패 시 정적 JSON + 로컬 업데이트 상태를 유지
   - 권장 입력 예시: `https://<worker>.workers.dev/proxy/latest`
+  - 공식 지원 형식은 절대 URL + `/proxy/latest` 엔드포인트입니다. `?url=`, `{url}`, `{draw_no}` 형식은 저장돼 있어도 런타임에서 무시하고 기본 자동 동기화로 내려갑니다.
   - 앱 URL에 `?proxyUrl=`로 직접 넣을 때는 프록시 주소 전체를 URL 인코딩하는 편이 안전합니다.
 
 ## 구성 개요
@@ -189,7 +195,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 (`CACHE_VERSION: v11`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v12`)
 
 ## 프로젝트 구조
 
@@ -268,9 +274,9 @@ node scripts/smoke/smoke.mjs
 - `ticket-dedupe`, `requestNumbers replace`
 - `sync-guard`, `sync-latest-win refresh`, `auto-sync fallback`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
-- `import-alert-options`, `post-import-refresh`
+- `data-list DOM`, `proxy-policy`, `import-alert-options`, `post-import-refresh`
 - `strategy-preset-crud`, `runtime-asset-localization`
-- `service-worker reload policy`
+- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`
 
 성능 회귀를 함께 확인하려면:
 

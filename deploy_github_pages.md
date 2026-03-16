@@ -21,11 +21,13 @@
 - 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 자동 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
+- 설치 시 `data/winning_stats.json`은 서비스워커 data cache에 precache됨
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
   - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
   - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
-  - 사용자 프록시가 있으면 해당 주소를 우선 사용
+  - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
+  - 비지원 프록시 형식은 설정 경고를 띄우고 기본 자동 동기화로 전환
   - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
@@ -52,13 +54,16 @@
 
 - `?proxyUrl=`에 넣는 값은 `https://<worker>.workers.dev/proxy/latest`처럼 최신 단건 엔드포인트를 권장합니다.
 - 브라우저 주소창에 직접 넣을 때는 프록시 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
-- 앱의 설정 모달 입력란에는 `https://<worker>.workers.dev/proxy/latest`, `https://<worker>.workers.dev/?url=`, `{draw_no}` 또는 `{url}` 플레이스홀더 형식도 사용할 수 있습니다.
+- 앱의 공식 지원 커스텀 프록시는 `https://<worker>.workers.dev/proxy/latest` 형식입니다.
+- `?url=`, `{draw_no}`, `{url}` 형태는 저장돼 있어도 런타임에서 사용하지 않고 기본 자동 동기화로 전환합니다.
+- 설정 모달에는 비지원 프록시 형식에 대한 경고와 fallback 상태가 함께 표시됩니다.
 - 내장 fallback보다 안정적인 운영이 필요하면 사용자 프록시를 권장합니다.
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v11`
+- 현재 `sw.js` 캐시 버전: `v12`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
+- `data/winning_stats.json`은 install 시 `CACHE_DATA`에 precache됩니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 - 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산, `assets/styles/*.css`, 분할된 `assets/modules/core/*`, `assets/modules/features/*` 내부 모듈도 precache 대상입니다.
 - 첫 설치에서는 자동 reload 하지 않으며, 업데이트 reload은 사용자가 토스트에서 수락한 경우에만 수행됩니다.
@@ -137,4 +142,8 @@ npm run format:check
 - `pagehide`/`visibilitychange(hidden)`에서 즉시 저장 flush가 동작하는지(`persistence-flush`)
 - 시스템 알림 토글이 권한 요청/원복/테스트 알림 흐름대로 동작하는지(`notification-permission`)
 - 데이터 탭 검색/페이지네이션이 100개 초과 데이터에서도 동작하는지(`data-list pagination`)
+- 데이터 탭 렌더러가 실제 DOM에서 검색/페이지네이션/attribute 계약을 지키는지(`data-list DOM`)
+- 전용 워커 외 프록시 형식이 자동 fallback으로 내려가는지(`proxy-policy`)
 - 서비스워커가 첫 설치에서 자동 reload 하지 않는지(`service-worker reload policy`)
+- 서비스워커 install precache에 `winning_stats.json`이 포함되는지(`service-worker core data precache`)
+- Pretendard 폰트가 절대 same-origin 경로를 사용하는지(`local-font-path`)

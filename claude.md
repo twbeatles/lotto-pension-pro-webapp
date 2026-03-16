@@ -29,7 +29,7 @@ Use it to restore context quickly and avoid missing the current structure.
   - `scripts/smoke/helpers/`
   - `scripts/smoke/cases/`
   - `scripts/smoke/smoke.mjs`
-- Service worker cache version is `v11`.
+- Service worker cache version is `v12`.
 
 ## UX Notes
 
@@ -42,9 +42,12 @@ Use it to restore context quickly and avoid missing the current structure.
   - app storage summary
 - On mobile, the settings modal is forced into a single-column layout.
 - The data page is now focused on backup/import and list management.
+- Data list rendering is aligned with actual search/pagination state again.
 - Latest draw sync defaults to automatic fallback.
-  - A configured user proxy is preferred.
+  - A configured user proxy is preferred only when it matches the official `/proxy/latest` contract.
   - Without a user proxy, the app still attempts runtime sync and stores fetched draws into local updates.
+  - Unsupported proxy formats are ignored and surfaced as warnings in settings.
+  - `data/winning_stats.json` is install-precached for offline stability.
 
 ## Key Files
 
@@ -87,6 +90,12 @@ Proxy resolution order:
 2. `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
 4. otherwise automatic fallback sync
+
+Official supported custom proxy shape:
+
+- absolute `http(s)` URL
+- path contains `/proxy/latest`
+- unsupported shapes (`?url=`, `{url}`, `{draw_no}`) are ignored at runtime
 
 ## Quick Start
 

@@ -13,17 +13,21 @@ import {
     runCampaignLimitRegression,
     runCheckTargetDrawRegression,
     runDataListPaginationRegression,
+    runDataListDomRegression,
     runDrawNormalizationRegression,
     runImportAlertOptionRegression,
     runLatestWinPlaceholderRegression,
+    runLocalFontPathRegression,
     runNotificationPermissionRegression,
     runPersistenceFlushRegression,
     runPostImportRefreshRegression,
+    runProxyPolicyRegression,
     runAutoSyncFallbackRegression,
     runQrScanReentryGuardRegression,
     runQrValidationRegression,
     runRequestNumbersRegression,
     runRuntimeAssetLocalizationRegression,
+    runServiceWorkerCoreDataPrecacheRegression,
     runServiceWorkerReloadPolicyRegression,
     runStoredListNormalizationRegression,
     runStrategyPresetCrudRegression,
@@ -77,7 +81,11 @@ async function main() {
     runPersistenceFlushRegression();
     await runNotificationPermissionRegression();
     runDataListPaginationRegression();
+    runDataListDomRegression();
+    runProxyPolicyRegression();
     await runServiceWorkerReloadPolicyRegression();
+    await runServiceWorkerCoreDataPrecacheRegression();
+    await runLocalFontPathRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
     console.log(`[PASS] recommend: ${recommended.sets.length} sets`);
@@ -106,7 +114,11 @@ async function main() {
     console.log('[PASS] persistence-flush regression');
     console.log('[PASS] notification-permission regression');
     console.log('[PASS] data-list pagination regression');
+    console.log('[PASS] data-list DOM regression');
+    console.log('[PASS] proxy-policy regression');
     console.log('[PASS] service-worker reload policy regression');
+    console.log('[PASS] service-worker core data precache regression');
+    console.log('[PASS] local font path regression');
     console.log('[DONE] smoke checks passed');
 }
 

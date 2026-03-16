@@ -3,7 +3,7 @@
 이 저장소에는 브라우저 요청을 공식 로또 API로 전달하고 CORS 헤더를 보완하는
 Cloudflare Worker 예시가 포함되어 있습니다.
 
-웹앱의 `proxy/latest`는 설정 가능한 주소를 읽기 때문에,
+웹앱의 커스텀 프록시 입력은 설정 가능한 `/proxy/latest` 주소를 읽기 때문에,
 앱 코드를 바꾸지 않고도 정적 모드와 프록시 모드를 전환할 수 있습니다.
 
 참고:
@@ -23,7 +23,8 @@ wrangler deploy proxy/worker.js
 
 ## 조회 예시
 
-- 최신 1회차: `https://<your-worker>.workers.dev/proxy/latest?draw_no=1180`
+- 최신 회차: `https://<your-worker>.workers.dev/proxy/latest`
+- 특정 회차 단건 테스트: `https://<your-worker>.workers.dev/proxy/latest?draw_no=1180`
 - 구간 조회: `https://<your-worker>.workers.dev/proxy/range?from=1175&to=1180`
 
 `/proxy/latest` 응답 형식:
@@ -46,7 +47,8 @@ wrangler deploy proxy/worker.js
 - 2버전 설정 키: `lotto_pro_settings_v2.customProxy`
 - 해석 우선순위: `query` > `v1` > `v2`
 - 사용자 프록시가 없으면 앱은 기본 자동 동기화 fallback을 사용합니다.
-- 사용자 프록시가 있으면 해당 주소를 우선 사용하고, 내장 fallback보다 먼저 시도합니다.
+- 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용하고, 내장 fallback보다 먼저 시도합니다.
+- 비지원 프록시 형식은 설정 경고를 표시한 뒤 기본 자동 동기화로 내려갑니다.
 - 앱 UI 경로:
   - 사이드바 또는 모바일 헤더의 `설정` 버튼
   - 설정 모달의 `사용자 프록시 주소 (선택)` 입력란
@@ -54,13 +56,13 @@ wrangler deploy proxy/worker.js
 권장 설정 예시:
 
 - 앱 설정 입력란: `https://<your-worker>.workers.dev/proxy/latest`
-- 앱 설정 입력란: `https://<your-worker>.workers.dev/?url=`
 - 주소창 직접 테스트: `?proxyUrl=https%3A%2F%2F<your-worker>.workers.dev%2Fproxy%2Flatest`
 
 메모:
 
 - `?proxyUrl=` 값은 URL 인코딩한 전체 주소를 넣는 편이 안전합니다.
-- 앱은 `/proxy/latest`, `{draw_no}`, `{url}`, 일반 prefix(`...?url=`) 형식을 모두 해석합니다.
+- 앱의 공식 지원 커스텀 프록시 형식은 절대 URL + `/proxy/latest` 엔드포인트입니다.
+- `?url=`, `{url}`, `{draw_no}`, 일반 prefix 형식은 런타임에서 지원하지 않으며 기본 자동 동기화로 내려갑니다.
 - 공개 fallback 경로는 가용성/요금제/속도에 따라 변동될 수 있으므로, 안정적인 운영에는 사용자 프록시를 권장합니다.
 
 ## 로컬 점검

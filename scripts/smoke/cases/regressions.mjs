@@ -1045,11 +1045,129 @@ function runDataListPaginationRegression() {
     assert.equal(ctx.dataListState.ticket.page, 1, 'changing search query must reset the page to 1');
 }
 
+function runDataListDomRegression() {
+    const previousDocument = globalThis.document;
+    const favSearch = createField();
+    const historySearch = createField();
+    const ticketSearch = createField();
+    const campaignSearch = createField();
+    const favList = createField();
+    const historyList = createField();
+    const ticketList = createField();
+    const campaignList = createField();
+    const favPagination = createField();
+    const historyPagination = createField();
+    const ticketPagination = createField();
+    const campaignPagination = createField();
+    const ticketFilter = createField({ value: 'all' });
+
+    globalThis.document = createDocumentStub({
+        '#favSearch': favSearch,
+        '#historySearch': historySearch,
+        '#ticketSearch': ticketSearch,
+        '#campaignSearch': campaignSearch,
+        '#favList': favList,
+        '#historyList': historyList,
+        '#ticketList': ticketList,
+        '#campaignList': campaignList,
+        '#favPagination': favPagination,
+        '#historyPagination': historyPagination,
+        '#ticketPagination': ticketPagination,
+        '#campaignPagination': campaignPagination,
+        '#ticketFilter': ticketFilter
+    });
+
+    try {
+        const ctx = {
+            data: {
+                state: {
+                    favorites: Array.from({ length: 25 }, (_, idx) => ({
+                        numbers: [1, 2, 3, 4, 5, idx + 6],
+                        date: `2026-03-${String((idx % 25) + 1).padStart(2, '0')}T00:00:00.000Z`
+                    })),
+                    history: [
+                        { numbers: [6, 7, 8, 9, 10, 11], date: '2026-02-01T00:00:00.000Z' }
+                    ],
+                    ticketBook: [
+                        { id: 'ticket<&"\'', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1210, checked: null }
+                    ],
+                    campaigns: [
+                        { id: 'campaign_1', name: '테스트 캠페인', startDrawNo: 1210, weeks: 4, setsPerWeek: 3 }
+                    ]
+                }
+            },
+            dateFormatter: new Intl.DateTimeFormat('ko-KR'),
+            dataListPageSize: 20,
+            dataListState: {
+                fav: { query: '2026-03-10', page: 1 },
+                history: { query: '', page: 1 },
+                ticket: { query: '', page: 1 },
+                campaign: { query: '', page: 1 }
+            },
+            renderSettingsPanel() {},
+            escapeHtml: LottoApp.prototype.escapeHtml,
+            getDataListState: LottoApp.prototype.getDataListState,
+            matchesSearch: LottoApp.prototype.matchesSearch,
+            paginateItems: LottoApp.prototype.paginateItems,
+            renderPagination: LottoApp.prototype.renderPagination,
+            getTicketStatusMeta: LottoApp.prototype.getTicketStatusMeta,
+            formatDate: LottoApp.prototype.formatDate
+        };
+
+        LottoApp.prototype.renderDataLists.call(ctx);
+
+        assert.equal(favSearch.value, '2026-03-10', 'favorite search input must reflect list state');
+        assert.match(favList.innerHTML, /data-raw-index="/, 'favorite rows must keep raw index for delegated actions');
+        assert.ok(!favList.innerHTML.includes('2026. 3. 11.'), 'favorite search must filter out unmatched rows');
+        assert.match(favPagination.innerHTML, /총 1개/, 'favorite pagination summary must render');
+        assert.match(favPagination.innerHTML, /1 \/ 1/, 'favorite pagination page text must render');
+        assert.match(ticketList.innerHTML, /data-id="ticket&lt;&amp;&quot;&#39;"/, 'ticket data-id must be HTML-escaped');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runProxyPolicyRegression() {
+    const dm = new DataManager();
+
+    const supported = dm.validateCustomProxyUrl('https://worker.example/proxy/latest?foo=1');
+    assert.equal(supported.valid, true, 'official /proxy/latest proxy must be supported');
+    assert.equal(supported.normalizedUrl, 'https://worker.example/proxy/latest?foo=1', 'supported proxy must be normalized');
+
+    const prefixStyle = dm.validateCustomProxyUrl('https://worker.example/?url=');
+    assert.equal(prefixStyle.valid, false, 'generic ?url= proxy must no longer be supported');
+
+    dm.state.customProxy = 'https://worker.example/{url}';
+    const resolved = dm.resolveProxyConfig();
+    assert.equal(resolved.invalid, true, 'unsupported stored proxy must be marked invalid');
+    assert.equal(resolved.url, '', 'unsupported stored proxy must not be used at runtime');
+    assert.equal(dm.getSyncMode(resolved), 'automatic_fallback', 'unsupported proxy must fall back to automatic sync mode');
+    assert.equal(dm.getSyncSourceLabel(resolved), '기본 자동 동기화', 'unsupported proxy must report automatic sync source');
+}
+
 async function runServiceWorkerReloadPolicyRegression() {
     const pwaSource = await readFile(resolve(process.cwd(), 'assets/modules/bootstrap/pwa.js'), 'utf8');
     assert.match(pwaSource, /let reloadOnControllerChange = false;/, 'SW script must gate reloads behind explicit update acceptance');
     assert.match(pwaSource, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
     assert.match(pwaSource, /if \(refreshing \|\| !reloadOnControllerChange\) return;/, 'controllerchange must ignore first-install activation');
+}
+
+async function runServiceWorkerCoreDataPrecacheRegression() {
+    const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
+    assert.match(swSource, /const CACHE_VERSION = 'v12';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
+    assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
+    assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
+}
+
+async function runLocalFontPathRegression() {
+    const tokensSource = await readFile(resolve(process.cwd(), 'assets/styles/tokens.css'), 'utf8');
+    assert.match(
+        tokensSource,
+        /src:\s*url\('\/assets\/vendor\/pretendard\/PretendardVariable\.woff2'\)/,
+        'Pretendard font path must use absolute same-origin asset path'
+    );
 }
 
 
@@ -1116,6 +1234,10 @@ export {
     runPersistenceFlushRegression,
     runNotificationPermissionRegression,
     runDataListPaginationRegression,
+    runDataListDomRegression,
+    runProxyPolicyRegression,
     runServiceWorkerReloadPolicyRegression,
+    runServiceWorkerCoreDataPrecacheRegression,
+    runLocalFontPathRegression,
     runBackupSmoke
 };

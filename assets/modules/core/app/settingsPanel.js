@@ -112,6 +112,27 @@ export const appSettingsMethods = {
         if (proxyInput && document.activeElement !== proxyInput && proxyInput.value !== (this.data.state.customProxy || '')) {
             proxyInput.value = this.data.state.customProxy || '';
         }
+        const proxyHelp = $('#customProxyHelp');
+        const proxyStatus = $('#customProxyStatusNote');
+        const savedProxyValidation = this.data.validateCustomProxyUrl(this.data.state.customProxy || '');
+        const activeProxyConfig = this.data.resolveProxyConfig();
+        if (proxyHelp) {
+            proxyHelp.textContent = savedProxyValidation.empty
+                ? '비워두면 기본 자동 동기화를 사용합니다. 공식 지원 형식: https://<worker>.workers.dev/proxy/latest'
+                : savedProxyValidation.valid
+                    ? '공식 지원 형식의 사용자 프록시가 저장되어 있습니다.'
+                    : '지원되지 않는 프록시 형식은 무시되고 기본 자동 동기화로 내려갑니다.';
+        }
+        if (proxyStatus) {
+            let statusText = '';
+            if (!savedProxyValidation.empty && !savedProxyValidation.valid) {
+                statusText = `저장된 프록시 주소를 사용하지 않습니다. ${savedProxyValidation.reason}`;
+            } else if (activeProxyConfig?.invalid) {
+                statusText = `${activeProxyConfig.source}의 프록시 형식이 지원되지 않아 기본 자동 동기화를 사용 중입니다.`;
+            }
+            proxyStatus.textContent = statusText;
+            proxyStatus.style.display = statusText ? 'block' : 'none';
+        }
 
         const freshness = this.data.getDataFreshness();
         const syncMeta = this.data.state.syncMeta || this.data.getDefaultSyncMeta?.() || {};
@@ -131,7 +152,9 @@ export const appSettingsMethods = {
         }
         const syncWarningEl = $('#syncMetaWarning');
         if (syncWarningEl) {
-            if (freshness.isStale) {
+            if (activeProxyConfig?.invalid) {
+                syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
+            } else if (freshness.isStale) {
                 syncWarningEl.textContent = freshness.canAutoSync
                     ? `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
                     : `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다.`;

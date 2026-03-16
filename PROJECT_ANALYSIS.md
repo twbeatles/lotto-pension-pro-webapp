@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-03-14)
+# Lotto Webapp Structure Notes (2026-03-16)
 
 ## Summary
 
@@ -11,6 +11,7 @@
 - Current direction:
   - settings and operational state are managed from a global settings modal
   - large files were split into facade entry files plus internal modules
+  - latest draw sync now uses automatic fallback by default and prefers a user proxy when configured
   - deployment target is GitHub Pages
 
 ## Current Layout
@@ -50,6 +51,7 @@
   - custom proxy URL
   - sync metadata
   - app storage usage summary
+- On mobile, the settings modal is intentionally single-column to avoid horizontal overflow.
 - The data page is focused on:
   - backup export/import
   - favorites/history/tickets/campaign lists
@@ -83,8 +85,9 @@ Main storage keys:
 
 Operational rules:
 
-- latest draw sync is proxy opt-in
-- no proxy means static JSON only
+- latest draw sync defaults to automatic fallback
+- a configured custom proxy is preferred over built-in fallback providers
+- if automatic sync providers fail, the app stays on static JSON plus local updates
 - proxy resolution order is `query -> v1 legacy -> v2 settings`
 - favorites, tickets, campaigns, alerts, and presets save immediately
 - `pagehide` and hidden `visibilitychange` force a flush save
@@ -119,9 +122,10 @@ Important regression areas:
 
 - generator / AI / backtest flows
 - campaign caps and cascade delete
-- single-flight sync / cancel / proxy opt-in behavior
+- single-flight sync / cancel / automatic fallback behavior
+- lazy-loaded tab routing for `ai`, `bt`, `check`
 - import option handling
-- settings modal rendering
+- settings modal rendering, especially on mobile
 - data list search and pagination
 - service-worker update acceptance and reload policy
 
@@ -129,4 +133,4 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-14.md` was already deleted in the worktree before this task and was not restored here.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-14.md` remains in the repo as the historical review, with a 2026-03-16 consistency addendum.

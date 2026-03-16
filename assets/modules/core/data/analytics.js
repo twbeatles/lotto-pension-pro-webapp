@@ -11,14 +11,16 @@ export const dataAnalyticsMethods = {
         const staticBehindBy = staticLatestDrawNo > 0 && estimatedLatestDrawNo > 0
             ? Math.max(0, estimatedLatestDrawNo - staticLatestDrawNo)
             : 0;
-        const hasProxy = Boolean(this.resolveProxyConfig()?.url);
+        const hasCustomProxy = Boolean(this.resolveProxyConfig()?.url);
         return {
             latestDrawNo,
             staticLatestDrawNo,
             estimatedLatestDrawNo,
             behindBy,
             staticBehindBy,
-            hasProxy,
+            hasProxy: hasCustomProxy,
+            hasCustomProxy,
+            canAutoSync: true,
             isStale: behindBy > 0
         };
     },

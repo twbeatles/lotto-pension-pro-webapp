@@ -19,7 +19,7 @@ import {
     runNotificationPermissionRegression,
     runPersistenceFlushRegression,
     runPostImportRefreshRegression,
-    runProxyOptInSyncRegression,
+    runAutoSyncFallbackRegression,
     runQrScanReentryGuardRegression,
     runQrValidationRegression,
     runRequestNumbersRegression,
@@ -73,7 +73,7 @@ async function main() {
     await runQrScanReentryGuardRegression();
     await runPostImportRefreshRegression();
     await runRuntimeAssetLocalizationRegression();
-    await runProxyOptInSyncRegression();
+    await runAutoSyncFallbackRegression();
     runPersistenceFlushRegression();
     await runNotificationPermissionRegression();
     runDataListPaginationRegression();
@@ -102,7 +102,7 @@ async function main() {
     console.log('[PASS] qr-reentry-guard regression');
     console.log('[PASS] post-import-refresh regression');
     console.log('[PASS] runtime-asset-localization regression');
-    console.log('[PASS] proxy-opt-in sync regression');
+    console.log('[PASS] auto-sync fallback regression');
     console.log('[PASS] persistence-flush regression');
     console.log('[PASS] notification-permission regression');
     console.log('[PASS] data-list pagination regression');

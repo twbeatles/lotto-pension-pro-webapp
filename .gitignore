@@ -14,6 +14,8 @@ Thumbs.db
 # Local temporary artifacts
 node_modules/
 .eslintcache
+.wrangler/
+.tmp_vendor/
 .tmp-*/
 *.log
 *.tmp

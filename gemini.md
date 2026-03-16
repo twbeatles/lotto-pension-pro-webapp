@@ -5,7 +5,7 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-03-14`
+- Date: `2026-03-16`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
@@ -41,9 +41,11 @@ Use it as the fast-start reference for the current structure and workflow.
 ## UX Notes
 
 - Storage, proxy, sync, alert, and theme settings are handled from the global settings modal.
+- On mobile, the settings modal is intentionally rendered as a single-column sheet.
 - The data page is focused on backup/import and list management.
-- Latest draw sync is proxy opt-in.
-- No proxy means static JSON mode only.
+- Latest draw sync defaults to automatic fallback.
+- A configured user proxy is preferred over built-in fallback providers.
+- If no user proxy is set, the app still attempts runtime sync and falls back to static JSON plus local updates on failure.
 
 ## Key Map
 
@@ -83,7 +85,7 @@ Proxy priority:
 1. `?proxyUrl=` / `?proxy=`
 2. legacy `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
-4. otherwise static JSON only
+4. otherwise automatic fallback sync
 
 ## Quick Commands
 
@@ -104,9 +106,10 @@ Local URL:
 2. `node scripts/smoke/smoke.mjs`
 3. generator / AI / backtest basic flows
 4. settings modal state reflection
-5. backup/import behavior
-6. proxy unset/set sync policy
-7. service worker update acceptance and reload
+5. mobile settings modal rendering
+6. backup/import behavior
+7. proxy unset/set sync policy
+8. service worker update acceptance and reload
 
 ## Session Template
 

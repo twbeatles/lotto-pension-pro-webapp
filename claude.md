@@ -5,7 +5,7 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-03-14`
+- Date: `2026-03-16`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
@@ -40,9 +40,11 @@ Use it to restore context quickly and avoid missing the current structure.
   - custom proxy URL
   - sync metadata
   - app storage summary
+- On mobile, the settings modal is forced into a single-column layout.
 - The data page is now focused on backup/import and list management.
-- Latest draw sync is proxy opt-in.
-  - No proxy means `data/winning_stats.json` plus local updates only.
+- Latest draw sync defaults to automatic fallback.
+  - A configured user proxy is preferred.
+  - Without a user proxy, the app still attempts runtime sync and stores fetched draws into local updates.
 
 ## Key Files
 
@@ -84,7 +86,7 @@ Proxy resolution order:
 1. `?proxyUrl=` / `?proxy=`
 2. `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
-4. otherwise static JSON only
+4. otherwise automatic fallback sync
 
 ## Quick Start
 
@@ -112,9 +114,10 @@ Recommended manual checks:
 2. Settings modal open/close and state reflection
 3. AI recommendation and `requestNumbers` replacement flow
 4. Data backup/import
-5. Sync button, cancel path, and no-proxy messaging
+5. Sync button, cancel path, and no-proxy automatic fallback behavior
 6. Data list search and pagination
-7. Service worker update acceptance and reload behavior
+7. Mobile settings modal rendering
+8. Service worker update acceptance and reload behavior
 
 ## Session Template
 

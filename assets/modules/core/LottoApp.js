@@ -69,9 +69,7 @@ export class LottoApp {
         this.updateLatestWin({ offline: !latestLoaded });
 
         runWhenIdle(() => {
-            if (this.data.resolveProxyConfig()?.url) {
-                this.data.fetchLatestFromAPI({ silent: true, trigger: 'idle' });
-            }
+            this.data.fetchLatestFromAPI({ silent: true, trigger: 'idle' });
         });
 
         await this.refreshCurrentRoute();

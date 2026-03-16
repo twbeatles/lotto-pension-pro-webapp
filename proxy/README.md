@@ -45,7 +45,8 @@ wrangler deploy proxy/worker.js
 - 이전 저장 키: `lotto_webapp_settings_v1.proxyLatestUrl`
 - 2버전 설정 키: `lotto_pro_settings_v2.customProxy`
 - 해석 우선순위: `query` > `v1` > `v2`
-- 프록시가 없으면 앱은 정적 JSON 전용 모드로 동작하며, 공개 fallback 프록시는 기본 사용하지 않습니다.
+- 사용자 프록시가 없으면 앱은 기본 자동 동기화 fallback을 사용합니다.
+- 사용자 프록시가 있으면 해당 주소를 우선 사용하고, 내장 fallback보다 먼저 시도합니다.
 - 앱 UI 경로:
   - 사이드바 또는 모바일 헤더의 `설정` 버튼
   - 설정 모달의 `사용자 프록시 주소 (선택)` 입력란
@@ -60,6 +61,7 @@ wrangler deploy proxy/worker.js
 
 - `?proxyUrl=` 값은 URL 인코딩한 전체 주소를 넣는 편이 안전합니다.
 - 앱은 `/proxy/latest`, `{draw_no}`, `{url}`, 일반 prefix(`...?url=`) 형식을 모두 해석합니다.
+- 공개 fallback 경로는 가용성/요금제/속도에 따라 변동될 수 있으므로, 안정적인 운영에는 사용자 프록시를 권장합니다.
 
 ## 로컬 점검
 
@@ -73,4 +75,4 @@ npm run lint
 ## 참고
 
 - 프록시는 선택 기능입니다.
-- 프록시가 불가능해도 앱은 `data/winning_stats.json` 기반으로 계속 동작합니다.
+- 프록시가 없어도 앱은 `data/winning_stats.json` + 로컬 업데이트 기반으로 계속 동작하며, 기본 자동 동기화를 시도합니다.

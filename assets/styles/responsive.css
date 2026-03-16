@@ -820,6 +820,101 @@
   }
 }
 
+@media (max-width: 768px) {
+  #settingsModal {
+    align-items: flex-end;
+    padding: max(12px, env(safe-area-inset-top)) 0 0;
+  }
+
+  .settings-modal-content {
+    width: min(100vw, 420px);
+    max-width: none;
+    max-height: min(92dvh, 860px);
+    margin-top: auto;
+    padding: 20px 16px calc(18px + env(safe-area-inset-bottom, 20px));
+    border-radius: 24px 24px 0 0;
+    gap: 18px;
+  }
+
+  .settings-modal-header {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .settings-modal-header h3 {
+    font-size: 20px;
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+
+  .settings-modal-header .subtitle {
+    margin-top: 8px;
+  }
+
+  .settings-modal-header .icon-btn {
+    flex-shrink: 0;
+  }
+
+  .settings-modal-body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 0;
+    gap: 16px;
+    overscroll-behavior: contain;
+  }
+
+  .settings-grid-top,
+  .settings-grid-bottom,
+  .sync-meta-grid,
+  .data-summary-grid,
+  .settings-theme-switch {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .settings-panel {
+    width: 100%;
+    min-width: 0;
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .settings-panel-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .settings-panel-head .badge {
+    align-self: flex-start;
+  }
+
+  .settings-button-group {
+    flex-direction: column;
+  }
+
+  .settings-button-group .btn {
+    width: 100%;
+  }
+
+  .sync-meta-item,
+  .data-summary-item {
+    min-width: 0;
+  }
+
+  .sync-meta-item strong,
+  .data-summary-item strong {
+    overflow-wrap: anywhere;
+  }
+
+  .settings-note,
+  .settings-caption {
+    overflow-wrap: anywhere;
+  }
+
+  .settings-sync-log {
+    max-height: 180px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   *,

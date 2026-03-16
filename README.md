@@ -7,6 +7,20 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 최근 안정화/정합성 반영 (2026-03-16)
+
+- 설정 모달 모바일 레이아웃을 단일 열 중심으로 다시 정리했습니다.
+  - 가로 스크롤 제거
+  - 패널/배지/버튼 폭 정리
+  - 좁은 화면에서 설정 내용을 실제로 확인할 수 있도록 개선
+- `예측`, `실험`, `확인` 탭의 lazy import 경로를 수정해 탭 전환 오류를 복구했습니다.
+- 최신 회차 동기화 정책은 현재 `기본 자동 동기화 + 사용자 프록시 우선`입니다.
+  - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 조회합니다.
+  - 사용자 프록시가 있으면 해당 주소를 우선 사용합니다.
+  - 동기화 결과는 `localUpdates`에 누적되어 정적 JSON보다 최신 회차를 로컬에서 보완할 수 있습니다.
+- 설정 모달 안내 문구와 동기화 상태 표기를 현재 정책 기준으로 정리했습니다.
+- same-origin Pretendard 폰트 경로를 바로잡아 런타임 폰트 로딩 경고를 줄였습니다.
+
 ## 최근 기능/오프라인 자산 통합 반영 (2026-03-13)
 
 - 모바일 하단 탐색을 `gen/stats/ai/bt/check/data` 6탭으로 통일해 모바일에서도 `data` 화면에 직접 진입할 수 있습니다.
@@ -29,9 +43,9 @@
 
 ## 최근 기능 개선 반영 (2026-03-14)
 
-- 최신 회차 동기화는 `프록시 옵트인` 정책으로 변경했습니다.
-  - 프록시 미설정 시 앱은 `data/winning_stats.json` 기반으로만 동작합니다.
-  - 기본 `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` fallback은 사용하지 않습니다.
+- 최신 회차 동기화 메타와 설정 모달 통합 UI를 도입했습니다.
+  - 현재 기준 동기화 정책은 `기본 자동 동기화 + 사용자 프록시 우선`입니다.
+  - 사용자 프록시가 없으면 내장 fallback 경로를 사용하고, 실패 시 정적 JSON + 로컬 업데이트 상태를 유지합니다.
 - 설정 모달에 동기화 메타를 통합했습니다.
   - 현재 모드/소스, 마지막 성공 시각, 마지막 반영 회차, 마지막 실패 원인, 최신성 경고
 - 데이터 관리 화면 리스트에 검색 + 페이지네이션을 추가했습니다.
@@ -143,20 +157,22 @@
   - 비교 결과 CSV 내보내기
 - 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
 - 모바일 최적화 화면: 세이프 영역 대응, 하단 탐색, 반응형 레이아웃
+- 모바일 설정 모달: 단일 열 중심 레이아웃과 가로 오버플로우 방지
 - 설정 모달:
   - 테마, 알림, 프록시, 동기화 상태, 저장 공간 요약을 한곳에서 관리
+  - 좁은 화면에서 단일 열로 읽기 쉽게 배치
 - 알림 관리: 인앱 알림과 시스템 알림 설정
   - 시스템 알림 권한 배지 및 테스트 알림 지원
 - 오프라인 앱 지원:
   - 네트워크가 없을 때도 기본 기능 사용 가능
-  - 앱 실행 중 백그라운드 최신 데이터 동기화(프록시 설정 시)
+  - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 사용자 프록시 우선)
   - 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
-- 프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
+- 최신 회차 동기화/프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy`
-  - 프록시 미설정 시 실시간 최신 회차 동기화는 시도하지 않고 정적 JSON만 사용
+  - 프록시 미설정 시 앱은 기본 자동 동기화 fallback을 사용하고, 실패 시 정적 JSON + 로컬 업데이트 상태를 유지
   - 권장 입력 예시: `https://<worker>.workers.dev/proxy/latest`
   - 앱 URL에 `?proxyUrl=`로 직접 넣을 때는 프록시 주소 전체를 URL 인코딩하는 편이 안전합니다.
 
@@ -250,7 +266,7 @@ node scripts/smoke/smoke.mjs
 - `campaign-limit`, `campaign-cascade`, `campaign-empty-save`
 - `qr-validation`, `qr-reentry-guard`
 - `ticket-dedupe`, `requestNumbers replace`
-- `sync-guard`, `sync-latest-win refresh`, `proxy-opt-in sync`
+- `sync-guard`, `sync-latest-win refresh`, `auto-sync fallback`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
 - `import-alert-options`, `post-import-refresh`
 - `strategy-preset-crud`, `runtime-asset-localization`

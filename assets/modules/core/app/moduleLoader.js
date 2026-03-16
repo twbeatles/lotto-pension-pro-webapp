@@ -24,22 +24,22 @@ export const appModuleLoaderMethods = {
         const loadPromise = (async () => {
             if (!this.moduleConstructors[name]) {
                 if (name === 'stats') {
-                    const mod = await import('../features/Stats.js');
+                    const mod = await import('../../features/Stats.js');
                     this.moduleConstructors[name] = mod.StatsModule;
                 } else if (name === 'ai') {
-                    const mod = await import('../features/Ai.js');
+                    const mod = await import('../../features/Ai.js');
                     this.moduleConstructors[name] = mod.AiModule;
                 } else if (name === 'check') {
-                    const mod = await import('../features/Check.js');
+                    const mod = await import('../../features/Check.js');
                     this.moduleConstructors[name] = mod.CheckModule;
                 } else if (name === 'dataIO') {
-                    const mod = await import('../features/DataIO.js');
+                    const mod = await import('../../features/DataIO.js');
                     this.moduleConstructors[name] = mod.DataIOModule;
                 } else if (name === 'backtest') {
-                    const mod = await import('../features/Backtest.js');
+                    const mod = await import('../../features/Backtest.js');
                     this.moduleConstructors[name] = mod.BacktestModule;
                 } else if (name === 'qr') {
-                    const mod = await import('../features/QrScanner.js');
+                    const mod = await import('../../features/QrScanner.js');
                     this.moduleConstructors[name] = mod.QrScannerModule;
                 }
             }
@@ -61,10 +61,10 @@ export const appModuleLoaderMethods = {
     preloadLikelyModules() {
         runWhenIdle(() => {
             // Warm important modules and worker during idle time.
-            import('../features/Ai.js')
+            import('../../features/Ai.js')
                 .then((mod) => { this.moduleConstructors.ai = mod.AiModule; })
                 .catch(() => null);
-            import('../features/Backtest.js')
+            import('../../features/Backtest.js')
                 .then((mod) => { this.moduleConstructors.backtest = mod.BacktestModule; })
                 .catch(() => null);
 

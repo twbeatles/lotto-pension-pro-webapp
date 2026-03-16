@@ -1,5 +1,13 @@
 # 기능 구현 리뷰 및 반영 현황 (2026-03-14)
 
+## 후속 정합성 메모 (2026-03-16)
+
+- 2026-03-14 기준으로 정리했던 `프록시 옵트인` 정책은 현재 `기본 자동 동기화 + 사용자 프록시 우선` 정책으로 다시 조정됐습니다.
+- 사용자 프록시가 없어도 앱 시작 시점과 수동 동기화에서 내장 fallback 경로를 통해 최신 회차를 확인합니다.
+- 설정 모달 모바일 레이아웃은 마지막 로드 CSS 기준으로 다시 정리되어 가로 스크롤 없이 단일 열로 표시됩니다.
+- `예측`, `실험`, `확인` 탭의 lazy import 경로 오류를 수정해 탭 전환 실패가 재발하지 않도록 정리했습니다.
+- smoke 회귀 명칭도 현재 정책 기준으로 `auto-sync fallback`으로 맞췄습니다.
+
 ## 검토 범위
 
 - 참조 문서: `README.md`, `claude.md`, `gemini.md`, `PROJECT_ANALYSIS.md`
@@ -29,8 +37,9 @@
 
 - 완료
 - 반영 내용:
-  - 최신 회차 동기화는 `프록시 옵트인` 정책으로 전환
-  - 프록시 미설정 시 `/proxy/latest`, `api.allorigins.win`, `corsproxy.io` 기본 fallback 제거
+  - 최신 회차 동기화는 현재 `기본 자동 동기화 + 사용자 프록시 우선` 정책
+  - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차 확인 시도
+  - 사용자 프록시가 있으면 해당 주소를 우선 사용
   - `lotto_pro_sync_meta_v1` 추가
     - `mode`
     - `currentSource`
@@ -96,8 +105,8 @@
 
 주요 정리 항목:
 
-- 앱 실행 중 백그라운드 동기화(프록시 설정 시) 표현 통일
-- 프록시 우선순위에서 공개 fallback 기본값 제거
+- 앱 실행 중 백그라운드 동기화 표현을 `기본 자동 동기화 + 사용자 프록시 우선`으로 통일
+- 사용자 프록시 우선순위와 내장 자동 fallback 경로를 함께 문서화
 - `lotto_pro_sync_meta_v1` 저장 키 문서화
 - 서비스워커 reload 정책 문서화
 - 새 smoke 회귀 항목 문서화
@@ -110,7 +119,7 @@
 
 이번에 추가/확인한 smoke 회귀:
 
-- `proxy-opt-in sync`
+- `auto-sync fallback`
 - `persistence-flush`
 - `notification-permission`
 - `data-list pagination`

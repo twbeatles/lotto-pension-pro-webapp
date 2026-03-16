@@ -881,7 +881,7 @@
                         <div class="settings-panel-head">
                             <div>
                                 <h4>데이터 동기화</h4>
-                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 실시간 최신 회차 조회는 프록시 설정 시에만 시도합니다.</p>
+                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 기본 자동 경로로 최신 회차를 확인합니다. 사용자 프록시를 입력하면 해당 주소를 우선 사용합니다.</p>
                             </div>
                             <span id="settingsSyncStateBadge" class="badge status-badge">상태 확인 중</span>
                         </div>
@@ -890,7 +890,7 @@
                             <label for="customProxyUrl">사용자 프록시 주소 (선택)</label>
                             <input type="text" id="customProxyUrl" placeholder="예: https://my-worker.workers.dev/?url="
                                 class="settings-proxy-input">
-                            <p class="subtitle settings-caption">프록시를 설정한 경우에만 앱 실행 중 최신 회차 동기화를 시도합니다.</p>
+                            <p class="subtitle settings-caption">비워두면 기본 자동 동기화를 사용하고, 입력하면 해당 프록시를 우선 사용합니다.</p>
                         </div>
 
                         <div class="sync-meta-grid">

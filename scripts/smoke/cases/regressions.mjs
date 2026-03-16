@@ -881,7 +881,7 @@ async function runPostImportRefreshRegression() {
     ], 'post-import refresh order must be preserved');
 }
 
-async function runProxyOptInSyncRegression() {
+async function runAutoSyncFallbackRegression() {
     const previousDocument = globalThis.document;
     const dm = new DataManager();
     const est = estimateLatestDrawKST();
@@ -914,10 +914,12 @@ async function runProxyOptInSyncRegression() {
 
     try {
         const result = await dm._fetchLatestFromAPIInternal({ trigger: 'manual', silent: true }, null);
-        assert.equal(result, false, 'manual sync without proxy must return false without network sync');
-        assert.equal(rangeCalls, 0, 'range sync must not run without configured proxy');
-        assert.equal(fallbackCalls, 0, 'fallback sync must not run without configured proxy');
-        assert.match(dm.state.syncMeta.lastFailureMessage, /프록시/, 'sync meta must explain proxy opt-in requirement');
+        assert.equal(result, false, 'manual sync must fail explicitly when automatic fallback sources return no data');
+        assert.equal(rangeCalls, 1, 'range sync path must still run without configured custom proxy');
+        assert.equal(fallbackCalls, 1, 'fallback single-draw sync must run without configured custom proxy');
+        assert.equal(dm.state.syncMeta.mode, 'automatic_fallback', 'sync meta mode must reflect automatic fallback mode');
+        assert.equal(dm.state.syncMeta.currentSource, '기본 자동 동기화', 'sync meta source must reflect automatic fallback source');
+        assert.match(dm.state.syncMeta.lastFailureMessage, /최신 회차/, 'sync meta must explain automatic sync failure reason');
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -1110,7 +1112,7 @@ export {
     runQrScanReentryGuardRegression,
     runSyncGuardRegression,
     runPostImportRefreshRegression,
-    runProxyOptInSyncRegression,
+    runAutoSyncFallbackRegression,
     runPersistenceFlushRegression,
     runNotificationPermissionRegression,
     runDataListPaginationRegression,

@@ -33,8 +33,8 @@ export const dataDefaultsMethods = {
 
     getDefaultSyncMeta() {
         return {
-            mode: 'static_only',
-            currentSource: '정적 JSON',
+            mode: 'automatic_fallback',
+            currentSource: '기본 자동 동기화',
             lastSuccessAt: '',
             lastSuccessDrawNo: 0,
             lastFailureAt: '',
@@ -61,16 +61,18 @@ export const dataDefaultsMethods = {
     },
 
     getSyncMode(proxyConfig = this.resolveProxyConfig()) {
-        return proxyConfig?.url ? 'proxy_opt_in' : 'static_only';
+        return proxyConfig?.url ? 'custom_proxy' : 'automatic_fallback';
     },
 
     getSyncModeLabel(mode = this.state.syncMeta?.mode) {
-        return mode === 'proxy_opt_in' ? '프록시 옵트인' : '정적 JSON 전용';
+        if (mode === 'custom_proxy' || mode === 'proxy_opt_in') return '사용자 프록시';
+        if (mode === 'automatic_fallback') return '기본 자동 동기화';
+        return '정적 JSON 전용';
     },
 
     getSyncSourceLabel(proxyConfig = this.resolveProxyConfig()) {
         if (proxyConfig?.url) return proxyConfig.source || '사용자 프록시';
-        return '정적 JSON';
+        return '기본 자동 동기화';
     },
 
     isStrategyScope(scope) {

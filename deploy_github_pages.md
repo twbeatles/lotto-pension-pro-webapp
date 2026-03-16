@@ -18,19 +18,21 @@
 ## 2) 데이터 운영
 
 - 기본 데이터 소스: `data/winning_stats.json`
-- 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 동기화(프록시 설정 시)
+- 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 자동 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
   - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
-  - 프록시 미설정 시 실시간 최신 회차 네트워크 호출은 시도하지 않음
+  - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
+  - 사용자 프록시가 있으면 해당 주소를 우선 사용
   - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
 
 - 정적 JSON과 로컬 업데이트를 병합해 최신 상태를 구성합니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
+- 자동 동기화 경로가 모두 실패하면 정적 JSON + 로컬 업데이트 상태를 그대로 유지합니다.
 
 ## 3) 프록시 모드 (선택)
 
@@ -44,13 +46,14 @@
 1. `?proxyUrl=...` 또는 `?proxy=...`
 2. `localStorage` 키 `lotto_webapp_settings_v1.proxyLatestUrl`
 3. `lotto_pro_settings_v2.customProxy`
-4. 그 외는 정적 JSON 전용 모드
+4. 그 외는 앱 내장 자동 동기화 fallback
 
 메모:
 
 - `?proxyUrl=`에 넣는 값은 `https://<worker>.workers.dev/proxy/latest`처럼 최신 단건 엔드포인트를 권장합니다.
 - 브라우저 주소창에 직접 넣을 때는 프록시 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
 - 앱의 설정 모달 입력란에는 `https://<worker>.workers.dev/proxy/latest`, `https://<worker>.workers.dev/?url=`, `{draw_no}` 또는 `{url}` 플레이스홀더 형식도 사용할 수 있습니다.
+- 내장 fallback보다 안정적인 운영이 필요하면 사용자 프록시를 권장합니다.
 
 ## 4) 서비스워커/캐시 운영
 
@@ -130,7 +133,7 @@ npm run format:check
 - Import `alerts` 옵션 기본값과 적용 여부가 맞는지(`import-alert-options`)
 - 전략 프리셋 CRUD가 scope별로 동작하는지(`strategy-preset-crud`)
 - 런타임 HTML/loader에서 CDN 경로가 남지 않는지(`runtime-asset-localization`)
-- 프록시 미설정 상태에서 실시간 동기화 네트워크 호출이 발생하지 않는지(`proxy-opt-in sync`)
+- 프록시 미설정 상태에서 자동 동기화 fallback 경로가 시도되는지(`auto-sync fallback`)
 - `pagehide`/`visibilitychange(hidden)`에서 즉시 저장 flush가 동작하는지(`persistence-flush`)
 - 시스템 알림 토글이 권한 요청/원복/테스트 알림 흐름대로 동작하는지(`notification-permission`)
 - 데이터 탭 검색/페이지네이션이 100개 초과 데이터에서도 동작하는지(`data-list pagination`)

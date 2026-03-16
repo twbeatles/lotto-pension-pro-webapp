@@ -618,9 +618,9 @@ export const appDataListMethods = {
         const syncWarningEl = $('#syncMetaWarning');
         if (syncWarningEl) {
             if (freshness.isStale) {
-                syncWarningEl.textContent = freshness.hasProxy
-                    ? `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화할 수 있습니다.`
-                    : `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다. 프록시 URL을 설정하면 실시간 동기화를 사용할 수 있습니다.`;
+                syncWarningEl.textContent = freshness.canAutoSync
+                    ? `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
+                    : `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다.`;
             } else if (freshness.staticBehindBy > 0) {
                 syncWarningEl.textContent = `정적 JSON은 ${freshness.staticBehindBy}회차 뒤처져 있지만 로컬 업데이트가 보완하고 있습니다.`;
             } else {

@@ -2,6 +2,23 @@ import { CONFIG } from '../../utils/config.js';
 import { $, estimateLatestDrawKST } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
 import { measureAsync } from '../../utils/perf.js';
+
+const OFFICIAL_DRAW_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
+const BUILTIN_SYNC_SINGLE_PROVIDERS = [
+    {
+        label: 'CodeTabs',
+        buildUrl(targetUrl) {
+            return `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+        }
+    },
+    {
+        label: 'corsproxy.io',
+        buildUrl(targetUrl) {
+            return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        }
+    }
+];
+
 export const dataSyncMethods = {
     async fetchWithTimeout(url, options = {}, timeoutMs = this.SYNC_FETCH_TIMEOUT_MS, externalSignal = null) {
         return measureAsync('sync.fetch', async () => {
@@ -189,50 +206,113 @@ export const dataSyncMethods = {
         return normalized;
     },
 
-    async fetchOneDraw(drawNo, proxyConfig, _log = () => {}, signal = null) {
-        const targetUrl = `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=${drawNo}`;
-        const internalUrls = [];
+    buildCustomSingleFetchUrls(drawNo, proxyConfig = this.resolveProxyConfig()) {
+        const targetUrl = `${OFFICIAL_DRAW_API_URL}${drawNo}`;
         const customProxy = proxyConfig?.url || '';
+        if (!customProxy) return [];
 
-        if (customProxy) {
-            if (customProxy.includes('{draw_no}')) {
-                internalUrls.push(customProxy.replace('{draw_no}', String(drawNo)));
-            } else if (customProxy.includes('/proxy/latest')) {
-                if (customProxy.includes('draw_no=')) {
-                    internalUrls.push(customProxy.replace(/draw_no=\d*/i, `draw_no=${drawNo}`));
-                } else {
-                    const delim = customProxy.includes('?') ? '&' : '?';
-                    internalUrls.push(`${customProxy}${delim}draw_no=${drawNo}`);
-                }
-            } else if (customProxy.includes('{url}')) {
-                internalUrls.push(customProxy.replace('{url}', encodeURIComponent(targetUrl)));
+        const urls = [];
+        const label = proxyConfig?.source || '사용자 프록시';
+
+        if (customProxy.includes('{draw_no}')) {
+            urls.push({ label, url: customProxy.replace('{draw_no}', String(drawNo)) });
+        } else if (customProxy.includes('/proxy/latest')) {
+            if (customProxy.includes('draw_no=')) {
+                urls.push({ label, url: customProxy.replace(/draw_no=\d*/i, `draw_no=${drawNo}`) });
             } else {
-                internalUrls.push(`${customProxy}${encodeURIComponent(targetUrl)}`);
+                const delim = customProxy.includes('?') ? '&' : '?';
+                urls.push({ label, url: `${customProxy}${delim}draw_no=${drawNo}` });
+            }
+        } else if (customProxy.includes('{url}')) {
+            urls.push({ label, url: customProxy.replace('{url}', encodeURIComponent(targetUrl)) });
+        } else {
+            urls.push({ label, url: `${customProxy}${encodeURIComponent(targetUrl)}` });
+        }
+
+        return urls;
+    },
+
+    buildBuiltInSingleFetchUrls(drawNo) {
+        const targetUrl = `${OFFICIAL_DRAW_API_URL}${drawNo}`;
+        return BUILTIN_SYNC_SINGLE_PROVIDERS.map((provider) => ({
+            label: provider.label,
+            url: provider.buildUrl(targetUrl)
+        }));
+    },
+
+    parseSyncPayload(rawText = '') {
+        let text = String(rawText || '').trim();
+        if (!text) return null;
+
+        if (text.startsWith('Title:') && text.includes('Markdown Content:')) {
+            text = text.split('Markdown Content:').slice(1).join('Markdown Content:').trim();
+        }
+
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch (e) {
+            return null;
+        }
+
+        if (typeof parsed === 'string') {
+            try {
+                parsed = JSON.parse(parsed);
+            } catch (e) {
+                return null;
             }
         }
 
-        const urls = [...internalUrls];
-        for (const fetchUrl of urls) {
+        if (parsed?.contents && typeof parsed.contents === 'string') {
+            try {
+                parsed = JSON.parse(parsed.contents);
+            } catch (e) {
+                return null;
+            }
+        } else if (parsed?.contents) {
+            parsed = parsed.contents;
+        }
+
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    },
+
+    extractSingleDrawFromPayload(payload) {
+        if (!payload || typeof payload !== 'object') return null;
+        if (Array.isArray(payload?.normalized) && payload.normalized[0]) {
+            return this.normalizeDrawItem(payload.normalized[0]);
+        }
+        if (Array.isArray(payload?.data?.list) && payload.data.list[0]) {
+            return this.normalizeDrawItem(payload.data.list[0]);
+        }
+        if (Array.isArray(payload?.data) && payload.data[0]) {
+            return this.normalizeDrawItem(payload.data[0]);
+        }
+        return this.normalizeDrawItem(payload);
+    },
+
+    async fetchOneDraw(drawNo, proxyConfig, _log = () => {}, signal = null) {
+        const candidates = [
+            ...this.buildCustomSingleFetchUrls(drawNo, proxyConfig),
+            ...this.buildBuiltInSingleFetchUrls(drawNo)
+        ].filter((candidate, index, list) => {
+            return candidate?.url && list.findIndex((item) => item.url === candidate.url) === index;
+        });
+
+        for (const candidate of candidates) {
             if (signal?.aborted) throw this.createAbortError('Sync aborted');
             try {
-                const res = await this.fetchWithTimeout(fetchUrl, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
+                const res = await this.fetchWithTimeout(candidate.url, {}, this.SYNC_FETCH_TIMEOUT_MS, signal);
                 if (!res.ok) continue;
-                const wrapper = await res.json();
-
-                let inner = wrapper;
-                if (wrapper?.contents && typeof wrapper.contents === 'string') {
-                    inner = JSON.parse(wrapper.contents);
-                } else if (wrapper?.contents) {
-                    inner = wrapper.contents;
-                }
-
-                const candidate = inner?.data?.list?.[0]
-                    ? this.normalizeDrawItem(inner.data.list[0])
-                    : (inner?.data?.[0] ? this.normalizeDrawItem(inner.data[0]) : this.normalizeDrawItem(inner));
-                if (candidate) return candidate;
+                const payload = this.parseSyncPayload(await res.text());
+                const item = this.extractSingleDrawFromPayload(payload);
+                if (item) return item;
             } catch (e) {
                 if (this.isAbortError(e)) throw e;
-                this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, { fetchUrl, message: e.message });
+                this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, {
+                    fetchUrl: candidate.url,
+                    source: candidate.label,
+                    message: e.message
+                });
             }
         }
         return null;
@@ -416,23 +496,10 @@ export const dataSyncMethods = {
             }
 
             log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
-            log(`Proxy source: ${proxyConfig.source}`, 'SYNC_PROXY_SOURCE');
+            log(`Sync source: ${syncSource}`, 'SYNC_PROXY_SOURCE');
 
             if (!proxyConfig?.url) {
-                const skipMessage = '프록시 URL이 없어 실시간 최신 회차 동기화를 건너뜁니다.';
-                log(skipMessage, 'SYNC_PROXY_NOT_CONFIGURED');
-                this.markSyncFailure(skipMessage, {
-                    source: syncSource,
-                    mode: syncMode
-                });
-                if (profile.toast) {
-                    UIManager.toast('프록시 URL을 설정하면 최신 회차 동기화를 사용할 수 있습니다.', 'info', 3600);
-                }
-                await this.settlePendingTickets({
-                    silent: profile.settleSilent,
-                    requestSystemNotification: profile.requestSystemNotification
-                });
-                return false;
+                log('사용자 프록시 없이 기본 자동 동기화 소스를 사용합니다.', 'SYNC_FALLBACK_SOURCE');
             }
 
             const newItems = [];
@@ -501,6 +568,20 @@ export const dataSyncMethods = {
                 await this.app?.refreshCurrentRoute();
                 if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
             } else {
+                if (latestKnown < estNo) {
+                    const failureMessage = '예상 최신 회차 응답을 확인하지 못했습니다.';
+                    log(failureMessage, 'SYNC_NO_UPDATE_STALE');
+                    await this.settlePendingTickets({
+                        silent: profile.settleSilent,
+                        requestSystemNotification: profile.requestSystemNotification
+                    });
+                    this.markSyncFailure(failureMessage, {
+                        source: syncSource,
+                        mode: syncMode
+                    });
+                    if (profile.toast) UIManager.toast('최신 회차를 확인하지 못했습니다.', 'warning');
+                    return false;
+                }
                 log('No new draw data found.', 'SYNC_NO_UPDATE');
                 await this.settlePendingTickets({
                     silent: profile.settleSilent,

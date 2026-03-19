@@ -45,6 +45,22 @@ export const appDataListMethods = {
             this.renderDataLists();
         });
 
+        $('#clearLocalUpdatesBtn')?.addEventListener('click', async () => {
+            const updateCount = this.data.getLocalUpdates().length;
+            if (!updateCount) {
+                UIManager.toast('정리할 로컬 업데이트가 없습니다.', 'info');
+                return;
+            }
+            if (!confirm(`로컬 최신 회차 업데이트 ${updateCount}개를 정리하시겠습니까?`)) return;
+
+            this.data.clearLocalUpdates?.();
+            await this.data.fetchWinningStats({ notifyTicketSettle: false });
+            this.updateLatestWin();
+            await this.refreshCurrentRoute();
+            this.renderDataLists();
+            UIManager.toast(`로컬 업데이트 ${updateCount}개를 정리했습니다.`, 'success');
+        });
+
         $('#ticketFilter')?.addEventListener('change', () => {
             this.setDataListPage('ticket', 1);
             this.renderDataLists();
@@ -313,6 +329,23 @@ export const appDataListMethods = {
             `).join('');
         }
         this.renderPagination('#campaignPagination', 'campaign', campaignPage);
+
+        const localUpdates = this.data.getLocalUpdates();
+        const localUpdatesSummary = $('#localUpdatesSummary');
+        if (localUpdatesSummary) {
+            localUpdatesSummary.textContent = localUpdates.length
+                ? `로컬 최신 회차 보정 데이터 ${localUpdates.length}개가 저장되어 있습니다.`
+                : '저장된 로컬 최신 회차 보정 데이터가 없습니다.';
+        }
+        const localUpdatesMeta = $('#localUpdatesMeta');
+        if (localUpdatesMeta) {
+            const latestLocalDraw = localUpdates.length ? Math.max(...localUpdates.map((item) => Number(item?.draw_no || 0))) : 0;
+            localUpdatesMeta.textContent = latestLocalDraw > 0
+                ? `가장 최근 로컬 반영 회차: ${latestLocalDraw}회`
+                : '정적 JSON만 사용 중입니다.';
+        }
+        const clearLocalUpdatesBtn = $('#clearLocalUpdatesBtn');
+        if (clearLocalUpdatesBtn) clearLocalUpdatesBtn.disabled = !localUpdates.length;
 
         this.renderSettingsPanel();
         endMark('data.render');

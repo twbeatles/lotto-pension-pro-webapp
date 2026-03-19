@@ -55,14 +55,18 @@ export const appLatestDrawMethods = {
             </div>
         `;
 
-        const nextDrawNo = Number(latest.draw_no) + 1;
+        const nextDrawNo = typeof this.getSuggestedNextDrawNo === 'function'
+            ? this.getSuggestedNextDrawNo()
+            : Number(latest.draw_no) + 1;
         ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'].forEach((id) => {
+            if (typeof this.setTargetDrawInputValue === 'function') {
+                this.setTargetDrawInputValue(id, nextDrawNo, { force: false, userEdited: false });
+                return;
+            }
             const el = $(`#${id}`);
             if (!el) return;
             const current = Number(el.value);
-            if (!Number.isFinite(current) || current <= 1) {
-                el.value = String(nextDrawNo);
-            }
+            if (!Number.isFinite(current) || current <= 1) el.value = String(nextDrawNo);
         });
     }
 };

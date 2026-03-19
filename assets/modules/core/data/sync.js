@@ -283,6 +283,27 @@ export const dataSyncMethods = {
         return parsed && typeof parsed === 'object' ? parsed : null;
     },
 
+    describePayloadShape(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return {
+                payloadType: typeof payload,
+                keys: []
+            };
+        }
+
+        const keys = Object.keys(payload).slice(0, 12);
+        return {
+            payloadType: Array.isArray(payload) ? 'array' : 'object',
+            keys,
+            hasNormalized: Array.isArray(payload?.normalized),
+            normalizedCount: Array.isArray(payload?.normalized) ? payload.normalized.length : 0,
+            hasDataList: Array.isArray(payload?.data?.list),
+            dataListCount: Array.isArray(payload?.data?.list) ? payload.data.list.length : 0,
+            hasDataArray: Array.isArray(payload?.data),
+            dataCount: Array.isArray(payload?.data) ? payload.data.length : 0
+        };
+    },
+
     extractSingleDrawFromPayload(payload) {
         if (!payload || typeof payload !== 'object') return null;
         if (Array.isArray(payload?.normalized) && payload.normalized[0]) {
@@ -297,7 +318,7 @@ export const dataSyncMethods = {
         return this.normalizeDrawItem(payload);
     },
 
-    async fetchOneDraw(drawNo, proxyConfig, _log = () => {}, signal = null) {
+    async fetchOneDraw(drawNo, proxyConfig, log = () => {}, signal = null) {
         const candidates = [
             ...this.buildCustomSingleFetchUrls(drawNo, proxyConfig),
             ...this.buildBuiltInSingleFetchUrls(drawNo)
@@ -313,6 +334,19 @@ export const dataSyncMethods = {
                 const payload = this.parseSyncPayload(await res.text());
                 const item = this.extractSingleDrawFromPayload(payload);
                 if (item) return item;
+                if (payload) {
+                    const shape = this.describePayloadShape(payload);
+                    const warningMessage = `${drawNo}회차 응답 구조가 예상 형식과 다릅니다. (${candidate.label})`;
+                    this.logSync('SYNC_FETCH_ONE_INVALID_PAYLOAD', `Invalid single draw payload ${drawNo}`, {
+                        fetchUrl: candidate.url,
+                        source: candidate.label,
+                        ...shape
+                    });
+                    log(warningMessage, 'SYNC_FETCH_ONE_INVALID_PAYLOAD', {
+                        source: candidate.label,
+                        ...shape
+                    });
+                }
             } catch (e) {
                 if (this.isAbortError(e)) throw e;
                 this.logSync('SYNC_FETCH_ONE_FAIL', `Failed single draw fetch ${drawNo}`, {
@@ -456,6 +490,8 @@ export const dataSyncMethods = {
 
         const logBuffer = [];
         let logFlushTimer = null;
+        const syncWarnings = [];
+        let clearWarningOnSuccess = false;
         const flushLog = () => {
             if (!logEl || silent || !logBuffer.length) return;
             const fragment = document.createDocumentFragment();
@@ -477,6 +513,9 @@ export const dataSyncMethods = {
             if (logEl && !silent) {
                 logBuffer.push(msg);
                 scheduleFlush();
+            }
+            if (code === 'SYNC_FETCH_ONE_INVALID_PAYLOAD') {
+                syncWarnings.push(String(msg || '').slice(0, 240));
             }
             this.logSync(code, msg, meta);
         };
@@ -507,6 +546,7 @@ export const dataSyncMethods = {
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
                 });
+                clearWarningOnSuccess = true;
                 return true;
             }
 
@@ -587,6 +627,7 @@ export const dataSyncMethods = {
                 this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
                 if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
+                clearWarningOnSuccess = true;
             } else {
                 if (latestKnown < estNo) {
                     const failureMessage = '예상 최신 회차 응답을 확인하지 못했습니다.';
@@ -612,6 +653,7 @@ export const dataSyncMethods = {
                     source: syncSource,
                     mode: syncMode
                 });
+                clearWarningOnSuccess = true;
             }
             return true;
         } catch (e) {
@@ -627,6 +669,11 @@ export const dataSyncMethods = {
             if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
             return false;
         } finally {
+            if (syncWarnings.length) {
+                this.markSyncWarning(syncWarnings[syncWarnings.length - 1]);
+            } else if (clearWarningOnSuccess && this.state.syncMeta?.lastWarningMessage) {
+                this.markSyncWarning('');
+            }
             if (logFlushTimer) {
                 clearTimeout(logFlushTimer);
                 logFlushTimer = null;

@@ -5,7 +5,7 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-03-16`
+- Date: `2026-03-19`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
@@ -44,11 +44,17 @@ Use it as the fast-start reference for the current structure and workflow.
 - On mobile, the settings modal is intentionally rendered as a single-column sheet.
 - The data page is focused on backup/import and list management.
 - Data list rendering is aligned with actual search/pagination state again.
+- Data list search/page state is persisted in `sessionStorage` and the page also exposes local update summary/cleanup UI.
+- Target draw inputs (`genTargetDrawNo`, `campStartDraw`, `aiTargetDrawNo`) auto-follow the next draw until manually edited.
+- Each target draw input has a reset action to restore the suggested next draw.
 - Latest draw sync defaults to automatic fallback.
 - A configured user proxy is preferred only when it matches the official `/proxy/latest` contract.
 - Unsupported proxy formats are ignored at runtime and surfaced as warnings in settings.
 - If no user proxy is set, the app still attempts runtime sync and falls back to static JSON plus local updates on failure.
 - `data/winning_stats.json` is install-precached for offline stability.
+- Invalid single-draw payload shapes now emit `SYNC_FETCH_ONE_INVALID_PAYLOAD` and are surfaced via `syncMeta.lastWarningMessage`.
+- `refreshCurrentRoute()` applies a stale guard so async refresh work from an old route does not render after a tab switch.
+- Leaving the `check` route stops the QR scanner, and clicking the scanner backdrop closes it.
 
 ## Key Map
 
@@ -59,9 +65,19 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/bootstrap/pwa.js`
   - service worker registration and update UX
 - `assets/modules/core/LottoApp.js`
-  - facade, implementation in `core/app`
+  - facade, implementation in `core/app`; target-draw auto-management lives here
 - `assets/modules/core/DataManager.js`
   - facade, implementation in `core/data`
+- `assets/modules/core/app/latestDraw.js`
+  - latest draw card refresh + target-draw autofill sync
+- `assets/modules/core/app/moduleLoader.js`
+  - route stale guard and QR cleanup on route exit
+- `assets/modules/core/app/dataLists.js`
+  - list rendering + local update summary/clear action
+- `assets/modules/core/app/settingsPanel.js`
+  - sync warning metadata rendering
+- `assets/modules/core/data/sync.js`
+  - single-draw payload diagnostics and sync warning tracking
 - `assets/modules/core/StrategyEngine.js`
   - facade, implementation in `core/strategy`
 - `assets/modules/features/*.js`
@@ -81,7 +97,7 @@ Main keys:
 - `lotto_pro_alerts_v1`
 - `lotto_pro_strategy_presets_v1`
 - `lotto_pro_sync_meta_v1`
-- `lotto_pro_updates_v2`
+- `lotto_pro_updates_v2` (`CONFIG.KEYS.LOCAL_UPDATES`)
 
 Proxy priority:
 
@@ -95,6 +111,7 @@ Official supported custom proxy shape:
 - absolute `http(s)` URL
 - path contains `/proxy/latest`
 - unsupported shapes (`?url=`, `{url}`, `{draw_no}`) are ignored at runtime
+- `syncMeta` also stores recent warning diagnostics for invalid single-draw response shapes
 
 ## Quick Commands
 
@@ -114,11 +131,13 @@ Local URL:
 1. `npm run lint`
 2. `node scripts/smoke/smoke.mjs`
 3. generator / AI / backtest basic flows
-4. settings modal state reflection
-5. mobile settings modal rendering
-6. backup/import behavior
-7. proxy unset/set sync policy
-8. service worker update acceptance and reload
+4. target draw autofill and reset behavior
+5. settings modal state reflection, including sync warning metadata
+6. mobile settings modal rendering
+7. backup/import behavior
+8. proxy unset/set sync policy and invalid payload diagnostics
+9. data-page local update cleanup flow
+10. service worker update acceptance and reload
 
 ## Session Template
 

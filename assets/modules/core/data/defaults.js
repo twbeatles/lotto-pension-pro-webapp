@@ -38,7 +38,9 @@ export const dataDefaultsMethods = {
             lastSuccessAt: '',
             lastSuccessDrawNo: 0,
             lastFailureAt: '',
-            lastFailureMessage: ''
+            lastFailureMessage: '',
+            lastWarningAt: '',
+            lastWarningMessage: ''
         };
     },
 
@@ -56,7 +58,11 @@ export const dataDefaultsMethods = {
             lastFailureAt: typeof input.lastFailureAt === 'string' ? input.lastFailureAt : defaults.lastFailureAt,
             lastFailureMessage: typeof input.lastFailureMessage === 'string'
                 ? input.lastFailureMessage.slice(0, 240)
-                : defaults.lastFailureMessage
+                : defaults.lastFailureMessage,
+            lastWarningAt: typeof input.lastWarningAt === 'string' ? input.lastWarningAt : defaults.lastWarningAt,
+            lastWarningMessage: typeof input.lastWarningMessage === 'string'
+                ? input.lastWarningMessage.slice(0, 240)
+                : defaults.lastWarningMessage
         };
     },
 

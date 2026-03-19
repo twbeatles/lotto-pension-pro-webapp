@@ -142,6 +142,20 @@ export const dataPersistenceMethods = {
         });
     },
 
+    markSyncWarning(message) {
+        const text = String(message || '').trim().slice(0, 240);
+        if (!text) {
+            return this.setSyncMeta({
+                lastWarningAt: '',
+                lastWarningMessage: ''
+            });
+        }
+        return this.setSyncMeta({
+            lastWarningAt: new Date().toISOString(),
+            lastWarningMessage: text
+        });
+    },
+
     getStorageSummary() {
         if (typeof localStorage === 'undefined') {
             return {
@@ -167,7 +181,7 @@ export const dataPersistenceMethods = {
             [CONFIG.KEYS.ALERT_PREFS, 1],
             [CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets?.length || 0],
             [CONFIG.KEYS.SYNC_META, 1],
-            ['lotto_pro_updates_v2', this.getLocalUpdates().length]
+            [CONFIG.KEYS.LOCAL_UPDATES, this.getLocalUpdates().length]
         ];
         const bytes = entries.reduce((sum, [key]) => {
             try {
@@ -214,7 +228,11 @@ export const dataPersistenceMethods = {
             return this.localUpdatesCache;
         }
         if (Array.isArray(this.localUpdatesCache)) return this.localUpdatesCache;
-        const parsed = this.safeJsonParse(localStorage.getItem('lotto_pro_updates_v2') || '[]', []);
+        const parsed = this.safeJsonParse(
+            localStorage.getItem(CONFIG.KEYS.LOCAL_UPDATES) || '[]',
+            [],
+            CONFIG.KEYS.LOCAL_UPDATES
+        );
         this.localUpdatesCache = Array.isArray(parsed) ? parsed : [];
         return this.localUpdatesCache;
     },
@@ -222,9 +240,14 @@ export const dataPersistenceMethods = {
     setLocalUpdates(items = []) {
         this.localUpdatesCache = Array.isArray(items) ? items : [];
         if (typeof localStorage !== 'undefined') {
-            this._safeSetItem('lotto_pro_updates_v2', JSON.stringify(this.localUpdatesCache));
+            this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
         }
         this.app?.renderSettingsPanel?.();
+    },
+
+    clearLocalUpdates() {
+        this.setLocalUpdates([]);
+        return true;
     },
 
     readLegacyProxyUrl() {

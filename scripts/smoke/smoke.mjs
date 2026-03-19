@@ -24,7 +24,9 @@ import {
     runProxyPolicyRegression,
     runAutoSyncFallbackRegression,
     runQrScanReentryGuardRegression,
+    runQrRouteCleanupRegression,
     runQrValidationRegression,
+    runRefreshCurrentRouteStaleRegression,
     runRequestNumbersRegression,
     runRuntimeAssetLocalizationRegression,
     runServiceWorkerCoreDataPrecacheRegression,
@@ -33,7 +35,9 @@ import {
     runStrategyPresetCrudRegression,
     runStrictFilterRegression,
     runSyncGuardRegression,
+    runSyncInvalidPayloadRegression,
     runSyncLatestWinRefreshRegression,
+    runTargetDrawAutofillRegression,
     runTicketDedupeRegression,
     runWheelFixedNumbersRegression
 } from './cases/regressions.mjs';
@@ -67,14 +71,18 @@ async function main() {
     runTicketDedupeRegression();
     runCheckTargetDrawRegression();
     runStoredListNormalizationRegression();
+    runTargetDrawAutofillRegression();
     runLatestWinPlaceholderRegression();
     runStrategyPresetCrudRegression();
     await runSyncGuardRegression();
     await runRequestNumbersRegression();
+    await runRefreshCurrentRouteStaleRegression();
     await runSyncLatestWinRefreshRegression();
+    await runSyncInvalidPayloadRegression();
     await runImportAlertOptionRegression();
     await runCampaignEmptySaveRegression();
     await runQrScanReentryGuardRegression();
+    await runQrRouteCleanupRegression();
     await runPostImportRefreshRegression();
     await runRuntimeAssetLocalizationRegression();
     await runAutoSyncFallbackRegression();
@@ -100,14 +108,18 @@ async function main() {
     console.log('[PASS] ticket-dedupe regression');
     console.log('[PASS] check-target-draw regression');
     console.log('[PASS] stored-list-normalization regression');
+    console.log('[PASS] target-draw autofill regression');
     console.log('[PASS] latest-win-placeholder regression');
     console.log('[PASS] strategy-preset-crud regression');
     console.log('[PASS] sync-guard regression');
     console.log('[PASS] requestNumbers replace regression');
+    console.log('[PASS] refreshCurrentRoute stale regression');
     console.log('[PASS] sync-latest-win refresh regression');
+    console.log('[PASS] sync invalid payload regression');
     console.log('[PASS] import-alert-options regression');
     console.log('[PASS] campaign-empty-save regression');
     console.log('[PASS] qr-reentry-guard regression');
+    console.log('[PASS] qr route cleanup regression');
     console.log('[PASS] post-import-refresh regression');
     console.log('[PASS] runtime-asset-localization regression');
     console.log('[PASS] auto-sync fallback regression');

@@ -149,6 +149,8 @@
                             <div class="input-group">
                                 <label for="genTargetDrawNo">티켓 목표 회차</label>
                                 <input type="number" id="genTargetDrawNo" class="input-field" min="1" placeholder="예: 1210">
+                                <button class="btn ghost sm" type="button" data-reset-target-draw
+                                    data-target-draw-ids="genTargetDrawNo" style="margin-top:8px;">다음 회차로 재설정</button>
                             </div>
                         </div>
 
@@ -255,6 +257,8 @@
                                 <div class="input-group">
                                     <label for="campStartDraw">시작 회차</label>
                                     <input type="number" id="campStartDraw" class="input-field" min="1" max="99999" placeholder="예: 1210">
+                                    <button class="btn ghost sm" type="button" data-reset-target-draw
+                                        data-target-draw-ids="campStartDraw" style="margin-top:8px;">다음 회차로 재설정</button>
                                 </div>
                                 <div class="input-group">
                                     <label for="campWeeks">주차 수</label>
@@ -404,6 +408,8 @@
                                 <div class="input-group">
                                     <label for="aiTargetDrawNo">티켓 목표 회차</label>
                                     <input type="number" id="aiTargetDrawNo" class="input-field" min="1" placeholder="예: 1210">
+                                    <button class="btn ghost sm" type="button" data-reset-target-draw
+                                        data-target-draw-ids="aiTargetDrawNo" style="margin-top:8px;">다음 회차로 재설정</button>
                                 </div>
                                 <div class="input-group strategy-range">
                                     <label>홀수 개수</label>
@@ -773,6 +779,14 @@
                         </button>
                         <input type="file" id="importInput" hidden accept=".json">
                     </div>
+                    <div class="strategy-panel" style="margin-top:12px;">
+                        <div class="card-header">
+                            <h3>로컬 최신 회차 업데이트</h3>
+                            <button id="clearLocalUpdatesBtn" class="btn text-danger" type="button">정리</button>
+                        </div>
+                        <p id="localUpdatesSummary" class="subtitle">저장된 로컬 최신 회차 보정 데이터가 없습니다.</p>
+                        <p id="localUpdatesMeta" class="settings-note">정적 JSON만 사용 중입니다.</p>
+                    </div>
                 </div>
             </section>
         </main>
@@ -894,7 +908,7 @@
                         <div class="settings-panel-head">
                             <div>
                                 <h4>데이터 동기화</h4>
-                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 기본 자동 경로로 최신 회차를 확인합니다. 사용자 프록시는 공식 지원 형식(`/proxy/latest`)만 우선 사용합니다.</p>
+                                <p class="subtitle">앱이 열려 있을 때만 백그라운드 동기화가 동작하며, 예상 최신 회차를 기준으로 기본 자동 경로를 확인합니다. 사용자 프록시는 공식 지원 형식(`/proxy/latest`)만 우선 사용합니다.</p>
                             </div>
                             <span id="settingsSyncStateBadge" class="badge status-badge">상태 확인 중</span>
                         </div>
@@ -926,6 +940,7 @@
                             </div>
                         </div>
                         <p id="syncMetaLastFailure" class="settings-note">-</p>
+                        <p class="settings-note">최근 응답 구조 경고: <span id="syncMetaLastWarning">-</span></p>
                         <p id="syncMetaWarning" class="settings-note settings-warning-note">현재 데이터 상태를 확인하는 중입니다.</p>
 
                         <div class="button-group settings-button-group">

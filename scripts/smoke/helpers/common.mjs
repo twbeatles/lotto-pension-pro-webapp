@@ -59,6 +59,7 @@ function createField(overrides = {}) {
         innerHTML: '',
         textContent: '',
         style: {},
+        dataset: {},
         classList: {
             add() {},
             remove() {}
@@ -74,6 +75,9 @@ function createDocumentStub(map = {}) {
     return {
         querySelector(selector) {
             return map[selector] ?? null;
+        },
+        getElementById(id) {
+            return map[`#${id}`] ?? null;
         },
         querySelectorAll() {
             return [];

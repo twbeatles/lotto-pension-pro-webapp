@@ -385,6 +385,89 @@ async function runRequestNumbersRegression() {
     }
 }
 
+function runTargetDrawAutofillRegression() {
+    const previousDocument = globalThis.document;
+    const latestDrawNo = createField();
+    const latestWinBalls = createField();
+    const latestWinMeta = createField();
+    const genTarget = createField();
+    const campTarget = createField();
+    const aiTarget = createField();
+
+    globalThis.document = createDocumentStub({
+        '#latestDrawNo': latestDrawNo,
+        '#latestWinBalls': latestWinBalls,
+        '#latestWinMeta': latestWinMeta,
+        '#genTargetDrawNo': genTarget,
+        '#campStartDraw': campTarget,
+        '#aiTargetDrawNo': aiTarget
+    });
+
+    try {
+        const ctx = {
+            data: {
+                state: {
+                    winningStats: [{
+                        draw_no: 1209,
+                        date: '2026-03-07',
+                        numbers: [1, 2, 3, 4, 5, 6],
+                        bonus: 7,
+                        prize_amount: 0,
+                        winners_count: 0
+                    }]
+                }
+            },
+            targetDrawInputIds: ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'],
+            renderLatestWinPlaceholder: LottoApp.prototype.renderLatestWinPlaceholder,
+            getSuggestedNextDrawNo: LottoApp.prototype.getSuggestedNextDrawNo,
+            setTargetDrawInputValue: LottoApp.prototype.setTargetDrawInputValue,
+            bindTargetDrawInputs: LottoApp.prototype.bindTargetDrawInputs,
+            resetTargetDrawInputs: LottoApp.prototype.resetTargetDrawInputs
+        };
+
+        LottoApp.prototype.bindTargetDrawInputs.call(ctx);
+        LottoApp.prototype.updateLatestWin.call(ctx);
+        assert.equal(genTarget.value, '1210', 'initial generator target draw must auto-fill to next draw');
+        assert.equal(campTarget.value, '1210', 'initial campaign target draw must auto-fill to next draw');
+        assert.equal(aiTarget.value, '1210', 'initial AI target draw must auto-fill to next draw');
+
+        ctx.data.state.winningStats = [{
+            draw_no: 1210,
+            date: '2026-03-14',
+            numbers: [2, 4, 6, 8, 10, 12],
+            bonus: 14,
+            prize_amount: 0,
+            winners_count: 0
+        }];
+        LottoApp.prototype.updateLatestWin.call(ctx);
+        assert.equal(genTarget.value, '1211', 'auto-managed generator target draw must follow latest sync');
+        assert.equal(campTarget.value, '1211', 'auto-managed campaign target draw must follow latest sync');
+        assert.equal(aiTarget.value, '1211', 'auto-managed AI target draw must follow latest sync');
+
+        genTarget.value = '1300';
+        genTarget.dataset.userEdited = 'true';
+        ctx.data.state.winningStats = [{
+            draw_no: 1211,
+            date: '2026-03-21',
+            numbers: [3, 6, 9, 12, 15, 18],
+            bonus: 21,
+            prize_amount: 0,
+            winners_count: 0
+        }];
+        LottoApp.prototype.updateLatestWin.call(ctx);
+        assert.equal(genTarget.value, '1300', 'manually edited generator target draw must be preserved');
+        assert.equal(campTarget.value, '1212', 'still auto-managed campaign target draw must continue updating');
+        assert.equal(aiTarget.value, '1212', 'still auto-managed AI target draw must continue updating');
+
+        const changed = LottoApp.prototype.resetTargetDrawInputs.call(ctx, ['genTargetDrawNo'], { toast: false });
+        assert.equal(changed, 1, 'reset action must restore manual target draw to suggested next draw');
+        assert.equal(genTarget.value, '1212', 'reset action must restore suggested next draw value');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 function runLatestWinPlaceholderRegression() {
     const previousDocument = globalThis.document;
     const latestDrawNo = createField();
@@ -414,6 +497,55 @@ function runLatestWinPlaceholderRegression() {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
+}
+
+async function runRefreshCurrentRouteStaleRegression() {
+    const calls = [];
+    let release;
+    const pending = new Promise((resolve) => {
+        release = resolve;
+    });
+
+    const ctx = {
+        currentRoute: 'stats',
+        routeToken: 3,
+        renderSettingsPanel() {
+            calls.push('renderSettingsPanel');
+        },
+        ensureModule(name) {
+            calls.push(`ensureModule:${name}`);
+            return pending;
+        },
+        stats: {
+            render() {
+                calls.push('stats.render');
+            }
+        },
+        renderDataLists() {
+            calls.push('renderDataLists');
+        },
+        check: {
+            onEnter() {
+                calls.push('check.onEnter');
+            }
+        },
+        backtest: {
+            resetUI() {
+                calls.push('backtest.resetUI');
+            }
+        }
+    };
+
+    const task = LottoApp.prototype.refreshCurrentRoute.call(ctx);
+    ctx.routeToken += 1;
+    ctx.currentRoute = 'gen';
+    release();
+    await task;
+
+    assert.deepEqual(calls, [
+        'renderSettingsPanel',
+        'ensureModule:stats'
+    ], 'refreshCurrentRoute must stop rendering stale route work after route changes');
 }
 
 async function runSyncLatestWinRefreshRegression() {
@@ -485,6 +617,38 @@ async function runSyncLatestWinRefreshRegression() {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
+}
+
+async function runSyncInvalidPayloadRegression() {
+    const dm = new DataManager();
+    const syncLogs = [];
+    const uiLogs = [];
+
+    dm.buildCustomSingleFetchUrls = () => [{ label: 'test-proxy', url: 'https://proxy.example/proxy/latest?draw_no=1210' }];
+    dm.buildBuiltInSingleFetchUrls = () => [];
+    dm.fetchWithTimeout = async () => ({
+        ok: true,
+        async text() {
+            return JSON.stringify({ foo: 'bar', meta: { ok: true } });
+        }
+    });
+    dm.logSync = (code, message, meta = null) => {
+        syncLogs.push({ code, message, meta });
+    };
+
+    const result = await dm.fetchOneDraw(1210, { url: 'https://proxy.example/proxy/latest' }, (message, code, meta) => {
+        uiLogs.push({ message, code, meta });
+    });
+
+    assert.equal(result, null, 'unexpected payload shape must not be accepted as draw data');
+    assert.ok(
+        syncLogs.some((entry) => entry.code === 'SYNC_FETCH_ONE_INVALID_PAYLOAD'),
+        'unexpected payload shape must emit a sync diagnostic log'
+    );
+    assert.ok(
+        uiLogs.some((entry) => entry.code === 'SYNC_FETCH_ONE_INVALID_PAYLOAD'),
+        'unexpected payload shape must surface through sync log callback'
+    );
 }
 
 async function runImportAlertOptionRegression() {
@@ -822,6 +986,41 @@ async function runQrScanReentryGuardRegression() {
     }
 }
 
+async function runQrRouteCleanupRegression() {
+    const previousDocument = globalThis.document;
+    const genPage = createField();
+    genPage.classList = { add() {}, remove() {} };
+
+    globalThis.document = createDocumentStub({
+        '#page-gen': genPage
+    });
+
+    try {
+        const calls = [];
+        const ctx = {
+            routeToken: 0,
+            currentRoute: 'check',
+            navItems: [],
+            pageItems: [],
+            navByTarget: new Map(),
+            qr: {
+                async stop() {
+                    calls.push('qr.stop');
+                }
+            },
+            updateLatestWin() {
+                calls.push('updateLatestWin');
+            }
+        };
+
+        await LottoApp.prototype.route.call(ctx, 'gen');
+        assert.deepEqual(calls, ['qr.stop', 'updateLatestWin'], 'leaving check route must stop QR scanner before rendering next route');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 async function runSyncGuardRegression() {
     const previousDocument = globalThis.document;
     globalThis.document = { querySelector: () => null };
@@ -1060,6 +1259,9 @@ function runDataListDomRegression() {
     const ticketPagination = createField();
     const campaignPagination = createField();
     const ticketFilter = createField({ value: 'all' });
+    const localUpdatesSummary = createField();
+    const localUpdatesMeta = createField();
+    const clearLocalUpdatesBtn = createField();
 
     globalThis.document = createDocumentStub({
         '#favSearch': favSearch,
@@ -1074,7 +1276,10 @@ function runDataListDomRegression() {
         '#historyPagination': historyPagination,
         '#ticketPagination': ticketPagination,
         '#campaignPagination': campaignPagination,
-        '#ticketFilter': ticketFilter
+        '#ticketFilter': ticketFilter,
+        '#localUpdatesSummary': localUpdatesSummary,
+        '#localUpdatesMeta': localUpdatesMeta,
+        '#clearLocalUpdatesBtn': clearLocalUpdatesBtn
     });
 
     try {
@@ -1094,6 +1299,9 @@ function runDataListDomRegression() {
                     campaigns: [
                         { id: 'campaign_1', name: '테스트 캠페인', startDrawNo: 1210, weeks: 4, setsPerWeek: 3 }
                     ]
+                },
+                getLocalUpdates() {
+                    return [{ draw_no: 1211 }];
                 }
             },
             dateFormatter: new Intl.DateTimeFormat('ko-KR'),
@@ -1122,6 +1330,9 @@ function runDataListDomRegression() {
         assert.match(favPagination.innerHTML, /총 1개/, 'favorite pagination summary must render');
         assert.match(favPagination.innerHTML, /1 \/ 1/, 'favorite pagination page text must render');
         assert.match(ticketList.innerHTML, /data-id="ticket&lt;&amp;&quot;&#39;"/, 'ticket data-id must be HTML-escaped');
+        assert.match(localUpdatesSummary.textContent, /1개/, 'local updates summary must reflect stored local update count');
+        assert.match(localUpdatesMeta.textContent, /1211회/, 'local updates meta must show latest local draw number');
+        assert.equal(clearLocalUpdatesBtn.disabled, false, 'local updates clear button must be enabled when updates exist');
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -1221,13 +1432,17 @@ export {
     runCheckTargetDrawRegression,
     runStoredListNormalizationRegression,
     runRequestNumbersRegression,
+    runTargetDrawAutofillRegression,
     runLatestWinPlaceholderRegression,
+    runRefreshCurrentRouteStaleRegression,
     runSyncLatestWinRefreshRegression,
+    runSyncInvalidPayloadRegression,
     runImportAlertOptionRegression,
     runStrategyPresetCrudRegression,
     runRuntimeAssetLocalizationRegression,
     runCampaignEmptySaveRegression,
     runQrScanReentryGuardRegression,
+    runQrRouteCleanupRegression,
     runSyncGuardRegression,
     runPostImportRefreshRegression,
     runAutoSyncFallbackRegression,

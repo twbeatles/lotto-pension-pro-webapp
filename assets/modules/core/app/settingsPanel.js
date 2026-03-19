@@ -111,7 +111,8 @@ export const appSettingsMethods = {
                 `기록 ${storageSummary.counts.history}`,
                 `티켓 ${storageSummary.counts.tickets}`,
                 `캠페인 ${storageSummary.counts.campaigns}`,
-                `프리셋 ${storageSummary.counts.presets}`
+                `프리셋 ${storageSummary.counts.presets}`,
+                `로컬업데이트 ${storageSummary.counts.localUpdates}`
             ].join(' · ');
         }
         const storageNotice = $('#storageHealthNote');
@@ -159,18 +160,24 @@ export const appSettingsMethods = {
                 ? `${this.formatDateTime(syncMeta.lastFailureAt)} · ${syncMeta.lastFailureMessage}`
                 : '-';
         }
+        const syncWarningMetaEl = $('#syncMetaLastWarning');
+        if (syncWarningMetaEl) {
+            syncWarningMetaEl.textContent = syncMeta.lastWarningMessage
+                ? `${this.formatDateTime(syncMeta.lastWarningAt)} · ${syncMeta.lastWarningMessage}`
+                : '-';
+        }
         const syncWarningEl = $('#syncMetaWarning');
         if (syncWarningEl) {
             if (activeProxyConfig?.invalid) {
                 syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
             } else if (freshness.isStale) {
                 syncWarningEl.textContent = freshness.canAutoSync
-                    ? `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
-                    : `현재 데이터가 예상 최신 회차보다 ${freshness.behindBy}회차 뒤처져 있습니다.`;
+                    ? `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
+                    : `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다.`;
             } else if (freshness.staticBehindBy > 0) {
-                syncWarningEl.textContent = `정적 JSON은 ${freshness.staticBehindBy}회차 뒤처져 있지만 로컬 업데이트가 보완하고 있습니다.`;
+                syncWarningEl.textContent = `정적 JSON은 예상 최신 회차 기준으로 ${freshness.staticBehindBy}회차 뒤처져 있지만 로컬 업데이트가 보완하고 있습니다.`;
             } else {
-                syncWarningEl.textContent = '현재 데이터는 최신 상태입니다.';
+                syncWarningEl.textContent = '현재 데이터는 예상 최신 회차 기준으로 최신 상태입니다.';
             }
         }
 

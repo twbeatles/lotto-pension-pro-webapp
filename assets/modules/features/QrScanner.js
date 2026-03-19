@@ -13,6 +13,9 @@ export class QrScannerModule {
 
     bindEvents() {
         $('#closeScanBtn')?.addEventListener('click', () => this.stop());
+        $('#qrScanModal')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) this.stop();
+        });
     }
 
     async destroyScanner() {

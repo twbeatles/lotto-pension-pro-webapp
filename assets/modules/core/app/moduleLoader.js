@@ -105,6 +105,15 @@ export const appModuleLoaderMethods = {
             }
             const isStale = () => localToken !== this.routeToken;
 
+            if (target !== 'check') {
+                try {
+                    await this.qr?.stop?.();
+                } catch (_e) {
+                    // QR scanner cleanup failure should not block navigation.
+                }
+                if (isStale()) return;
+            }
+
             // Page specific renders
             if (target === 'gen') {
                 this.updateLatestWin();
@@ -142,19 +151,27 @@ export const appModuleLoaderMethods = {
 
     async refreshCurrentRoute() {
         const t = this.currentRoute;
+        const localToken = this.routeToken;
+        const isStale = () => localToken !== this.routeToken || t !== this.currentRoute;
         this.renderSettingsPanel();
         if (t === 'gen') this.updateLatestWin();
         if (t === 'stats') {
             await this.ensureModule('stats');
+            if (isStale()) return;
             this.stats?.render();
         }
-        if (t === 'data') this.renderDataLists();
+        if (t === 'data') {
+            if (isStale()) return;
+            this.renderDataLists();
+        }
         if (t === 'check') {
             await this.ensureModule('check');
+            if (isStale()) return;
             this.check?.onEnter();
         }
         if (t === 'bt') {
             await this.ensureModule('backtest');
+            if (isStale()) return;
             this.backtest?.resetUI();
         }
     },

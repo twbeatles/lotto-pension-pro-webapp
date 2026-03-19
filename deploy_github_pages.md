@@ -21,6 +21,7 @@
 - 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 자동 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
+- 동기화 메타에는 최근 응답 구조 경고(`lastWarningAt`, `lastWarningMessage`)도 함께 저장됨
 - 설치 시 `data/winning_stats.json`은 서비스워커 data cache에 precache됨
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
@@ -28,11 +29,13 @@
   - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
   - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
   - 비지원 프록시 형식은 설정 경고를 띄우고 기본 자동 동기화로 전환
+  - JSON 구조가 예상과 다르면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그와 설정 경고를 남김
   - fallback 단건 요청은 최근 120회차로 제한
 
 메모:
 
 - 정적 JSON과 로컬 업데이트를 병합해 최신 상태를 구성합니다.
+- 데이터 관리 화면에서 로컬 업데이트 개수를 확인하고 정리할 수 있습니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
 - 자동 동기화 경로가 모두 실패하면 정적 JSON + 로컬 업데이트 상태를 그대로 유지합니다.
 
@@ -79,7 +82,8 @@
 1. DevTools Console에서 `SyntaxError`, `Invalid or unexpected token` 여부 확인
 2. DevTools Network에서 핵심 모듈(`assets/modules/**/*.js`) 상태 코드 확인
 3. SW 캐시 의심 시 사이트 데이터 삭제 후 재접속
-4. 로컬에서 아래 검증 실행:
+4. 설정 모달에서 최근 응답 구조 경고와 마지막 sync 경고 시각 확인
+5. 로컬에서 아래 검증 실행:
 
 ```bash
 node scripts/smoke/smoke.mjs
@@ -144,6 +148,10 @@ npm run format:check
 - 데이터 탭 검색/페이지네이션이 100개 초과 데이터에서도 동작하는지(`data-list pagination`)
 - 데이터 탭 렌더러가 실제 DOM에서 검색/페이지네이션/attribute 계약을 지키는지(`data-list DOM`)
 - 전용 워커 외 프록시 형식이 자동 fallback으로 내려가는지(`proxy-policy`)
+- 목표 회차 기본값이 최신 회차 기준 다음 회차를 계속 추적하는지(`target-draw autofill`)
+- `refreshCurrentRoute()` stale guard가 이전 탭 렌더를 막는지(`refreshCurrentRoute stale`)
+- 단건 동기화 payload mismatch 시 경고 로그가 남는지(`sync invalid payload`)
+- `check` 탭 이탈 시 QR 스캐너가 정리되는지(`qr route cleanup`)
 - 서비스워커가 첫 설치에서 자동 reload 하지 않는지(`service-worker reload policy`)
 - 서비스워커 install precache에 `winning_stats.json`이 포함되는지(`service-worker core data precache`)
 - Pretendard 폰트가 절대 same-origin 경로를 사용하는지(`local-font-path`)

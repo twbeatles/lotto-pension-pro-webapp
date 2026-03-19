@@ -63,6 +63,7 @@ wrangler deploy proxy/worker.js
 - `?proxyUrl=` 값은 URL 인코딩한 전체 주소를 넣는 편이 안전합니다.
 - 앱의 공식 지원 커스텀 프록시 형식은 절대 URL + `/proxy/latest` 엔드포인트입니다.
 - `?url=`, `{url}`, `{draw_no}`, 일반 prefix 형식은 런타임에서 지원하지 않으며 기본 자동 동기화로 내려갑니다.
+- `/proxy/latest` 가 JSON은 반환하지만 지원하지 않는 shape를 주면 앱은 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그를 남기고 설정 모달에 최근 응답 구조 경고를 표시합니다.
 - 공개 fallback 경로는 가용성/요금제/속도에 따라 변동될 수 있으므로, 안정적인 운영에는 사용자 프록시를 권장합니다.
 
 ## 로컬 점검

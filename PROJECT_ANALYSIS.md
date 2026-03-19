@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-03-16)
+# Lotto Webapp Structure Notes (2026-03-19)
 
 ## Summary
 
@@ -12,6 +12,8 @@
   - settings and operational state are managed from a global settings modal
   - large files were split into facade entry files plus internal modules
   - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
+  - target draw defaults now follow the next draw automatically unless the user overrides them
+  - sync diagnostics and local update cleanup were added to make runtime data issues observable
   - deployment target is GitHub Pages
 
 ## Current Layout
@@ -56,6 +58,10 @@
   - backup export/import
   - favorites/history/tickets/campaign lists
   - search and pagination
+- The data page also exposes runtime local update summary and cleanup.
+- Target draw inputs auto-follow the next draw until the user edits them, and each field can be reset to the suggested next draw.
+- `refreshCurrentRoute()` now uses a stale guard so async refresh work does not render after a tab switch.
+- QR scanning is cleaned up more aggressively when leaving the `check` route.
 
 ## Data and Storage
 
@@ -78,7 +84,7 @@ Main storage keys:
 - `lotto_pro_alerts_v1`
 - `lotto_pro_strategy_presets_v1`
 - `lotto_pro_sync_meta_v1`
-- `lotto_pro_updates_v2`
+- `lotto_pro_updates_v2` (`CONFIG.KEYS.LOCAL_UPDATES`)
 - legacy proxy keys:
   - `lotto_webapp_settings_v1.proxyLatestUrl`
   - `lotto_webapp_settings_v1`
@@ -90,6 +96,8 @@ Operational rules:
 - unsupported proxy formats are ignored at runtime and surfaced as warnings in settings
 - if automatic sync providers fail, the app stays on static JSON plus local updates
 - proxy resolution order is `query -> v1 legacy -> v2 settings`
+- invalid single-draw payload shapes log `SYNC_FETCH_ONE_INVALID_PAYLOAD` and update `syncMeta.lastWarningMessage`
+- settings surface the latest response-structure warning to aid proxy/fallback troubleshooting
 - favorites, tickets, campaigns, alerts, and presets save immediately
 - `pagehide` and hidden `visibilitychange` force a flush save
 
@@ -125,14 +133,19 @@ Important regression areas:
 - generator / AI / backtest flows
 - campaign caps and cascade delete
 - single-flight sync / cancel / automatic fallback behavior
+- target draw autofill / reset behavior
+- stale async route refresh handling
+- invalid single-draw payload diagnostics
+- QR route-exit cleanup
 - lazy-loaded tab routing for `ai`, `bt`, `check`
 - import option handling
 - settings modal rendering, especially on mobile
 - data list search and pagination
+- local update summary / clear flow
 - service-worker update acceptance and reload policy
 
 ## Notes
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-16.md` is the current functional review artifact and now includes an implementation status addendum.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-19.md` is the current functional review artifact and includes the same-day implementation status addendum.

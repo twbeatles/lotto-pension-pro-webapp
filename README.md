@@ -7,6 +7,31 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 기능 정합성·운영 진단 강화 반영 (2026-03-19)
+
+- **목표 회차 기본값 자동 관리** (`LottoApp.js`, `latestDraw.js`, `index.html`)
+  - `genTargetDrawNo`, `campStartDraw`, `aiTargetDrawNo`는 사용자가 직접 수정하지 않은 경우 최신 회차 기준 다음 회차로 자동 갱신됩니다.
+  - 각 입력에는 `다음 회차로 재설정` 버튼을 추가했습니다.
+- **비동기 라우트 stale guard 보강** (`moduleLoader.js`)
+  - `refreshCurrentRoute()` 에 현재 라우트 토큰 체크를 추가해 동기화 직후 빠른 탭 전환 시 이전 탭 렌더가 뒤늦게 섞이는 문제를 막았습니다.
+- **단건 동기화 payload 진단 강화** (`sync.js`, `settingsPanel.js`, `index.html`)
+  - `fetchOneDraw()` 가 예상 외 JSON 구조를 받으면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그를 남깁니다.
+  - 설정 모달에 최근 응답 구조 경고(`syncMeta.lastWarningMessage`)를 표시합니다.
+- **로컬 업데이트 관리 보강** (`config.js`, `persistence.js`, `dataLists.js`, `index.html`)
+  - `lotto_pro_updates_v2` 키를 `CONFIG.KEYS.LOCAL_UPDATES` 로 중앙화했습니다.
+  - 손상된 `localUpdates` 데이터도 key 라벨과 함께 로그에 표시합니다.
+  - 데이터 관리 화면에 로컬 최신 회차 업데이트 요약과 정리 버튼을 추가했습니다.
+- **QR 스캐너 정리 흐름 보강** (`QrScanner.js`, `moduleLoader.js`)
+  - 스캔 모달 바깥 클릭으로 닫을 수 있습니다.
+  - `check` 탭을 벗어날 때 활성 스캐너를 정리합니다.
+- **예상 최신 회차 문구 정비** (`settingsPanel.js`, `index.html`)
+  - stale 경고와 sync 안내 문구를 `예상 최신 회차 기준`으로 통일했습니다.
+- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
+  - `target-draw autofill`
+  - `refreshCurrentRoute stale`
+  - `sync invalid payload`
+  - `qr route cleanup`
+
 ## 안정성·접근성 강화 반영 (2026-03-17)
 
 - **스토리지 안전성 강화** (`persistence.js`)
@@ -174,6 +199,7 @@
 ## 주요 기능
 
 - 번호 생성: 스마트 추천, 연속수 제한, 고정수/제외수 설정, QR 생성
+  - 목표 회차 입력은 다음 회차를 자동 추적하며, 필요 시 즉시 재설정 가능
 - 티켓북/캠페인:
   - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
@@ -198,6 +224,7 @@
 - 모바일 설정 모달: 단일 열 중심 레이아웃과 가로 오버플로우 방지
 - 설정 모달:
   - 테마, 알림, 프록시, 동기화 상태, 저장 공간 요약을 한곳에서 관리
+  - 최근 응답 구조 경고와 예상 최신 회차 기준 최신성 경고를 함께 표시
   - 좁은 화면에서 단일 열로 읽기 쉽게 배치
 - 알림 관리: 인앱 알림과 시스템 알림 설정
   - 시스템 알림 권한 배지 및 테스트 알림 지원
@@ -209,6 +236,9 @@
   - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
+- 데이터 관리:
+  - 즐겨찾기/히스토리/티켓/캠페인 검색 + 페이지네이션
+  - 로컬 최신 회차 업데이트 개수 확인 및 수동 정리
 - 최신 회차 동기화/프록시 지원: `dhlottery.co.kr` 우회 및 사용자 프록시 주소 설정
   - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy`
   - 프록시 미설정 시 앱은 기본 자동 동기화 fallback을 사용하고, 실패 시 정적 JSON + 로컬 업데이트 상태를 유지
@@ -304,9 +334,10 @@ node scripts/smoke/smoke.mjs
 
 - `strict-filter`, `wheel-fixed`, `draw-normalization`
 - `campaign-limit`, `campaign-cascade`, `campaign-empty-save`
-- `qr-validation`, `qr-reentry-guard`
+- `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
 - `ticket-dedupe`, `requestNumbers replace`
-- `sync-guard`, `sync-latest-win refresh`, `auto-sync fallback`
+- `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`
+- `target-draw autofill`, `refreshCurrentRoute stale`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
 - `data-list DOM`, `proxy-policy`, `import-alert-options`, `post-import-refresh`
 - `strategy-preset-crud`, `runtime-asset-localization`

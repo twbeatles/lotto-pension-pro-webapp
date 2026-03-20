@@ -1472,21 +1472,22 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v14';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v15';/, 'service worker cache version must be bumped');
     assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
     assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
     assert.match(swSource, /url\.searchParams\.has\('__network_probe'\)/, 'service worker must bypass cache for network probe requests');
     assert.match(swSource, /x-lotto-network-probe/, 'service worker must mark network probe responses explicitly');
+    assert.match(swSource, /probeUrl\.searchParams\.delete\('__network_probe'\)/, 'network probe must strip the probe query before going to the network');
 }
 
 async function runLocalFontPathRegression() {
     const tokensSource = await readFile(resolve(process.cwd(), 'assets/styles/tokens.css'), 'utf8');
     assert.match(
         tokensSource,
-        /src:\s*url\('\/assets\/vendor\/pretendard\/PretendardVariable\.woff2'\)/,
-        'Pretendard font path must use absolute same-origin asset path'
+        /src:\s*url\('\.\.\/vendor\/pretendard\/PretendardVariable\.woff2'\)/,
+        'Pretendard font path must stay relative to the deployed assets/styles directory'
     );
 }
 

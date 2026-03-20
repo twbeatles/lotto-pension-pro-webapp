@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v15';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 const NETWORK_PROBE_HEADER = 'x-lotto-network-probe';
@@ -189,8 +189,14 @@ async function staleWhileRevalidate(request, cacheName) {
 }
 
 async function networkOnlyProbe(request) {
+    const probeUrl = new URL(request.url);
+    probeUrl.searchParams.delete('__network_probe');
     try {
-        await fetch(new Request(request, { cache: 'no-store' }));
+        await fetch(new Request(probeUrl.toString(), {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin'
+        }));
         return new Response('', {
             status: 204,
             headers: {

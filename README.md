@@ -80,7 +80,7 @@
   - 동기화 결과는 `localUpdates`에 누적되어 정적 JSON보다 최신 회차를 로컬에서 보완할 수 있습니다.
 - 비지원 프록시 형식(`?url=`, `{url}`, `{draw_no}` 등)은 설정에서 경고를 표시하고 기본 자동 동기화로 내려갑니다.
 - 설정 모달 안내 문구와 동기화 상태 표기를 현재 정책 기준으로 정리했습니다.
-- Pretendard 폰트 경로를 절대 same-origin 경로(`/assets/vendor/pretendard/PretendardVariable.woff2`)로 고정했습니다.
+- Pretendard 폰트 경로를 `assets/styles/` 기준 상대 경로(`../vendor/pretendard/PretendardVariable.woff2`)로 유지해 GitHub Pages 서브패스 배포에서도 404가 나지 않도록 했습니다.
 - 서비스워커 install precache에 `data/winning_stats.json`을 추가했습니다.
 - 수동 검증 기준으로 데이터 관리 화면의 검색, 페이지 이동, 복사, QR, 삭제 동작을 다시 확인했습니다.
 

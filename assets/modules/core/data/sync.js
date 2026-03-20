@@ -8,7 +8,7 @@ const BUILTIN_SYNC_SINGLE_PROVIDERS = [
     {
         label: 'CodeTabs',
         buildUrl(targetUrl) {
-            return `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+            return `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`;
         }
     },
     {

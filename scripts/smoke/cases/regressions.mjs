@@ -1165,16 +1165,29 @@ async function runAutoSyncFallbackRegression() {
 async function runOfflineProbeRecoveryRegression() {
     const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
     const previousFetch = globalThis.fetch;
+    const previousWindow = globalThis.window;
 
     Object.defineProperty(globalThis, 'navigator', {
         configurable: true,
         value: { onLine: false }
     });
+    globalThis.window = {
+        location: {
+            href: 'https://twbeatles.github.io/lotto---webapp/index.html'
+        }
+    };
 
-    let fetchCalls = 0;
-    globalThis.fetch = async () => {
-        fetchCalls++;
-        return { ok: true };
+    const fetchCalls = [];
+    globalThis.fetch = async (url) => {
+        fetchCalls.push(String(url));
+        return {
+            ok: true,
+            headers: {
+                get() {
+                    return '';
+                }
+            }
+        };
     };
 
     try {
@@ -1183,10 +1196,13 @@ async function runOfflineProbeRecoveryRegression() {
 
         const offline = await app.isProbablyOffline({ forceProbe: true });
         assert.equal(offline, false, 'successful reachability probe must override false navigator.onLine state');
-        assert.ok(fetchCalls >= 1, 'offline probe must issue a network reachability request');
+        assert.ok(fetchCalls.length >= 1, 'offline probe must issue a network reachability request');
+        assert.match(fetchCalls[0], /manifest\.json\?__network_probe=/, 'offline probe must prefer same-origin probe URL first');
     } finally {
         if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
         else delete globalThis.navigator;
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
         globalThis.fetch = previousFetch;
     }
 }
@@ -1456,11 +1472,13 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v13';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v14';/, 'service worker cache version must be bumped');
     assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
     assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
+    assert.match(swSource, /url\.searchParams\.has\('__network_probe'\)/, 'service worker must bypass cache for network probe requests');
+    assert.match(swSource, /x-lotto-network-probe/, 'service worker must mark network probe responses explicitly');
 }
 
 async function runLocalFontPathRegression() {

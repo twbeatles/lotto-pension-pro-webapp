@@ -42,6 +42,7 @@ export class LottoApp {
         this._lastAutoSyncAt = 0;
         this.AUTO_SYNC_MIN_INTERVAL_MS = 60000;
         this.NETWORK_PROBE_TIMEOUT_MS = 3200;
+        this.OFFLINE_CONFIRM_RETRY_MS = 1200;
     }
 
     _loadDataListStateFromSession() {
@@ -82,6 +83,14 @@ export class LottoApp {
             targets.push({ label, url: nextUrl });
         };
 
+        try {
+            const sameOriginProbe = new URL('manifest.json', window.location.href);
+            sameOriginProbe.searchParams.set('__network_probe', String(Date.now()));
+            push('same-origin probe', sameOriginProbe.toString());
+        } catch (_e) {
+            // ignore location/url edge cases
+        }
+
         const proxyConfig = this.data?.resolveProxyConfig?.();
         if (proxyConfig?.url) {
             try {
@@ -97,7 +106,7 @@ export class LottoApp {
         return targets;
     }
 
-    async probeNetworkReachability({ force = false } = {}) {
+    async probeNetworkReachability({ force = false, retries = 1 } = {}) {
         if (this._networkProbePromise && !force) return this._networkProbePromise;
 
         const task = (async () => {
@@ -106,23 +115,30 @@ export class LottoApp {
                 return typeof navigator === 'undefined' || navigator.onLine !== false;
             }
 
-            for (const target of targets) {
-                const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-                const timer = controller
-                    ? setTimeout(() => controller.abort(), this.NETWORK_PROBE_TIMEOUT_MS)
-                    : null;
-                try {
-                    await fetch(target.url, {
-                        method: 'GET',
-                        mode: 'no-cors',
-                        cache: 'no-store',
-                        signal: controller?.signal
-                    });
-                    return true;
-                } catch (_e) {
-                    // try next candidate
-                } finally {
-                    if (timer) clearTimeout(timer);
+            for (let attempt = 0; attempt < Math.max(1, Number(retries) || 1); attempt++) {
+                for (const target of targets) {
+                    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                    const timer = controller
+                        ? setTimeout(() => controller.abort(), this.NETWORK_PROBE_TIMEOUT_MS)
+                        : null;
+                    try {
+                        const response = await fetch(target.url, {
+                            method: 'GET',
+                            mode: target.label === 'same-origin probe' ? 'same-origin' : 'no-cors',
+                            cache: 'no-store',
+                            signal: controller?.signal
+                        });
+                        const probeState = response?.headers?.get?.('x-lotto-network-probe') || '';
+                        if (probeState !== 'offline') return true;
+                    } catch (_e) {
+                        // try next candidate
+                    } finally {
+                        if (timer) clearTimeout(timer);
+                    }
+                }
+
+                if (attempt + 1 < retries) {
+                    await new Promise((resolve) => setTimeout(resolve, this.OFFLINE_CONFIRM_RETRY_MS));
                 }
             }
 
@@ -138,7 +154,10 @@ export class LottoApp {
     async isProbablyOffline({ forceProbe = false } = {}) {
         if (typeof navigator === 'undefined') return false;
         if (navigator.onLine !== false) return false;
-        const reachable = await this.probeNetworkReachability({ force: forceProbe });
+        const reachable = await this.probeNetworkReachability({
+            force: forceProbe,
+            retries: forceProbe ? 2 : 1
+        });
         return !reachable;
     }
 

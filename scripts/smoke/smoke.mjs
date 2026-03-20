@@ -24,6 +24,7 @@ import {
     runProxyPolicyRegression,
     runAutoSyncFallbackRegression,
     runBackgroundAutoSyncRegression,
+    runHiddenAttributeStyleRegression,
     runQrScanReentryGuardRegression,
     runQrRouteCleanupRegression,
     runQrValidationRegression,
@@ -101,6 +102,7 @@ async function main() {
     runProxyPolicyRegression();
     await runServiceWorkerReloadPolicyRegression();
     await runServiceWorkerCoreDataPrecacheRegression();
+    await runHiddenAttributeStyleRegression();
     await runLocalFontPathRegression();
 
     console.log(`[PASS] generate: ${generated.length} sets`);
@@ -142,6 +144,7 @@ async function main() {
     console.log('[PASS] proxy-policy regression');
     console.log('[PASS] service-worker reload policy regression');
     console.log('[PASS] service-worker core data precache regression');
+    console.log('[PASS] hidden-attribute style regression');
     console.log('[PASS] local font path regression');
     console.log('[DONE] smoke checks passed');
 }

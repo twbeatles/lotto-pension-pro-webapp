@@ -1493,18 +1493,38 @@ function runProxyPolicyRegression() {
 async function runServiceWorkerReloadPolicyRegression() {
     const pwaSource = await readFile(resolve(process.cwd(), 'assets/modules/bootstrap/pwa.js'), 'utf8');
     assert.match(pwaSource, /let reloadOnControllerChange = false;/, 'SW script must gate reloads behind explicit update acceptance');
+    assert.match(
+        pwaSource,
+        /navigator\.serviceWorker\.register\('sw\.js', \{ updateViaCache: 'none' \}\)/,
+        'SW registration must bypass stale HTTP cache when checking for updates'
+    );
     assert.match(pwaSource, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
     assert.match(pwaSource, /if \(refreshing \|\| !reloadOnControllerChange\) return;/, 'controllerchange must ignore first-install activation');
 }
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v16';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v17';/, 'service worker cache version must be bumped');
     assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
     assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
     assert.doesNotMatch(swSource, /__network_probe/, 'service worker must not special-case the deprecated probe route anymore');
+}
+
+async function runHiddenAttributeStyleRegression() {
+    const layoutSource = await readFile(resolve(process.cwd(), 'assets/styles/layout.css'), 'utf8');
+    const htmlSource = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
+    assert.match(
+        layoutSource,
+        /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/,
+        'hidden elements must stay visually hidden even when inline styles set display'
+    );
+    assert.match(
+        htmlSource,
+        /<div id="offlineBanner" hidden aria-hidden="true"/,
+        'offline banner must still default to the hidden state in markup'
+    );
 }
 
 async function runLocalFontPathRegression() {
@@ -1592,6 +1612,7 @@ export {
     runProxyPolicyRegression,
     runServiceWorkerReloadPolicyRegression,
     runServiceWorkerCoreDataPrecacheRegression,
+    runHiddenAttributeStyleRegression,
     runLocalFontPathRegression,
     runBackupSmoke
 };

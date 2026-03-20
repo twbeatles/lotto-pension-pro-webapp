@@ -20,7 +20,7 @@ export function registerPwaLifecycle() {
     }
 
     const registerSW = () => {
-        navigator.serviceWorker.register('sw.js').then((reg) => {
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
             console.log('서비스 워커 등록 완료:', reg.scope);
 
             reg.addEventListener('updatefound', () => {

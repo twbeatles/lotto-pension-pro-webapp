@@ -1,3 +1,8 @@
+/* Preserve native hidden semantics even when components set display explicitly. */
+[hidden] {
+  display: none !important;
+}
+
 /* Sidebar */
 /* Sidebar */
 .sidebar {

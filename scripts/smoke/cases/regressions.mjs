@@ -619,6 +619,43 @@ async function runSyncLatestWinRefreshRegression() {
     }
 }
 
+async function runWinningStatsLoadClassificationRegression() {
+    const previousDocument = globalThis.document;
+    const statusText = createField();
+    const statusDot = createField({ style: {} });
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+            if (selector === '.dot') return statusDot;
+            return null;
+        }
+    };
+
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+        dm.fetchWithTimeout = async () => {
+            throw new Error('network-timeout');
+        };
+        dm.app = {
+            async isProbablyOffline() {
+                return false;
+            }
+        };
+
+        const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
+        assert.equal(result, false, 'winning stats fetch failure must still report false');
+        assert.equal(dm.lastWinningStatsLoad.offline, false, 'online fetch failure must not be classified as offline');
+        assert.equal(statusText.textContent, '데이터 확인 실패', 'status text must not show offline for online fetch failures');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 async function runSyncInvalidPayloadRegression() {
     const dm = new DataManager();
     const syncLogs = [];
@@ -1125,6 +1162,59 @@ async function runAutoSyncFallbackRegression() {
     }
 }
 
+async function runOfflineProbeRecoveryRegression() {
+    const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    const previousFetch = globalThis.fetch;
+
+    Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        value: { onLine: false }
+    });
+
+    let fetchCalls = 0;
+    globalThis.fetch = async () => {
+        fetchCalls++;
+        return { ok: true };
+    };
+
+    try {
+        const app = new LottoApp();
+        app.data.state.customProxy = 'https://proxy.example/proxy/latest';
+
+        const offline = await app.isProbablyOffline({ forceProbe: true });
+        assert.equal(offline, false, 'successful reachability probe must override false navigator.onLine state');
+        assert.ok(fetchCalls >= 1, 'offline probe must issue a network reachability request');
+    } finally {
+        if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
+        else delete globalThis.navigator;
+        globalThis.fetch = previousFetch;
+    }
+}
+
+async function runBackgroundAutoSyncRegression() {
+    const app = new LottoApp();
+    const calls = [];
+
+    app.data.fetchLatestFromAPI = async (options) => {
+        calls.push(options);
+        return true;
+    };
+    app.isProbablyOffline = async () => false;
+
+    await app.runAutoSync({ reason: 'proxy-bootstrap', force: true });
+    assert.deepEqual(calls, [
+        { silent: true, trigger: 'auto', reason: 'proxy-bootstrap' }
+    ], 'auto sync runner must dispatch a silent auto-triggered sync');
+
+    app._lastAutoSyncAt = Date.now();
+    await app.runAutoSync({ reason: 'resume' });
+    assert.equal(calls.length, 1, 'background auto sync must throttle repeated resume checks');
+
+    app.isProbablyOffline = async () => true;
+    await app.runAutoSync({ reason: 'online', force: true });
+    assert.equal(calls.length, 1, 'background auto sync must skip dispatch while offline');
+}
+
 function runPersistenceFlushRegression() {
     const previousWindow = globalThis.window;
     const previousDocument = globalThis.document;
@@ -1366,10 +1456,11 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v12';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v13';/, 'service worker cache version must be bumped');
     assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
     assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
+    assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
 }
 
 async function runLocalFontPathRegression() {
@@ -1436,6 +1527,7 @@ export {
     runLatestWinPlaceholderRegression,
     runRefreshCurrentRouteStaleRegression,
     runSyncLatestWinRefreshRegression,
+    runWinningStatsLoadClassificationRegression,
     runSyncInvalidPayloadRegression,
     runImportAlertOptionRegression,
     runStrategyPresetCrudRegression,
@@ -1446,6 +1538,8 @@ export {
     runSyncGuardRegression,
     runPostImportRefreshRegression,
     runAutoSyncFallbackRegression,
+    runOfflineProbeRecoveryRegression,
+    runBackgroundAutoSyncRegression,
     runPersistenceFlushRegression,
     runNotificationPermissionRegression,
     runDataListPaginationRegression,

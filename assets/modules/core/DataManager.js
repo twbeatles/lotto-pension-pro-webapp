@@ -46,6 +46,12 @@ export class DataManager {
         this.syncInFlightPromise = null;
         this.syncAbortController = null;
         this.syncCancelable = false;
+        this.lastWinningStatsLoad = {
+            ok: false,
+            offline: false,
+            error: '',
+            updatedAt: ''
+        };
     }
 }
 

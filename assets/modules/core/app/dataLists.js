@@ -133,6 +133,9 @@ export const appDataListMethods = {
             this.data.markDirty?.('settings');
             this.data.save();
             this.renderSettingsPanel();
+            if (this.data.resolveProxyConfig?.()?.url) {
+                this.queueAutoSync?.('proxy-change', { delayMs: 300, force: true });
+            }
         });
     },
 

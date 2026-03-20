@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 
@@ -194,12 +194,12 @@ self.addEventListener('fetch', (event) => {
 
     const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
     if (isDataRequest) {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 2400));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 5000));
         return;
     }
 
     if (event.request.mode === 'navigate') {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 2200));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
         return;
     }
 

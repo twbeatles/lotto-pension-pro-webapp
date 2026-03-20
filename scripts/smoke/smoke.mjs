@@ -23,9 +23,11 @@ import {
     runPostImportRefreshRegression,
     runProxyPolicyRegression,
     runAutoSyncFallbackRegression,
+    runBackgroundAutoSyncRegression,
     runQrScanReentryGuardRegression,
     runQrRouteCleanupRegression,
     runQrValidationRegression,
+    runOfflineProbeRecoveryRegression,
     runRefreshCurrentRouteStaleRegression,
     runRequestNumbersRegression,
     runRuntimeAssetLocalizationRegression,
@@ -37,6 +39,7 @@ import {
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runSyncLatestWinRefreshRegression,
+    runWinningStatsLoadClassificationRegression,
     runTargetDrawAutofillRegression,
     runTicketDedupeRegression,
     runWheelFixedNumbersRegression
@@ -78,6 +81,7 @@ async function main() {
     await runRequestNumbersRegression();
     await runRefreshCurrentRouteStaleRegression();
     await runSyncLatestWinRefreshRegression();
+    await runWinningStatsLoadClassificationRegression();
     await runSyncInvalidPayloadRegression();
     await runImportAlertOptionRegression();
     await runCampaignEmptySaveRegression();
@@ -86,6 +90,8 @@ async function main() {
     await runPostImportRefreshRegression();
     await runRuntimeAssetLocalizationRegression();
     await runAutoSyncFallbackRegression();
+    await runOfflineProbeRecoveryRegression();
+    await runBackgroundAutoSyncRegression();
     runPersistenceFlushRegression();
     await runNotificationPermissionRegression();
     runDataListPaginationRegression();
@@ -115,6 +121,7 @@ async function main() {
     console.log('[PASS] requestNumbers replace regression');
     console.log('[PASS] refreshCurrentRoute stale regression');
     console.log('[PASS] sync-latest-win refresh regression');
+    console.log('[PASS] winning-stats load classification regression');
     console.log('[PASS] sync invalid payload regression');
     console.log('[PASS] import-alert-options regression');
     console.log('[PASS] campaign-empty-save regression');
@@ -123,6 +130,8 @@ async function main() {
     console.log('[PASS] post-import-refresh regression');
     console.log('[PASS] runtime-asset-localization regression');
     console.log('[PASS] auto-sync fallback regression');
+    console.log('[PASS] offline-probe recovery regression');
+    console.log('[PASS] background auto-sync regression');
     console.log('[PASS] persistence-flush regression');
     console.log('[PASS] notification-permission regression');
     console.log('[PASS] data-list pagination regression');

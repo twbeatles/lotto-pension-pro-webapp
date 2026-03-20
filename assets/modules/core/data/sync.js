@@ -50,7 +50,7 @@ export const dataSyncMethods = {
 
     createSyncProfile(options = {}) {
         const trigger = String(options?.trigger || '');
-        if (trigger === 'idle') {
+        if (['idle', 'auto', 'online', 'resume', 'proxy-change'].includes(trigger)) {
             return {
                 trigger,
                 silent: true,
@@ -115,6 +115,12 @@ export const dataSyncMethods = {
                 mode: this.getSyncMode(),
                 currentSource: localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON'
             });
+            this.lastWinningStatsLoad = {
+                ok: true,
+                offline: false,
+                error: '',
+                updatedAt: new Date().toISOString()
+            };
 
             await this.settlePendingTickets({ silent: !notifyTicketSettle });
 
@@ -127,7 +133,16 @@ export const dataSyncMethods = {
             return true;
         } catch (e) {
             console.warn('당첨 데이터 조회 실패', e);
-            updateStatus('오프라인', 'var(--danger)');
+            const offline = typeof this.app?.isProbablyOffline === 'function'
+                ? await this.app.isProbablyOffline({ forceProbe: true })
+                : (typeof navigator !== 'undefined' && navigator.onLine === false);
+            this.lastWinningStatsLoad = {
+                ok: false,
+                offline,
+                error: String(e?.message || ''),
+                updatedAt: new Date().toISOString()
+            };
+            updateStatus(offline ? '오프라인' : '데이터 확인 실패', offline ? 'var(--danger)' : 'var(--warning)');
             return false;
         }
     },

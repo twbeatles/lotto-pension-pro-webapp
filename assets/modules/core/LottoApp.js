@@ -85,7 +85,7 @@ export class LottoApp {
 
         try {
             const sameOriginProbe = new URL('manifest.json', window.location.href);
-            sameOriginProbe.searchParams.set('__network_probe', String(Date.now()));
+            sameOriginProbe.searchParams.set('__online_check', String(Date.now()));
             push('same-origin probe', sameOriginProbe.toString());
         } catch (_e) {
             // ignore location/url edge cases
@@ -128,8 +128,7 @@ export class LottoApp {
                             cache: 'no-store',
                             signal: controller?.signal
                         });
-                        const probeState = response?.headers?.get?.('x-lotto-network-probe') || '';
-                        if (probeState !== 'offline') return true;
+                        if (response) return true;
                     } catch (_e) {
                         // try next candidate
                     } finally {

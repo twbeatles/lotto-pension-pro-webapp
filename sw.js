@@ -1,7 +1,6 @@
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
-const NETWORK_PROBE_HEADER = 'x-lotto-network-probe';
 
 const APP_SHELL_ASSETS = [
     './',
@@ -188,40 +187,10 @@ async function staleWhileRevalidate(request, cacheName) {
     return new Response('오프라인', { status: 503, statusText: '오프라인' });
 }
 
-async function networkOnlyProbe(request) {
-    const probeUrl = new URL(request.url);
-    probeUrl.searchParams.delete('__network_probe');
-    try {
-        await fetch(new Request(probeUrl.toString(), {
-            method: 'GET',
-            cache: 'no-store',
-            credentials: 'same-origin'
-        }));
-        return new Response('', {
-            status: 204,
-            headers: {
-                [NETWORK_PROBE_HEADER]: 'online'
-            }
-        });
-    } catch (_e) {
-        return new Response('', {
-            status: 503,
-            statusText: '오프라인',
-            headers: {
-                [NETWORK_PROBE_HEADER]: 'offline'
-            }
-        });
-    }
-}
-
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
-    if (url.searchParams.has('__network_probe')) {
-        event.respondWith(networkOnlyProbe(event.request));
-        return;
-    }
 
     const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
     if (isDataRequest) {

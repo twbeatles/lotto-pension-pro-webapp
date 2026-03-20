@@ -688,6 +688,33 @@ async function runSyncInvalidPayloadRegression() {
     );
 }
 
+function runBuiltInSyncProviderRegression() {
+    const dm = new DataManager();
+    const urls = dm.buildBuiltInSingleFetchUrls(1215);
+
+    assert.equal(urls[0]?.label, '공식 API', 'built-in sync must try the official API first');
+    assert.match(
+        urls[0]?.url || '',
+        /https:\/\/www\.dhlottery\.co\.kr\/lt645\/selectPstLt645Info\.do\?srchLtEpsd=1215/,
+        'official API candidate must target the requested draw number directly'
+    );
+    assert.ok(
+        urls.some((item) => item.label === 'corsproxy.io'),
+        'built-in sync must keep corsproxy.io as a fallback provider'
+    );
+    assert.ok(
+        urls.some((item) => item.label === 'CodeTabs'),
+        'built-in sync may still keep CodeTabs as a last fallback provider'
+    );
+
+    assert.equal(dm.isAbortError(dm.createAbortError()), true, 'explicit sync abort errors must still be recognized');
+    assert.equal(
+        dm.isAbortError({ name: 'TypeError', message: 'net::ERR_ABORTED' }),
+        false,
+        'generic provider failures must not be misclassified as user aborts'
+    );
+}
+
 async function runImportAlertOptionRegression() {
     const previousDocument = globalThis.document;
     const importMode = createField({ value: 'merge' });
@@ -1546,6 +1573,7 @@ export {
     runSyncLatestWinRefreshRegression,
     runWinningStatsLoadClassificationRegression,
     runSyncInvalidPayloadRegression,
+    runBuiltInSyncProviderRegression,
     runImportAlertOptionRegression,
     runStrategyPresetCrudRegression,
     runRuntimeAssetLocalizationRegression,

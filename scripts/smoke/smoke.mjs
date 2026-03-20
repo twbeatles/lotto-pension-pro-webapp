@@ -38,6 +38,7 @@ import {
     runStrictFilterRegression,
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
+    runBuiltInSyncProviderRegression,
     runSyncLatestWinRefreshRegression,
     runWinningStatsLoadClassificationRegression,
     runTargetDrawAutofillRegression,
@@ -83,6 +84,7 @@ async function main() {
     await runSyncLatestWinRefreshRegression();
     await runWinningStatsLoadClassificationRegression();
     await runSyncInvalidPayloadRegression();
+    runBuiltInSyncProviderRegression();
     await runImportAlertOptionRegression();
     await runCampaignEmptySaveRegression();
     await runQrScanReentryGuardRegression();
@@ -123,6 +125,7 @@ async function main() {
     console.log('[PASS] sync-latest-win refresh regression');
     console.log('[PASS] winning-stats load classification regression');
     console.log('[PASS] sync invalid payload regression');
+    console.log('[PASS] built-in sync provider regression');
     console.log('[PASS] import-alert-options regression');
     console.log('[PASS] campaign-empty-save regression');
     console.log('[PASS] qr-reentry-guard regression');

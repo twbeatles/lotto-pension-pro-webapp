@@ -6,15 +6,21 @@ import { measureAsync } from '../../utils/perf.js';
 const OFFICIAL_DRAW_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 const BUILTIN_SYNC_SINGLE_PROVIDERS = [
     {
-        label: 'CodeTabs',
+        label: '공식 API',
         buildUrl(targetUrl) {
-            return `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`;
+            return targetUrl;
         }
     },
     {
         label: 'corsproxy.io',
         buildUrl(targetUrl) {
             return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        }
+    },
+    {
+        label: 'CodeTabs',
+        buildUrl(targetUrl) {
+            return `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`;
         }
     }
 ];

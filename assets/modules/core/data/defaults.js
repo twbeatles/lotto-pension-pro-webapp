@@ -297,8 +297,7 @@ export const dataDefaultsMethods = {
     isAbortError(err) {
         if (!err) return false;
         if (err.name === 'AbortError') return true;
-        const msg = String(err.message || '');
-        return /abort/i.test(msg);
+        return String(err.message || '') === 'Sync aborted';
     },
 
     stableStringify(value) {

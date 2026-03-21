@@ -13,7 +13,7 @@ export const aiFormMethods = {
         if (!select) return;
         const previous = select.value || 'ensemble';
         const includeExperimental = Boolean($('#aiShowExperimental')?.checked);
-        const strategies = listStrategies({ includeExperimental });
+        const strategies = listStrategies({ includeExperimental, scope: 'ai' });
         select.innerHTML = '';
 
         strategies.forEach((item) => {

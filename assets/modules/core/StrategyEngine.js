@@ -9,6 +9,7 @@ export class StrategyEngine {
         this.data = [...(winningStats || [])]
             .filter((d) => Number.isFinite(Number(d?.draw_no)))
             .sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
+        this._analysisCache = new Map();
     }
 }
 

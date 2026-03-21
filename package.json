@@ -7,7 +7,8 @@
     "lint": "eslint assets proxy scripts sw.js index.html",
     "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",
     "format:check": "prettier --check \"**/*.{js,mjs,json,md,css,html}\"",
-    "format:write": "prettier --write \"**/*.{js,mjs,json,md,css,html}\""
+    "format:write": "prettier --write \"**/*.{js,mjs,json,md,css,html}\"",
+    "bench:ai": "node scripts/perf/ai_eval.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

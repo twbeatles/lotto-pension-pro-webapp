@@ -5,7 +5,7 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-03-19`
+- Date: `2026-03-21`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
@@ -30,6 +30,11 @@ Use it to restore context quickly and avoid missing the current structure.
   - `scripts/smoke/cases/`
   - `scripts/smoke/smoke.mjs`
 - Service worker cache version is `v12`.
+- AI strategy stack now includes:
+  - richer weighting inputs from `core/strategy/context.js`
+  - candidate reranking + diversity selection in `core/strategy/generation.js`
+  - additional stable strategies: `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle`
+  - AI-only automatic strategies: `auto_recent_top`, `auto_ensemble_top3`
 
 ## UX Notes
 
@@ -70,6 +75,11 @@ Use it to restore context quickly and avoid missing the current structure.
 - QR scanner cleanup is stricter.
   - Clicking the scan modal backdrop closes it.
   - Leaving the `check` route stops the active scanner.
+- AI strategy notes:
+  - `aiLookbackWindow` doubles as the recent-`N` evaluation window for the automatic AI-only strategies.
+  - `auto_recent_top` chooses the strongest recent strategy.
+  - `auto_ensemble_top3` blends the current weights of the top 3 recent strategies.
+  - AI results now expose reranking diagnostics and adaptive-strategy selections in the UI.
 
 ## Key Files
 
@@ -95,6 +105,14 @@ Use it to restore context quickly and avoid missing the current structure.
   - single-draw payload diagnostics and sync warning meta updates
 - `assets/modules/core/StrategyEngine.js`
   - facade, implementation in `core/strategy`
+- `assets/modules/core/strategy/context.js`
+  - recent pair matrix, pending/average gap, sum/AC distribution stats
+- `assets/modules/core/strategy/weights.js`
+  - base strategy weighting plus adaptive recent-performance strategy selection
+- `assets/modules/core/strategy/generation.js`
+  - candidate pool reranking and diversity picking
+- `assets/modules/core/strategy/evaluation.js`
+  - set-level recommendation scoring and explain metadata
 - `assets/modules/core/StrategyWorkerClient.js`
   - WebWorker client; network-adaptive timeouts via `getNetworkSlowFactor()`
 - `assets/modules/features/*.js`
@@ -152,6 +170,7 @@ python -m http.server 5173
 npm install
 npm run lint
 node scripts/smoke/smoke.mjs
+npm run bench:ai
 ```
 
 Local URL:

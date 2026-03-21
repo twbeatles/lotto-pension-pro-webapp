@@ -4,6 +4,17 @@ import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { AdvancedMonteCarlo } from '../../core/MonteCarlo.js';
 import { getStrategyMeta, STRATEGY_CATALOG, resolveStrategyId } from '../../core/StrategyCatalog.js';
 import { endMark, startMark } from '../../utils/perf.js';
+
+function formatAdaptiveSelection(adaptive = null) {
+    if (!adaptive || !Array.isArray(adaptive.selectedStrategies) || !adaptive.selectedStrategies.length) {
+        return '';
+    }
+
+    return adaptive.selectedStrategies
+        .map((item) => `${getStrategyMeta(item.strategyId).label}(${Number(item.compositeScore || 0).toFixed(1)})`)
+        .join(' + ');
+}
+
 export const aiRenderingMethods = {
     async run() {
         const btn = $('#aiPredictBtn');
@@ -25,17 +36,8 @@ export const aiRenderingMethods = {
 
         const request = this.buildStrategyRequest();
         this.app.data.save();
-        const strategy = request.strategyId;
         const targetSetCount = 5;
-
-        const strategyNames = {
-            ensemble_weighted: '앙상블 가중치',
-            stat_ac_sum: '정밀 통계(복잡도/합계)',
-            balance_oe_hl: '홀짝/고저 밸런스',
-            cold_frequency: '저빈도 반등',
-            hot_frequency: '고빈도 추종'
-        };
-        const selectedModelName = strategyNames[strategy] || getStrategyMeta(strategy).label || '선택 전략';
+        const selectedModelName = getStrategyMeta(request.strategyId).label || '선택 전략';
 
         const logs = [
             `선택 모델: ${selectedModelName}`,
@@ -53,6 +55,7 @@ export const aiRenderingMethods = {
             let explanations = [];
             let fallback = false;
             startMark('ai.worker');
+
             try {
                 result = await this.workerClient.recommend({
                     statsData: this.app.data.state.winningStats,
@@ -75,7 +78,9 @@ export const aiRenderingMethods = {
                 endMark('ai.worker', { requested: targetSetCount, count: results.length, fallback });
             }
 
-            if (!results || results.length === 0) throw new Error('시뮬레이션 결과가 비어 있습니다');
+            if (!results || results.length === 0) {
+                throw new Error('시뮬레이션 결과가 비어 있습니다');
+            }
             if (!explanations.length) {
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
                 explanations = results.map((set) => this.engine.explainSet(set, request));
@@ -87,9 +92,29 @@ export const aiRenderingMethods = {
             } else {
                 this.appendLog(log, `> 분석 완료. 추천 조합 ${results.length}개를 생성했습니다.`, 'var(--success)');
             }
-            const accepted = Number(result?.simulation?.diagnostics?.accepted || 0);
-            const simulationCount = Number(result?.simulation?.diagnostics?.simulationCount || request.params.simulationCount || 0);
+
+            const diagnostics = result?.simulation?.diagnostics || {};
+            const accepted = Number(diagnostics.accepted || 0);
+            const simulationCount = Number(diagnostics.simulationCount || request.params.simulationCount || 0);
             this.appendLog(log, `> 채택된 샘플: ${accepted}/${simulationCount}`);
+
+            const adaptive = diagnostics.adaptive || explanations[0]?.adaptive || null;
+            if (adaptive?.evaluationWindow) {
+                this.appendLog(log, `> 최근 ${adaptive.evaluationWindow}회 기준 자동 비교를 반영했습니다.`);
+            }
+            const adaptiveSelection = formatAdaptiveSelection(adaptive);
+            if (adaptiveSelection) {
+                this.appendLog(log, `> 자동 선택 결과: ${adaptiveSelection}`);
+            }
+
+            const candidatePool = Number(diagnostics.uniqueCandidates || 0);
+            if (candidatePool > 0) {
+                this.appendLog(log, `> 리랭킹 후보풀: ${candidatePool}개`);
+            }
+            const topScore = Number(diagnostics.topScore || 0);
+            if (topScore > 0) {
+                this.appendLog(log, `> 최고 추천 점수: ${topScore.toFixed(4)}`);
+            }
 
             this.app.data.state.aiResults = results;
             this.lastRequest = request;
@@ -117,18 +142,23 @@ export const aiRenderingMethods = {
             const ac = AdvancedMonteCarlo.calculateAC(set);
             const exp = explanations[idx];
             const strategyLabel = exp ? getStrategyMeta(exp.strategyId).label : '';
+            const adaptive = exp?.adaptive || null;
 
             const row = document.createElement('div');
             row.className = 'ai-card-row';
             row.style.animationDelay = `${idx * 0.1}s`;
 
-            const badgHtml = `
+            const badgeHtml = `
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
                     합계: ${sum}
                 </span>
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
                     복잡도: ${ac}
                 </span>
+                ${exp ? `
+                <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--primary); font-size:11px;">
+                    점수: ${Number(exp.summary.recommendationScore || 0).toFixed(3)}
+                </span>` : ''}
             `;
 
             const ballsHtml = set.map((n) => {
@@ -146,22 +176,24 @@ export const aiRenderingMethods = {
 
             row.innerHTML = `
                 <div class="ai-card-header" style="justify-content:space-between; display:flex; margin-bottom:8px;">
-                     <span class="rank-badge">#${idx + 1}</span>
-                     <div class="meta-badges" style="display:flex; gap:4px;">${badgHtml}</div>
+                    <span class="rank-badge">#${idx + 1}</span>
+                    <div class="meta-badges" style="display:flex; gap:4px;">${badgeHtml}</div>
                 </div>
                 <div class="ball-container left">${ballsHtml}</div>
                 <div class="row-actions" style="margin-top:8px; display:flex; justify-content:flex-end;">
-                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">생성 탭으로</button>
-                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓 저장</button>
+                    <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">생성 탭으로</button>
+                    <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓 저장</button>
                 </div>
                 ${exp ? `
                 <details class="ai-explain" style="margin-top:10px;">
                     <summary style="cursor:pointer; color:var(--text-muted);">상세 보기</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
                         <div>전략: <b>${strategyLabel}</b> (근거 등급 ${exp.evidenceTier})</div>
-                        <div>가중치: <b>${exp.summary.setWeight}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
+                        ${adaptive ? `<div>자동 선택: <b>${formatAdaptiveSelection(adaptive)}</b></div>` : ''}
+                        <div>가중치: <b>${exp.summary.setWeight}</b>, 추천 점수: <b>${Number(exp.summary.recommendationScore || 0).toFixed(4)}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
+                        <div>페어 시너지: <b>${Number(exp.summary.pairSynergy || 0).toFixed(4)}</b>, 프로파일 적합도: <b>${Number(exp.summary.profileScore || 0).toFixed(4)}</b>, 공백 균형: <b>${Number(exp.summary.gapBalanceScore || 0).toFixed(4)}</b></div>
                         <div style="margin-top:6px; display:grid; gap:4px;">
-                            ${exp.signals.map((s) => `<div>#${s.number} 가중치:${s.weight} / 빈도:${s.frequencyScore} / 최근성:${s.recencyScore} / 공백:${s.gapScore} / 페어:${s.pairScore}</div>`).join('')}
+                            ${exp.signals.map((s) => `<div>#${s.number} 가중치:${s.weight} / 빈도:${s.frequencyScore} / 최근성:${s.recencyScore} / 공백:${s.gapScore} / 페어:${s.pairScore} / 추세:${s.trendScore} / 회귀:${s.overdueRatio} / 베이즈:${s.bayesScore}</div>`).join('')}
                         </div>
                     </div>
                 </details>` : ''}
@@ -178,7 +210,11 @@ export const aiRenderingMethods = {
         const selectedId = resolveStrategyId($('#aiModelSelect')?.value || 'ensemble_weighted');
         const selectedMeta = getStrategyMeta(selectedId);
         const includeExperimental = Boolean($('#aiShowExperimental')?.checked);
-        const allStrategies = Object.values(STRATEGY_CATALOG).filter((s) => includeExperimental || !s.experimental);
+        const allStrategies = Object.values(STRATEGY_CATALOG).filter((s) => {
+            if (!includeExperimental && s.experimental) return false;
+            if (Array.isArray(s.scopes) && !s.scopes.includes('ai')) return false;
+            return true;
+        });
 
         const tierIcons = { A: 'A', B: 'B', C: 'C' };
         const tierLabels = { A: '검증됨', B: '사용 가능', C: '실험 단계' };
@@ -195,6 +231,9 @@ export const aiRenderingMethods = {
                 <div class="guide-selected-body">
                     <h4>${selectedMeta.label}</h4>
                     <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
+                    ${(selectedId === 'auto_recent_top' || selectedId === 'auto_ensemble_top3')
+                        ? '<div class="guide-warning"><i class="ph-bold ph-sparkle"></i> 최근 참조 회차 수 입력값이 자동 비교에 사용됩니다.</div>'
+                        : ''}
                     ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 실험 단계 모델입니다. 사용 전에 시뮬레이션 검증을 권장합니다.</div>' : ''}
                     ${this._renderDefaultFilters(selectedMeta)}
                 </div>

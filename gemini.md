@@ -5,7 +5,7 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-03-19`
+- Date: `2026-03-21`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
@@ -37,6 +37,10 @@ Use it as the fast-start reference for the current structure and workflow.
   - `scripts/smoke/helpers/`
   - `scripts/smoke/cases/`
   - `scripts/smoke/smoke.mjs`
+- AI strategy additions:
+  - richer context + reranking in `assets/modules/core/strategy/`
+  - stable additions: `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle`
+  - AI-only automatic modes: `auto_recent_top`, `auto_ensemble_top3`
 
 ## UX Notes
 
@@ -55,6 +59,10 @@ Use it as the fast-start reference for the current structure and workflow.
 - Invalid single-draw payload shapes now emit `SYNC_FETCH_ONE_INVALID_PAYLOAD` and are surfaced via `syncMeta.lastWarningMessage`.
 - `refreshCurrentRoute()` applies a stale guard so async refresh work from an old route does not render after a tab switch.
 - Leaving the `check` route stops the QR scanner, and clicking the scanner backdrop closes it.
+- AI recommendations now also:
+  - rerank a candidate pool before final selection
+  - surface recommendation score / pair synergy / profile fit / gap balance diagnostics
+  - use `aiLookbackWindow` as the recent `N` window when automatic AI-only strategies are selected
 
 ## Key Map
 
@@ -80,6 +88,12 @@ Use it as the fast-start reference for the current structure and workflow.
   - single-draw payload diagnostics and sync warning tracking
 - `assets/modules/core/StrategyEngine.js`
   - facade, implementation in `core/strategy`
+- `assets/modules/core/strategy/context.js`
+  - richer recent-history stats including pair matrices and gap distributions
+- `assets/modules/core/strategy/weights.js`
+  - base weights and adaptive recent-performance auto-strategy logic
+- `assets/modules/core/strategy/generation.js`
+  - reranking and diversity-aware candidate selection
 - `assets/modules/features/*.js`
   - public entry files kept stable
 - `sw.js`
@@ -120,6 +134,7 @@ python -m http.server 5173
 npm install
 npm run lint
 node scripts/smoke/smoke.mjs
+npm run bench:ai
 ```
 
 Local URL:

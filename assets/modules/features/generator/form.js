@@ -152,7 +152,7 @@ export const generatorFormMethods = {
         if (!select) return;
         const current = select.value || 'ensemble_weighted';
         const includeExperimental = Boolean($('#genShowExperimental')?.checked);
-        const items = listStrategies({ includeExperimental });
+        const items = listStrategies({ includeExperimental, scope: 'generator' });
         select.innerHTML = '';
         items.forEach((item) => {
             const opt = document.createElement('option');

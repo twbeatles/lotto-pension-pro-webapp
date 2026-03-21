@@ -198,7 +198,7 @@ export const backtestUiMethods = {
 
         const current = select.value || 'random';
         const includeExperimental = Boolean($('#btShowExperimental')?.checked);
-        const strategies = listStrategies({ includeExperimental });
+        const strategies = listStrategies({ includeExperimental, scope: 'backtest' });
         select.innerHTML = '';
 
         strategies.forEach((item) => {

@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-03-19)
+# Lotto Webapp Structure Notes (2026-03-21)
 
 ## Summary
 
@@ -11,6 +11,7 @@
 - Current direction:
   - settings and operational state are managed from a global settings modal
   - large files were split into facade entry files plus internal modules
+  - AI strategy selection now includes richer weighting, reranking, and adaptive recent-performance-based auto strategies
   - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
   - target draw defaults now follow the next draw automatically unless the user overrides them
   - sync diagnostics and local update cleanup were added to make runtime data issues observable
@@ -62,6 +63,10 @@
 - Target draw inputs auto-follow the next draw until the user edits them, and each field can be reset to the suggested next draw.
 - `refreshCurrentRoute()` now uses a stale guard so async refresh work does not render after a tab switch.
 - QR scanning is cleaned up more aggressively when leaving the `check` route.
+- AI recommendations now:
+  - support expanded strategies such as consensus, Bayesian smoothing, momentum, and mean-reversion
+  - expose AI-only auto strategies that evaluate recent `N` draws and either pick the best single strategy or blend the top 3
+  - rerank a candidate pool and surface recommendation diagnostics in the UI
 
 ## Data and Storage
 
@@ -125,12 +130,14 @@ Optional:
 
 ```bash
 node scripts/perf/bench.mjs
+npm run bench:ai
 python -m http.server 5173
 ```
 
 Important regression areas:
 
 - generator / AI / backtest flows
+- AI adaptive strategy selection and recommendation diagnostics
 - campaign caps and cascade delete
 - single-flight sync / cancel / automatic fallback behavior
 - target draw autofill / reset behavior

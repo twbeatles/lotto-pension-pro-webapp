@@ -7,6 +7,22 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## AI 예측 다양화·자동선택 반영 (2026-03-21)
+
+- **전략 다양화** (`StrategyCatalog.js`, `core/strategy/*`)
+  - 신규 전략 `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle` 를 추가했습니다.
+  - AI 탭 전용 자동 전략 `auto_recent_top`, `auto_ensemble_top3` 를 추가했습니다.
+- **자동 추천 로직 강화** (`weights.js`, `generation.js`, `evaluation.js`)
+  - 최근 `N회` 성능을 다시 측정해 상위 전략 1개를 자동 선택하거나, 상위 3개 전략의 현재 가중치를 혼합하는 방식이 동작합니다.
+  - `aiLookbackWindow` 입력값이 자동 전략의 최근 평가 범위로도 사용됩니다.
+  - 추천 단계는 단순 샘플링만 하지 않고, 후보풀을 만든 뒤 세트 점수 기반으로 리랭킹하고 유사 조합을 분산합니다.
+- **설명 가능성 강화** (`features/ai/rendering.js`)
+  - AI 로그에 `리랭킹 후보풀`, `최고 추천 점수`, `최근 N회 자동 비교`, `자동 선택 결과`를 표시합니다.
+  - 추천 카드 상세에 `추천 점수`, `페어 시너지`, `프로파일 적합도`, `공백 균형`, 번호별 `추세/회귀/베이즈` 신호를 표시합니다.
+- **AI 평가 스크립트 추가** (`scripts/perf/ai_eval.mjs`, `package.json`)
+  - `npm run bench:ai` 로 최근 회차 구간에 대한 전략별 AI 추천 회귀평가를 실행할 수 있습니다.
+  - 최근 20회 단기 검증 기준으로 `auto_ensemble_top3` 가 `4개 이상 적중 draw 비율`에서 경쟁력 있는 결과를 보였습니다.
+
 ## 기능 정합성·운영 진단 강화 반영 (2026-03-19)
 
 - **목표 회차 기본값 자동 관리** (`LottoApp.js`, `latestDraw.js`, `index.html`)
@@ -207,9 +223,12 @@
   - 캠페인 삭제 시 연결 티켓 cascade 삭제
   - 동기화 시 미정산 티켓 자동 정산
 - 인공지능 예측:
-  - 다중 전략(앙상블, 균형, 고빈도/저빈도 등) 지원
+  - 다중 전략(앙상블, 균형, 고빈도/저빈도, 컨센서스, 베이지안, 모멘텀, 평균회귀 등) 지원
+  - 최근 `N회` 기준 상위 전략 자동 선택(`auto_recent_top`)
+  - 최근 상위 3개 전략 혼합 자동 앙상블(`auto_ensemble_top3`)
   - 몬테카를로 기반 정밀 시뮬레이션
-  - 추천 조합별 근거 신호(빈도/최근성/공백/페어/필터) 표시
+  - 추천 후보풀 리랭킹 + 유사 조합 분산
+  - 추천 조합별 근거 신호(빈도/최근성/공백/페어/추세/회귀/베이즈/필터) 표시
   - 결과를 생성 탭으로 교체 가져오기 지원
 - 전략 프리셋:
   - 생성/AI/백테스트별 저장·불러오기·삭제
@@ -347,6 +366,7 @@ node scripts/smoke/smoke.mjs
 
 ```bash
 node scripts/perf/bench.mjs
+npm run bench:ai
 ```
 
 ## 라이선스

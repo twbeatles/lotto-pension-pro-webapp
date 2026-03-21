@@ -53,7 +53,9 @@ export const strategyRequestMethods = {
         const normalizedRequest = options.normalizedRequest || this.normalizeRequest(request);
         const sourceData = options.sourceData || this.data;
         const rng = options.rng || this.getRandomFn(normalizedRequest.params.seed);
-        const { weights } = this.computeWeightsFromNormalized(normalizedRequest, sourceData);
+        const { weights, context, adaptive } = this.computeWeightsFromNormalized(normalizedRequest, sourceData, {
+            context: options.context
+        });
         const isWheel = normalizedRequest.strategyId === 'wheel_full' || normalizedRequest.strategyId === 'wheel_reduced_t3';
 
         return {
@@ -61,7 +63,9 @@ export const strategyRequestMethods = {
             sourceData,
             rng,
             weights,
-            isWheel
+            isWheel,
+            context,
+            adaptive
         };
     }
 };

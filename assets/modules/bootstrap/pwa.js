@@ -22,6 +22,10 @@ export function registerPwaLifecycle() {
     const registerSW = () => {
         navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
             console.log('서비스 워커 등록 완료:', reg.scope);
+            if (reg.waiting && navigator.serviceWorker.controller) {
+                showUpdateToast(reg.waiting);
+            }
+            reg.update().catch(() => {});
 
             reg.addEventListener('updatefound', () => {
                 const newWorker = reg.installing;
@@ -36,7 +40,9 @@ export function registerPwaLifecycle() {
     };
 
     let reloadOnControllerChange = false;
+    let updateToast = null;
     const showUpdateToast = (worker) => {
+        if (!worker || updateToast) return;
         const toast = document.createElement('div');
         toast.className = 'update-toast';
         toast.innerHTML = `
@@ -45,6 +51,7 @@ export function registerPwaLifecycle() {
             <button id="dismissBtn">닫기</button>
         `;
         document.body.appendChild(toast);
+        updateToast = toast;
 
         const reloadBtn = document.getElementById('reloadBtn');
         const dismissBtn = document.getElementById('dismissBtn');
@@ -57,8 +64,17 @@ export function registerPwaLifecycle() {
             };
         }
         if (dismissBtn) {
-            dismissBtn.onclick = () => toast.remove();
+            dismissBtn.onclick = () => {
+                updateToast?.remove();
+                updateToast = null;
+            };
         }
+        worker.addEventListener('statechange', () => {
+            if (worker.state === 'activating' || worker.state === 'activated' || worker.state === 'redundant') {
+                updateToast?.remove();
+                updateToast = null;
+            }
+        });
     };
 
     let refreshing = false;

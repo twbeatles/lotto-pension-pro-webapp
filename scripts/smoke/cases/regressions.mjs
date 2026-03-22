@@ -1500,6 +1500,8 @@ async function runServiceWorkerReloadPolicyRegression() {
     );
     assert.match(pwaSource, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
     assert.match(pwaSource, /if \(refreshing \|\| !reloadOnControllerChange\) return;/, 'controllerchange must ignore first-install activation');
+    assert.match(pwaSource, /if \(reg\.waiting && navigator\.serviceWorker\.controller\) \{\s*showUpdateToast\(reg\.waiting\);/m, 'existing waiting SW must surface the update toast immediately');
+    assert.match(pwaSource, /reg\.update\(\)\.catch\(\(\) => \{\}\);/, 'registration flow must proactively check for a newer SW script');
 }
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
@@ -1509,6 +1511,8 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
     assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
+    assert.match(swSource, /function isAppShellCodeRequest\(request, url\)/, 'service worker must classify JS/CSS/font assets separately');
+    assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_APP_SHELL, 3500\)/, 'app-shell code assets must prefer network-first delivery');
     assert.doesNotMatch(swSource, /__network_probe/, 'service worker must not special-case the deprecated probe route anymore');
 }
 

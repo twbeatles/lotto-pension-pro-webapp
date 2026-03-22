@@ -187,6 +187,12 @@ async function staleWhileRevalidate(request, cacheName) {
     return new Response('오프라인', { status: 503, statusText: '오프라인' });
 }
 
+function isAppShellCodeRequest(request, url) {
+    const destination = String(request.destination || '');
+    if (['script', 'style', 'worker', 'font'].includes(destination)) return true;
+    return /\.(?:js|css|woff2?|ttf)$/i.test(url.pathname);
+}
+
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = new URL(event.request.url);
@@ -199,6 +205,12 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (event.request.mode === 'navigate') {
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
+        return;
+    }
+
+    // JS/CSS/font assets must prefer the network so deployed fixes do not get stuck behind stale app-shell cache.
+    if (isAppShellCodeRequest(event.request, url)) {
         event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
         return;
     }

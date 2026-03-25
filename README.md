@@ -7,6 +7,22 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 기능 정합성 후속 보강 반영 (2026-03-25)
+
+- **티켓 저장 직후 정합성 보강** (`records.js`)
+  - 과거 회차 티켓은 저장 직후 현재 보유한 당첨 데이터 기준으로 즉시 정산됩니다.
+  - 미래 회차 티켓만 `pending` 상태를 유지합니다.
+- **생성 탭 목표 회차 자동추적 복구** (`generator/form.js`, `LottoApp.js`)
+  - 생성 탭의 캠페인 초기화가 단순 값 리셋이 아니라 자동 추적 메타데이터까지 복구합니다.
+  - 초기화 후 최신 회차가 바뀌면 `genTargetDrawNo`, `campStartDraw` 가 다시 다음 회차를 따라갑니다.
+- **Import 후 orphan campaign 정리** (`dataio/support.js`, `dataio/importExport.js`)
+  - Merge/Overwrite Import 후 연결 티켓이 없는 캠페인은 자동 정리됩니다.
+  - Import 결과 toast 에 cleanup 수치가 함께 표시됩니다.
+- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
+  - `immediate ticket settlement`
+  - `campaign reset autofill recovery`
+  - `import orphan-campaign cleanup`
+
 ## AI 예측 다양화·자동선택 반영 (2026-03-21)
 
 - **전략 다양화** (`StrategyCatalog.js`, `core/strategy/*`)
@@ -218,6 +234,7 @@
   - 목표 회차 입력은 다음 회차를 자동 추적하며, 필요 시 즉시 재설정 가능
 - 티켓북/캠페인:
   - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
+  - 과거 회차 티켓은 저장 즉시 정산되어 상태가 바로 반영됩니다.
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
   - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
   - 캠페인 삭제 시 연결 티켓 cascade 삭제
@@ -255,6 +272,7 @@
   - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
+  - Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됩니다.
 - 데이터 관리:
   - 즐겨찾기/히스토리/티켓/캠페인 검색 + 페이지네이션
   - 로컬 최신 회차 업데이트 개수 확인 및 수동 정리
@@ -278,7 +296,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v12`)
+- 서비스워커: 같은 출처 리소스 중심 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v17`)
 
 ## 프로젝트 구조
 
@@ -352,13 +370,13 @@ node scripts/smoke/smoke.mjs
 현재 `smoke`에는 아래 회귀 항목이 포함됩니다.
 
 - `strict-filter`, `wheel-fixed`, `draw-normalization`
-- `campaign-limit`, `campaign-cascade`, `campaign-empty-save`
+- `campaign-limit`, `campaign-cascade`, `campaign-empty-save`, `campaign reset autofill recovery`
 - `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
-- `ticket-dedupe`, `requestNumbers replace`
+- `ticket-dedupe`, `immediate ticket settlement`, `requestNumbers replace`
 - `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`
 - `target-draw autofill`, `refreshCurrentRoute stale`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
-- `data-list DOM`, `proxy-policy`, `import-alert-options`, `post-import-refresh`
+- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `post-import-refresh`
 - `strategy-preset-crud`, `runtime-asset-localization`
 - `local-font-path`, `service-worker reload policy`, `service-worker core data precache`
 

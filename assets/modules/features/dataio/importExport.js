@@ -40,14 +40,30 @@ export const dataIoImportMethods = {
                 const beforeFav = this.data.state.favorites.length;
                 const beforeHist = this.data.state.history.length;
                 const beforeTickets = this.data.state.ticketBook.length;
-                const beforeCampaigns = this.data.state.campaigns.length;
+                const beforeCampaignIds = new Set(
+                    (this.data.state.campaigns || [])
+                        .map((item) => String(item?.id || '').trim())
+                        .filter(Boolean)
+                );
                 const beforeUpdates = this.data.getLocalUpdates().length;
                 const beforePresets = (this.data.state.strategyPresets || []).length;
+                const incomingCampaignIds = new Set(
+                    incomingCampaigns
+                        .map((item) => String(item?.id || '').trim())
+                        .filter(Boolean)
+                );
 
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
                 this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
-                this.data.state.ticketBook = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
-                this.data.state.campaigns = this.mergeCampaigns(this.data.state.campaigns, incomingCampaigns);
+                const mergedTickets = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
+                const mergedCampaigns = this.mergeCampaigns(this.data.state.campaigns, incomingCampaigns);
+                const mergeCampaignCleanup = this.pruneCampaignsWithoutTickets(
+                    mergedCampaigns,
+                    mergedTickets,
+                    incomingCampaignIds
+                );
+                this.data.state.ticketBook = mergedTickets;
+                this.data.state.campaigns = mergeCampaignCleanup.campaigns;
                 if (importOptions.applyAlerts) {
                     this.data.state.alertPrefs = this.data.mergeAlertPrefs({
                         ...this.data.state.alertPrefs,
@@ -76,16 +92,21 @@ export const dataIoImportMethods = {
                 const newFav = this.data.state.favorites.length - beforeFav;
                 const newHist = this.data.state.history.length - beforeHist;
                 const newTickets = this.data.state.ticketBook.length - beforeTickets;
-                const newCampaigns = this.data.state.campaigns.length - beforeCampaigns;
+                const newCampaigns = (this.data.state.campaigns || []).filter((item) => {
+                    const campaignId = String(item?.id || '').trim();
+                    return campaignId && !beforeCampaignIds.has(campaignId);
+                }).length;
                 const newUpdates = mergedUpdates.length - beforeUpdates;
                 const newPresets = this.data.state.strategyPresets.length - beforePresets;
+                const prunedCampaigns = mergeCampaignCleanup.removed.length;
                 const addedTotal = newFav + newHist + newTickets + newCampaigns + newUpdates + newPresets;
-                const duplicateTotal = Math.max(incomingTotal - addedTotal, 0);
-                const skippedTotal = 0;
+                const skippedTotal = prunedCampaigns;
+                const duplicateTotal = Math.max(incomingTotal - addedTotal - skippedTotal, 0);
                 const appliedSettings = this.describeAppliedSettings(importOptions);
 
                 UIManager.toast(
                     `Merge complete (added:${addedTotal}, duplicate:${duplicateTotal}, skipped:${skippedTotal})` +
+                    (prunedCampaigns ? `, cleaned:${prunedCampaigns} orphan-campaign` : '') +
                     (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
                     'success'
                 );
@@ -93,7 +114,8 @@ export const dataIoImportMethods = {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
                 this.data.state.ticketBook = incomingTickets;
-                this.data.state.campaigns = incomingCampaigns;
+                const overwriteCampaignCleanup = this.pruneCampaignsWithoutTickets(incomingCampaigns, incomingTickets);
+                this.data.state.campaigns = overwriteCampaignCleanup.campaigns;
                 if (importOptions.applyAlerts) {
                     this.data.state.alertPrefs = incomingAlertPrefs;
                 }
@@ -107,8 +129,10 @@ export const dataIoImportMethods = {
                 if (importOptions.applyProxy) this.syncProxyInput();
                 if (importOptions.applyTheme) this.app.applyTheme();
                 const appliedSettings = this.describeAppliedSettings(importOptions);
+                const prunedCampaigns = overwriteCampaignCleanup.removed.length;
                 UIManager.toast(
-                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + incomingCampaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:0)` +
+                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + this.data.state.campaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:${prunedCampaigns})` +
+                    (prunedCampaigns ? `, cleaned:${prunedCampaigns} orphan-campaign` : '') +
                     (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
                     'success'
                 );

@@ -115,6 +115,36 @@ export const dataIoSupportMethods = {
             .filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
     },
 
+    pruneCampaignsWithoutTickets(campaigns = [], tickets = [], targetCampaignIds = null) {
+        const targetIds = targetCampaignIds instanceof Set
+            ? targetCampaignIds
+            : new Set((targetCampaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const limitToTargets = targetIds.size > 0;
+        const linkedCampaignIds = new Set(
+            (tickets || [])
+                .map((ticket) => String(ticket?.campaignId || '').trim())
+                .filter(Boolean)
+        );
+
+        const kept = [];
+        const removed = [];
+
+        (campaigns || []).forEach((campaign) => {
+            const campaignId = String(campaign?.id || '').trim();
+            const shouldValidate = !limitToTargets || targetIds.has(campaignId);
+            if (shouldValidate && (!campaignId || !linkedCampaignIds.has(campaignId))) {
+                removed.push(campaign);
+                return;
+            }
+            kept.push(campaign);
+        });
+
+        return {
+            campaigns: kept,
+            removed
+        };
+    },
+
     mergeStrategyPresets(existing, incoming) {
         return this.data.mergeStrategyPresets([...(existing || []), ...(incoming || [])]);
     },

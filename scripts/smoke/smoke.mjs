@@ -9,6 +9,7 @@ import {
     runBacktestSmoke,
     runBackupSmoke,
     runCampaignCascadeRegression,
+    runCampaignResetAutofillRecoveryRegression,
     runCampaignEmptySaveRegression,
     runCampaignLimitRegression,
     runCheckTargetDrawRegression,
@@ -25,6 +26,7 @@ import {
     runAutoSyncFallbackRegression,
     runBackgroundAutoSyncRegression,
     runHiddenAttributeStyleRegression,
+    runImmediateTicketSettlementRegression,
     runQrScanReentryGuardRegression,
     runQrRouteCleanupRegression,
     runQrValidationRegression,
@@ -40,6 +42,7 @@ import {
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runBuiltInSyncProviderRegression,
+    runImportOrphanCampaignCleanupRegression,
     runSyncLatestWinRefreshRegression,
     runWinningStatsLoadClassificationRegression,
     runTargetDrawAutofillRegression,
@@ -74,6 +77,8 @@ async function main() {
     runCampaignCascadeRegression();
     runQrValidationRegression();
     runTicketDedupeRegression();
+    runImmediateTicketSettlementRegression();
+    runCampaignResetAutofillRecoveryRegression();
     runCheckTargetDrawRegression();
     runStoredListNormalizationRegression();
     runTargetDrawAutofillRegression();
@@ -87,6 +92,7 @@ async function main() {
     await runSyncInvalidPayloadRegression();
     runBuiltInSyncProviderRegression();
     await runImportAlertOptionRegression();
+    await runImportOrphanCampaignCleanupRegression();
     await runCampaignEmptySaveRegression();
     await runQrScanReentryGuardRegression();
     await runQrRouteCleanupRegression();
@@ -116,6 +122,8 @@ async function main() {
     console.log('[PASS] campaign-cascade regression');
     console.log('[PASS] qr-validation regression');
     console.log('[PASS] ticket-dedupe regression');
+    console.log('[PASS] immediate ticket settlement regression');
+    console.log('[PASS] campaign reset autofill recovery regression');
     console.log('[PASS] check-target-draw regression');
     console.log('[PASS] stored-list-normalization regression');
     console.log('[PASS] target-draw autofill regression');
@@ -129,6 +137,7 @@ async function main() {
     console.log('[PASS] sync invalid payload regression');
     console.log('[PASS] built-in sync provider regression');
     console.log('[PASS] import-alert-options regression');
+    console.log('[PASS] import orphan-campaign cleanup regression');
     console.log('[PASS] campaign-empty-save regression');
     console.log('[PASS] qr-reentry-guard regression');
     console.log('[PASS] qr route cleanup regression');

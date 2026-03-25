@@ -106,10 +106,24 @@ export const generatorFormMethods = {
             campWeeks: 4,
             campSetsPerWeek: 3
         };
-        Object.entries(defaults).forEach(([id, v]) => {
+        const targetDrawIds = ['genTargetDrawNo', 'campStartDraw'];
+
+        targetDrawIds.forEach((id) => {
             const el = $(`#${id}`);
             if (!el) return;
-            if (force || !String(el.value || '').trim()) el.value = v;
+            if (!force && String(el.value || '').trim()) return;
+
+            if (typeof this.app?.setTargetDrawInputValue === 'function') {
+                this.app.setTargetDrawInputValue(id, defaults[id], { force: true, userEdited: false });
+                return;
+            }
+            el.value = defaults[id];
+        });
+
+        ['campWeeks', 'campSetsPerWeek'].forEach((id) => {
+            const el = $(`#${id}`);
+            if (!el) return;
+            if (force || !String(el.value || '').trim()) el.value = defaults[id];
         });
     },
 

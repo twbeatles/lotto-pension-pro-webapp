@@ -1,4 +1,4 @@
-﻿# GitHub Pages 배포/운영 안내
+# GitHub Pages 배포/운영 안내
 
 ## 1) 배포 방식
 
@@ -23,6 +23,8 @@
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
 - 동기화 메타에는 최근 응답 구조 경고(`lastWarningAt`, `lastWarningMessage`)도 함께 저장됨
 - 설치 시 `data/winning_stats.json`은 서비스워커 data cache에 precache됨
+- 과거 회차 티켓을 저장하거나 가져올 때 이미 당첨 데이터가 있으면 즉시 정산됨
+- Merge/Overwrite Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됨
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
   - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
@@ -36,6 +38,7 @@
 
 - 정적 JSON과 로컬 업데이트를 병합해 최신 상태를 구성합니다.
 - 데이터 관리 화면에서 로컬 업데이트 개수를 확인하고 정리할 수 있습니다.
+- Import 완료 toast 에는 orphan campaign cleanup 수치가 함께 표시됩니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
 - 자동 동기화 경로가 모두 실패하면 정적 JSON + 로컬 업데이트 상태를 그대로 유지합니다.
 
@@ -64,7 +67,7 @@
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v12`
+- 현재 `sw.js` 캐시 버전: `v17`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - `data/winning_stats.json`은 install 시 `CACHE_DATA`에 precache됩니다.
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
@@ -134,12 +137,15 @@ npm run format:check
 - Import 후 즉시 반영 순서가 유지되는지
 - 캠페인 상한 정책이 지켜지는지(`campaign-limit`)
 - 캠페인 삭제 시 연결 티켓이 같이 제거되는지(`campaign-cascade`)
+- 생성 탭 초기화 후 목표 회차 자동 추적이 복구되는지(`campaign reset autofill recovery`)
 - QR host/중복 번호 검증이 동작하는지(`qr-validation`)
 - strategyRequest 키 순서가 달라도 dedupe 키가 동일한지(`ticket-dedupe`)
+- 과거 회차 티켓 저장 직후 즉시 정산되는지(`immediate ticket settlement`)
 - 동기화 in-flight/취소 가드가 동작하는지(`sync-guard`)
 - AI `생성 탭으로`가 기존 결과를 교체하는지(`requestNumbers replace`)
 - sync 성공 후 최신 당첨결과 카드가 항상 갱신되는지(`sync-latest-win refresh`)
 - Import `alerts` 옵션 기본값과 적용 여부가 맞는지(`import-alert-options`)
+- Import 후 orphan campaign 이 정리되는지(`import orphan-campaign cleanup`)
 - 전략 프리셋 CRUD가 scope별로 동작하는지(`strategy-preset-crud`)
 - 런타임 HTML/loader에서 CDN 경로가 남지 않는지(`runtime-asset-localization`)
 - 프록시 미설정 상태에서 자동 동기화 fallback 경로가 시도되는지(`auto-sync fallback`)

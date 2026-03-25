@@ -208,6 +208,111 @@ function runTicketDedupeRegression() {
     assert.equal(keyA, keyB, 'ticket dedupe key must be stable across key order differences');
 }
 
+function runImmediateTicketSettlementRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+    dm.state.winningStats = [{
+        draw_no: 1209,
+        date: '2026-03-07',
+        numbers: [1, 2, 3, 4, 5, 6],
+        bonus: 7
+    }];
+
+    const settled = dm.addTicket([1, 2, 3, 4, 5, 6], {
+        source: 'generator',
+        targetDrawNo: 1209
+    });
+    assert.equal(settled?.checked?.drawNo, 1209, 'past-draw single ticket must settle immediately');
+    assert.equal(settled?.checked?.rank, 1, 'past-draw single ticket must calculate rank immediately');
+
+    const pending = dm.addTicket([8, 9, 10, 11, 12, 13], {
+        source: 'generator',
+        targetDrawNo: 1210
+    });
+    assert.equal(pending?.checked, null, 'future-draw single ticket must stay pending');
+
+    const inserted = dm.addTicketsBulk([
+        {
+            id: 'ticket_bulk_past',
+            numbers: [1, 2, 3, 4, 8, 9],
+            targetDrawNo: 1209,
+            source: 'import'
+        },
+        {
+            id: 'ticket_bulk_future',
+            numbers: [14, 15, 16, 17, 18, 19],
+            targetDrawNo: 1210,
+            source: 'import'
+        }
+    ], { silent: true });
+
+    assert.equal(inserted, 2, 'bulk insert must keep both unique tickets');
+    assert.equal(
+        dm.state.ticketBook.find((ticket) => ticket.id === 'ticket_bulk_past')?.checked?.drawNo,
+        1209,
+        'past-draw bulk ticket must settle immediately'
+    );
+    assert.equal(
+        dm.state.ticketBook.find((ticket) => ticket.id === 'ticket_bulk_future')?.checked,
+        null,
+        'future-draw bulk ticket must stay pending'
+    );
+}
+
+function runCampaignResetAutofillRecoveryRegression() {
+    const previousDocument = globalThis.document;
+    const genTarget = createField({
+        value: '1300',
+        dataset: { userEdited: 'true', lastAutoValue: '1210' }
+    });
+    const campTarget = createField({
+        value: '1300',
+        dataset: { userEdited: 'true', lastAutoValue: '1210' }
+    });
+    const campWeeks = createField({ value: '9' });
+    const campSetsPerWeek = createField({ value: '8' });
+
+    globalThis.document = createDocumentStub({
+        '#genTargetDrawNo': genTarget,
+        '#campStartDraw': campTarget,
+        '#campWeeks': campWeeks,
+        '#campSetsPerWeek': campSetsPerWeek
+    });
+
+    try {
+        const app = {
+            data: {
+                state: {
+                    winningStats: [{ draw_no: 1210 }]
+                }
+            },
+            targetDrawInputIds: ['genTargetDrawNo', 'campStartDraw'],
+            getSuggestedNextDrawNo: LottoApp.prototype.getSuggestedNextDrawNo,
+            setTargetDrawInputValue: LottoApp.prototype.setTargetDrawInputValue,
+            resetTargetDrawInputs: LottoApp.prototype.resetTargetDrawInputs
+        };
+
+        GeneratorModule.prototype.resetCampaignOptions.call({ app }, true);
+
+        assert.equal(genTarget.value, '1211', 'campaign reset must restore generator target draw to next draw');
+        assert.equal(genTarget.dataset.userEdited, 'false', 'campaign reset must restore generator auto-follow state');
+        assert.equal(campTarget.value, '1211', 'campaign reset must restore campaign start draw to next draw');
+        assert.equal(campTarget.dataset.userEdited, 'false', 'campaign reset must restore campaign auto-follow state');
+        assert.equal(String(campWeeks.value), '4', 'campaign reset must restore default week count');
+        assert.equal(String(campSetsPerWeek.value), '3', 'campaign reset must restore default set count');
+
+        const changed = LottoApp.prototype.setTargetDrawInputValue.call(app, 'campStartDraw', 1212, {
+            force: false,
+            userEdited: false
+        });
+        assert.equal(changed, true, 'campaign reset must allow later automatic target-draw updates');
+        assert.equal(campTarget.value, '1212', 'restored campaign target must track the next auto value');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 function runCampaignCascadeRegression() {
     const dm = new DataManager();
     dm.save = () => {};
@@ -830,6 +935,106 @@ async function runImportAlertOptionRegression() {
             'overwrite import must apply incoming alert prefs when alerts option is on'
         );
     } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runImportOrphanCampaignCleanupRegression() {
+    const previousDocument = globalThis.document;
+    const previousToast = UIManager.toast;
+    const importMode = createField({ value: 'merge' });
+    const importApplyTheme = createField();
+    const importApplyProxy = createField();
+    const importApplyStrategyPrefs = createField();
+    const importApplyAlerts = createField();
+    const toasts = [];
+
+    UIManager.toast = (message, type = 'info') => {
+        toasts.push(`${type}:${message}`);
+    };
+
+    globalThis.document = createDocumentStub({
+        '#importMode': importMode,
+        '#importApplyTheme': importApplyTheme,
+        '#importApplyProxy': importApplyProxy,
+        '#importApplyStrategyPrefs': importApplyStrategyPrefs,
+        '#importApplyAlerts': importApplyAlerts,
+        '#customProxyUrl': createField(),
+        '#toast-container': null
+    });
+
+    try {
+        const payload = {
+            version: 3,
+            favorites: [],
+            history: [],
+            ticketBook: [{
+                id: 'ticket_imported',
+                numbers: [1, 2, 3, 4, 5, 6],
+                targetDrawNo: 1210,
+                source: 'import',
+                campaignId: 'camp_new'
+            }],
+            campaigns: [{
+                id: 'camp_new',
+                name: 'imported campaign',
+                startDrawNo: 1210,
+                weeks: 1,
+                setsPerWeek: 1
+            }],
+            alertPrefs: {},
+            settings: {},
+            localUpdates: [],
+            strategyPresets: []
+        };
+        const file = {
+            async text() {
+                return JSON.stringify(payload);
+            }
+        };
+
+        const data = new DataManager();
+        data.state.ticketBook = [{
+            id: 'ticket_existing',
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1210,
+            source: 'import',
+            campaignId: '',
+            strategyRequest: null,
+            memo: '',
+            createdAt: '2026-03-01T00:00:00.000Z',
+            checked: null
+        }];
+        data.save = () => {};
+        data.setLocalUpdates = () => {};
+        data.getLocalUpdates = () => [];
+
+        const ctx = Object.create(DataIOModule.prototype);
+        ctx.data = data;
+        ctx.app = {
+            applyTheme() {},
+            renderSettingsPanel() {}
+        };
+        ctx.syncProxyInput = () => {};
+        ctx.refreshPresetSelectors = () => {};
+        ctx.runPostImportRefresh = async () => {};
+
+        await DataIOModule.prototype.importAll.call(ctx, {
+            currentTarget: {
+                files: [file],
+                value: 'merge.json'
+            }
+        });
+
+        assert.equal(data.state.ticketBook.length, 1, 'duplicate import ticket must still be deduped');
+        assert.equal(data.state.campaigns.length, 0, 'merge import must remove orphan campaigns with no linked tickets');
+        assert.ok(
+            toasts.some((item) => item.includes('cleaned:1 orphan-campaign')),
+            'merge import toast must mention orphan campaign cleanup'
+        );
+    } finally {
+        UIManager.toast = previousToast;
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
@@ -1587,6 +1792,8 @@ export {
     runCampaignLimitRegression,
     runQrValidationRegression,
     runTicketDedupeRegression,
+    runImmediateTicketSettlementRegression,
+    runCampaignResetAutofillRecoveryRegression,
     runCampaignCascadeRegression,
     runCheckTargetDrawRegression,
     runStoredListNormalizationRegression,
@@ -1599,6 +1806,7 @@ export {
     runSyncInvalidPayloadRegression,
     runBuiltInSyncProviderRegression,
     runImportAlertOptionRegression,
+    runImportOrphanCampaignCleanupRegression,
     runStrategyPresetCrudRegression,
     runRuntimeAssetLocalizationRegression,
     runCampaignEmptySaveRegression,

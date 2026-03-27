@@ -1,20 +1,23 @@
-# Lotto Webapp Structure Notes (2026-03-25)
+# Lotto Webapp Structure Notes (2026-03-27)
 
 ## Summary
 
 - Repository: `lotto---webapp`
-- App shape: no-build SPA using `index.html`, vanilla JS ESM, and CSS
+- App shape: no-build SPA using `index.html`, Vanilla JS ESM, and CSS
 - Static draw dataset:
   - latest draw: `1209`
   - total rows: `1208`
   - missing draw: `146`
 - Current direction:
   - settings and operational state are managed from a global settings modal
+  - modal, destructive action, and prompt UX are now centralized in `UIManager`
   - large files were split into facade entry files plus internal modules
-  - AI strategy selection includes richer weighting, reranking, and adaptive recent-performance-based auto strategies
-  - latest draw sync uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
-  - target draw defaults follow the next draw automatically unless the user overrides them
-  - immediate ticket settlement and import cleanup were added to reduce stale operational state
+  - AI strategy selection now includes richer weighting, reranking, and adaptive recent-performance-based auto strategies
+  - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
+  - target draw defaults now follow the next draw automatically unless the user overrides them
+  - sync diagnostics and local update cleanup were added to make runtime data issues observable
+  - past-draw tickets settle immediately after save/import refresh, and import prunes orphan campaigns to reduce stale operational state
+  - mobile navigation now uses `5탭 + 더보기`, and the check tab uses a card-list flow instead of native select
   - deployment target is GitHub Pages
 
 ## Current Layout
@@ -37,6 +40,15 @@
   - `assets/modules/features/Backtest.js`
   - `assets/modules/features/DataIO.js`
   - internal logic lives in feature-specific subdirectories
+- Notable implementation files:
+  - `assets/modules/core/data/records.js`
+    - immediate ticket settlement for past draws
+  - `assets/modules/features/generator/form.js`
+    - campaign reset restores target-draw auto-follow metadata
+  - `assets/modules/features/dataio/support.js`
+    - orphan-campaign pruning helpers
+  - `assets/modules/features/dataio/importExport.js`
+    - merge/overwrite import flow and cleanup-count toast
 - Styles:
   - `assets/app.css` is the aggregate entrypoint
   - actual slices live in `assets/styles/`
@@ -54,22 +66,31 @@
   - custom proxy URL
   - sync metadata
   - app storage usage summary
+- `UIManager` now owns:
+  - common confirm/prompt dialogs
+  - modal focus trap and focus restore
+  - accessible number-ball rendering
 - On mobile, the settings modal is intentionally single-column to avoid horizontal overflow.
+- Mobile bottom navigation is now `gen/stats/ai/check/data + more`.
+- The mobile more sheet routes to `bt`, settings, and install actions.
 - The data page is focused on:
   - backup export/import
   - favorites/history/tickets/campaign lists
   - search and pagination
 - The data page also exposes runtime local update summary and cleanup.
+- The check tab now uses:
+  - card list selection
+  - search
+  - ticket status filtering
+  - keyboard navigation
+  - always-visible scanned results
+- Backtest results persist on route re-entry and include mini metric charts.
 - Target draw inputs auto-follow the next draw until the user edits them, and each field can be reset to the suggested next draw.
-- Generator campaign reset now restores the target-draw auto-follow metadata as well as the visible values.
-- `refreshCurrentRoute()` uses a stale guard so async refresh work does not render after a tab switch.
+- Resetting generator campaign options restores target-draw auto-follow metadata rather than only replacing the visible input value.
+- Saving a past-draw ticket settles it immediately if the winning draw already exists locally.
+- Merge/overwrite import prunes orphan campaigns and reports the cleanup count in the completion toast.
+- `refreshCurrentRoute()` now uses a stale guard so async refresh work does not render after a tab switch.
 - QR scanning is cleaned up more aggressively when leaving the `check` route.
-- Ticket-book consistency:
-  - saving a ticket for a draw that already has winning data settles it immediately
-  - future-draw tickets remain pending
-- Import consistency:
-  - merge/overwrite import prunes orphan campaigns with no linked tickets
-  - import completion toast includes the cleanup count
 - AI recommendations now:
   - support expanded strategies such as consensus, Bayesian smoothing, momentum, and mean-reversion
   - expose AI-only auto strategies that evaluate recent `N` draws and either pick the best single strategy or blend the top 3
@@ -117,8 +138,8 @@ Operational rules:
 
 - Service worker file: `sw.js`
 - Cache version: `v17`
-- App shell precache includes the split core/feature modules and `assets/styles/*.css`
-- Core data precache includes `data/winning_stats.json`
+- App shell precache now includes the split core/feature modules and `assets/styles/*.css`
+- Core data precache now includes `data/winning_stats.json`
 - Reload after update only happens after explicit user acceptance
 - Production URL:
   - `https://twbeatles.github.io/lotto---webapp/`
@@ -146,15 +167,15 @@ Important regression areas:
 - generator / AI / backtest flows
 - AI adaptive strategy selection and recommendation diagnostics
 - campaign caps and cascade delete
-- immediate settlement for already-drawn tickets
-- campaign reset autofill recovery
-- orphan-campaign cleanup after import
 - single-flight sync / cancel / automatic fallback behavior
 - target draw autofill / reset behavior
+- immediate ticket settlement for past-draw tickets
+- campaign reset autofill recovery
 - stale async route refresh handling
 - invalid single-draw payload diagnostics
 - QR route-exit cleanup
 - lazy-loaded tab routing for `ai`, `bt`, `check`
+- import option handling and orphan-campaign cleanup
 - settings modal rendering, especially on mobile
 - data list search and pagination
 - local update summary / clear flow
@@ -164,4 +185,5 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md` is the current functional review artifact and includes the implementation-complete follow-up status.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md` is committed and should be treated as the current functional review artifact.
+- Other ad hoc review artifacts are not guaranteed to be versioned in-repo unless explicitly committed for the session.

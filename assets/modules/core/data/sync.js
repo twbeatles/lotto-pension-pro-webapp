@@ -2,6 +2,7 @@ import { CONFIG } from '../../utils/config.js';
 import { $, estimateLatestDrawKST } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
 import { measureAsync } from '../../utils/perf.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 
 const OFFICIAL_DRAW_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 const BUILTIN_SYNC_SINGLE_PROVIDERS = [
@@ -467,7 +468,7 @@ export const dataSyncMethods = {
         const currentProxyFingerprint = (this.resolveProxyConfig()?.url || '');
         if (this.syncInFlightPromise) {
             if (currentProxyFingerprint === (this._syncInFlightProxyFingerprint || '')) {
-                if (profile.toast) UIManager.toast('이미 동기화가 진행 중입니다.', 'info');
+                if (profile.toast) UIManager.toast(UI_STRINGS.sync.alreadyRunning, 'info');
                 return this.syncInFlightPromise;
             }
             // 설정이 바뀌었으므로 기존 요청을 취소하고 새로 시작
@@ -483,7 +484,7 @@ export const dataSyncMethods = {
         const task = this._fetchLatestFromAPIInternal(options, this.syncAbortController?.signal || null)
             .catch((e) => {
                 if (this.isAbortError(e)) {
-                    if (profile.toast) UIManager.toast('동기화를 취소했습니다.', 'info');
+                    if (profile.toast) UIManager.toast(UI_STRINGS.sync.cancelled, 'info');
                     return false;
                 }
                 throw e;
@@ -554,7 +555,7 @@ export const dataSyncMethods = {
             const estNo = estimateLatestDrawKST();
 
             if (latestKnown >= estNo) {
-                log('Already up to date.', 'SYNC_UP_TO_DATE');
+                log(UI_STRINGS.sync.logUpToDate, 'SYNC_UP_TO_DATE');
                 if (profile.trigger !== 'idle') {
                     this.markSyncSuccess({
                         drawNo: latestKnown,
@@ -562,7 +563,7 @@ export const dataSyncMethods = {
                         mode: syncMode
                     });
                 }
-                if (profile.toast) UIManager.toast('이미 최신 데이터입니다.', 'info');
+                if (profile.toast) UIManager.toast(UI_STRINGS.sync.upToDate, 'info');
                 await this.settlePendingTickets({
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
@@ -571,8 +572,8 @@ export const dataSyncMethods = {
                 return true;
             }
 
-            log(`Sync target range: ${latestKnown + 1} ~ ${estNo}`, 'SYNC_RANGE_START');
-            log(`Sync source: ${syncSource}`, 'SYNC_PROXY_SOURCE');
+            log(UI_STRINGS.sync.logRange(latestKnown + 1, estNo), 'SYNC_RANGE_START');
+            log(UI_STRINGS.sync.logSource(syncSource), 'SYNC_PROXY_SOURCE');
 
             if (proxyConfig?.invalid) {
                 log(
@@ -613,7 +614,7 @@ export const dataSyncMethods = {
                 .sort((a, b) => b - a);
             if (fallbackTargetList.length > CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS) {
                 log(
-                    `Fallback 대상이 ${fallbackTargetList.length}개라 최근 ${CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS}개만 요청합니다.`,
+                    UI_STRINGS.sync.logFallbackLimit(fallbackTargetList.length, CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS),
                     'SYNC_FALLBACK_LIMIT'
                 );
                 fallbackTargetList = fallbackTargetList.slice(0, CONFIG.LIMITS.MAX_SYNC_FALLBACK_DRAWS);
@@ -634,7 +635,7 @@ export const dataSyncMethods = {
                 const unique = Array.from(new Map(merged.map(item => [item.draw_no, item])).values());
                 this.setLocalUpdates(unique);
 
-                log(`Applied ${updatedCount} draw updates.`, 'SYNC_APPLIED', { updatedCount });
+                log(UI_STRINGS.sync.logApplied(updatedCount), 'SYNC_APPLIED', { updatedCount });
                 await this.fetchWinningStats({ notifyTicketSettle: false });
                 await this.settlePendingTickets({
                     silent: profile.settleSilent,
@@ -647,7 +648,7 @@ export const dataSyncMethods = {
                 });
                 this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
-                if (profile.toast) UIManager.toast(`${updatedCount}개 회차 업데이트 완료`, 'success');
+                if (profile.toast) UIManager.toast(UI_STRINGS.sync.updatedCount(updatedCount), 'success');
                 clearWarningOnSuccess = true;
             } else {
                 if (latestKnown < estNo) {
@@ -661,10 +662,10 @@ export const dataSyncMethods = {
                         source: syncSource,
                         mode: syncMode
                     });
-                    if (profile.toast) UIManager.toast('최신 회차를 확인하지 못했습니다.', 'warning');
+                    if (profile.toast) UIManager.toast(UI_STRINGS.sync.latestUnavailable, 'warning');
                     return false;
                 }
-                log('No new draw data found.', 'SYNC_NO_UPDATE');
+                log(UI_STRINGS.sync.logNoNew, 'SYNC_NO_UPDATE');
                 await this.settlePendingTickets({
                     silent: profile.settleSilent,
                     requestSystemNotification: profile.requestSystemNotification
@@ -679,15 +680,15 @@ export const dataSyncMethods = {
             return true;
         } catch (e) {
             if (this.isAbortError(e)) {
-                log('Sync cancelled by user.', 'SYNC_ABORT');
+                log(UI_STRINGS.sync.logCancelled, 'SYNC_ABORT');
                 throw e;
             }
-            log(`Sync error: ${e.message}`, 'SYNC_ERROR', { message: e.message });
+            log(UI_STRINGS.sync.logError(e.message), 'SYNC_ERROR', { message: e.message });
             this.markSyncFailure(e.message, {
                 source: this.getSyncSourceLabel(),
                 mode: this.getSyncMode()
             });
-            if (profile.toast) UIManager.toast('동기화 중 오류가 발생했습니다.', 'error');
+            if (profile.toast) UIManager.toast(UI_STRINGS.sync.genericError, 'error');
             return false;
         } finally {
             if (syncWarnings.length) {

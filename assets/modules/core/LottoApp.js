@@ -10,6 +10,7 @@ import { appThemeMethods } from './app/theme.js';
 import { appSettingsMethods } from './app/settingsPanel.js';
 import { appDataListMethods } from './app/dataLists.js';
 import { appLatestDrawMethods } from './app/latestDraw.js';
+import { UI_STRINGS } from '../utils/strings.js';
 
 export class LottoApp {
     constructor() {
@@ -43,6 +44,25 @@ export class LottoApp {
         this.AUTO_SYNC_MIN_INTERVAL_MS = 60000;
         this.NETWORK_PROBE_TIMEOUT_MS = 3200;
         this.OFFLINE_CONFIRM_RETRY_MS = 1200;
+    }
+
+    bindStepperButtons() {
+        document.querySelectorAll('[data-step-target]').forEach((button) => {
+            if (button.dataset.stepperBound === 'true') return;
+            button.addEventListener('click', () => {
+                const target = document.getElementById(button.dataset.stepTarget || '');
+                const delta = Number(button.dataset.stepDelta || 0);
+                if (!target || !Number.isFinite(delta) || delta === 0) return;
+
+                const current = Number(target.value || target.getAttribute('value') || 0);
+                const min = Number(target.min || Number.NEGATIVE_INFINITY);
+                const max = Number(target.max || Number.POSITIVE_INFINITY);
+                const next = Math.min(max, Math.max(min, current + delta));
+                target.value = String(next);
+                target.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            button.dataset.stepperBound = 'true';
+        });
     }
 
     _loadDataListStateFromSession() {
@@ -234,27 +254,106 @@ export class LottoApp {
     }
 
     _bindPwaInstallPrompt() {
+        this._syncPwaInstallButtons();
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this._pwaInstallPrompt = e;
-            const btn = document.getElementById('pwaInstallBtn');
-            if (btn) btn.hidden = false;
+            this._syncPwaInstallButtons();
         });
 
         window.addEventListener('appinstalled', () => {
             this._pwaInstallPrompt = null;
-            const btn = document.getElementById('pwaInstallBtn');
-            if (btn) btn.hidden = true;
+            this._syncPwaInstallButtons();
             UIManager.toast('앱이 홈 화면에 설치되었습니다.', 'success');
         });
 
-        document.getElementById('pwaInstallBtn')?.addEventListener('click', async () => {
-            if (!this._pwaInstallPrompt) return;
-            await this._pwaInstallPrompt.prompt();
-            this._pwaInstallPrompt = null;
-            const btn = document.getElementById('pwaInstallBtn');
-            if (btn) btn.hidden = true;
+        document.querySelectorAll('[data-pwa-install]').forEach((button) => {
+            if (button.dataset.pwaBound === 'true') return;
+            button.addEventListener('click', async () => {
+                await this.handlePwaInstallRequest();
+            });
+            button.dataset.pwaBound = 'true';
         });
+    }
+
+    _syncPwaInstallButtons() {
+        const showInstall = Boolean(this._pwaInstallPrompt);
+        document.querySelectorAll('[data-pwa-install]').forEach((button) => {
+            button.hidden = !showInstall;
+        });
+    }
+
+    async handlePwaInstallRequest() {
+        if (!this._pwaInstallPrompt) {
+            UIManager.toast(UI_STRINGS.moreMenu.unavailableInstall, 'info');
+            return false;
+        }
+        await this._pwaInstallPrompt.prompt();
+        this._pwaInstallPrompt = null;
+        this._syncPwaInstallButtons();
+        return true;
+    }
+
+    bindMobileMoreSheet() {
+        const modal = document.getElementById('mobileMoreModal');
+        const moreBtn = document.getElementById('mobileMoreBtn');
+        if (!modal || !moreBtn) return;
+
+        if (moreBtn.dataset.boundMobileMore !== 'true') {
+            moreBtn.addEventListener('click', () => this.openMobileMoreSheet());
+            moreBtn.dataset.boundMobileMore = 'true';
+        }
+
+        if (modal.dataset.boundMobileMore !== 'true') {
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    this.closeMobileMoreSheet();
+                }
+            });
+
+            document.getElementById('mobileMoreCloseBtn')?.addEventListener('click', () => {
+                this.closeMobileMoreSheet();
+            });
+
+            modal.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-more-action]');
+                if (!button) return;
+                const action = button.dataset.moreAction;
+                if (action === 'bt') {
+                    this.closeMobileMoreSheet({ restoreFocus: false });
+                    await this.route('bt');
+                    return;
+                }
+                if (action === 'settings') {
+                    this.closeMobileMoreSheet({ restoreFocus: false });
+                    this.openSettingsModal();
+                }
+            });
+
+            modal.dataset.boundMobileMore = 'true';
+        }
+    }
+
+    openMobileMoreSheet() {
+        const modal = document.getElementById('mobileMoreModal');
+        if (!modal) return;
+        UIManager.openModal(modal, {
+            initialFocus: document.getElementById('mobileMoreCloseBtn')
+        });
+    }
+
+    closeMobileMoreSheet({ restoreFocus = true } = {}) {
+        UIManager.closeModal(document.getElementById('mobileMoreModal'), {
+            restoreFocus,
+            reason: 'close'
+        });
+    }
+
+    syncMobileMoreButtonState(target = this.currentRoute) {
+        const moreBtn = document.getElementById('mobileMoreBtn');
+        if (!moreBtn) return;
+        moreBtn.classList.toggle('active', target === 'bt');
     }
 
     getSuggestedNextDrawNo() {
@@ -338,17 +437,20 @@ export class LottoApp {
         startMark('app.init');
         if (this.data.setApp) this.data.setApp(this);
 
+        UIManager.init();
         this.data.load();
         this.applyTheme();
 
         this.generator = new GeneratorModule(this);
 
         this.cacheStaticSelectors();
+        this.bindStepperButtons();
         this.bindTargetDrawInputs();
 
         this.bindNav();
         this.bindThemeToggle();
         this.bindSettingsModal();
+        this.bindMobileMoreSheet();
         this.bindDataEvents();
         this.bindDataListDelegation();
         this.bindPersistenceEvents();

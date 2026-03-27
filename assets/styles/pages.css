@@ -431,6 +431,123 @@
   transform: translateX(-50%);
 }
 
+.segment-control.compact {
+  margin-bottom: 0;
+  padding: 3px;
+}
+
+.segment-control.compact .seg-btn {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.check-search-group {
+  margin-bottom: 16px;
+}
+
+.check-ticket-status-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.check-ticket-status-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.check-selection-meta {
+  min-height: 1.4em;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.check-target-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.check-target-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .check-target-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.check-target-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.check-target-card:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.16);
+}
+
+[data-theme="light"] .check-target-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+
+.check-target-card.active {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.18);
+}
+
+[data-theme="light"] .check-target-card.active {
+  border-color: rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.check-target-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.check-target-card-meta {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.check-target-card-balls {
+  flex-wrap: wrap;
+}
+
+.check-target-empty {
+  min-height: 220px;
+  margin-top: 0;
+}
+
 /* Checkbox */
 .check-box {
   display: flex;

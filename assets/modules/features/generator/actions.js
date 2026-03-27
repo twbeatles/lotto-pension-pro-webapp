@@ -3,11 +3,18 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { endMark, startMark } from '../../utils/perf.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 export const generatorActionMethods = {
     async generate() {
+        if (this.isGenerating || this.isGeneratingCampaign) return false;
         startMark('generator.generate');
         let requested = Number($('#setCount').value) || 5;
         let produced = 0;
+        if (!Number.isFinite(this.generationToken)) this.generationToken = 0;
+        const localToken = ++this.generationToken;
+        const uiStrings = this.uiStrings || UI_STRINGS.generator;
+        this.isGenerating = true;
+        this.syncBusyButtons?.();
         try {
             const fixed = this.parseInput($('#fixedNums').value);
             const exclude = this.parseInput($('#excludeNums').value);
@@ -46,7 +53,7 @@ export const generatorActionMethods = {
             } catch (err) {
                 fallback = true;
                 if (this.isWorkerTimeoutError(err)) {
-                    UIManager.toast('Worker timeout. Falling back to main-thread generation.', 'warning');
+                    UIManager.toast(uiStrings.workerFallback, 'warning');
                 }
                 console.warn('전략 워커 사용 실패, 메인 스레드로 대체합니다.', err);
                 sets = this.engine.generateMultipleSets(requested, request, { fixed, exclude, maxAttempts: 300 });
@@ -54,6 +61,7 @@ export const generatorActionMethods = {
                 endMark('generator.worker', { count: sets.length, requested, fallback });
             }
 
+            if (localToken !== this.generationToken) return false;
             sets.forEach((nums, i) => {
                 this.data.state.generated.push(nums);
                 this.renderResultItem(nums, i, listEl);
@@ -63,11 +71,16 @@ export const generatorActionMethods = {
                 UIManager.toast(`필터 조건으로 ${produced}/${requested}개만 생성되었습니다. 조건을 완화해보세요.`, 'warning', 3500);
             }
         } finally {
+            if (localToken === this.generationToken) {
+                this.isGenerating = false;
+                this.syncBusyButtons?.();
+            }
             endMark('generator.generate', { count: produced, requested });
         }
     },
 
     async generateCampaign() {
+        if (this.isGenerating || this.isGeneratingCampaign) return false;
         startMark('generator.campaign');
         let inserted = 0;
         let totalCreated = 0;
@@ -75,6 +88,11 @@ export const generatorActionMethods = {
         let setsPerWeek = 0;
         let requestedTotal = 0;
         let fallbackRuns = 0;
+        if (!Number.isFinite(this.campaignToken)) this.campaignToken = 0;
+        const localToken = ++this.campaignToken;
+        const uiStrings = this.uiStrings || UI_STRINGS.generator;
+        this.isGeneratingCampaign = true;
+        this.syncBusyButtons?.();
 
         try {
             const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
@@ -125,7 +143,7 @@ export const generatorActionMethods = {
                     fallback = true;
                     fallbackRuns++;
                     if (this.isWorkerTimeoutError(err)) {
-                        UIManager.toast('Worker timeout in campaign mode. Falling back to main-thread.', 'warning');
+                        UIManager.toast(uiStrings.workerFallbackCampaign, 'warning');
                     }
                     console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
                     sets = this.engine.generateMultipleSets(setsPerWeek, request, {
@@ -158,6 +176,7 @@ export const generatorActionMethods = {
                 });
             }
 
+            if (localToken !== this.campaignToken) return false;
             inserted = this.data.addTicketsBulk(tickets, { silent: true });
             let campaign = null;
             if (inserted > 0) {
@@ -184,6 +203,10 @@ export const generatorActionMethods = {
             }
             if (campaign && this.app.renderDataLists) this.app.renderDataLists();
         } finally {
+            if (localToken === this.campaignToken) {
+                this.isGeneratingCampaign = false;
+                this.syncBusyButtons?.();
+            }
             endMark('generator.campaign', { inserted, totalCreated, requestedTotal, weeks, setsPerWeek, fallbackRuns });
         }
     },

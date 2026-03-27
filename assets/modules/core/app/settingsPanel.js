@@ -17,37 +17,23 @@ export const appSettingsMethods = {
                 this.setTheme(button.dataset.themeChoice);
             });
         });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isSettingsModalOpen()) {
-                close();
-            }
-        });
     },
 
     isSettingsModalOpen() {
-        return $('#settingsModal')?.classList.contains('active') || false;
+        return UIManager.isModalOpen('#settingsModal');
     },
 
     openSettingsModal() {
         this.renderSettingsPanel();
         const modal = $('#settingsModal');
         if (!modal) return;
-        modal.classList.add('active');
-        // 포커스 우선순위: 닫기 버튼 → 모달 내 첫 포커스 가능 요소 → 모달 자체
-        const closeBtn = $('#closeSettingsBtn');
-        if (closeBtn) {
-            closeBtn.focus();
-        } else {
-            const focusable = modal.querySelector(
-                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-            );
-            (focusable || modal).focus();
-        }
+        UIManager.openModal(modal, {
+            initialFocus: $('#closeSettingsBtn')
+        });
     },
 
     closeSettingsModal() {
-        $('#settingsModal')?.classList.remove('active');
+        UIManager.closeModal($('#settingsModal'), { reason: 'close' });
     },
 
     renderSettingsPanel() {

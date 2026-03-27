@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="로또 6/45 번호 생성기 웹앱">
     <meta name="theme-color" content="#0f172a">
     <title>로또 6/45 프로</title>
@@ -71,7 +71,8 @@
                     <button id="openSettingsBtn" class="icon-btn" aria-label="설정 열기" type="button">
                         <i class="ph ph-gear-six"></i>
                     </button>
-                    <button id="pwaInstallBtn" class="icon-btn" aria-label="홈 화면에 설치" type="button" hidden title="홈 화면에 설치">
+                    <button id="pwaInstallBtn" class="icon-btn" aria-label="홈 화면에 설치" type="button" hidden
+                        title="홈 화면에 설치" data-pwa-install="desktop">
                         <i class="ph ph-device-mobile"></i>
                     </button>
                 </div>
@@ -119,9 +120,11 @@
                             <div class="input-group">
                                 <label for="setCount">생성 개수</label>
                                 <div class="stepper">
-                                    <button class="step-btn" onclick="this.nextElementSibling.stepDown()">-</button>
+                                    <button class="step-btn" type="button" data-step-target="setCount" data-step-delta="-1"
+                                        aria-label="생성 개수 감소">-</button>
                                     <input type="number" id="setCount" value="5" min="1" max="20" readonly>
-                                    <button class="step-btn" onclick="this.previousElementSibling.stepUp()">+</button>
+                                    <button class="step-btn" type="button" data-step-target="setCount" data-step-delta="1"
+                                        aria-label="생성 개수 증가">+</button>
                                 </div>
                             </div>
                             <div class="input-group">
@@ -540,8 +543,8 @@
                             <div class="input-group">
                                 <label for="btPayoutMode">상금 계산 모드</label>
                                 <select id="btPayoutMode" class="input-field">
-                                    <option value="hybrid_dynamic_first" selected>Hybrid (1등 동적 + 2~5등 고정)</option>
-                                    <option value="fast_fixed">Fast (1~5등 고정)</option>
+                                    <option value="hybrid_dynamic_first" selected>하이브리드 (1등 동적 + 2~5등 고정)</option>
+                                    <option value="fast_fixed">고정 상금 (1~5등 고정)</option>
                                 </select>
                             </div>
                             <div class="input-group strategy-range">
@@ -596,8 +599,9 @@
                             <span id="btWinnerBadge" class="badge">-</span>
                         </div>
                         <ul id="btSummaryList" class="stat-list">
-                            <li>실행 대기중...</li>
+                            <li>실행 대기 중...</li>
                         </ul>
+                        <div id="btMiniCharts" class="bt-mini-charts"></div>
                         <p id="btProgressMeta" class="subtitle bt-progress-meta" aria-live="polite"></p>
                         <p id="btPayoutNotice" class="subtitle bt-payout-note" aria-live="polite"></p>
                         <button id="btExportCsv" class="btn ghost sm" style="margin-top:10px;">
@@ -656,24 +660,38 @@
                             <button class="seg-btn active" data-source="favorites">즐겨찾기</button>
                             <button class="seg-btn" data-source="history">히스토리</button>
                             <button class="seg-btn" data-source="tickets">티켓북</button>
-                            <button class="seg-btn" data-source="scanned" style="display:none">스캔결과</button>
+                            <button class="seg-btn" data-source="scanned">스캔 결과</button>
                         </div>
                         <button class="btn ghost sm" id="openQrScannerBtn"
                             style="position: absolute; right: 0; top: 0;">
                             <i class="ph ph-qr-code"></i> 스캔
                         </button>
+                        <div class="input-group check-search-group">
+                            <label for="checkSearch">비교 대상 검색</label>
+                            <input type="search" id="checkSearch" class="input-field" placeholder="번호, 회차 또는 상태 검색">
+                        </div>
+                        <div id="checkTicketStatusRow" class="check-ticket-status-row" hidden>
+                            <span class="check-ticket-status-label">티켓 상태</span>
+                            <div class="segment-control compact">
+                                <button class="seg-btn active" type="button" data-ticket-filter="all">전체</button>
+                                <button class="seg-btn" type="button" data-ticket-filter="pending">예정</button>
+                                <button class="seg-btn" type="button" data-ticket-filter="win">당첨</button>
+                                <button class="seg-btn" type="button" data-ticket-filter="lose">미당첨</button>
+                            </div>
+                        </div>
                         <div class="tabs-segmented" style="margin-top:10px;">
                             <button class="seg-btn active" data-checkmode="latest">최신 회차</button>
                             <button class="seg-btn" data-checkmode="all">전체 회차</button>
                         </div>
-                        <select id="checkTargetList" class="input-field list-select" size="10"></select>
+                        <p id="checkSelectionMeta" class="subtitle check-selection-meta">비교할 항목을 선택하세요.</p>
+                        <div id="checkTargetCards" class="check-target-list" role="listbox" aria-label="비교 대상 목록"></div>
                         <button id="doCheckBtn" class="btn primary full-width mt-4">확인하기</button>
                     </div>
                     <div class="card glass">
                         <h3>확인 결과</h3>
                         <div id="checkResultArea" class="check-result-placeholder">
                             <i class="ph ph-magnifying-glass" style="font-size: 48px; color: var(--muted);"></i>
-                            <p>좌측에서 번호를 선택하고 확인 버튼을 누르세요.</p>
+                            <p>목록에서 번호를 선택하고 확인 버튼을 누르세요.</p>
                         </div>
                     </div>
                 </div>
@@ -806,10 +824,6 @@
                 <i class="ph ph-brain"></i>
                 <span>예측</span>
             </button>
-            <button class="nav-item" data-target="bt">
-                <i class="ph ph-flask"></i>
-                <span>실험</span>
-            </button>
             <button class="nav-item" data-target="check">
                 <i class="ph ph-check-circle"></i>
                 <span>확인</span>
@@ -817,6 +831,10 @@
             <button class="nav-item" data-target="data">
                 <i class="ph ph-database"></i>
                 <span>데이터</span>
+            </button>
+            <button id="mobileMoreBtn" class="nav-item nav-more-btn" type="button" aria-label="더보기">
+                <i class="ph ph-dots-three-circle"></i>
+                <span>더보기</span>
             </button>
         </nav>
     </div>
@@ -844,9 +862,15 @@
                     <h3 id="settingsModalTitle">사용 환경과 데이터 상태를 한곳에서 관리하세요.</h3>
                     <p class="subtitle">테마, 알림, 동기화, 저장 공간을 빠르게 점검할 수 있습니다.</p>
                 </div>
-                <button id="closeSettingsBtn" class="icon-btn" aria-label="설정 닫기" type="button">
-                    <i class="ph ph-x"></i>
-                </button>
+                <div class="settings-modal-actions">
+                    <button id="settingsInstallBtn" class="icon-btn" aria-label="앱 설치" type="button" hidden
+                        data-pwa-install="settings">
+                        <i class="ph ph-device-mobile"></i>
+                    </button>
+                    <button id="closeSettingsBtn" class="icon-btn" aria-label="설정 닫기" type="button">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="settings-modal-body">
@@ -981,17 +1005,17 @@
     </div>
 
     <div id="qrModal" class="modal">
-        <div class="modal-content center-content">
-            <h3>큐알 코드</h3>
+        <div class="modal-content center-content" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle">
+            <h3 id="qrModalTitle">큐알 코드</h3>
             <div id="qrCanvasContainer"></div>
-            <button class="btn ghost"
-                onclick="document.getElementById('qrModal').classList.remove('active')">닫기</button>
+            <button class="btn ghost" id="closeQrModalBtn" type="button">닫기</button>
         </div>
     </div>
 
     <div id="qrScanModal" class="modal">
-        <div class="modal-content center-content" style="max-width: 500px; width: 95%;">
-            <h3>로또 큐알 스캔</h3>
+        <div class="modal-content center-content" style="max-width: 500px; width: 95%;" role="dialog"
+            aria-modal="true" aria-labelledby="qrScanModalTitle">
+            <h3 id="qrScanModalTitle">로또 큐알 스캔</h3>
             <div id="qr-reader"
                 style="width: 100%; min-height: 300px; background: #000; border-radius: 12px; overflow: hidden;"></div>
             <p class="subtitle" style="margin-top: 15px;">카메라로 로또 큐알 코드를 비춰주세요.</p>
@@ -999,7 +1023,53 @@
         </div>
     </div>
 
-        <!-- Main Logic (Module) -->
+    <div id="mobileMoreModal" class="modal" aria-hidden="true">
+        <div class="modal-content more-sheet-content" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle">
+            <div class="more-sheet-header">
+                <div>
+                    <p class="settings-eyebrow">모바일 허브</p>
+                    <h3 id="mobileMoreTitle">더보기</h3>
+                    <p class="subtitle">추가 기능과 설정을 여기서 빠르게 엽니다.</p>
+                </div>
+                <button id="mobileMoreCloseBtn" class="icon-btn" type="button" aria-label="더보기 닫기">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="more-sheet-actions">
+                <button class="more-sheet-action" type="button" data-more-action="bt">
+                    <i class="ph ph-flask"></i>
+                    <span>시뮬레이션</span>
+                </button>
+                <button class="more-sheet-action" type="button" data-more-action="settings">
+                    <i class="ph ph-gear-six"></i>
+                    <span>설정</span>
+                </button>
+                <button id="mobileMoreInstallBtn" class="more-sheet-action" type="button" hidden data-pwa-install="more">
+                    <i class="ph ph-device-mobile"></i>
+                    <span>앱 설치</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dialogModal" class="modal" aria-hidden="true">
+        <div class="modal-content dialog-modal-content" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+            <div class="dialog-modal-header">
+                <h3 id="dialogTitle">작업을 확인해주세요.</h3>
+                <p id="dialogMessage" class="subtitle">이 작업을 진행할까요?</p>
+            </div>
+            <div id="dialogInputWrap" class="input-group dialog-input-wrap" hidden>
+                <label for="dialogInput">입력값</label>
+                <input id="dialogInput" class="input-field" type="text" autocomplete="off">
+            </div>
+            <div class="dialog-modal-actions">
+                <button id="dialogCancelBtn" class="btn ghost" type="button">취소</button>
+                <button id="dialogConfirmBtn" class="btn primary" type="button">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Logic (Module) -->
     <script type="module" src="assets/modules/index.js"></script>
 </body>
 

@@ -4,6 +4,7 @@ import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { AdvancedMonteCarlo } from '../../core/MonteCarlo.js';
 import { getStrategyMeta, STRATEGY_CATALOG, resolveStrategyId } from '../../core/StrategyCatalog.js';
 import { endMark, startMark } from '../../utils/perf.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 
 function formatAdaptiveSelection(adaptive = null) {
     if (!adaptive || !Array.isArray(adaptive.selectedStrategies) || !adaptive.selectedStrategies.length) {
@@ -67,7 +68,7 @@ export const aiRenderingMethods = {
             } catch (err) {
                 fallback = true;
                 if (this.isWorkerTimeoutError(err)) {
-                    UIManager.toast('Worker timeout. Falling back to main-thread recommendation.', 'warning');
+                    UIManager.toast(UI_STRINGS.ai.workerFallback, 'warning');
                 }
                 console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);

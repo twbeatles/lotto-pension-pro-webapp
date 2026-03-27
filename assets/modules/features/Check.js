@@ -1,201 +1,384 @@
 import { $, $$ } from '../utils/utils.js';
 import { UIManager } from '../core/UIManager.js';
+import { UI_STRINGS } from '../utils/strings.js';
 
 export class CheckModule {
-  constructor(app) {
-    this.app = app;
-    this.data = app.data;
-    this.source = 'favorites'; // 'favorites' | 'history' | 'scanned' | 'tickets'
-    this.mode = 'latest'; // 'latest' | 'all'
-    this.scanned = [];
-    this.currentTicket = null;
-    this.currentDrawNo = null;
-    this.bindEvents();
-  }
+    constructor(app) {
+        this.app = app;
+        this.data = app.data;
+        this.source = 'favorites';
+        this.mode = 'latest';
+        this.ticketStatusFilter = 'all';
+        this.searchQuery = '';
+        this.scanned = [];
+        this.selectedItemKey = '';
+        this.currentTicket = null;
+        this.currentDrawNo = null;
+        this.dateFormatter = new Intl.DateTimeFormat('ko-KR');
+        this.bindEvents();
+    }
 
-  bindEvents() {
-    $$('.seg-btn[data-source]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const src = e.currentTarget.dataset.source;
-        if (['favorites', 'history', 'scanned', 'tickets'].includes(src)) {
-          this.setSource(src);
-        }
-      });
-    });
+    bindEvents() {
+        $$('.seg-btn[data-source]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                const src = event.currentTarget.dataset.source;
+                if (['favorites', 'history', 'scanned', 'tickets'].includes(src)) {
+                    this.setSource(src);
+                }
+            });
+        });
 
-    $$('.seg-btn[data-checkmode]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mode = e.currentTarget.dataset.checkmode;
-        if (mode !== 'latest' && mode !== 'all') return;
-        this.mode = mode;
-        $$('.seg-btn[data-checkmode]').forEach(x => x.classList.remove('active'));
-        e.currentTarget.classList.add('active');
+        $$('.seg-btn[data-checkmode]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                const mode = event.currentTarget.dataset.checkmode;
+                if (mode !== 'latest' && mode !== 'all') return;
+                this.mode = mode;
+                $$('.seg-btn[data-checkmode]').forEach((item) => item.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+                this.resetResult();
+            });
+        });
+
+        $$('.seg-btn[data-ticket-filter]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                const filter = event.currentTarget.dataset.ticketFilter || 'all';
+                this.ticketStatusFilter = filter;
+                this.selectedItemKey = '';
+                this.renderList();
+                this.resetResult();
+            });
+        });
+
+        $('#checkSearch')?.addEventListener('input', (event) => {
+            this.searchQuery = String(event.currentTarget.value || '').trim().toLowerCase();
+            this.selectedItemKey = '';
+            this.renderList();
+            this.resetResult();
+        });
+
+        $('#checkTargetCards')?.addEventListener('click', (event) => {
+            const card = event.target.closest('[data-item-key]');
+            if (!card) return;
+            this.selectedItemKey = card.dataset.itemKey || '';
+            this.renderList();
+            this.focusSelectedCard();
+            this.resetResult();
+        });
+
+        $('#checkTargetCards')?.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+                event.preventDefault();
+                this.moveSelection(1);
+                return;
+            }
+            if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                event.preventDefault();
+                this.moveSelection(-1);
+                return;
+            }
+            if (event.key === 'Home') {
+                event.preventDefault();
+                this.moveSelection('start');
+                return;
+            }
+            if (event.key === 'End') {
+                event.preventDefault();
+                this.moveSelection('end');
+            }
+        });
+
+        $('#doCheckBtn')?.addEventListener('click', () => this.run());
+        $('#openQrScannerBtn')?.addEventListener('click', () => this.app.qr.start());
+
+        $('#checkResultArea')?.addEventListener('click', (event) => {
+            const btn = event.target.closest('button[data-action]');
+            if (!btn || !this.currentTicket) return;
+            const action = btn.dataset.action;
+            if (action === 'copy') UIManager.copyNumbers(this.currentTicket);
+            if (action === 'qr') UIManager.showQR(this.currentTicket);
+            if (action === 'save') {
+                const resultEl = $('#checkResultArea .check-result');
+                UIManager.saveAsImage(resultEl, `로또_확인_${this.currentDrawNo || '최신'}.png`);
+            }
+        });
+    }
+
+    setSource(src) {
+        this.source = src;
+        this.selectedItemKey = '';
+        this.syncSourceTabs();
+        this.renderList();
         this.resetResult();
-      });
-    });
-
-    $('#doCheckBtn')?.addEventListener('click', () => this.run());
-    $('#openQrScannerBtn')?.addEventListener('click', () => this.app.qr.start());
-
-    $('#checkResultArea')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn || !this.currentTicket) return;
-      const action = btn.dataset.action;
-      if (action === 'copy') UIManager.copyNumbers(this.currentTicket);
-      if (action === 'qr') UIManager.showQR(this.currentTicket);
-      if (action === 'save') {
-        const resultEl = $('#checkResultArea .check-result');
-        UIManager.saveAsImage(resultEl, `로또_확인_${this.currentDrawNo || '최신'}.png`);
-      }
-    });
-  }
-
-  setSource(src) {
-    this.source = src;
-    $$('.seg-btn[data-source]').forEach(x => {
-      x.classList.toggle('active', x.dataset.source === src);
-      if (src === 'scanned' && x.dataset.source === 'scanned') {
-        x.style.display = 'inline-block'; // Ensure it's visible if hidden
-      }
-    });
-    this.renderList();
-    this.resetResult();
-  }
-
-  setScannedNumbers(games) {
-    const now = new Date().toISOString();
-    this.scanned = (Array.isArray(games) ? games : [])
-      .map((entry) => {
-        const rawNumbers = Array.isArray(entry) ? entry : entry?.numbers;
-        const numbers = [...new Set((rawNumbers || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))]
-          .sort((a, b) => a - b);
-        if (numbers.length !== 6) return null;
-
-        const drawNo = Array.isArray(entry) ? null : Number(entry?.targetDrawNo);
-        return {
-          numbers,
-          targetDrawNo: Number.isFinite(drawNo) && drawNo > 0 ? Math.floor(drawNo) : null,
-          date: now
-        };
-      })
-      .filter(Boolean);
-
-    // Show/Enable Scanned tab
-    const scanBtn = $(`.seg-btn[data-source="scanned"]`);
-    if (scanBtn) {
-      scanBtn.style.display = 'inline-block';
-      scanBtn.click(); // Switch to it
-    } else {
-      // Fallback if button doesn't exist in HTML yet (we should add it)
-      this.setSource('scanned');
     }
 
-    UIManager.toast(`${games.length}개 게임을 스캔했습니다.`, 'success');
-  }
+    setScannedNumbers(games) {
+        const now = new Date().toISOString();
+        this.scanned = (Array.isArray(games) ? games : [])
+            .map((entry) => {
+                const rawNumbers = Array.isArray(entry) ? entry : entry?.numbers;
+                const numbers = [...new Set((rawNumbers || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))]
+                    .sort((a, b) => a - b);
+                if (numbers.length !== 6) return null;
 
-  onEnter() {
-    // Sync UI active state
-    $$('.seg-btn[data-source]').forEach(x => {
-      x.classList.toggle('active', x.dataset.source === this.source);
-    });
-    $$('.seg-btn[data-checkmode]').forEach(x => {
-      x.classList.toggle('active', x.dataset.checkmode === this.mode);
-    });
-    this.renderList();
-    this.resetResult();
-  }
+                const drawNo = Array.isArray(entry) ? null : Number(entry?.targetDrawNo);
+                return {
+                    numbers,
+                    targetDrawNo: Number.isFinite(drawNo) && drawNo > 0 ? Math.floor(drawNo) : null,
+                    date: now
+                };
+            })
+            .filter(Boolean);
 
-  getList() {
-    if (this.source === 'scanned') return this.scanned;
-    if (this.source === 'tickets') return this.data.state.ticketBook || [];
-    return this.source === 'history' ? this.data.state.history : this.data.state.favorites;
-  }
+        this.source = 'scanned';
+        this.selectedItemKey = '';
+        this.syncSourceTabs();
+        this.renderList();
+        this.resetResult();
+        if (this.scanned.length) {
+            UIManager.toast(UI_STRINGS.check.scannedAdded(this.scanned.length), 'success');
+            return;
+        }
+        UIManager.toast(UI_STRINGS.check.scannedEmpty, 'warning');
+    }
 
-  getTicketStatusLabel(item) {
-    if (!item?.checked) return '미정산';
-    if (Number(item.checked.rank) > 0) return `${item.checked.rank}등`;
-    return '미당첨';
-  }
+    onEnter() {
+        this.syncSourceTabs();
+        $$('.seg-btn[data-checkmode]').forEach((item) => {
+            item.classList.toggle('active', item.dataset.checkmode === this.mode);
+        });
+        $('#checkSearch') && ($('#checkSearch').value = this.searchQuery);
+        this.renderList();
+        if (!this.currentTicket) this.resetResult();
+    }
 
-  renderList() {
-    const listEl = $('#checkTargetList');
-    if (!listEl) return;
-    listEl.innerHTML = '';
+    syncSourceTabs() {
+        $$('.seg-btn[data-source]').forEach((item) => {
+            item.classList.toggle('active', item.dataset.source === this.source);
+        });
+    }
 
-    const items = this.getList();
-    items.forEach((item, i) => {
-      const opt = document.createElement('option');
-      opt.value = String(i);
-      let label = '즐겨찾기';
-      if (this.source === 'history') label = '히스토리';
-      if (this.source === 'scanned') {
-        label = Number(item?.targetDrawNo) > 0
-          ? `스캔결과 ${item.targetDrawNo}회`
-          : '스캔결과';
-      }
-      if (this.source === 'tickets') {
-        label = `티켓 ${item.targetDrawNo}회`;
-        opt.textContent = `[${label}][${this.getTicketStatusLabel(item)}] ${item.numbers.join(', ')}`;
-      } else {
-        opt.textContent = `[${label}] ${item.numbers.join(', ')}`;
-      }
-      listEl.appendChild(opt);
-    });
-  }
+    getList() {
+        if (this.source === 'scanned') return this.scanned;
+        if (this.source === 'tickets') return this.data.state.ticketBook || [];
+        return this.source === 'history' ? this.data.state.history : this.data.state.favorites;
+    }
 
-  resetResult() {
-    const area = $('#checkResultArea');
-    if (!area) return;
-    area.classList.add('check-result-placeholder');
-    area.innerHTML = `
+    getTicketStatusLabel(item) {
+        if (!item?.checked) return UI_STRINGS.check.ticketStatus.pending;
+        if (Number(item.checked.rank) > 0) return `${item.checked.rank}등`;
+        return UI_STRINGS.check.ticketStatus.lose;
+    }
+
+    getTicketStatusCode(item) {
+        if (!item?.checked) return 'pending';
+        if (Number(item.checked.rank) > 0) return 'win';
+        return 'lose';
+    }
+
+    formatDate(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return this.dateFormatter.format(date);
+    }
+
+    buildItemKey(item, index) {
+        if (this.source === 'tickets') return String(item.id || `ticket-${index}`);
+        const date = item?.date || item?.createdAt || '';
+        return `${this.source}:${index}:${(item?.numbers || []).join(',')}:${date}:${item?.targetDrawNo || ''}`;
+    }
+
+    matchesQuery(item, metaText = '') {
+        if (!this.searchQuery) return true;
+        const haystack = [
+            (item?.numbers || []).join(', '),
+            item?.targetDrawNo,
+            item?.date,
+            this.formatDate(item?.date),
+            metaText
+        ].join(' ').toLowerCase();
+        return haystack.includes(this.searchQuery);
+    }
+
+    getVisibleItems() {
+        const items = this.getList();
+        return items.reduce((acc, item, index) => {
+            const key = this.buildItemKey(item, index);
+            const sourceLabel = UI_STRINGS.check.sourceLabels[this.source] || this.source;
+            const ticketStatus = this.source === 'tickets' ? this.getTicketStatusCode(item) : 'all';
+            const ticketStatusLabel = this.source === 'tickets' ? this.getTicketStatusLabel(item) : '';
+
+            if (this.source === 'tickets' && this.ticketStatusFilter !== 'all' && ticketStatus !== this.ticketStatusFilter) {
+                return acc;
+            }
+
+            const metaText = this.source === 'tickets'
+                ? `${item.targetDrawNo}회차 ${ticketStatusLabel}`
+                : this.source === 'scanned'
+                    ? (item.targetDrawNo ? `${item.targetDrawNo}회차 큐알 스캔` : '큐알 스캔 결과')
+                    : `${sourceLabel} ${this.formatDate(item.date)}`;
+
+            if (!this.matchesQuery(item, metaText)) return acc;
+
+            acc.push({
+                key,
+                item,
+                index,
+                sourceLabel,
+                metaText,
+                ticketStatus,
+                ticketStatusLabel
+            });
+            return acc;
+        }, []);
+    }
+
+    ensureSelection(items) {
+        if (!items.length) {
+            this.selectedItemKey = '';
+            return;
+        }
+        if (items.some((entry) => entry.key === this.selectedItemKey)) return;
+        this.selectedItemKey = items[0].key;
+    }
+
+    focusSelectedCard() {
+        const listEl = $('#checkTargetCards');
+        if (!listEl || !this.selectedItemKey) return;
+        const cards = Array.from(listEl.querySelectorAll('[data-item-key]'));
+        const activeCard = cards.find((card) => card.dataset.itemKey === this.selectedItemKey);
+        activeCard?.focus();
+    }
+
+    moveSelection(direction) {
+        const items = this.getVisibleItems();
+        if (!items.length) return;
+        this.ensureSelection(items);
+
+        const currentIndex = Math.max(0, items.findIndex((entry) => entry.key === this.selectedItemKey));
+        const nextIndex = direction === 'start'
+            ? 0
+            : direction === 'end'
+                ? items.length - 1
+                : Math.min(items.length - 1, Math.max(0, currentIndex + Number(direction || 0)));
+
+        if (items[nextIndex]?.key === this.selectedItemKey) return;
+        this.selectedItemKey = items[nextIndex].key;
+        this.renderList();
+        this.focusSelectedCard();
+        this.resetResult();
+    }
+
+    renderList() {
+        const listEl = $('#checkTargetCards');
+        const metaEl = $('#checkSelectionMeta');
+        const ticketFilterRow = $('#checkTicketStatusRow');
+        if (!listEl) return;
+
+        if (ticketFilterRow) ticketFilterRow.hidden = this.source !== 'tickets';
+        $$('.seg-btn[data-ticket-filter]').forEach((item) => {
+            item.classList.toggle('active', item.dataset.ticketFilter === this.ticketStatusFilter);
+        });
+
+        const visibleItems = this.getVisibleItems();
+        this.ensureSelection(visibleItems);
+
+        const sourceLabel = UI_STRINGS.check.sourceLabels[this.source] || this.source;
+        if (metaEl) {
+            metaEl.textContent = visibleItems.length
+                ? `${sourceLabel} ${visibleItems.length}개`
+                : `${sourceLabel} 항목이 없습니다.`;
+        }
+
+        if (!visibleItems.length) {
+            listEl.innerHTML = `
+                <div class="empty-state check-target-empty">
+                    <i class="ph ph-list-magnifying-glass"></i>
+                    <h4>${sourceLabel} 항목이 없습니다.</h4>
+                    <p>${this.searchQuery ? '검색 조건을 바꾸거나 다른 소스를 선택해보세요.' : '저장된 항목이 생기면 여기에서 바로 확인할 수 있습니다.'}</p>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = visibleItems.map(({ key, item, index, metaText, sourceLabel: label, ticketStatusLabel }) => {
+            const isActive = key === this.selectedItemKey;
+            const topBadge = this.source === 'tickets'
+                ? `<span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${ticketStatusLabel}</span>`
+                : `<span class="badge status-badge">${label}</span>`;
+            const optionId = `check-option-${this.source}-${index}`;
+
+            return `
+                <button class="check-target-card ${isActive ? 'active' : ''}" type="button" role="option"
+                    id="${optionId}" tabindex="${isActive ? '0' : '-1'}"
+                    aria-selected="${String(isActive)}" data-item-key="${key}">
+                    <div class="check-target-card-head">
+                        ${topBadge}
+                        <span class="check-target-card-meta">${metaText}</span>
+                    </div>
+                    <div class="ball-container sm check-target-card-balls">${UIManager.renderBalls(item.numbers, 'sm')}</div>
+                </button>
+            `;
+        }).join('');
+    }
+
+    getSelectedEntry() {
+        return this.getVisibleItems().find((entry) => entry.key === this.selectedItemKey) || null;
+    }
+
+    resetResult() {
+        const area = $('#checkResultArea');
+        if (!area) return;
+        this.currentTicket = null;
+        this.currentDrawNo = null;
+        area.classList.add('check-result-placeholder');
+        area.innerHTML = `
       <i class="ph ph-magnifying-glass" style="font-size: 48px; color: var(--muted);"></i>
-      <p>좌측에서 번호를 선택하고 확인 버튼을 누르세요.</p>
+      <p>${UI_STRINGS.check.selectionHint}</p>
     `;
-  }
-
-  renderTicketBalls(nums, winSet) {
-    return nums.map(n => {
-      const hit = winSet.has(n) ? 'hit' : '';
-      return `<span class="ball ${UIManager.getBallColor(n)} sm ${hit}">${n}</span>`;
-    }).join('');
-  }
-
-  run() {
-    if (!this.data.state.winningStats.length) {
-      return UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
     }
 
-    const listEl = $('#checkTargetList');
-    this.data.warnIfDataStale?.('번호 확인');
+    renderTicketBalls(nums, winSet) {
+        return nums.map((n) => {
+            const hit = winSet.has(n) ? 'hit' : '';
+            return `<span class="ball ${UIManager.getBallColor(n)} sm ${hit}" role="img" aria-label="${n}번 번호">${n}</span>`;
+        }).join('');
+    }
 
-    const idx = listEl?.selectedIndex ?? -1;
-    if (idx < 0) return UIManager.toast('비교할 번호를 선택하세요.', 'warning');
+    run() {
+        if (!this.data.state.winningStats.length) {
+            return UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
+        }
 
-    const items = this.getList();
-    const ticket = items[idx];
-    if (!ticket) return UIManager.toast('선택 항목을 찾을 수 없습니다.', 'error');
+        this.data.warnIfDataStale?.('번호 확인');
 
-    if (this.mode === 'all') return this.runAll(ticket);
-    return this.runLatest(ticket);
-  }
+        const selected = this.getSelectedEntry();
+        if (!selected) return UIManager.toast(UI_STRINGS.check.emptySelection, 'warning');
 
-  _rank(matchCount, bonusHit) {
-    if (matchCount === 6) return 1;
-    if (matchCount === 5 && bonusHit) return 2;
-    if (matchCount === 5) return 3;
-    if (matchCount === 4) return 4;
-    if (matchCount === 3) return 5;
-    return 0;
-  }
+        const ticket = selected.item;
+        if (!ticket) return UIManager.toast('선택 항목을 찾을 수 없습니다.', 'error');
 
-  renderMissingTargetDraw(ticket, targetDrawNo) {
-    this.currentTicket = ticket.numbers;
-    this.currentDrawNo = targetDrawNo;
+        if (this.mode === 'all') return this.runAll(ticket);
+        return this.runLatest(ticket);
+    }
 
-    const area = $('#checkResultArea');
-    if (!area) return;
-    area.classList.remove('check-result-placeholder');
-    area.innerHTML = `
+    _rank(matchCount, bonusHit) {
+        if (matchCount === 6) return 1;
+        if (matchCount === 5 && bonusHit) return 2;
+        if (matchCount === 5) return 3;
+        if (matchCount === 4) return 4;
+        if (matchCount === 3) return 5;
+        return 0;
+    }
+
+    renderMissingTargetDraw(ticket, targetDrawNo) {
+        this.currentTicket = ticket.numbers;
+        this.currentDrawNo = targetDrawNo;
+
+        const area = $('#checkResultArea');
+        if (!area) return;
+        area.classList.remove('check-result-placeholder');
+        area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
           <div class="title">${targetDrawNo}회 결과 확인 불가</div>
@@ -212,36 +395,36 @@ export class CheckModule {
         </div>
       </div>
     `;
-  }
-
-  runLatest(ticket) {
-    const preferredDrawNo = Number(ticket?.targetDrawNo || 0);
-    const latest = preferredDrawNo > 0
-      ? this.data.state.winningStats.find((x) => Number(x.draw_no) === preferredDrawNo)
-      : this.data.state.winningStats[0];
-    if (!latest) {
-      if (preferredDrawNo > 0) {
-        this.renderMissingTargetDraw(ticket, preferredDrawNo);
-      } else {
-        UIManager.toast('비교 가능한 회차 데이터가 없습니다.', 'warning');
-      }
-      return;
     }
-    this.currentTicket = ticket.numbers;
-    this.currentDrawNo = latest.draw_no;
-    const winSet = new Set(latest.numbers);
-    const matchCount = ticket.numbers.filter(n => winSet.has(n)).length;
-    const bonusHit = ticket.numbers.includes(latest.bonus);
-    const rank = this._rank(matchCount, bonusHit);
 
-    const area = $('#checkResultArea');
-    if (!area) return;
-    area.classList.remove('check-result-placeholder');
+    runLatest(ticket) {
+        const preferredDrawNo = Number(ticket?.targetDrawNo || 0);
+        const latest = preferredDrawNo > 0
+            ? this.data.state.winningStats.find((item) => Number(item.draw_no) === preferredDrawNo)
+            : this.data.state.winningStats[0];
+        if (!latest) {
+            if (preferredDrawNo > 0) {
+                this.renderMissingTargetDraw(ticket, preferredDrawNo);
+            } else {
+                UIManager.toast('비교 가능한 회차 데이터가 없습니다.', 'warning');
+            }
+            return;
+        }
+        this.currentTicket = ticket.numbers;
+        this.currentDrawNo = latest.draw_no;
+        const winSet = new Set(latest.numbers);
+        const matchCount = ticket.numbers.filter((n) => winSet.has(n)).length;
+        const bonusHit = ticket.numbers.includes(latest.bonus);
+        const rank = this._rank(matchCount, bonusHit);
 
-    const rankText = rank ? `${rank}등` : '낙첨';
-    const hitText = (rank === 2) ? '5+보너스' : `${matchCount}`;
+        const area = $('#checkResultArea');
+        if (!area) return;
+        area.classList.remove('check-result-placeholder');
 
-    area.innerHTML = `
+        const rankText = rank ? `${rank}등` : '낙첨';
+        const hitText = rank === 2 ? '5+보너스' : `${matchCount}`;
+
+        area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
           <div class="title">${latest.draw_no}회 (${latest.date})</div>
@@ -256,7 +439,7 @@ export class CheckModule {
           <div class="label">당첨 번호</div>
           <div class="ball-container sm">
             ${UIManager.renderBalls(latest.numbers, 'sm')}
-            <span class="ball ${UIManager.getBallColor(latest.bonus)} sm" style="margin-left:8px; opacity:0.85">+${latest.bonus}</span>
+            <span class="ball ${UIManager.getBallColor(latest.bonus)} sm" style="margin-left:8px; opacity:0.85" role="img" aria-label="보너스 ${latest.bonus}번">+${latest.bonus}</span>
           </div>
         </div>
         <div class="check-section">
@@ -266,39 +449,39 @@ export class CheckModule {
         </div>
       </div>
     `;
-  }
-
-  runAll(ticket) {
-    this.currentTicket = ticket.numbers;
-    this.currentDrawNo = null;
-    const results = [];
-    for (const win of this.data.state.winningStats) {
-      const winSet = new Set(win.numbers);
-      const matchCount = ticket.numbers.filter(n => winSet.has(n)).length;
-      if (matchCount < 3) continue;
-      const bonusHit = ticket.numbers.includes(win.bonus);
-      const rank = this._rank(matchCount, bonusHit);
-      results.push({
-        draw_no: win.draw_no,
-        date: win.date,
-        numbers: win.numbers,
-        bonus: win.bonus,
-        matchCount,
-        bonusHit,
-        rank,
-        winSet
-      });
     }
 
-    results.sort((a, b) => (a.rank - b.rank) || (b.draw_no - a.draw_no));
-    const limited = results.slice(0, 50);
+    runAll(ticket) {
+        this.currentTicket = ticket.numbers;
+        this.currentDrawNo = null;
+        const results = [];
+        for (const win of this.data.state.winningStats) {
+            const winSet = new Set(win.numbers);
+            const matchCount = ticket.numbers.filter((n) => winSet.has(n)).length;
+            if (matchCount < 3) continue;
+            const bonusHit = ticket.numbers.includes(win.bonus);
+            const rank = this._rank(matchCount, bonusHit);
+            results.push({
+                draw_no: win.draw_no,
+                date: win.date,
+                numbers: win.numbers,
+                bonus: win.bonus,
+                matchCount,
+                bonusHit,
+                rank,
+                winSet
+            });
+        }
 
-    const area = $('#checkResultArea');
-    if (!area) return;
-    area.classList.remove('check-result-placeholder');
+        results.sort((a, b) => (a.rank - b.rank) || (b.draw_no - a.draw_no));
+        const limited = results.slice(0, 50);
 
-    if (!limited.length) {
-      area.innerHTML = `
+        const area = $('#checkResultArea');
+        if (!area) return;
+        area.classList.remove('check-result-placeholder');
+
+        if (!limited.length) {
+            area.innerHTML = `
         <div class="check-result">
           <div class="check-head">
             <div class="title">전체 회차 검사</div>
@@ -315,38 +498,40 @@ export class CheckModule {
           </div>
         </div>
       `;
-      return;
-    }
+            return;
+        }
 
-    const note = results.length > 50 ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>` : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
+        const note = results.length > 50
+            ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
+            : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
 
-    const cards = limited.map(r => {
-      const rankText = `${r.rank}등`;
-      const badgeCls = r.rank ? 'ok' : 'no';
-      const hitText = (r.rank === 2) ? '5+보너스' : String(r.matchCount);
-      return `
+        const cards = limited.map((result) => {
+            const rankText = `${result.rank}등`;
+            const badgeCls = result.rank ? 'ok' : 'no';
+            const hitText = result.rank === 2 ? '5+보너스' : String(result.matchCount);
+            return `
         <div class="check-card">
           <div class="check-head">
-            <div class="title">${r.draw_no}회 (${r.date})</div>
+            <div class="title">${result.draw_no}회 (${result.date})</div>
             <div class="badge ${badgeCls}">${rankText}</div>
           </div>
           <div class="check-section">
             <div class="label">당첨 번호</div>
             <div class="ball-container sm">
-              ${UIManager.renderBalls(r.numbers, 'sm')}
-              <span class="ball ${UIManager.getBallColor(r.bonus)} sm" style="margin-left:8px; opacity:0.85">+${r.bonus}</span>
+              ${UIManager.renderBalls(result.numbers, 'sm')}
+              <span class="ball ${UIManager.getBallColor(result.bonus)} sm" style="margin-left:8px; opacity:0.85" role="img" aria-label="보너스 ${result.bonus}번">+${result.bonus}</span>
             </div>
           </div>
           <div class="check-section">
             <div class="label">내 번호</div>
-            <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, r.winSet)}</div>
-            <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${r.bonusHit ? '있음' : '없음'}</b></div>
+            <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, result.winSet)}</div>
+            <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${result.bonusHit ? '있음' : '없음'}</b></div>
           </div>
         </div>
       `;
-    }).join('');
+        }).join('');
 
-    area.innerHTML = `
+        area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
           <div class="title">전체 회차 검사</div>
@@ -364,5 +549,5 @@ export class CheckModule {
         <div class="check-cards">${cards}</div>
       </div>
     `;
-  }
+    }
 }

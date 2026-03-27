@@ -4,39 +4,54 @@ import { endMark, startMark } from '../../utils/perf.js';
 import { CONFIG } from '../../utils/config.js';
 export const appDataListMethods = {
     bindDataEvents() {
-        $('#clearFavorites')?.addEventListener('click', () => {
-            if (confirm('즐겨찾기를 모두 삭제하시겠습니까?')) {
-                this.data.clearFavorites();
-                this.renderDataLists();
-            }
+        $('#clearFavorites')?.addEventListener('click', async () => {
+            const confirmed = await UIManager.confirm({
+                title: '즐겨찾기를 모두 삭제할까요?',
+                message: `${this.data.state.favorites.length}개 항목이 삭제됩니다.`
+            });
+            if (!confirmed) return;
+            this.data.clearFavorites();
+            this.renderDataLists();
         });
 
-        $('#clearHistory')?.addEventListener('click', () => {
-            if (confirm('히스토리를 모두 삭제하시겠습니까?')) {
-                this.data.clearHistory();
-                this.renderDataLists();
-            }
+        $('#clearHistory')?.addEventListener('click', async () => {
+            const confirmed = await UIManager.confirm({
+                title: '히스토리를 모두 삭제할까요?',
+                message: `${this.data.state.history.length}개 항목이 삭제됩니다.`
+            });
+            if (!confirmed) return;
+            this.data.clearHistory();
+            this.renderDataLists();
         });
 
-        $('#clearTickets')?.addEventListener('click', () => {
+        $('#clearTickets')?.addEventListener('click', async () => {
             const filter = $('#ticketFilter')?.value || 'all';
             const filterLabels = { all: '전체', pending: '예정', win: '당첨', lose: '미당첨' };
             const filterLabel = filterLabels[filter] || filter;
-            if (!confirm(`티켓북에서 '${filterLabel}' 항목을 삭제하시겠습니까?`)) return;
+            const visibleCount = (this.data.state.ticketBook || []).filter((item) => filter === 'all' || this.getTicketStatusMeta(item).code === filter).length;
+            const confirmed = await UIManager.confirm({
+                title: `티켓북에서 '${filterLabel}' 항목을 삭제할까요?`,
+                message: `${visibleCount}개 티켓이 삭제됩니다.`
+            });
+            if (!confirmed) return;
             const removed = this.data.clearTicketBook(filter);
             UIManager.toast(`${removed}개 티켓 삭제`, removed > 0 ? 'success' : 'info');
             this.renderDataLists();
         });
 
-        $('#clearCampaigns')?.addEventListener('click', () => {
+        $('#clearCampaigns')?.addEventListener('click', async () => {
             const campaigns = this.data.state.campaigns || [];
             if (!campaigns.length) {
                 UIManager.toast('삭제할 캠페인이 없습니다.', 'info');
                 return;
             }
             const linkedTickets = this.data.countTicketsByCampaignIds(campaigns.map((item) => item.id));
-            const detail = linkedTickets > 0 ? ` 연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '';
-            if (!confirm(`캠페인 ${campaigns.length}개를 모두 삭제하시겠습니까?${detail}`)) return;
+            const detail = linkedTickets > 0 ? `캠페인 ${campaigns.length}개와 연결 티켓 ${linkedTickets}개가 함께 삭제됩니다.` : `캠페인 ${campaigns.length}개가 삭제됩니다.`;
+            const confirmed = await UIManager.confirm({
+                title: '캠페인을 모두 삭제할까요?',
+                message: detail
+            });
+            if (!confirmed) return;
             const result = this.data.clearCampaigns({ cascadeTickets: true });
             UIManager.toast(
                 `캠페인 ${result.removedCampaigns}개, 연결 티켓 ${result.removedTickets}개 삭제`,
@@ -51,7 +66,11 @@ export const appDataListMethods = {
                 UIManager.toast('정리할 로컬 업데이트가 없습니다.', 'info');
                 return;
             }
-            if (!confirm(`로컬 최신 회차 업데이트 ${updateCount}개를 정리하시겠습니까?`)) return;
+            const confirmed = await UIManager.confirm({
+                title: '로컬 최신 회차 업데이트를 정리할까요?',
+                message: `${updateCount}개 보정 데이터가 삭제되고 정적 JSON 기준으로 다시 구성됩니다.`
+            });
+            if (!confirmed) return;
 
             this.data.clearLocalUpdates?.();
             await this.data.fetchWinningStats({ notifyTicketSettle: false });
@@ -169,9 +188,14 @@ export const appDataListMethods = {
                     const campaign = (this.data.state.campaigns || []).find((x) => x.id === id);
                     if (!campaign) return;
                     if (action === 'delete') {
+                        void (async () => {
                         const linkedTickets = this.data.countTicketsByCampaignId(campaign.id);
-                        const detail = linkedTickets > 0 ? ` 연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '';
-                        if (!confirm(`'${campaign.name}' 캠페인을 삭제하시겠습니까?${detail}`)) return;
+                        const detail = linkedTickets > 0 ? `연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '이 캠페인만 삭제됩니다.';
+                        const confirmed = await UIManager.confirm({
+                            title: `'${campaign.name}' 캠페인을 삭제할까요?`,
+                            message: detail
+                        });
+                        if (!confirmed) return;
                         const result = this.data.removeCampaign(campaign.id, { cascadeTickets: true });
                         if (result.removedCampaign) {
                             UIManager.toast(
@@ -180,6 +204,7 @@ export const appDataListMethods = {
                             );
                         }
                         this.renderDataLists();
+                        })();
                     }
                     return;
                 }

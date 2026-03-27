@@ -1,5 +1,6 @@
 import { UIManager } from '../core/UIManager.js';
 import { $ } from './utils.js';
+import { UI_STRINGS } from './strings.js';
 
 export class StrategyPresetController {
     constructor({
@@ -49,8 +50,12 @@ export class StrategyPresetController {
     bindEvents() {
         this.selectEl?.addEventListener('change', () => this.syncButtons());
         this.loadBtnEl?.addEventListener('click', () => this.loadSelected());
-        this.saveBtnEl?.addEventListener('click', () => this.saveCurrent());
-        this.deleteBtnEl?.addEventListener('click', () => this.deleteSelected());
+        this.saveBtnEl?.addEventListener('click', () => {
+            void this.saveCurrent();
+        });
+        this.deleteBtnEl?.addEventListener('click', () => {
+            void this.deleteSelected();
+        });
         this.syncButtons();
     }
 
@@ -99,7 +104,7 @@ export class StrategyPresetController {
         UIManager.toast(`'${preset.name}' 프리셋을 불러왔습니다.`, 'success');
     }
 
-    saveCurrent() {
+    async saveCurrent() {
         if (typeof this.getRequest !== 'function') return;
         const request = this.getRequest();
         if (!request) {
@@ -107,7 +112,11 @@ export class StrategyPresetController {
             return;
         }
 
-        const rawName = window.prompt?.('프리셋 이름을 입력하세요.');
+        const rawName = await UIManager.prompt({
+            title: UI_STRINGS.presets.promptTitle,
+            message: UI_STRINGS.presets.promptMessage,
+            placeholder: '예: 최근 20회 보수형'
+        });
         if (rawName == null) return;
         const name = String(rawName).trim();
         if (!name) {
@@ -116,7 +125,13 @@ export class StrategyPresetController {
         }
 
         const existing = this.data.findStrategyPreset(this.scope, name);
-        if (existing && !window.confirm?.(`'${name}' 프리셋을 덮어쓸까요?`)) return;
+        if (existing) {
+            const confirmed = await UIManager.confirm({
+                title: UI_STRINGS.presets.overwriteTitle(name),
+                message: `'${name}' 이름으로 저장된 프리셋이 있습니다. 현재 설정으로 덮어씁니다.`
+            });
+            if (!confirmed) return;
+        }
 
         const saved = this.data.saveStrategyPreset(this.scope, name, request);
         if (!saved?.preset) {
@@ -131,10 +146,14 @@ export class StrategyPresetController {
         );
     }
 
-    deleteSelected() {
+    async deleteSelected() {
         const preset = this.getSelectedPreset();
         if (!preset) return;
-        if (!window.confirm?.(`'${preset.name}' 프리셋을 삭제할까요?`)) return;
+        const confirmed = await UIManager.confirm({
+            title: UI_STRINGS.presets.deleteTitle(preset.name),
+            message: '삭제한 프리셋은 되돌릴 수 없습니다.'
+        });
+        if (!confirmed) return;
         const removed = this.data.deleteStrategyPreset(preset.id);
         if (!removed) {
             UIManager.toast('프리셋 삭제에 실패했습니다.', 'error');

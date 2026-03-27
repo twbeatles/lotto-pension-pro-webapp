@@ -103,6 +103,7 @@ export const appModuleLoaderMethods = {
                 const page = $(`#page-${target}`);
                 if (page) page.classList.add('active');
             }
+            this.syncMobileMoreButtonState?.(target);
             const isStale = () => localToken !== this.routeToken;
 
             if (target !== 'check') {
@@ -172,7 +173,7 @@ export const appModuleLoaderMethods = {
         if (t === 'bt') {
             await this.ensureModule('backtest');
             if (isStale()) return;
-            this.backtest?.resetUI();
+            this.backtest?.onEnter();
         }
     },
 

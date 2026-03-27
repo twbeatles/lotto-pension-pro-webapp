@@ -17,6 +17,9 @@ node_modules/
 .wrangler/
 .tmp_vendor/
 .tmp-*/
+coverage/
+playwright-report/
+test-results/
 *.log
 *.tmp
 *.temp

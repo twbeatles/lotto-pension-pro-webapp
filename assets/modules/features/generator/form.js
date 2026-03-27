@@ -2,6 +2,33 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
 export const generatorFormMethods = {
+    syncBusyButtons() {
+        const anyBusy = this.isGenerating || this.isGeneratingCampaign;
+        const generateBtn = $('#generateBtn');
+        const campaignBtn = $('#generateCampaignBtn');
+        const resetCampaignBtn = $('#resetCampaignBtn');
+        const resetOptionsBtn = $('#resetOptions');
+
+        if (generateBtn) {
+            if (!this.generateBtnOriginalHtml) this.generateBtnOriginalHtml = generateBtn.innerHTML;
+            generateBtn.disabled = anyBusy;
+            generateBtn.innerHTML = this.isGenerating
+                ? `<i class="ph ph-spinner ph-spin"></i> ${this.uiStrings.generating}`
+                : this.generateBtnOriginalHtml;
+        }
+
+        if (campaignBtn) {
+            if (!this.campaignBtnOriginalHtml) this.campaignBtnOriginalHtml = campaignBtn.innerHTML;
+            campaignBtn.disabled = anyBusy;
+            campaignBtn.innerHTML = this.isGeneratingCampaign
+                ? `<i class="ph ph-spinner ph-spin"></i> ${this.uiStrings.generatingCampaign}`
+                : this.campaignBtnOriginalHtml;
+        }
+
+        if (resetCampaignBtn) resetCampaignBtn.disabled = anyBusy;
+        if (resetOptionsBtn) resetOptionsBtn.disabled = anyBusy;
+    },
+
     bindEvents() {
         const btn = $('#generateBtn');
         if (btn) btn.addEventListener('click', () => {
@@ -97,6 +124,8 @@ export const generatorFormMethods = {
             });
             this.boundDelegation = true;
         }
+
+        this.syncBusyButtons();
     },
 
     resetCampaignOptions(force = true) {

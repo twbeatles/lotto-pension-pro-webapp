@@ -1,6 +1,7 @@
 import { CONFIG } from '../../utils/config.js';
 import { UIManager } from '../../core/UIManager.js';
 import { normalizeBackupPayload } from '../../utils/backup.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 export const dataIoImportMethods = {
     async importAll(e) {
         const input = e.currentTarget;
@@ -12,7 +13,7 @@ export const dataIoImportMethods = {
             const json = JSON.parse(text);
             const normalized = normalizeBackupPayload(json);
             if (!normalized) {
-                UIManager.toast('Import failed: unsupported backup format.', 'error', 3500);
+                UIManager.toast(UI_STRINGS.dataio.importUnsupported, 'error', 3500);
                 return;
             }
 
@@ -104,12 +105,13 @@ export const dataIoImportMethods = {
                 const duplicateTotal = Math.max(incomingTotal - addedTotal - skippedTotal, 0);
                 const appliedSettings = this.describeAppliedSettings(importOptions);
 
-                UIManager.toast(
-                    `Merge complete (added:${addedTotal}, duplicate:${duplicateTotal}, skipped:${skippedTotal})` +
-                    (prunedCampaigns ? `, cleaned:${prunedCampaigns} orphan-campaign` : '') +
-                    (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
-                    'success'
-                );
+                UIManager.toast(UI_STRINGS.dataio.mergeComplete({
+                    added: addedTotal,
+                    duplicate: duplicateTotal,
+                    skipped: skippedTotal,
+                    applied: appliedSettings,
+                    cleaned: prunedCampaigns
+                }), 'success');
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
@@ -130,12 +132,17 @@ export const dataIoImportMethods = {
                 if (importOptions.applyTheme) this.app.applyTheme();
                 const appliedSettings = this.describeAppliedSettings(importOptions);
                 const prunedCampaigns = overwriteCampaignCleanup.removed.length;
-                UIManager.toast(
-                    `Overwrite complete (added:${incomingFav.length + incomingHist.length + incomingTickets.length + this.data.state.campaigns.length + incomingLocalUpdates.length + incomingStrategyPresets.length}, duplicate:0, skipped:${prunedCampaigns})` +
-                    (prunedCampaigns ? `, cleaned:${prunedCampaigns} orphan-campaign` : '') +
-                    (appliedSettings.length ? `, applied:${appliedSettings.join('/')}` : ''),
-                    'success'
-                );
+                UIManager.toast(UI_STRINGS.dataio.overwriteComplete({
+                    added: incomingFav.length
+                        + incomingHist.length
+                        + incomingTickets.length
+                        + this.data.state.campaigns.length
+                        + incomingLocalUpdates.length
+                        + incomingStrategyPresets.length,
+                    skipped: prunedCampaigns,
+                    applied: appliedSettings,
+                    cleaned: prunedCampaigns
+                }), 'success');
             }
 
             if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
@@ -149,7 +156,7 @@ export const dataIoImportMethods = {
             await this.runPostImportRefresh();
         } catch (err) {
             console.error('Import failed', err);
-            UIManager.toast('Import failed: invalid backup file.', 'error', 3500);
+            UIManager.toast(UI_STRINGS.dataio.importInvalid, 'error', 3500);
         } finally {
             input.value = '';
         }

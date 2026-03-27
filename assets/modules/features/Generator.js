@@ -1,6 +1,7 @@
 import { StrategyEngine } from '../core/StrategyEngine.js';
 import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
 import { StrategyPresetController } from '../utils/strategyPresets.js';
+import { UI_STRINGS } from '../utils/strings.js';
 import { generatorFormMethods } from './generator/form.js';
 import { generatorActionMethods } from './generator/actions.js';
 
@@ -11,6 +12,13 @@ export class GeneratorModule {
         this.engine = new StrategyEngine(this.data.state.winningStats);
         this.workerClient = this.app.strategyWorker || new StrategyWorkerClient();
         this.boundDelegation = false;
+        this.isGenerating = false;
+        this.isGeneratingCampaign = false;
+        this.generationToken = 0;
+        this.campaignToken = 0;
+        this.generateBtnOriginalHtml = '';
+        this.campaignBtnOriginalHtml = '';
+        this.uiStrings = UI_STRINGS.generator;
         this.bindEvents();
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();

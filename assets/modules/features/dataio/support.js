@@ -2,6 +2,7 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { buildBackupPayload } from '../../utils/backup.js';
 import { runPostImportRefresh } from './postImportRefresh.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 export const dataIoSupportMethods = {
     bindEvents() {
         $('#exportAll')?.addEventListener('click', () => this.exportAll());
@@ -28,7 +29,7 @@ export const dataIoSupportMethods = {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('Backup file (v3) exported.', 'success');
+        UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
     },
 
     normalizeItems(items) {

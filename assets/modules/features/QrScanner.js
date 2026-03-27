@@ -46,7 +46,9 @@ export class QrScannerModule {
     async start() {
         const modal = $('#qrScanModal');
         if (!modal) return;
-        modal.classList.add('active');
+        UIManager.openModal(modal, {
+            initialFocus: $('#closeScanBtn')
+        });
 
         if (this.scanner) {
             // Already running or initialized
@@ -79,13 +81,13 @@ export class QrScannerModule {
             console.error('스캐너 시작 오류', err);
             UIManager.toast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.', 'error');
             await this.destroyScanner();
-            modal.classList.remove('active');
+            UIManager.closeModal(modal, { reason: 'error' });
         }
     }
 
     async stop() {
         const modal = $('#qrScanModal');
-        if (modal) modal.classList.remove('active');
+        if (modal) UIManager.closeModal(modal, { reason: 'close' });
         await this.destroyScanner();
     }
 

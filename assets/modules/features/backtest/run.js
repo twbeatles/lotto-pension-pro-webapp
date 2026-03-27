@@ -2,6 +2,7 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { CONFIG } from '../../utils/config.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 export const backtestRunMethods = {
     async run() {
         if (this.isRunning) return;
@@ -40,7 +41,7 @@ export const backtestRunMethods = {
             runBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 실행 중...';
         }
 
-        this.resetUI();
+        this.resetUI({ clearPersisted: true });
         this.setProgressStatus('실행 중...');
         this.lastProgressAt = 0;
         this.setRunningState(true);
@@ -122,6 +123,6 @@ export const backtestRunMethods = {
             }
         });
 
-        UIManager.toast('백그라운드에서 시뮬레이션을 시작했습니다.');
+        UIManager.toast(UI_STRINGS.backtest.started);
     }
 };

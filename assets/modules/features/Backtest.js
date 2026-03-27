@@ -10,6 +10,10 @@ export class BacktestModule {
         this.MAX_COMPARE_STRATEGIES = 5;
         this.worker = null;
         this.lastComparisons = [];
+        this.lastSummary = null;
+        this.lastDiagnostics = null;
+        this.lastWinRows = [];
+        this.lastProgressText = '';
         this.lastProgressAt = 0;
         this.winRowsBuffer = [];
         this.winFlushRaf = 0;

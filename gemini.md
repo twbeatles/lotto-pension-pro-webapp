@@ -3,9 +3,9 @@
 ## Purpose
 
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
-Use it as a fast-start reference for the current structure, behavior, and validation flow.
+Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-03-25`
+- Date: `2026-03-27`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
@@ -22,6 +22,10 @@ Use it as a fast-start reference for the current structure, behavior, and valida
   - `assets/modules/bootstrap/pwa.js`
 - Service worker cache version:
   - `v17`
+- Recent consistency fixes:
+  - immediate settlement for already-drawn tickets
+  - generator campaign reset restores target-draw auto-follow metadata
+  - merge/overwrite import cleans orphan campaigns and reports cleanup counts
 - Styles:
   - `assets/app.css` is the aggregate entrypoint
   - actual style slices live in `assets/styles/*.css`
@@ -38,10 +42,6 @@ Use it as a fast-start reference for the current structure, behavior, and valida
   - `scripts/smoke/helpers/`
   - `scripts/smoke/cases/`
   - `scripts/smoke/smoke.mjs`
-- Recent consistency fixes:
-  - immediate settlement for already-drawn tickets
-  - campaign reset restores target-draw auto-follow metadata
-  - merge/overwrite import cleans orphan campaigns
 - AI strategy additions:
   - richer context + reranking in `assets/modules/core/strategy/`
   - stable additions: `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle`
@@ -51,32 +51,46 @@ Use it as a fast-start reference for the current structure, behavior, and valida
 
 - Storage, proxy, sync, alert, and theme settings are handled from the global settings modal.
 - On mobile, the settings modal is intentionally rendered as a single-column sheet.
+- `UIManager` now provides common confirm/prompt modals with focus trap and focus restore.
 - The data page is focused on backup/import and list management.
-- Data list search/page state is persisted in `sessionStorage`, and the page exposes local update summary/cleanup UI.
+- Data list rendering is aligned with actual search/pagination state again.
+- Data list search/page state is persisted in `sessionStorage` and the page also exposes local update summary/cleanup UI.
+- Generate/campaign actions now guard against duplicate runs and stale async result overwrites.
+- Resetting campaign options restores the target-draw auto-follow metadata rather than only resetting the raw input value.
+- Backtest results persist across route re-entry and render mini metric charts.
+- Saving a past-draw ticket settles it immediately if the winning draw is already available locally.
+- The check tab now uses a card list with search, ticket-status filtering, keyboard navigation, and always-visible scanned results.
+- Mobile bottom navigation is now `gen/stats/ai/check/data + more`, and install entry points are mirrored to desktop/settings/mobile more.
 - Target draw inputs (`genTargetDrawNo`, `campStartDraw`, `aiTargetDrawNo`) auto-follow the next draw until manually edited.
-- Generator campaign reset now restores the target-draw auto-follow metadata as well as the visible input values.
-- Saving a ticket for a draw that already has winning data settles it immediately instead of waiting for a later sync.
-- Merge/overwrite import prunes orphan campaigns and includes the cleanup count in the completion toast.
+- Each target draw input has a reset action to restore the suggested next draw.
 - Latest draw sync defaults to automatic fallback.
 - A configured user proxy is preferred only when it matches the official `/proxy/latest` contract.
 - Unsupported proxy formats are ignored at runtime and surfaced as warnings in settings.
 - If no user proxy is set, the app still attempts runtime sync and falls back to static JSON plus local updates on failure.
 - `data/winning_stats.json` is install-precached for offline stability.
-- Invalid single-draw payload shapes emit `SYNC_FETCH_ONE_INVALID_PAYLOAD` and are surfaced via `syncMeta.lastWarningMessage`.
+- Invalid single-draw payload shapes now emit `SYNC_FETCH_ONE_INVALID_PAYLOAD` and are surfaced via `syncMeta.lastWarningMessage`.
+- Merge/overwrite import prunes orphan campaigns and includes the cleanup count in the completion toast.
 - `refreshCurrentRoute()` applies a stale guard so async refresh work from an old route does not render after a tab switch.
 - Leaving the `check` route stops the QR scanner, and clicking the scanner backdrop closes it.
-- AI recommendations rerank a candidate pool before final selection and surface recommendation diagnostics in the UI.
+- AI recommendations now also:
+  - rerank a candidate pool before final selection
+  - surface recommendation score / pair synergy / profile fit / gap balance diagnostics
+  - use `aiLookbackWindow` as the recent `N` window when automatic AI-only strategies are selected
 
 ## Key Map
 
 - `index.html`
-  - page shell and settings modal markup
+  - page shell, settings modal, mobile more sheet, dialog modal
 - `assets/modules/index.js`
   - app entrypoint
 - `assets/modules/bootstrap/pwa.js`
   - service worker registration and update UX
 - `assets/modules/core/LottoApp.js`
-  - facade, implementation in `core/app`; target-draw auto-management lives here
+  - facade, implementation in `core/app`; target-draw auto-management and mobile more/install sync live here
+- `assets/modules/core/UIManager.js`
+  - toast + shared dialog modal + focus trap + accessible ball rendering
+- `assets/modules/core/DataManager.js`
+  - facade, implementation in `core/data`
 - `assets/modules/core/app/latestDraw.js`
   - latest draw card refresh + target-draw autofill sync
 - `assets/modules/core/app/moduleLoader.js`
@@ -86,15 +100,31 @@ Use it as a fast-start reference for the current structure, behavior, and valida
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning metadata rendering
 - `assets/modules/core/data/records.js`
-  - ticket add/bulk-add logic and immediate settlement
-- `assets/modules/features/generator/form.js`
-  - generator reset logic and campaign-default restore flow
-- `assets/modules/features/dataio/support.js`
-  - import helper utilities including orphan-campaign pruning
-- `assets/modules/features/dataio/importExport.js`
-  - merge/overwrite import orchestration
+  - immediate settlement for past-draw tickets
 - `assets/modules/core/data/sync.js`
   - single-draw payload diagnostics and sync warning tracking
+- `assets/modules/features/Check.js`
+  - card-list based check flow and scanned/ticket filter handling
+- `assets/modules/features/backtest/ui.js`
+  - persisted state re-render and mini charts
+- `assets/modules/features/generator/form.js`
+  - campaign reset restores target-draw auto-follow metadata
+- `assets/modules/features/dataio/support.js`
+  - orphan-campaign pruning helpers
+- `assets/modules/features/dataio/importExport.js`
+  - import flow and cleanup-count toast
+- `assets/modules/utils/strings.js`
+  - centralized user-facing strings
+- `assets/modules/core/StrategyEngine.js`
+  - facade, implementation in `core/strategy`
+- `assets/modules/core/strategy/context.js`
+  - richer recent-history stats including pair matrices and gap distributions
+- `assets/modules/core/strategy/weights.js`
+  - base weights and adaptive recent-performance auto-strategy logic
+- `assets/modules/core/strategy/generation.js`
+  - reranking and diversity-aware candidate selection
+- `assets/modules/features/*.js`
+  - public entry files kept stable
 - `sw.js`
   - app-shell precache and fetch strategy
 
@@ -124,6 +154,7 @@ Official supported custom proxy shape:
 - absolute `http(s)` URL
 - path contains `/proxy/latest`
 - unsupported shapes (`?url=`, `{url}`, `{draw_no}`) are ignored at runtime
+- `syncMeta` also stores recent warning diagnostics for invalid single-draw response shapes
 
 ## Quick Commands
 
@@ -143,14 +174,19 @@ Local URL:
 
 1. `npm run lint`
 2. `node scripts/smoke/smoke.mjs`
-3. save a past-draw ticket and verify immediate settlement
-4. reset campaign options and verify next-draw auto-follow resumes
-5. backup/import behavior, including orphan-campaign cleanup
-6. generator / AI / backtest basic flows
-7. settings modal state reflection, including sync warning metadata
-8. proxy unset/set sync policy and invalid payload diagnostics
-9. data-page local update cleanup flow
-10. service worker update acceptance and reload
+3. generator / AI / backtest basic flows
+4. target draw autofill and reset behavior
+5. settings modal state reflection, including sync warning metadata
+6. mobile settings modal and mobile more sheet rendering
+7. check tab card list, search/filter state, and keyboard navigation
+8. backup/import behavior
+9. save a past-draw ticket and verify it settles immediately
+10. reset campaign options and verify target-draw auto-follow resumes
+11. backup/import including orphan-campaign cleanup toast counts
+12. proxy unset/set sync policy and invalid payload diagnostics
+13. data-page local update cleanup flow
+14. common confirm modal flows for destructive actions and preset overwrite/delete
+15. service worker update acceptance and reload
 
 ## Session Template
 

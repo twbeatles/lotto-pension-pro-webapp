@@ -25,11 +25,11 @@ export const aiFormMethods = {
 
         // Legacy aliases
         const legacy = [
-            ['ensemble', 'Legacy model: Ensemble'],
-            ['statistical', 'Legacy model: Statistical'],
-            ['balance', 'Legacy model: Balance'],
-            ['cold', 'Legacy model: Cold'],
-            ['hot', 'Legacy model: Hot']
+            ['ensemble', '레거시 모델: 앙상블'],
+            ['statistical', '레거시 모델: 통계'],
+            ['balance', '레거시 모델: 밸런스'],
+            ['cold', '레거시 모델: 콜드'],
+            ['hot', '레거시 모델: 핫']
         ];
         legacy.forEach(([id, label]) => {
             const option = document.createElement('option');

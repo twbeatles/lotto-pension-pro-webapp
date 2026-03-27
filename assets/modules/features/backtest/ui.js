@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { getStrategyMeta, listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { UI_STRINGS } from '../../utils/strings.js';
 export const backtestUiMethods = {
     bindEvents() {
         $('#runBacktest')?.addEventListener('click', () => this.run());
@@ -11,7 +12,7 @@ export const backtestUiMethods = {
     },
 
     onEnter() {
-        this.resetUI();
+        this.renderPersistedState();
     },
 
     toggleCompareMode() {
@@ -20,7 +21,15 @@ export const backtestUiMethods = {
         if (box) box.style.display = enabled ? 'block' : 'none';
     },
 
-    resetUI() {
+    clearPersistedResults() {
+        this.lastSummary = null;
+        this.lastComparisons = [];
+        this.lastDiagnostics = null;
+        this.lastWinRows = [];
+        this.lastProgressText = '';
+    },
+
+    resetUI({ clearPersisted = false } = {}) {
         const sum = $('#btSummaryList');
         if (sum) sum.innerHTML = '<li>실행 대기 중...</li>';
 
@@ -30,8 +39,7 @@ export const backtestUiMethods = {
         if (compareTbody) compareTbody.innerHTML = '';
         const winner = $('#btWinnerBadge');
         if (winner) winner.textContent = '-';
-        this.setProgressStatus('');
-        this.lastComparisons = [];
+        this.setProgressStatus('', { persist: false });
         this.currentPayoutMode = this.readPayoutMode();
         this.winRowsBuffer = [];
         if (this.winFlushRaf && typeof cancelAnimationFrame === 'function') {
@@ -40,12 +48,19 @@ export const backtestUiMethods = {
         this.winFlushRaf = 0;
         const notice = $('#btPayoutNotice');
         if (notice) notice.textContent = '';
+        const charts = $('#btMiniCharts');
+        if (charts) charts.innerHTML = '';
+        if (clearPersisted) {
+            this.clearPersistedResults();
+        }
     },
 
-    setProgressStatus(text) {
+    setProgressStatus(text, { persist = true } = {}) {
         const el = $('#btProgressMeta');
-        if (!el) return;
-        el.textContent = text || '';
+        if (persist) {
+            this.lastProgressText = text || '';
+        }
+        if (el) el.textContent = text || '';
     },
 
     setRunningState(nextRunning) {
@@ -76,7 +91,7 @@ export const backtestUiMethods = {
         this.setProgressStatus('중지됨');
         const runBtn = $('#runBacktest');
         if (runBtn && this.runButtonOriginal) runBtn.innerHTML = this.runButtonOriginal;
-        UIManager.toast('Backtest stopped.', 'info');
+        UIManager.toast(UI_STRINGS.backtest.stopped, 'info');
     },
 
     readPayoutMode() {
@@ -85,16 +100,78 @@ export const backtestUiMethods = {
     },
 
     getPayoutModeLabel(mode) {
-        return mode === 'fast_fixed' ? 'Fast fixed' : 'Hybrid dynamic-first';
+        return mode === 'fast_fixed' ? '고정 상금' : '하이브리드 동적 1등';
     },
 
     getStrategyLabel(strategyId) {
         return getStrategyMeta(resolveStrategyId(strategyId)).label;
     },
 
-    renderSummary(stats) {
+    renderMetricCharts(summary, comparisons = []) {
+        const container = $('#btMiniCharts');
+        if (!container) return;
+        if (!summary && !comparisons.length) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const comparisonSource = comparisons.length
+            ? [...comparisons].sort((a, b) => Number(b.roi || 0) - Number(a.roi || 0))[0]
+            : null;
+
+        const hitCount = summary?.counts
+            ? Number(summary.counts[1] || 0) + Number(summary.counts[2] || 0) + Number(summary.counts[3] || 0) + Number(summary.counts[4] || 0) + Number(summary.counts[5] || 0)
+            : 0;
+        const summaryHitRate = summary?.tickets ? (hitCount / Number(summary.tickets || 1)) * 100 : 0;
+        const prizeBase = comparisonSource ? Number(comparisonSource.totalPrize || 0) : Number(summary?.totalPrize || 0);
+        const prizeMax = Math.max(prizeBase, ...(comparisons || []).map((row) => Number(row.totalPrize || 0)), 1);
+        const roiValue = comparisonSource ? Number(comparisonSource.roi || 0) : Number((((Number(summary?.totalPrize || 0) - Number(summary?.cost || 0)) / Math.max(1, Number(summary?.cost || 0))) * 100) || 0);
+        const hitRateValue = comparisonSource ? Number(comparisonSource.hitRate || 0) : summaryHitRate;
+        const prizeValue = prizeBase;
+
+        const metrics = [
+            {
+                label: 'ROI',
+                value: `${roiValue.toFixed(2)}%`,
+                width: Math.min(100, Math.max(12, Math.abs(roiValue))),
+                tone: roiValue >= 0 ? 'good' : 'warn'
+            },
+            {
+                label: '적중률',
+                value: `${hitRateValue.toFixed(2)}%`,
+                width: Math.min(100, Math.max(8, hitRateValue)),
+                tone: 'info'
+            },
+            {
+                label: '총상금',
+                value: Number(prizeValue || 0).toLocaleString(),
+                width: Math.min(100, Math.max(10, (Number(prizeValue || 0) / prizeMax) * 100)),
+                tone: 'good'
+            }
+        ];
+
+        container.innerHTML = metrics.map((metric) => `
+            <div class="bt-mini-chart">
+                <div class="bt-mini-chart-head">
+                    <span>${metric.label}</span>
+                    <strong>${metric.value}</strong>
+                </div>
+                <div class="bt-mini-track">
+                    <span class="bt-mini-fill is-${metric.tone}" style="width:${metric.width}%"></span>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    renderSummary(stats, { persist = true } = {}) {
         const el = $('#btSummaryList');
         if (!el || !stats) return;
+        if (persist) {
+            this.lastSummary = {
+                ...stats,
+                counts: { ...(stats.counts || {}) }
+            };
+        }
         const pct = (n, d) => d ? ((n / d) * 100).toFixed(2) : '0.00';
         const roi = stats.cost > 0 ? (((stats.totalPrize - stats.cost) / stats.cost) * 100) : 0;
         const payoutMode = stats.payoutMode || this.currentPayoutMode || 'hybrid_dynamic_first';
@@ -102,30 +179,34 @@ export const backtestUiMethods = {
         const notice = $('#btPayoutNotice');
         if (notice) {
             notice.textContent = payoutMode === 'fast_fixed'
-                ? 'Using fixed simulated prizes for all ranks.'
-                : 'Hybrid mode: rank-1 uses draw prize_amount, ranks 2-5 use fixed simulated values.';
+                ? UI_STRINGS.backtest.payoutFast
+                : UI_STRINGS.backtest.payoutHybrid;
         }
 
         el.innerHTML = `
-      <li><b>Strategy</b>: ${stats.strategyId ? this.getStrategyLabel(stats.strategyId) : '-'}</li>
-      <li><b>Payout Mode</b>: ${payoutLabel}</li>
-      <li><b>Draws</b>: ${stats.draws}</li>
-      <li><b>Requested Tickets</b>: ${Number(stats.requestedTickets || 0).toLocaleString()}</li>
-      <li><b>Generated Tickets</b>: ${Number(stats.generatedTickets || 0).toLocaleString()}</li>
-      <li><b>Fill-rate</b>: ${Number(stats.fillRate || 0).toFixed(2)}%</li>
-      <li><b>Tickets</b>: ${stats.tickets}</li>
-      <li><b>Total Cost</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
-      <li><b>Total Prize</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>
-      <li><b>Net</b>: ${(Number(stats.totalPrize || 0) - Number(stats.cost || 0)).toLocaleString()}</li>
+      <li><b>전략</b>: ${stats.strategyId ? this.getStrategyLabel(stats.strategyId) : '-'}</li>
+      <li><b>상금 계산</b>: ${payoutLabel}</li>
+      <li><b>대상 회차 수</b>: ${stats.draws}</li>
+      <li><b>요청 티켓 수</b>: ${Number(stats.requestedTickets || 0).toLocaleString()}</li>
+      <li><b>생성 티켓 수</b>: ${Number(stats.generatedTickets || 0).toLocaleString()}</li>
+      <li><b>생성 충족률</b>: ${Number(stats.fillRate || 0).toFixed(2)}%</li>
+      <li><b>총 구매 수</b>: ${stats.tickets}</li>
+      <li><b>총 비용</b>: ${Number(stats.cost || 0).toLocaleString()}</li>
+      <li><b>총 상금</b>: ${Number(stats.totalPrize || 0).toLocaleString()}</li>
+      <li><b>순손익</b>: ${(Number(stats.totalPrize || 0) - Number(stats.cost || 0)).toLocaleString()}</li>
       <li><b>ROI</b>: ${roi.toFixed(2)}%</li>
-      <li><b>Rank 1</b>: ${stats.counts[1]} / <b>Rank 2</b>: ${stats.counts[2]} / <b>Rank 3</b>: ${stats.counts[3]}</li>
-      <li><b>Rank 4</b>: ${stats.counts[4]} / <b>Rank 5</b>: ${stats.counts[5]} / <b>No Win</b>: ${stats.counts[0]}</li>
-      <li><b>Hit Rate (>=5)</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
+      <li><b>1등</b>: ${stats.counts[1]} / <b>2등</b>: ${stats.counts[2]} / <b>3등</b>: ${stats.counts[3]}</li>
+      <li><b>4등</b>: ${stats.counts[4]} / <b>5등</b>: ${stats.counts[5]} / <b>미당첨</b>: ${stats.counts[0]}</li>
+      <li><b>5등 이상 적중률</b>: ${pct(stats.counts[1] + stats.counts[2] + stats.counts[3] + stats.counts[4] + stats.counts[5], stats.tickets)}%</li>
     `;
+        this.renderMetricCharts(this.lastSummary || stats, this.lastComparisons);
     },
 
-    renderComparisons(comparisons = [], diagnostics = {}) {
-        this.lastComparisons = [...comparisons];
+    renderComparisons(comparisons = [], diagnostics = {}, { persist = true } = {}) {
+        if (persist) {
+            this.lastComparisons = [...comparisons];
+            this.lastDiagnostics = diagnostics ? { ...diagnostics } : {};
+        }
         const tbody = $('#btCompareTable tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -150,6 +231,7 @@ export const backtestUiMethods = {
             const winnerId = diagnostics?.winner || sorted[0]?.strategyId || '';
             winner.textContent = winnerId ? this.getStrategyLabel(winnerId) : '-';
         }
+        this.renderMetricCharts(this.lastSummary, this.lastComparisons);
     },
 
     appendWinRowToFragment(row, fragment) {
@@ -175,8 +257,20 @@ export const backtestUiMethods = {
         tbody.appendChild(fragment);
     },
 
+    renderStoredWinRows() {
+        const tbody = $('#btResultTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!this.lastWinRows.length) return;
+
+        const fragment = document.createDocumentFragment();
+        this.lastWinRows.forEach((row) => this.appendWinRowToFragment(row, fragment));
+        tbody.appendChild(fragment);
+    },
+
     queueWinRows(rows = []) {
         if (!Array.isArray(rows) || !rows.length) return;
+        this.lastWinRows.push(...rows);
         this.winRowsBuffer.push(...rows);
         if (this.winFlushRaf) return;
 
@@ -189,6 +283,22 @@ export const backtestUiMethods = {
         }
 
         this.flushWinRows();
+    },
+
+    renderPersistedState() {
+        this.resetUI();
+        if (this.lastSummary) {
+            this.renderSummary(this.lastSummary, { persist: false });
+        }
+        if (this.lastComparisons.length) {
+            this.renderComparisons(this.lastComparisons, this.lastDiagnostics || {}, { persist: false });
+        }
+        this.renderStoredWinRows();
+        this.setProgressStatus(this.lastProgressText);
+        if (!this.lastSummary && !this.lastComparisons.length && !this.lastWinRows.length) {
+            this.setProgressStatus('');
+        }
+        this.setRunningState(this.isRunning);
     },
 
     populateStrategySelect() {
@@ -209,12 +319,12 @@ export const backtestUiMethods = {
         });
 
         const legacy = [
-            ['random', 'Legacy model: Random'],
-            ['ensemble', 'Legacy model: Ensemble'],
-            ['balance', 'Legacy model: Balance'],
-            ['cold', 'Legacy model: Cold'],
-            ['hot', 'Legacy model: Hot'],
-            ['statistical', 'Legacy model: Statistical']
+            ['random', '레거시 모델: 랜덤'],
+            ['ensemble', '레거시 모델: 앙상블'],
+            ['balance', '레거시 모델: 밸런스'],
+            ['cold', '레거시 모델: 콜드'],
+            ['hot', '레거시 모델: 핫'],
+            ['statistical', '레거시 모델: 통계']
         ];
         legacy.forEach(([id, label]) => {
             const opt = document.createElement('option');
@@ -341,7 +451,7 @@ export const backtestUiMethods = {
 
     exportComparisonCsv() {
         if (!this.lastComparisons.length) {
-            UIManager.toast('내보낼 비교 결과가 없습니다.', 'warning');
+            UIManager.toast(UI_STRINGS.backtest.emptyExport, 'warning');
             return;
         }
 
@@ -370,6 +480,6 @@ export const backtestUiMethods = {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast('비교 CSV 파일을 내보냈습니다.', 'success');
+        UIManager.toast(UI_STRINGS.backtest.exported, 'success');
     }
 };

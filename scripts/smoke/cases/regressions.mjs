@@ -1030,7 +1030,7 @@ async function runImportOrphanCampaignCleanupRegression() {
         assert.equal(data.state.ticketBook.length, 1, 'duplicate import ticket must still be deduped');
         assert.equal(data.state.campaigns.length, 0, 'merge import must remove orphan campaigns with no linked tickets');
         assert.ok(
-            toasts.some((item) => item.includes('cleaned:1 orphan-campaign')),
+            toasts.some((item) => item.includes('정리 1개 캠페인')),
             'merge import toast must mention orphan campaign cleanup'
         );
     } finally {

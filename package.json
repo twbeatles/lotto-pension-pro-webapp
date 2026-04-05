@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Lotto 6/45 webapp",
   "scripts": {
+    "build": "npm run lint && node scripts/smoke/smoke.mjs",
     "lint": "eslint assets proxy scripts sw.js index.html",
     "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",
     "format:check": "prettier --check \"**/*.{js,mjs,json,md,css,html}\"",

@@ -7,6 +7,29 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 기능 구현 정합성 2차 보강 반영 (2026-04-05)
+
+- **티켓 정산 재정합성 추가** (`analytics.js`, `sync.js`, `dataio/postImportRefresh.js`)
+  - `reconcileTicketChecks()` 를 추가해 현재 `winningStats` 기준으로 전체 티켓의 `checked` 상태를 다시 계산합니다.
+  - 결과가 없는 회차이거나 최신 당첨 데이터가 아직 해당 티켓 회차에 도달하지 않았으면 `checked` 를 제거하고 `pending` 으로 되돌립니다.
+  - 이 재정합성은 앱 초기 로드, 최신 회차 동기화 직후, Import 후 post-refresh, 로컬 업데이트 정리 후 재적재 경로에서 공통 적용됩니다.
+- **로컬 업데이트 방어 및 sync 메타 clamp** (`persistence.js`, `sync.js`)
+  - `sanitizeLocalUpdates()` 로 로컬 업데이트 정규화, 회차 중복 제거, 정렬, 미래 회차 방어를 중앙화했습니다.
+  - 허용 상한은 `estimateLatestDrawKST() + 2` 이며, 이를 넘는 미래 회차 항목은 저장하지 않고 제외합니다.
+  - `syncMeta.lastSuccessDrawNo` 는 실제 유효 최신 회차보다 높게 남지 않도록 `winningStats` 재구성 직후 clamp 됩니다.
+- **캠페인 orphan 자동 정리 확대** (`records.js`, `dataLists.js`, `dataio/importExport.js`)
+  - `pruneOrphanCampaigns()` 공용 로직을 도입해 Merge/Overwrite Import 뿐 아니라 개별 티켓 삭제와 전체 티켓 정리 후에도 orphan campaign 이 자동 삭제됩니다.
+  - 삭제/정리 완료 toast 에는 자동 정리된 캠페인 수가 함께 표시됩니다.
+- **히스토리 정책을 actual-log 기준으로 변경** (`records.js`, `generator/actions.js`, `dataio/importExport.js`)
+  - `favorites` 는 기존대로 번호 조합 unique 정책을 유지합니다.
+  - `history` 는 이제 같은 번호라도 생성/저장된 횟수만큼 모두 남기며, Import merge 도 날짜 내림차순 actual-log 기준으로 합칩니다.
+- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
+  - `ticket-reconcile`
+  - `future local-updates guard`
+  - `clear-local-updates reconcile`
+  - `orphan-campaign auto-cleanup`
+  - `history actual-log`
+
 ## UI/UX 1차 개선 반영 (2026-03-27)
 
 - **공통 UX 인프라 정리** (`UIManager.js`, `settingsPanel.js`, `index.html`, `strings.js`)
@@ -384,6 +407,12 @@ npm install
 npm run lint
 ```
 
+정적 배포 검증(`build`는 별도 번들 생성 없이 린트 + 스모크 검증을 묶은 명령입니다):
+
+```bash
+npm run build
+```
+
 필요 시 자동 수정:
 
 ```bash
@@ -400,13 +429,13 @@ node scripts/smoke/smoke.mjs
 - `strict-filter`, `wheel-fixed`, `draw-normalization`
 - `campaign-limit`, `campaign-cascade`, `campaign-empty-save`, `campaign reset autofill recovery`
 - `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
-- `ticket-dedupe`, `immediate ticket settlement`, `requestNumbers replace`
+- `ticket-dedupe`, `immediate ticket settlement`, `ticket-reconcile`, `requestNumbers replace`
 - `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`
-- `target-draw autofill`, `refreshCurrentRoute stale`
+- `target-draw autofill`, `refreshCurrentRoute stale`, `future local-updates guard`, `clear-local-updates reconcile`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
-- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `post-import-refresh`
+- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`
 - `strategy-preset-crud`, `runtime-asset-localization`
-- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`
+- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `history actual-log`
 
 성능 회귀를 함께 확인하려면:
 

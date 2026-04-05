@@ -5,11 +5,11 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-03-27`
+- Date: `2026-04-05`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md`
 
 ## Current State
 
@@ -32,9 +32,12 @@ Use it to restore context quickly and avoid missing the current structure.
   - `scripts/smoke/smoke.mjs`
 - Service worker cache version is `v17`.
 - Recent functional consistency fixes:
-  - past-draw tickets settle immediately after save
-  - generator campaign reset restores target-draw auto-follow metadata
-  - merge/overwrite import prunes orphan campaigns and surfaces cleanup counts
+  - `reconcileTicketChecks()` revalidates stored `checked` tickets after sync/import/local-update cleanup
+  - future-draw `localUpdates` are dropped by `sanitizeLocalUpdates()` and `syncMeta.lastSuccessDrawNo` is clamped to effective data
+  - orphan campaigns are now pruned not only on import, but also after ticket delete / ticket-book clear
+  - history is now an actual log and preserves duplicate generated/imported entries by timestamp
+  - past-draw tickets still settle immediately after save
+  - generator campaign reset still restores target-draw auto-follow metadata
 - AI strategy stack now includes:
   - richer weighting inputs from `core/strategy/context.js`
   - candidate reranking + diversity selection in `core/strategy/generation.js`
@@ -95,7 +98,12 @@ Use it to restore context quickly and avoid missing the current structure.
 - `StrategyWorkerClient` timeout scales by network quality (`navigator.connection.effectiveType`): 2G → ×2.5, 3G → ×1.5.
 - The data page now exposes local update summary/cleanup UI.
   - `clearLocalUpdatesBtn` clears runtime-synced draw overrides and rebuilds `winningStats`.
-- Merge/overwrite import also prunes orphan campaigns and includes the cleanup count in the completion toast.
+- `reconcileTicketChecks()` now also runs after initial winning-stat load, post-import refresh, and local-update cleanup reload.
+- `sanitizeLocalUpdates()` centralizes draw normalization, dedupe, sort order, and future-draw rejection (`estimateLatestDrawKST() + 2` ceiling).
+- `syncMeta.lastSuccessDrawNo` is clamped to the latest effective draw after `winningStats` rebuild so settings never display an impossible applied draw.
+- Ticket delete / clear flows also prune orphan campaigns and append cleanup counts to success toasts.
+- History entries are now stored as actual save/import logs instead of number-unique snapshots.
+- Merge/overwrite import still prunes orphan campaigns and now preserves duplicate history entries in date-desc order.
 - QR scanner cleanup is stricter.
   - Clicking the scan modal backdrop closes it.
   - Leaving the `check` route stops the active scanner.
@@ -128,9 +136,13 @@ Use it to restore context quickly and avoid missing the current structure.
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning meta rendering (`syncMeta.lastWarningMessage`)
 - `assets/modules/core/data/records.js`
-  - immediate settlement for past-draw tickets
+  - history actual-log merge helpers and orphan-campaign pruning shared by delete/import flows
+- `assets/modules/core/data/analytics.js`
+  - `reconcileTicketChecks()` for full ticket settlement revalidation
+- `assets/modules/core/data/persistence.js`
+  - `sanitizeLocalUpdates()` and `syncMeta` clamp helpers
 - `assets/modules/core/data/sync.js`
-  - single-draw payload diagnostics and sync warning meta updates
+  - single-draw payload diagnostics, sync warning meta updates, and post-refresh ticket reconciliation
 - `assets/modules/features/Check.js`
   - card-list based check UI, search/filter/selection state, scanned source handling
 - `assets/modules/features/backtest/ui.js`
@@ -209,6 +221,7 @@ Official supported custom proxy shape:
 python -m http.server 5173
 npm install
 npm run lint
+npm run build
 node scripts/smoke/smoke.mjs
 npm run bench:ai
 ```
@@ -222,6 +235,7 @@ Local URL:
 Required:
 
 - `npm run lint`
+- `npm run build`
 - `node scripts/smoke/smoke.mjs`
 
 Recommended manual checks:
@@ -243,6 +257,9 @@ Recommended manual checks:
 15. Save a past-draw ticket and verify it settles immediately without waiting for another sync
 16. Reset generator campaign options and verify target-draw auto-follow resumes on the next latest-draw change
 17. Run merge/overwrite import with orphan campaigns and verify cleanup count appears in the completion toast
+18. Clear local updates and verify stale checked tickets return to pending while the applied draw in settings clamps down to the effective latest draw
+19. Delete the last ticket linked to a campaign and verify the orphan campaign disappears immediately
+20. Save the same number set multiple times and verify history keeps separate log entries
 
 ## Session Template
 

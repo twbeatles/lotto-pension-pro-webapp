@@ -123,45 +123,115 @@ export const dataAnalyticsMethods = {
         }
     },
 
-    async settlePendingTickets({ silent = true, requestSystemNotification = true } = {}) {
+    async reconcileTicketChecks({ silent = true, requestSystemNotification = true } = {}) {
         if (!this.state.ticketBook.length || !this.state.winningStats.length) {
-            return { settled: 0, wins: 0, latestDrawNo: this.state.winningStats?.[0]?.draw_no || 0 };
+            return {
+                rechecked: 0,
+                resetToPending: 0,
+                wins: 0,
+                losses: 0,
+                latestDrawNo: this.state.winningStats?.[0]?.draw_no || 0,
+                newlySettled: 0,
+                newlySettledWins: 0,
+                changed: 0
+            };
         }
 
         const drawMap = new Map(this.state.winningStats.map((d) => [Number(d.draw_no), d]));
         const latestDrawNo = Number(this.state.winningStats[0]?.draw_no || 0);
 
-        let settled = 0;
+        let rechecked = 0;
+        let resetToPending = 0;
         let wins = 0;
+        let losses = 0;
+        let newlySettled = 0;
+        let newlySettledWins = 0;
+        let changed = 0;
+        const checkedAt = new Date().toISOString();
 
         for (const ticket of this.state.ticketBook) {
-            if (!ticket || ticket.checked) continue;
-            if (Number(ticket.targetDrawNo) > latestDrawNo) continue;
-            const draw = drawMap.get(Number(ticket.targetDrawNo));
-            if (!draw) continue;
+            if (!ticket) continue;
+
+            const hadChecked = Boolean(ticket.checked);
+            const targetDrawNo = Number(ticket.targetDrawNo);
+            if (!Number.isFinite(targetDrawNo) || targetDrawNo > latestDrawNo) {
+                if (hadChecked) {
+                    ticket.checked = null;
+                    resetToPending++;
+                    changed++;
+                }
+                continue;
+            }
+
+            const draw = drawMap.get(Number(targetDrawNo));
+            if (!draw) {
+                if (hadChecked) {
+                    ticket.checked = null;
+                    resetToPending++;
+                    changed++;
+                }
+                continue;
+            }
 
             const rank = this.rankTicket(ticket.numbers, draw.numbers, draw.bonus);
-            ticket.checked = {
+            const nextChecked = {
                 drawNo: Number(draw.draw_no),
                 rank,
-                checkedAt: new Date().toISOString()
+                checkedAt: hadChecked
+                    && Number(ticket.checked?.drawNo) === Number(draw.draw_no)
+                    && Number(ticket.checked?.rank) === rank
+                    ? (ticket.checked?.checkedAt || checkedAt)
+                    : checkedAt
             };
-            settled++;
+            const prevDrawNo = Number(ticket.checked?.drawNo);
+            const prevRank = Number(ticket.checked?.rank);
+
+            ticket.checked = nextChecked;
+            rechecked++;
             if (rank > 0) wins++;
+            else losses++;
+
+            const resultChanged = !hadChecked || prevDrawNo !== nextChecked.drawNo || prevRank !== nextChecked.rank;
+            if (resultChanged) changed++;
+            if (!hadChecked) {
+                newlySettled++;
+                if (rank > 0) newlySettledWins++;
+            }
         }
 
-        if (settled > 0) {
+        if (changed > 0) {
             this.markDirty('ticketBook');
             this.save(true);
-            if (!silent) {
+            if (!silent && newlySettled > 0) {
                 await this.notifyTicketSettlement(
-                    { settled, wins, latestDrawNo },
+                    { settled: newlySettled, wins: newlySettledWins, latestDrawNo },
                     { requestSystemNotification }
                 );
             }
         }
 
-        return { settled, wins, latestDrawNo };
+        return {
+            rechecked,
+            resetToPending,
+            wins,
+            losses,
+            latestDrawNo,
+            newlySettled,
+            newlySettledWins,
+            changed
+        };
+    },
+
+    async settlePendingTickets({ silent = true, requestSystemNotification = true } = {}) {
+        const summary = await this.reconcileTicketChecks({ silent, requestSystemNotification });
+        return {
+            settled: summary.newlySettled,
+            wins: summary.newlySettledWins,
+            latestDrawNo: summary.latestDrawNo,
+            rechecked: summary.rechecked,
+            resetToPending: summary.resetToPending,
+            losses: summary.losses
+        };
     },
 
     buildAnalyticsCache() {

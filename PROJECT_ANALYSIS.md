@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-03-27)
+# Lotto Webapp Structure Notes (2026-04-05)
 
 ## Summary
 
@@ -16,7 +16,9 @@
   - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
   - target draw defaults now follow the next draw automatically unless the user overrides them
   - sync diagnostics and local update cleanup were added to make runtime data issues observable
-  - past-draw tickets settle immediately after save/import refresh, and import prunes orphan campaigns to reduce stale operational state
+  - `reconcileTicketChecks()` now revalidates stored `checked` tickets after sync/import/local-update cleanup
+  - future local updates are sanitized centrally, and `syncMeta.lastSuccessDrawNo` is clamped to effective data
+  - past-draw tickets settle immediately after save/import refresh, ticket delete/clear now also prune orphan campaigns, and history keeps actual-log duplicates
   - mobile navigation now uses `5탭 + 더보기`, and the check tab uses a card-list flow instead of native select
   - deployment target is GitHub Pages
 
@@ -42,7 +44,11 @@
   - internal logic lives in feature-specific subdirectories
 - Notable implementation files:
   - `assets/modules/core/data/records.js`
-    - immediate ticket settlement for past draws
+    - history actual-log merge helpers and orphan-campaign pruning
+  - `assets/modules/core/data/analytics.js`
+    - full-ticket `checked` reconciliation against current winning stats
+  - `assets/modules/core/data/persistence.js`
+    - local-update sanitization and sync-meta clamping
   - `assets/modules/features/generator/form.js`
     - campaign reset restores target-draw auto-follow metadata
   - `assets/modules/features/dataio/support.js`
@@ -151,6 +157,7 @@ Base checks:
 ```bash
 npm install
 npm run lint
+npm run build
 node scripts/smoke/smoke.mjs
 ```
 
@@ -170,12 +177,14 @@ Important regression areas:
 - single-flight sync / cancel / automatic fallback behavior
 - target draw autofill / reset behavior
 - immediate ticket settlement for past-draw tickets
+- stale checked-ticket reconciliation after sync/import/local-update cleanup
+- future local-update rejection and sync-meta clamping
 - campaign reset autofill recovery
 - stale async route refresh handling
 - invalid single-draw payload diagnostics
 - QR route-exit cleanup
 - lazy-loaded tab routing for `ai`, `bt`, `check`
-- import option handling and orphan-campaign cleanup
+- import option handling, orphan-campaign cleanup, and actual-log history merge
 - settings modal rendering, especially on mobile
 - data list search and pagination
 - local update summary / clear flow
@@ -185,5 +194,5 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md` is committed and should be treated as the current functional review artifact.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md` should be treated as the current functional review artifact for the latest data-consistency hardening pass.
 - Other ad hoc review artifacts are not guaranteed to be versioned in-repo unless explicitly committed for the session.

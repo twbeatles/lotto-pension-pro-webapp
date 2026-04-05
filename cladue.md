@@ -5,8 +5,8 @@
 표준 AI 핸드오프 문서는 아래 파일입니다.
 
 - `claude.md`
-- 최신 갱신일: 2026-03-27
-- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md`
+- 최신 갱신일: 2026-04-05
+- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md`
 
 이번 기준 문서에는 아래 운영 변경이 반영되어 있습니다.
 
@@ -24,6 +24,10 @@
 - 백테스트 결과 유지 + 요약 미니 차트
 - 체크 탭 카드형 리스트 + 검색/티켓 상태 필터 + 스캔 결과 고정 노출
 - 과거 회차 티켓 저장 직후 즉시 정산
+- sync/import/local-update cleanup 후 stale `checked` 티켓 재정합성
+- 미래 회차 `localUpdates` 저장 차단 + `syncMeta.lastSuccessDrawNo` clamp
+- 티켓 삭제/전체정리 후 orphan campaign 자동 정리
+- 히스토리 actual-log 저장(중복 기록 유지)
 - Import 후 orphan campaign 자동 정리 + cleanup 수치 toast 표시
 - 모바일 하단 `5탭 + 더보기` 구조
 - 설정 모달/모바일 더보기 PWA 설치 버튼

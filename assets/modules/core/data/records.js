@@ -24,6 +24,13 @@ export const dataRecordMethods = {
         };
     },
 
+    mergeHistoryEntries(existing = [], incoming = []) {
+        return [...(existing || []), ...(incoming || [])]
+            .map((entry) => this.normalizeStoredNumberEntry(entry))
+            .filter(Boolean)
+            .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    },
+
     createId(prefix = 'id') {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return `${prefix}_${crypto.randomUUID()}`;
@@ -146,6 +153,42 @@ export const dataRecordMethods = {
         return settled;
     },
 
+    pruneOrphanCampaigns({ targetIds = null, save = true } = {}) {
+        const normalizedTargetIds = targetIds instanceof Set
+            ? new Set([...targetIds].map((item) => String(item || '').trim()).filter(Boolean))
+            : new Set((targetIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const limitToTargets = normalizedTargetIds.size > 0;
+        const linkedCampaignIds = new Set(
+            (this.state.ticketBook || [])
+                .map((ticket) => String(ticket?.campaignId || '').trim())
+                .filter(Boolean)
+        );
+
+        const kept = [];
+        const removed = [];
+
+        (this.state.campaigns || []).forEach((campaign) => {
+            const campaignId = String(campaign?.id || '').trim();
+            const shouldValidate = !limitToTargets || normalizedTargetIds.has(campaignId);
+            if (shouldValidate && (!campaignId || !linkedCampaignIds.has(campaignId))) {
+                removed.push(campaign);
+                return;
+            }
+            kept.push(campaign);
+        });
+
+        if (removed.length) {
+            this.state.campaigns = kept;
+            this.markDirty('campaigns');
+            if (save) this.save(true);
+        }
+
+        return {
+            campaigns: removed.length ? kept : (this.state.campaigns || []),
+            removed
+        };
+    },
+
     addTicket(numbers, options = {}) {
         const normalized = this.normalizeNumbers(numbers);
         if (normalized.length !== 6) return null;
@@ -208,11 +251,17 @@ export const dataRecordMethods = {
         const before = this.state.ticketBook.length;
         this.state.ticketBook = this.state.ticketBook.filter((x) => x.id !== id);
         const removed = before - this.state.ticketBook.length;
+        let prunedCampaigns = 0;
         if (removed > 0) {
             this.markDirty('ticketBook');
+            const cleanup = this.pruneOrphanCampaigns({ save: false });
+            prunedCampaigns = cleanup.removed.length;
             this.save(true);
         }
-        return removed > 0;
+        return {
+            removed: removed > 0,
+            prunedCampaigns
+        };
     },
 
     updateTicketMemo(id, memo) {
@@ -236,11 +285,17 @@ export const dataRecordMethods = {
         else this.state.ticketBook = [];
 
         const removed = before - this.state.ticketBook.length;
+        let prunedCampaigns = 0;
         if (removed > 0) {
             this.markDirty('ticketBook');
+            const cleanup = this.pruneOrphanCampaigns({ save: false });
+            prunedCampaigns = cleanup.removed.length;
             this.save(true);
         }
-        return removed;
+        return {
+            removedTickets: removed,
+            prunedCampaigns
+        };
     },
 
     addCampaign(entry) {

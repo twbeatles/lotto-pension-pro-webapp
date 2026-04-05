@@ -259,6 +259,50 @@ function runImmediateTicketSettlementRegression() {
     );
 }
 
+async function runTicketReconcileRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+    dm.markDirty = () => {};
+    dm.state.ticketBook = [
+        dm.normalizeTicketEntry({
+            id: 'ticket_checked_past',
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1209,
+            source: 'import',
+            checked: { drawNo: 1209, rank: 1, checkedAt: '2026-03-08T00:00:00.000Z' }
+        }),
+        dm.normalizeTicketEntry({
+            id: 'ticket_checked_future',
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1210,
+            source: 'import',
+            checked: { drawNo: 1210, rank: 1, checkedAt: '2026-03-08T00:00:00.000Z' }
+        })
+    ].filter(Boolean);
+    dm.state.winningStats = [{
+        draw_no: 1209,
+        date: '2026-03-07',
+        numbers: [7, 8, 9, 10, 11, 12],
+        bonus: 13
+    }];
+
+    const summary = await dm.reconcileTicketChecks({ silent: true });
+
+    assert.equal(summary.rechecked, 1, 'reconcile must recompute currently drawable tickets');
+    assert.equal(summary.resetToPending, 1, 'reconcile must reset invalid checked tickets to pending');
+    assert.equal(summary.losses, 1, 'reconcile must classify recomputed losing tickets');
+    assert.equal(
+        dm.state.ticketBook.find((ticket) => ticket.id === 'ticket_checked_past')?.checked?.rank,
+        0,
+        'stale checked import ticket must be recalculated against current winning data'
+    );
+    assert.equal(
+        dm.state.ticketBook.find((ticket) => ticket.id === 'ticket_checked_future')?.checked,
+        null,
+        'checked ticket beyond the latest winning draw must be reset to pending'
+    );
+}
+
 function runCampaignResetAutofillRecoveryRegression() {
     const previousDocument = globalThis.document;
     const genTarget = createField({
@@ -343,6 +387,38 @@ function runCampaignCascadeRegression() {
     assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_b1'), false, 'linked camp_b tickets must be removed');
     assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'), true, 'orphan tickets must remain after bulk delete');
     assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_manual'), true, 'manual tickets must remain after bulk delete');
+}
+
+function runOrphanCampaignAutoCleanupRegression() {
+    const single = new DataManager();
+    single.save = () => {};
+    single.markDirty = () => {};
+    single.state.campaigns = [
+        { id: 'camp_single', name: 'Single', startDrawNo: 1210, weeks: 1, setsPerWeek: 1 }
+    ];
+    single.state.ticketBook = [
+        { id: 'ticket_single', campaignId: 'camp_single', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1210 }
+    ];
+
+    const singleResult = single.removeTicket('ticket_single');
+    assert.equal(singleResult.removed, true, 'single ticket delete must report success');
+    assert.equal(singleResult.prunedCampaigns, 1, 'single ticket delete must auto-prune orphan campaign');
+    assert.equal(single.state.campaigns.length, 0, 'single ticket delete must remove orphan campaign');
+
+    const bulk = new DataManager();
+    bulk.save = () => {};
+    bulk.markDirty = () => {};
+    bulk.state.campaigns = [
+        { id: 'camp_bulk', name: 'Bulk', startDrawNo: 1211, weeks: 1, setsPerWeek: 1 }
+    ];
+    bulk.state.ticketBook = [
+        { id: 'ticket_bulk', campaignId: 'camp_bulk', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1211 }
+    ];
+
+    const bulkResult = bulk.clearTicketBook('all');
+    assert.equal(bulkResult.removedTickets, 1, 'bulk ticket clear must remove matching tickets');
+    assert.equal(bulkResult.prunedCampaigns, 1, 'bulk ticket clear must auto-prune orphan campaigns');
+    assert.equal(bulk.state.campaigns.length, 0, 'bulk ticket clear must leave no orphan campaigns');
 }
 
 function runCheckTargetDrawRegression() {
@@ -447,6 +523,206 @@ function runStoredListNormalizationRegression() {
 
         if (previousStorage === undefined) delete globalThis.localStorage;
         else globalThis.localStorage = previousStorage;
+    }
+}
+
+function runLocalUpdatesFutureGuardRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+    dm.state.syncMeta = dm.getDefaultSyncMeta();
+    const est = estimateLatestDrawKST();
+
+    const manual = dm.setLocalUpdates([
+        { draw_no: est, date: '2026-03-01', numbers: [1, 2, 3, 4, 5, 6], bonus: 7 },
+        { draw_no: est + 3, date: '2026-03-08', numbers: [8, 9, 10, 11, 12, 13], bonus: 14 }
+    ], { warningMode: 'manual' });
+
+    assert.equal(manual.items.length, 1, 'future local updates must be dropped when saving');
+    assert.equal(manual.droppedFuture, 1, 'future local update count must be reported');
+    assert.equal(manual.items[0].draw_no, est, 'allowed local update must be preserved');
+    assert.match(dm.state.syncMeta.lastWarningMessage, /로컬 업데이트 1개를 제외/, 'future local update drop must surface a warning');
+}
+
+async function runHistoryActualLogRegression() {
+    const previousDocument = globalThis.document;
+    const previousToast = UIManager.toast;
+    const importMode = createField({ value: 'merge' });
+    const importApplyTheme = createField();
+    const importApplyProxy = createField();
+    const importApplyStrategyPrefs = createField();
+    const importApplyAlerts = createField();
+    const toasts = [];
+
+    UIManager.toast = (message, type = 'info') => {
+        toasts.push(`${type}:${message}`);
+    };
+
+    globalThis.document = createDocumentStub({
+        '#importMode': importMode,
+        '#importApplyTheme': importApplyTheme,
+        '#importApplyProxy': importApplyProxy,
+        '#importApplyStrategyPrefs': importApplyStrategyPrefs,
+        '#importApplyAlerts': importApplyAlerts,
+        '#customProxyUrl': createField(),
+        '#toast-container': null
+    });
+
+    try {
+        const generatorData = new DataManager();
+        generatorData.save = () => {};
+        generatorData.markDirty = () => {};
+        generatorData.state.generated = [
+            [1, 2, 3, 4, 5, 6],
+            [1, 2, 3, 4, 5, 6]
+        ];
+        generatorData.state.history = [];
+
+        GeneratorModule.prototype.saveAll.call({
+            data: generatorData,
+            app: {
+                renderDataLists() {}
+            }
+        });
+
+        assert.equal(generatorData.state.history.length, 2, 'saveAll must preserve duplicate generated sets as separate history logs');
+        assert.deepEqual(
+            generatorData.state.history.map((entry) => entry.numbers),
+            [
+                [1, 2, 3, 4, 5, 6],
+                [1, 2, 3, 4, 5, 6]
+            ],
+            'saveAll must append every generated set to history even when numbers match'
+        );
+
+        const payload = {
+            version: 3,
+            favorites: [],
+            history: [
+                { numbers: [1, 2, 3, 4, 5, 6], date: '2026-04-03T00:00:00.000Z' },
+                { numbers: [1, 2, 3, 4, 5, 6], date: '2026-04-02T00:00:00.000Z' }
+            ],
+            ticketBook: [],
+            campaigns: [],
+            alertPrefs: {},
+            settings: {},
+            localUpdates: [],
+            strategyPresets: []
+        };
+        const file = {
+            async text() {
+                return JSON.stringify(payload);
+            }
+        };
+
+        const importData = new DataManager();
+        importData.save = () => {};
+        importData.state.history = [
+            { numbers: [1, 2, 3, 4, 5, 6], date: '2026-04-01T00:00:00.000Z' }
+        ];
+        importData.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
+        importData.getLocalUpdates = () => [];
+
+        const ctx = Object.create(DataIOModule.prototype);
+        ctx.data = importData;
+        ctx.app = {
+            applyTheme() {},
+            renderSettingsPanel() {}
+        };
+        ctx.syncProxyInput = () => {};
+        ctx.refreshPresetSelectors = () => {};
+        ctx.runPostImportRefresh = async () => {};
+
+        await DataIOModule.prototype.importAll.call(ctx, {
+            currentTarget: {
+                files: [file],
+                value: 'history-merge.json'
+            }
+        });
+
+        assert.equal(importData.state.history.length, 3, 'merge import must preserve duplicate history entries as distinct logs');
+        assert.deepEqual(
+            importData.state.history.map((entry) => entry.date),
+            [
+                '2026-04-03T00:00:00.000Z',
+                '2026-04-02T00:00:00.000Z',
+                '2026-04-01T00:00:00.000Z'
+            ],
+            'merge import must sort combined history logs by newest date first'
+        );
+        assert.ok(
+            toasts.some((item) => item.includes('히스토리 저장 완료') || item.includes('병합 가져오기 완료')),
+            'history regression should still emit save/import success feedback'
+        );
+    } finally {
+        UIManager.toast = previousToast;
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runClearLocalUpdatesReconcileRegression() {
+    const previousDocument = globalThis.document;
+    const statusText = createField();
+    const statusDot = createField({ style: {} });
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+            if (selector === '.dot') return statusDot;
+            return null;
+        }
+    };
+
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+        dm.save = () => {};
+        dm.state.syncMeta = dm.mergeSyncMeta({
+            ...dm.getDefaultSyncMeta(),
+            mode: 'custom_proxy',
+            currentSource: '정적 JSON + 로컬 업데이트',
+            lastSuccessAt: '2026-04-01T00:00:00.000Z',
+            lastSuccessDrawNo: 1210
+        });
+        dm.state.ticketBook = [
+            dm.normalizeTicketEntry({
+                id: 'ticket_checked_latest',
+                numbers: [1, 2, 3, 4, 5, 6],
+                targetDrawNo: 1210,
+                source: 'import',
+                checked: { drawNo: 1210, rank: 1, checkedAt: '2026-04-01T00:00:00.000Z' }
+            })
+        ].filter(Boolean);
+        dm.localUpdatesCache = [{
+            draw_no: 1210,
+            date: '2026-04-01',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }];
+        dm.clearLocalUpdates();
+        dm.fetchWithTimeout = async () => ({
+            ok: true,
+            async json() {
+                return {
+                    data: [{
+                        draw_no: 1209,
+                        date: '2026-03-29',
+                        numbers: [7, 8, 9, 10, 11, 12],
+                        bonus: 13
+                    }]
+                };
+            }
+        });
+
+        const loaded = await dm.fetchWinningStats({ notifyTicketSettle: false });
+        assert.equal(loaded, true, 'winning stats reload must succeed after clearing local updates');
+        assert.equal(dm.state.ticketBook[0].checked, null, 'clearing local updates must reset invalid checked tickets to pending');
+        assert.equal(dm.state.syncMeta.lastSuccessDrawNo, 1209, 'sync meta last success draw must clamp to current effective latest draw');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
     }
 }
 
@@ -691,14 +967,11 @@ async function runSyncLatestWinRefreshRegression() {
         dm.getLocalUpdates = () => [];
         dm.setLocalUpdates = (items) => {
             calls.push(`setLocalUpdates:${items.length}`);
+            return { items, droppedFuture: 0 };
         };
         dm.fetchWinningStats = async () => {
             calls.push('fetchWinningStats');
             return true;
-        };
-        dm.settlePendingTickets = async () => {
-            calls.push('settlePendingTickets');
-            return { settled: 0, wins: 0, latestDrawNo: estNo };
         };
         dm.app = {
             updateLatestWin() {
@@ -714,7 +987,6 @@ async function runSyncLatestWinRefreshRegression() {
         assert.deepEqual(calls, [
             'setLocalUpdates:1',
             'fetchWinningStats',
-            'settlePendingTickets',
             'updateLatestWin',
             'refreshCurrentRoute'
         ], 'sync success must refresh latest win card before route refresh');
@@ -883,7 +1155,7 @@ async function runImportAlertOptionRegression() {
             notifyOnNewResult: true
         };
         mergeData.save = () => {};
-        mergeData.setLocalUpdates = () => {};
+        mergeData.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
         mergeData.getLocalUpdates = () => [];
         const mergeCtx = createImportContext(mergeData);
 
@@ -913,7 +1185,7 @@ async function runImportAlertOptionRegression() {
             notifyOnNewResult: true
         };
         overwriteData.save = () => {};
-        overwriteData.setLocalUpdates = () => {};
+        overwriteData.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
         overwriteData.getLocalUpdates = () => [];
         const overwriteCtx = createImportContext(overwriteData);
 
@@ -1007,7 +1279,7 @@ async function runImportOrphanCampaignCleanupRegression() {
             checked: null
         }];
         data.save = () => {};
-        data.setLocalUpdates = () => {};
+        data.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
         data.getLocalUpdates = () => [];
 
         const ctx = Object.create(DataIOModule.prototype);
@@ -1793,10 +2065,15 @@ export {
     runQrValidationRegression,
     runTicketDedupeRegression,
     runImmediateTicketSettlementRegression,
+    runTicketReconcileRegression,
     runCampaignResetAutofillRecoveryRegression,
     runCampaignCascadeRegression,
+    runOrphanCampaignAutoCleanupRegression,
     runCheckTargetDrawRegression,
     runStoredListNormalizationRegression,
+    runLocalUpdatesFutureGuardRegression,
+    runHistoryActualLogRegression,
+    runClearLocalUpdatesReconcileRegression,
     runRequestNumbersRegression,
     runTargetDrawAutofillRegression,
     runLatestWinPlaceholderRegression,

@@ -5,11 +5,11 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-03-27`
+- Date: `2026-04-05`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-03-25.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md`
 
 ## Current Snapshot
 
@@ -23,9 +23,13 @@ Use it as the fast-start reference for the current structure and workflow.
 - Service worker cache version:
   - `v17`
 - Recent consistency fixes:
+  - `reconcileTicketChecks()` revalidates stored `checked` tickets after sync/import/local-update cleanup
+  - future local updates are sanitized, deduped, and capped at `estimateLatestDrawKST() + 2`
+  - `syncMeta.lastSuccessDrawNo` now clamps to effective winning data
+  - orphan campaigns are pruned after import as well as ticket delete / ticket-book clear
+  - history now preserves duplicate actual-log entries instead of number-unique snapshots
   - immediate settlement for already-drawn tickets
   - generator campaign reset restores target-draw auto-follow metadata
-  - merge/overwrite import cleans orphan campaigns and reports cleanup counts
 - Styles:
   - `assets/app.css` is the aggregate entrypoint
   - actual style slices live in `assets/styles/*.css`
@@ -70,6 +74,8 @@ Use it as the fast-start reference for the current structure and workflow.
 - `data/winning_stats.json` is install-precached for offline stability.
 - Invalid single-draw payload shapes now emit `SYNC_FETCH_ONE_INVALID_PAYLOAD` and are surfaced via `syncMeta.lastWarningMessage`.
 - Merge/overwrite import prunes orphan campaigns and includes the cleanup count in the completion toast.
+- Ticket delete / clear flows also prune orphan campaigns and append cleanup counts to success feedback.
+- Clearing local updates rebuilds `winningStats`, clamps sync metadata, and resets stale `checked` tickets back to pending when needed.
 - `refreshCurrentRoute()` applies a stale guard so async refresh work from an old route does not render after a tab switch.
 - Leaving the `check` route stops the QR scanner, and clicking the scanner backdrop closes it.
 - AI recommendations now also:
@@ -100,9 +106,13 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning metadata rendering
 - `assets/modules/core/data/records.js`
-  - immediate settlement for past-draw tickets
+  - actual-log history merge and orphan-campaign pruning helpers
+- `assets/modules/core/data/analytics.js`
+  - `reconcileTicketChecks()` for whole-ticket settlement revalidation
+- `assets/modules/core/data/persistence.js`
+  - local-update sanitization and sync-meta clamping
 - `assets/modules/core/data/sync.js`
-  - single-draw payload diagnostics and sync warning tracking
+  - single-draw payload diagnostics, sync warning tracking, and post-refresh ticket reconciliation
 - `assets/modules/features/Check.js`
   - card-list based check flow and scanned/ticket filter handling
 - `assets/modules/features/backtest/ui.js`
@@ -162,6 +172,7 @@ Official supported custom proxy shape:
 python -m http.server 5173
 npm install
 npm run lint
+npm run build
 node scripts/smoke/smoke.mjs
 npm run bench:ai
 ```
@@ -182,11 +193,13 @@ Local URL:
 8. backup/import behavior
 9. save a past-draw ticket and verify it settles immediately
 10. reset campaign options and verify target-draw auto-follow resumes
-11. backup/import including orphan-campaign cleanup toast counts
-12. proxy unset/set sync policy and invalid payload diagnostics
-13. data-page local update cleanup flow
-14. common confirm modal flows for destructive actions and preset overwrite/delete
-15. service worker update acceptance and reload
+11. backup/import including orphan-campaign cleanup toast counts and duplicate history preservation
+12. clear local updates and verify stale checked tickets reset + applied draw clamps correctly
+13. delete the last campaign-linked ticket and verify the orphan campaign disappears immediately
+14. proxy unset/set sync policy and invalid payload diagnostics
+15. data-page local update cleanup flow
+16. common confirm modal flows for destructive actions and preset overwrite/delete
+17. service worker update acceptance and reload
 
 ## Session Template
 

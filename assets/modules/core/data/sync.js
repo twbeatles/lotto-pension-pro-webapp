@@ -129,7 +129,8 @@ export const dataSyncMethods = {
                 updatedAt: new Date().toISOString()
             };
 
-            await this.settlePendingTickets({ silent: !notifyTicketSettle });
+            this.clampSyncMetaToWinningStats({ immediate: false });
+            await this.reconcileTicketChecks({ silent: !notifyTicketSettle });
 
             const freshness = this.getDataFreshness();
             if (freshness.latestDrawNo > 0 && freshness.isStale) {
@@ -630,17 +631,15 @@ export const dataSyncMethods = {
             const updatedCount = newItems.length;
 
             if (updatedCount > 0) {
-                const currentUpdates = this.getLocalUpdates();
+                const currentUpdates = this.getLocalUpdates({ warningMode: profile.toast ? 'manual' : 'auto' });
                 const merged = [...currentUpdates, ...newItems];
                 const unique = Array.from(new Map(merged.map(item => [item.draw_no, item])).values());
-                this.setLocalUpdates(unique);
+                const localUpdateResult = this.setLocalUpdates(unique, {
+                    warningMode: profile.toast ? 'manual' : 'auto'
+                });
 
                 log(UI_STRINGS.sync.logApplied(updatedCount), 'SYNC_APPLIED', { updatedCount });
                 await this.fetchWinningStats({ notifyTicketSettle: false });
-                await this.settlePendingTickets({
-                    silent: profile.settleSilent,
-                    requestSystemNotification: profile.requestSystemNotification
-                });
                 this.markSyncSuccess({
                     drawNo: this.state.winningStats[0]?.draw_no || latestKnown,
                     source: syncSource,
@@ -648,7 +647,9 @@ export const dataSyncMethods = {
                 });
                 this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
-                if (profile.toast) UIManager.toast(UI_STRINGS.sync.updatedCount(updatedCount), 'success');
+                if (profile.toast) {
+                    UIManager.toast(UI_STRINGS.sync.updatedCount(updatedCount, localUpdateResult.droppedFuture), 'success');
+                }
                 clearWarningOnSuccess = true;
             } else {
                 if (latestKnown < estNo) {

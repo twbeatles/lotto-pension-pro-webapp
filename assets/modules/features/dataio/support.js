@@ -62,10 +62,7 @@ export const dataIoSupportMethods = {
     },
 
     normalizeLocalUpdates(items) {
-        if (!Array.isArray(items)) return [];
-        return items
-            .map((x) => this.data.normalizeDrawItem(x))
-            .filter(Boolean);
+        return this.data.sanitizeLocalUpdates(items);
     },
 
     normalizeStrategyPresets(items) {
@@ -82,6 +79,10 @@ export const dataIoSupportMethods = {
             merged.unshift(x);
         });
         return merged;
+    },
+
+    mergeHistoryEntries(existing, incoming) {
+        return this.data.mergeHistoryEntries(existing, incoming);
     },
 
     mergeTickets(existing, incoming) {

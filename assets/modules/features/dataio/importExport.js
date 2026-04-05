@@ -25,7 +25,8 @@ export const dataIoImportMethods = {
             const incomingTickets = this.normalizeTicketItems(normalized.ticketBook);
             const incomingCampaigns = this.normalizeCampaignItems(normalized.campaigns);
             const incomingAlertPrefs = this.data.mergeAlertPrefs(normalized.alertPrefs || {});
-            const incomingLocalUpdates = this.normalizeLocalUpdates(normalized.localUpdates);
+            const incomingLocalUpdateResult = this.normalizeLocalUpdates(normalized.localUpdates);
+            const incomingLocalUpdates = incomingLocalUpdateResult.items;
             const incomingStrategyPresets = this.normalizeStrategyPresets(normalized.strategyPresets);
             const importOptions = this.getImportOptionsFromUI();
             const merge = importOptions.mode === 'merge';
@@ -55,16 +56,15 @@ export const dataIoImportMethods = {
                 );
 
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
-                this.data.state.history = this.mergeByNumbers(this.data.state.history, incomingHist);
+                this.data.state.history = this.mergeHistoryEntries(this.data.state.history, incomingHist);
                 const mergedTickets = this.mergeTickets(this.data.state.ticketBook, incomingTickets);
                 const mergedCampaigns = this.mergeCampaigns(this.data.state.campaigns, incomingCampaigns);
-                const mergeCampaignCleanup = this.pruneCampaignsWithoutTickets(
-                    mergedCampaigns,
-                    mergedTickets,
-                    incomingCampaignIds
-                );
                 this.data.state.ticketBook = mergedTickets;
-                this.data.state.campaigns = mergeCampaignCleanup.campaigns;
+                this.data.state.campaigns = mergedCampaigns;
+                const mergeCampaignCleanup = this.data.pruneOrphanCampaigns({
+                    targetIds: incomingCampaignIds,
+                    save: false
+                });
                 if (importOptions.applyAlerts) {
                     this.data.state.alertPrefs = this.data.mergeAlertPrefs({
                         ...this.data.state.alertPrefs,
@@ -72,8 +72,11 @@ export const dataIoImportMethods = {
                     });
                 }
 
-                const mergedUpdates = this.mergeLocalUpdates(this.data.getLocalUpdates(), incomingLocalUpdates);
-                this.data.setLocalUpdates(mergedUpdates);
+                const mergedUpdateResult = this.data.setLocalUpdates(
+                    this.mergeLocalUpdates(this.data.getLocalUpdates({ warningMode: 'manual' }), incomingLocalUpdates),
+                    { warningMode: 'manual' }
+                );
+                const mergedUpdates = mergedUpdateResult.items;
 
                 this.data.state.strategyPresets = this.mergeStrategyPresets(
                     this.data.state.strategyPresets,
@@ -110,14 +113,15 @@ export const dataIoImportMethods = {
                     duplicate: duplicateTotal,
                     skipped: skippedTotal,
                     applied: appliedSettings,
-                    cleaned: prunedCampaigns
+                    cleaned: prunedCampaigns,
+                    futureDropped: incomingLocalUpdateResult.droppedFuture
                 }), 'success');
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
                 this.data.state.ticketBook = incomingTickets;
-                const overwriteCampaignCleanup = this.pruneCampaignsWithoutTickets(incomingCampaigns, incomingTickets);
-                this.data.state.campaigns = overwriteCampaignCleanup.campaigns;
+                this.data.state.campaigns = incomingCampaigns;
+                const overwriteCampaignCleanup = this.data.pruneOrphanCampaigns({ save: false });
                 if (importOptions.applyAlerts) {
                     this.data.state.alertPrefs = incomingAlertPrefs;
                 }
@@ -127,7 +131,7 @@ export const dataIoImportMethods = {
                 if (importOptions.applyStrategyPrefs && incomingStrategyPrefs) {
                     this.data.state.strategyPrefs = this.data.mergeStrategyPrefs(incomingStrategyPrefs);
                 }
-                this.data.setLocalUpdates(incomingLocalUpdates);
+                this.data.setLocalUpdates(incomingLocalUpdates, { warningMode: 'manual' });
                 if (importOptions.applyProxy) this.syncProxyInput();
                 if (importOptions.applyTheme) this.app.applyTheme();
                 const appliedSettings = this.describeAppliedSettings(importOptions);
@@ -141,7 +145,8 @@ export const dataIoImportMethods = {
                         + incomingStrategyPresets.length,
                     skipped: prunedCampaigns,
                     applied: appliedSettings,
-                    cleaned: prunedCampaigns
+                    cleaned: prunedCampaigns,
+                    futureDropped: incomingLocalUpdateResult.droppedFuture
                 }), 'success');
             }
 

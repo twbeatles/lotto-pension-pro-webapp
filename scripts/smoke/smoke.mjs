@@ -26,7 +26,10 @@ import {
     runAutoSyncFallbackRegression,
     runBackgroundAutoSyncRegression,
     runHiddenAttributeStyleRegression,
+    runHistoryActualLogRegression,
     runImmediateTicketSettlementRegression,
+    runLocalUpdatesFutureGuardRegression,
+    runOrphanCampaignAutoCleanupRegression,
     runQrScanReentryGuardRegression,
     runQrRouteCleanupRegression,
     runQrValidationRegression,
@@ -39,9 +42,11 @@ import {
     runStoredListNormalizationRegression,
     runStrategyPresetCrudRegression,
     runStrictFilterRegression,
+    runTicketReconcileRegression,
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runBuiltInSyncProviderRegression,
+    runClearLocalUpdatesReconcileRegression,
     runImportOrphanCampaignCleanupRegression,
     runSyncLatestWinRefreshRegression,
     runWinningStatsLoadClassificationRegression,
@@ -78,9 +83,14 @@ async function main() {
     runQrValidationRegression();
     runTicketDedupeRegression();
     runImmediateTicketSettlementRegression();
+    await runTicketReconcileRegression();
     runCampaignResetAutofillRecoveryRegression();
+    runOrphanCampaignAutoCleanupRegression();
     runCheckTargetDrawRegression();
     runStoredListNormalizationRegression();
+    runLocalUpdatesFutureGuardRegression();
+    await runHistoryActualLogRegression();
+    await runClearLocalUpdatesReconcileRegression();
     runTargetDrawAutofillRegression();
     runLatestWinPlaceholderRegression();
     runStrategyPresetCrudRegression();
@@ -123,9 +133,14 @@ async function main() {
     console.log('[PASS] qr-validation regression');
     console.log('[PASS] ticket-dedupe regression');
     console.log('[PASS] immediate ticket settlement regression');
+    console.log('[PASS] ticket-reconcile regression');
     console.log('[PASS] campaign reset autofill recovery regression');
+    console.log('[PASS] orphan-campaign auto-cleanup regression');
     console.log('[PASS] check-target-draw regression');
     console.log('[PASS] stored-list-normalization regression');
+    console.log('[PASS] future local-updates guard regression');
+    console.log('[PASS] history actual-log regression');
+    console.log('[PASS] clear-local-updates reconcile regression');
     console.log('[PASS] target-draw autofill regression');
     console.log('[PASS] latest-win-placeholder regression');
     console.log('[PASS] strategy-preset-crud regression');

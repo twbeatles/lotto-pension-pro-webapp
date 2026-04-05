@@ -1,7 +1,7 @@
 # 잠재적 이슈 & 개선 필요 항목
 
 > 최초 작성: 2026-03-16
-> 최종 갱신: 2026-03-27 — UI/UX 1차 구현 및 문서 정합성 반영
+> 최종 갱신: 2026-04-05 — 데이터 정합성 2차 보강 및 문서 동기화 반영
 > 기준 커밋: `a474ce8` (분석 기준) → 현재 main (처리 완료)
 > 참조: `CLAUDE.md`, `README.md`, 전체 소스 정적 분석
 
@@ -20,6 +20,53 @@
 ---
 
 ## 2. 기능 구현 버그 / 잠재적 문제
+
+### ✅ [HIGH → DONE] stale `checked` 티켓이 최신 당첨 데이터 기준으로 재검증되지 않음
+
+**파일:** `assets/modules/core/data/analytics.js`, `assets/modules/core/data/sync.js`, `assets/modules/features/dataio/postImportRefresh.js`
+
+`reconcileTicketChecks()` 를 추가해 현재 `winningStats` 기준으로 티켓 전체를 다시 평가하도록 수정.
+해당 회차 결과가 아직 없거나 최신 회차가 티켓 회차에 도달하지 않았으면 `checked` 를 제거하고 `pending` 으로 되돌림.
+이 재정합성은 앱 초기 로드, sync 직후, Import 후 post-refresh, 로컬 업데이트 정리 후 재적재 경로에서 공통 적용.
+
+회귀 테스트 `ticket-reconcile`, `clear-local-updates reconcile` 추가 완료.
+
+---
+
+### ✅ [HIGH → DONE] 미래 회차 `localUpdates` 가 최신성 판단과 sync 메타를 오염시킬 수 있음
+
+**파일:** `assets/modules/core/data/persistence.js`, `assets/modules/core/data/sync.js`
+
+`sanitizeLocalUpdates()` 로 로컬 업데이트 정규화, 회차 dedupe, 정렬, 미래 회차 방어를 중앙화.
+허용 상한은 `estimateLatestDrawKST() + 2`.
+상한을 넘는 항목은 저장하지 않고 제외하며, `syncMeta.lastSuccessDrawNo` 도 `winningStats` 재구성 후 실제 유효 최신 회차로 clamp 되도록 보강.
+
+회귀 테스트 `future local-updates guard`, `clear-local-updates reconcile` 추가 완료.
+
+---
+
+### ✅ [MEDIUM → DONE] 티켓 삭제 후 orphan campaign 이 남을 수 있음
+
+**파일:** `assets/modules/core/data/records.js`, `assets/modules/core/app/dataLists.js`, `assets/modules/features/dataio/importExport.js`
+
+`pruneOrphanCampaigns()` 공용 로직을 도입해 Import뿐 아니라 개별 티켓 삭제와 전체 티켓 정리 후에도 orphan campaign 을 자동 제거.
+사용자 toast 에는 자동 정리된 캠페인 수가 함께 표시되도록 정리.
+
+회귀 테스트 `orphan-campaign auto-cleanup`, `import orphan-campaign cleanup` 추가 완료.
+
+---
+
+### ✅ [MEDIUM → DONE] 히스토리 dedupe 로 실제 생성/가져오기 로그가 손실됨
+
+**파일:** `assets/modules/core/data/records.js`, `assets/modules/features/generator/actions.js`, `assets/modules/features/dataio/importExport.js`
+
+`history` 저장 정책을 번호 unique 스냅샷이 아니라 actual-log 기준으로 변경.
+`saveAll()` 은 중복 번호도 그대로 기록하고, Import merge 도 기존 + incoming 로그를 날짜 내림차순으로 합치며 duplicate 를 유지.
+`favorites` 는 기존대로 번호 unique 정책을 유지.
+
+회귀 테스트 `history actual-log` 추가 완료.
+
+---
 
 ### ✅ [HIGH → DONE] localStorage.setItem() 예외 처리
 

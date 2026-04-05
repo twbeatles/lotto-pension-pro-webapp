@@ -1,5 +1,6 @@
 import { CONFIG } from '../../utils/config.js';
 import { UIManager } from '../UIManager.js';
+import { estimateLatestDrawKST } from '../../utils/utils.js';
 export const dataPersistenceMethods = {
     getCustomProxyInput() {
         return (this.state.customProxy || '').trim();
@@ -156,6 +157,57 @@ export const dataPersistenceMethods = {
         });
     },
 
+    clampSyncMetaToWinningStats({ immediate = false } = {}) {
+        const effectiveLatestDrawNo = Math.max(0, Math.floor(Number(this.state.winningStats?.[0]?.draw_no || 0)));
+        const currentLastSuccessDrawNo = Math.max(0, Math.floor(Number(this.state.syncMeta?.lastSuccessDrawNo || 0)));
+        if (currentLastSuccessDrawNo <= effectiveLatestDrawNo) {
+            return this.state.syncMeta || this.getDefaultSyncMeta();
+        }
+        return this.setSyncMeta({
+            lastSuccessDrawNo: effectiveLatestDrawNo
+        }, { immediate });
+    },
+
+    sanitizeLocalUpdates(items = []) {
+        const maxAllowedDrawNo = Math.max(1, estimateLatestDrawKST() + 2);
+        const map = new Map();
+        let droppedInvalid = 0;
+        let droppedFuture = 0;
+
+        (Array.isArray(items) ? items : []).forEach((item) => {
+            const normalized = this.normalizeDrawItem(item);
+            if (!normalized) {
+                droppedInvalid++;
+                return;
+            }
+            if (Number(normalized.draw_no) > maxAllowedDrawNo) {
+                droppedFuture++;
+                return;
+            }
+            map.set(Number(normalized.draw_no), normalized);
+        });
+
+        return {
+            items: Array.from(map.values()).sort((a, b) => Number(a.draw_no) - Number(b.draw_no)),
+            droppedInvalid,
+            droppedFuture,
+            droppedTotal: droppedInvalid + droppedFuture,
+            maxAllowedDrawNo
+        };
+    },
+
+    buildLocalUpdateWarningMessage(result = {}) {
+        const droppedFuture = Math.max(0, Number(result?.droppedFuture || 0));
+        const maxAllowedDrawNo = Math.max(0, Number(result?.maxAllowedDrawNo || 0));
+        if (!droppedFuture) return '';
+        return `예상 최신 회차 기준보다 앞선 로컬 업데이트 ${droppedFuture}개를 제외했습니다. (허용 상한 ${maxAllowedDrawNo}회)`;
+    },
+
+    isLocalUpdateWarningMessage(message = '') {
+        const text = String(message || '');
+        return text.includes('로컬 업데이트') && text.includes('허용 상한');
+    },
+
     getStorageSummary() {
         if (typeof localStorage === 'undefined') {
             return {
@@ -222,7 +274,8 @@ export const dataPersistenceMethods = {
         };
     },
 
-    getLocalUpdates() {
+    getLocalUpdates(options = {}) {
+        const warningMode = String(options?.warningMode || 'auto');
         if (typeof localStorage === 'undefined') {
             if (!Array.isArray(this.localUpdatesCache)) this.localUpdatesCache = [];
             return this.localUpdatesCache;
@@ -233,20 +286,40 @@ export const dataPersistenceMethods = {
             [],
             CONFIG.KEYS.LOCAL_UPDATES
         );
-        this.localUpdatesCache = Array.isArray(parsed) ? parsed : [];
+        const sanitized = this.sanitizeLocalUpdates(parsed);
+        this.localUpdatesCache = sanitized.items;
+        if (JSON.stringify(this.localUpdatesCache) !== JSON.stringify(Array.isArray(parsed) ? parsed : [])) {
+            this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
+        }
+        if (warningMode !== 'silent') {
+            const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
+            if (warningMessage) this.markSyncWarning(warningMessage);
+            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) this.markSyncWarning('');
+        }
         return this.localUpdatesCache;
     },
 
-    setLocalUpdates(items = []) {
-        this.localUpdatesCache = Array.isArray(items) ? items : [];
+    setLocalUpdates(items = [], options = {}) {
+        const warningMode = String(options?.warningMode || 'auto');
+        const sanitized = this.sanitizeLocalUpdates(items);
+        this.localUpdatesCache = sanitized.items;
         if (typeof localStorage !== 'undefined') {
             this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
         }
+        if (warningMode !== 'silent') {
+            const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
+            if (warningMessage) this.markSyncWarning(warningMessage);
+            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) this.markSyncWarning('');
+        }
         this.app?.renderSettingsPanel?.();
+        return sanitized;
     },
 
     clearLocalUpdates() {
-        this.setLocalUpdates([]);
+        this.setLocalUpdates([], { warningMode: 'silent' });
+        if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) {
+            this.markSyncWarning('');
+        }
         return true;
     },
 
@@ -313,6 +386,7 @@ export const dataPersistenceMethods = {
             let needsPersist = false;
             const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', [], CONFIG.KEYS.FAV);
             const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', [], CONFIG.KEYS.HIST);
+            const rawLocalUpdates = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.LOCAL_UPDATES) || '[]', [], CONFIG.KEYS.LOCAL_UPDATES);
 
             const normalizedFavorites = Array.isArray(rawFavorites)
                 ? rawFavorites.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
@@ -320,9 +394,11 @@ export const dataPersistenceMethods = {
             const normalizedHistory = Array.isArray(rawHistory)
                 ? rawHistory.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
                 : [];
+            const normalizedLocalUpdates = this.sanitizeLocalUpdates(rawLocalUpdates);
 
             if (!Array.isArray(rawFavorites) || JSON.stringify(normalizedFavorites) !== JSON.stringify(rawFavorites)) needsPersist = true;
             if (!Array.isArray(rawHistory) || JSON.stringify(normalizedHistory) !== JSON.stringify(rawHistory)) needsPersist = true;
+            if (!Array.isArray(rawLocalUpdates) || JSON.stringify(normalizedLocalUpdates.items) !== JSON.stringify(rawLocalUpdates)) needsPersist = true;
 
             this.state.favorites = normalizedFavorites;
             this.state.history = normalizedHistory;
@@ -359,8 +435,24 @@ export const dataPersistenceMethods = {
             this.state.alertPrefs = normalizedAlertPrefs;
             this.state.strategyPresets = normalizedStrategyPresets;
             this.state.syncMeta = normalizedSyncMeta;
-            this.localUpdatesCache = null;
-            this.getLocalUpdates();
+            this.localUpdatesCache = normalizedLocalUpdates.items;
+
+            const localUpdateWarning = this.buildLocalUpdateWarningMessage(normalizedLocalUpdates);
+            if (localUpdateWarning) {
+                this.state.syncMeta = this.mergeSyncMeta({
+                    ...(this.state.syncMeta || this.getDefaultSyncMeta()),
+                    lastWarningAt: new Date().toISOString(),
+                    lastWarningMessage: localUpdateWarning
+                });
+                needsPersist = true;
+            } else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) {
+                this.state.syncMeta = this.mergeSyncMeta({
+                    ...(this.state.syncMeta || this.getDefaultSyncMeta()),
+                    lastWarningAt: '',
+                    lastWarningMessage: ''
+                });
+                needsPersist = true;
+            }
 
             // Legacy proxy settings migration (v1 -> v2)
             const legacyProxy = this.readLegacyProxyUrl();
@@ -372,6 +464,7 @@ export const dataPersistenceMethods = {
             if (needsPersist) {
                 this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
                 this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
+                this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
                 this.persistSettings();
                 this.persistExtendedData();
                 this.persistSyncMeta();

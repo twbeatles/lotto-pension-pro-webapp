@@ -36,24 +36,27 @@ export const UI_STRINGS = {
         backupExported: '백업 파일(v3)을 내보냈습니다.',
         importUnsupported: '지원되지 않는 백업 형식입니다.',
         importInvalid: '백업 파일을 읽지 못했습니다.',
-        mergeComplete({ added = 0, duplicate = 0, skipped = 0, applied = [], cleaned = 0 } = {}) {
+        mergeComplete({ added = 0, duplicate = 0, skipped = 0, applied = [], cleaned = 0, futureDropped = 0 } = {}) {
             const cleanupSuffix = cleaned > 0 ? `, 정리 ${cleaned}개 캠페인` : '';
+            const futureSuffix = futureDropped > 0 ? `, 미래 회차 제외 ${futureDropped}건` : '';
             const suffix = applied.length ? `, 적용: ${applied.join('/')}` : '';
-            return `병합 가져오기를 완료했습니다. 추가 ${added}건, 중복 ${duplicate}건, 건너뜀 ${skipped}건${cleanupSuffix}${suffix}`;
+            return `병합 가져오기를 완료했습니다. 추가 ${added}건, 중복 ${duplicate}건, 건너뜀 ${skipped}건${cleanupSuffix}${futureSuffix}${suffix}`;
         },
-        overwriteComplete({ added = 0, skipped = 0, applied = [], cleaned = 0 } = {}) {
+        overwriteComplete({ added = 0, skipped = 0, applied = [], cleaned = 0, futureDropped = 0 } = {}) {
             const skippedSuffix = skipped > 0 ? `, 건너뜀 ${skipped}건` : '';
             const cleanupSuffix = cleaned > 0 ? `, 정리 ${cleaned}개 캠페인` : '';
+            const futureSuffix = futureDropped > 0 ? `, 미래 회차 제외 ${futureDropped}건` : '';
             const suffix = applied.length ? `, 적용: ${applied.join('/')}` : '';
-            return `덮어쓰기 가져오기를 완료했습니다. 반영 ${added}건${skippedSuffix}${cleanupSuffix}${suffix}`;
+            return `덮어쓰기 가져오기를 완료했습니다. 반영 ${added}건${skippedSuffix}${cleanupSuffix}${futureSuffix}${suffix}`;
         }
     },
     sync: {
         alreadyRunning: '이미 동기화가 진행 중입니다.',
         cancelled: '동기화를 취소했습니다.',
         upToDate: '이미 최신 상태입니다.',
-        updatedCount(count = 0) {
-            return `${count}개 회차 업데이트를 반영했습니다.`;
+        updatedCount(count = 0, futureDropped = 0) {
+            const futureSuffix = futureDropped > 0 ? ` 미래 회차 로컬 업데이트 ${futureDropped}개 제외.` : '';
+            return `${count}개 회차 업데이트를 반영했습니다.${futureSuffix}`;
         },
         latestUnavailable: '최신 회차를 확인하지 못했습니다.',
         genericError: '동기화 중 오류가 발생했습니다.',

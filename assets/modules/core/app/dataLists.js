@@ -34,8 +34,9 @@ export const appDataListMethods = {
                 message: `${visibleCount}개 티켓이 삭제됩니다.`
             });
             if (!confirmed) return;
-            const removed = this.data.clearTicketBook(filter);
-            UIManager.toast(`${removed}개 티켓 삭제`, removed > 0 ? 'success' : 'info');
+            const result = this.data.clearTicketBook(filter);
+            const cleanupSuffix = result.prunedCampaigns > 0 ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리` : '';
+            UIManager.toast(`${result.removedTickets}개 티켓 삭제${cleanupSuffix}`, result.removedTickets > 0 ? 'success' : 'info');
             this.renderDataLists();
         });
 
@@ -217,7 +218,10 @@ export const appDataListMethods = {
                 if (action === 'copy') UIManager.copyNumbers(item.numbers);
                 if (action === 'qr') UIManager.showQR(item.numbers);
                 if (action === 'delete' && source === 'ticket') {
-                    this.data.removeTicket(item.id);
+                    const result = this.data.removeTicket(item.id);
+                    if (result.removed && result.prunedCampaigns > 0) {
+                        UIManager.toast(`티켓 삭제 후 캠페인 ${result.prunedCampaigns}개를 자동 정리했습니다.`, 'success');
+                    }
                     this.renderDataLists();
                 }
             });

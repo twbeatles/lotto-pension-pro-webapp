@@ -235,21 +235,16 @@ export const generatorActionMethods = {
 
     saveAll() {
         if (!this.data.state.generated.length) return;
-        let count = 0;
-        this.data.state.generated.forEach(nums => {
-            // Check History dupes
-            const key = nums.join(',');
-            if (!this.data.state.history.some(h => h.numbers.join(',') === key)) {
-                this.data.state.history.unshift({ numbers: nums, date: new Date().toISOString() });
-                count++;
-            }
-        });
-        if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
-            this.data.state.history = this.data.state.history.slice(0, CONFIG.LIMITS.MAX_HIST);
-        }
+        const createdAt = new Date().toISOString();
+        const nextEntries = this.data.state.generated.map((nums) => ({
+            numbers: nums,
+            date: createdAt
+        }));
+        this.data.state.history = this.data.mergeHistoryEntries(nextEntries, this.data.state.history)
+            .slice(0, CONFIG.LIMITS.MAX_HIST);
         this.data.markDirty?.('hist');
         this.data.save();
-        UIManager.toast(`${count}개 세트 히스토리 저장 완료`, 'success');
+        UIManager.toast(`${nextEntries.length}개 세트 히스토리 저장 완료`, 'success');
         if (this.app.renderDataLists) this.app.renderDataLists();
     }
 };

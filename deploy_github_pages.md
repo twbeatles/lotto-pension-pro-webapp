@@ -28,10 +28,14 @@
 - 설치 시 `data/winning_stats.json`은 서비스워커 data cache에 precache됨
 - 과거 회차 티켓을 저장하거나 가져올 때 이미 당첨 데이터가 있으면 즉시 정산됨
 - `reconcileTicketChecks()` 가 앱 초기 로드, 최신 회차 sync 직후, Import 후 post-refresh, 로컬 업데이트 정리 후 reload 시 `checked` 상태를 재검증함
+- Import 후에는 백업에 저장되지 않은 `syncMeta` 를 `local_restore` 모드로 다시 구성함
 - 미래 회차 `localUpdates` 는 `estimateLatestDrawKST() + 2` 상한을 넘으면 저장하지 않고 제외함
 - `syncMeta.lastSuccessDrawNo` 는 실제 유효 최신 회차보다 높게 남지 않도록 clamp 됨
+- 정적 JSON 이 실패하면 `localUpdates` 만으로 recent draw 를 복원해 `partial recovery` 상태가 될 수 있음
+- partial 상태에서는 `gen/check/data` 는 유지되지만 `stats/ai/bt` 는 gate UI 로 제한됨
 - Merge/Overwrite Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됨
 - 마지막 연결 티켓이 삭제되거나 티켓북 전체 정리 후에도 orphan campaign 은 자동 정리됨
+- 티켓북 동일 조합은 grouped row + `quantity` 로 저장되며, 삭제/요약/캠페인 카운트는 실제 티켓 수량 기준으로 계산됨
 - 히스토리는 번호 unique 스냅샷이 아니라 실제 저장/가져오기 로그를 유지함
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
@@ -81,6 +85,8 @@
 - `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
 - 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산, `assets/styles/*.css`, 분할된 `assets/modules/core/*`, `assets/modules/features/*` 내부 모듈도 precache 대상입니다.
 - 첫 설치에서는 자동 reload 하지 않으며, 업데이트 reload은 사용자가 토스트에서 수락한 경우에만 수행됩니다.
+- 멀티탭 환경에서는 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 activation-complete 신호를 전파합니다.
+- 다른 탭은 이 activation-complete 신호를 받은 뒤에만 reload 되어 조기 reload 를 피합니다.
 
 배포 후 반영 확인:
 

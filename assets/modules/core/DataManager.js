@@ -25,6 +25,7 @@ export class DataManager {
             alertPrefs: this.getDefaultAlertPrefs(),
             syncMeta: this.getDefaultSyncMeta()
         };
+        this.dataHealth = this.getDefaultDataHealth();
         this._saveTimer = null;
         this._dirtyKeys = {
             fav: false,
@@ -41,6 +42,7 @@ export class DataManager {
         this.RANGE_CHUNK_CONCURRENCY = 2;
         this.FALLBACK_FETCH_CONCURRENCY = 3;
         this.SYNC_FETCH_TIMEOUT_MS = 4500;
+        this.PARTIAL_RECOVERY_WINDOW = 24;
         this.STORAGE_WARNING_BYTES = 350000;
         this.STORAGE_DANGER_BYTES = 900000;
         this.syncInFlightPromise = null;

@@ -47,11 +47,18 @@ export const appLatestDrawMethods = {
         // Format Currency
         const fmtMoney = (n) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(n);
         const fmtCount = (n) => new Intl.NumberFormat('ko-KR').format(n);
+        const freshness = this.data.getDataFreshness?.() || {};
+        const freshnessNote = freshness.isPartial
+            ? `<span class="badge status-badge is-warn">부분 복구</span><span>최근 일부 회차만 사용할 수 있습니다.</span>`
+            : freshness.isStale
+                ? `<span class="badge status-badge is-warn">${freshness.behindBy}회차 지연</span><span>최신 회차와 차이가 있을 수 있습니다.</span>`
+                : '';
 
         $('#latestWinMeta').innerHTML = `
             <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
                 <span>${latest.date} 추첨</span>
                 ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
+                ${freshnessNote ? `<span style="display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;">${freshnessNote}</span>` : ''}
             </div>
         `;
 

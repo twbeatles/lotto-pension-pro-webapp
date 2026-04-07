@@ -44,6 +44,50 @@ export const dataDefaultsMethods = {
         };
     },
 
+    getDefaultDataHealth() {
+        return {
+            availability: 'none',
+            source: 'none',
+            latestDrawNo: 0,
+            message: ''
+        };
+    },
+
+    mergeDataHealth(raw) {
+        const defaults = this.getDefaultDataHealth();
+        const input = raw && typeof raw === 'object' ? raw : {};
+        return {
+            availability: ['full', 'partial', 'none'].includes(input.availability)
+                ? input.availability
+                : defaults.availability,
+            source: ['static', 'static_local', 'local_only', 'none'].includes(input.source)
+                ? input.source
+                : defaults.source,
+            latestDrawNo: Math.max(0, Math.floor(Number(input.latestDrawNo || 0))),
+            message: typeof input.message === 'string' ? input.message.slice(0, 240) : defaults.message
+        };
+    },
+
+    setDataHealth(next = {}) {
+        this.dataHealth = this.mergeDataHealth({
+            ...(this.dataHealth || this.getDefaultDataHealth()),
+            ...(next || {})
+        });
+        this.app?.renderSettingsPanel?.();
+        return this.dataHealth;
+    },
+
+    getDataHealthSourceLabel(source = this.dataHealth?.source) {
+        if (source === 'static') return '정적 JSON';
+        if (source === 'static_local') return '정적 JSON + 로컬 업데이트';
+        if (source === 'local_only') return '로컬 업데이트만';
+        return '데이터 없음';
+    },
+
+    getLocalRestoreSourceLabel(source = this.dataHealth?.source) {
+        return `로컬 복원 (${this.getDataHealthSourceLabel(source)})`;
+    },
+
     mergeSyncMeta(raw) {
         const defaults = this.getDefaultSyncMeta();
         const input = raw && typeof raw === 'object' ? raw : {};
@@ -71,6 +115,7 @@ export const dataDefaultsMethods = {
     },
 
     getSyncModeLabel(mode = this.state.syncMeta?.mode) {
+        if (mode === 'local_restore') return '로컬 복원';
         if (mode === 'custom_proxy' || mode === 'proxy_opt_in') return '사용자 프록시';
         if (mode === 'automatic_fallback') return '기본 자동 동기화';
         return '정적 JSON 전용';

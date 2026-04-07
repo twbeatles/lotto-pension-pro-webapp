@@ -1,7 +1,23 @@
 import { CONFIG } from '../../utils/config.js';
 import { estimateLatestDrawKST } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
+
 export const dataRecordMethods = {
+    normalizeTicketQuantity(value) {
+        const quantity = Math.max(1, Math.floor(Number(value) || 1));
+        return Number.isFinite(quantity) ? quantity : 1;
+    },
+
+    getTicketQuantity(ticket) {
+        return this.normalizeTicketQuantity(ticket?.quantity);
+    },
+
+    getTotalTicketCount(tickets = this.state.ticketBook || []) {
+        return (Array.isArray(tickets) ? tickets : []).reduce((sum, ticket) => {
+            return sum + this.getTicketQuantity(ticket);
+        }, 0);
+    },
+
     normalizeNumbers(nums) {
         if (!Array.isArray(nums)) return [];
         const clean = [...new Set(nums.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))];
@@ -55,6 +71,7 @@ export const dataRecordMethods = {
             numbers,
             targetDrawNo: Math.floor(targetDrawNo),
             source,
+            quantity: this.normalizeTicketQuantity(raw.quantity),
             campaignId: (typeof raw.campaignId === 'string' && raw.campaignId.trim())
                 ? raw.campaignId.trim().slice(0, 120)
                 : '',
@@ -102,7 +119,13 @@ export const dataRecordMethods = {
             return ticket.__dedupeKey;
         }
         const strategySnapshot = ticket?.strategyRequest ? (this.stableStringify(ticket.strategyRequest) || '-') : '-';
-        const key = [ticket?.targetDrawNo, ticket?.source || '-', (ticket?.numbers || []).join(','), strategySnapshot].join('|');
+        const key = [
+            ticket?.targetDrawNo,
+            ticket?.source || '-',
+            ticket?.campaignId || '-',
+            (ticket?.numbers || []).join(','),
+            strategySnapshot
+        ].join('|');
         if (ticket && typeof ticket === 'object') {
             try {
                 Object.defineProperty(ticket, '__dedupeKey', {
@@ -111,11 +134,35 @@ export const dataRecordMethods = {
                     configurable: true,
                     enumerable: false
                 });
-            } catch (e) {
+            } catch (_e) {
                 ticket.__dedupeKey = key;
             }
         }
         return key;
+    },
+
+    mergeTicketEntries(existing = [], incoming = []) {
+        const merged = [];
+        const keyToIndex = new Map();
+
+        const pushTicket = (raw) => {
+            const ticket = this.normalizeTicketEntry(raw);
+            if (!ticket) return;
+            const key = this.buildTicketKey(ticket);
+            if (keyToIndex.has(key)) {
+                const current = merged[keyToIndex.get(key)];
+                current.quantity = this.normalizeTicketQuantity(
+                    this.getTicketQuantity(current) + this.getTicketQuantity(ticket)
+                );
+                return;
+            }
+            keyToIndex.set(key, merged.length);
+            merged.push(ticket);
+        };
+
+        (existing || []).forEach(pushTicket);
+        (incoming || []).forEach(pushTicket);
+        return merged;
     },
 
     getWinningDrawByNo(drawNo) {
@@ -148,7 +195,9 @@ export const dataRecordMethods = {
 
         let settled = 0;
         list.forEach((ticket) => {
-            if (this.settleTicketEntryIfPossible(ticket)) settled++;
+            if (this.settleTicketEntryIfPossible(ticket)) {
+                settled += this.getTicketQuantity(ticket);
+            }
         });
         return settled;
     },
@@ -201,53 +250,109 @@ export const dataRecordMethods = {
             numbers: normalized,
             targetDrawNo,
             source: options.source || 'import',
+            campaignId: options.campaignId || '',
             strategyRequest: options.strategyRequest || null,
             memo: options.memo || '',
             createdAt: new Date().toISOString(),
-            checked: null
+            checked: null,
+            quantity: 1
         });
         if (!ticket) return null;
 
         const key = this.buildTicketKey(ticket);
-        const exists = this.state.ticketBook.some((x) => this.buildTicketKey(x) === key);
-        if (exists) return null;
+        const existing = this.state.ticketBook.find((item) => this.buildTicketKey(item) === key);
+        if (existing) {
+            existing.quantity = this.normalizeTicketQuantity(this.getTicketQuantity(existing) + 1);
+            this.settleTicketsIfPossible([existing]);
+            this.markDirty('ticketBook');
+            this.save(true);
+            return {
+                ticket: existing,
+                inserted: false,
+                incremented: true,
+                quantityAdded: 1,
+                quantity: this.getTicketQuantity(existing)
+            };
+        }
 
         this.state.ticketBook.unshift(ticket);
         this.settleTicketsIfPossible([ticket]);
         this.markDirty('ticketBook');
         this.save(true);
-        return ticket;
+        return {
+            ticket,
+            inserted: true,
+            incremented: false,
+            quantityAdded: 1,
+            quantity: this.getTicketQuantity(ticket)
+        };
     },
 
     addTicketsBulk(items = [], options = {}) {
         const list = Array.isArray(items) ? items : [];
-        if (!list.length) return 0;
+        if (!list.length) {
+            return {
+                insertedRows: 0,
+                incrementedRows: 0,
+                addedQuantity: 0,
+                affectedRows: 0
+            };
+        }
 
-        const existingKeys = new Set(this.state.ticketBook.map((x) => this.buildTicketKey(x)));
-        let inserted = 0;
+        const keyToTicket = new Map(this.state.ticketBook.map((ticket) => [this.buildTicketKey(ticket), ticket]));
+        let insertedRows = 0;
+        let addedQuantity = 0;
         const insertedTickets = [];
+        const touchedTickets = [];
+        const incrementedKeys = new Set();
 
         for (const raw of list) {
             const ticket = this.normalizeTicketEntry(raw);
             if (!ticket) continue;
+
             const key = this.buildTicketKey(ticket);
-            if (existingKeys.has(key)) continue;
-            existingKeys.add(key);
+            const quantity = this.getTicketQuantity(ticket);
+            addedQuantity += quantity;
+
+            if (keyToTicket.has(key)) {
+                const current = keyToTicket.get(key);
+                current.quantity = this.normalizeTicketQuantity(this.getTicketQuantity(current) + quantity);
+                incrementedKeys.add(key);
+                touchedTickets.push(current);
+                continue;
+            }
+
+            keyToTicket.set(key, ticket);
             this.state.ticketBook.unshift(ticket);
             insertedTickets.push(ticket);
-            inserted++;
+            touchedTickets.push(ticket);
+            insertedRows++;
         }
 
-        if (inserted > 0) {
-            this.settleTicketsIfPossible(insertedTickets);
+        const incrementedRows = incrementedKeys.size;
+        if (insertedRows > 0 || incrementedRows > 0) {
+            this.settleTicketsIfPossible(touchedTickets);
             this.markDirty('ticketBook');
             this.save(true);
-            if (!options.silent) UIManager.toast(`${inserted}개 티켓 추가 완료`, 'success');
+            if (!options.silent) {
+                UIManager.toast(
+                    `티켓 ${addedQuantity}개 반영 완료 (${insertedRows}개 항목 추가${incrementedRows > 0 ? `, ${incrementedRows}개 항목 수량 증가` : ''})`,
+                    'success'
+                );
+            }
         }
-        return inserted;
+
+        return {
+            insertedRows,
+            incrementedRows,
+            addedQuantity,
+            affectedRows: insertedRows + incrementedRows
+        };
     },
 
     removeTicket(id) {
+        const target = this.state.ticketBook.find((item) => item.id === id);
+        const removedTickets = target ? this.getTicketQuantity(target) : 0;
         const before = this.state.ticketBook.length;
         this.state.ticketBook = this.state.ticketBook.filter((x) => x.id !== id);
         const removed = before - this.state.ticketBook.length;
@@ -260,6 +365,7 @@ export const dataRecordMethods = {
         }
         return {
             removed: removed > 0,
+            removedTickets: removed > 0 ? removedTickets : 0,
             prunedCampaigns
         };
     },
@@ -278,22 +384,25 @@ export const dataRecordMethods = {
         const isWin = (t) => t.checked && t.checked.rank > 0;
         const isLose = (t) => t.checked && t.checked.rank === 0;
 
-        const before = this.state.ticketBook.length;
+        const beforeRows = this.state.ticketBook.length;
+        const beforeTickets = this.getTotalTicketCount();
         if (filter === 'pending') this.state.ticketBook = this.state.ticketBook.filter((t) => !isPending(t));
         else if (filter === 'win') this.state.ticketBook = this.state.ticketBook.filter((t) => !isWin(t));
         else if (filter === 'lose') this.state.ticketBook = this.state.ticketBook.filter((t) => !isLose(t));
         else this.state.ticketBook = [];
 
-        const removed = before - this.state.ticketBook.length;
+        const removedRows = beforeRows - this.state.ticketBook.length;
+        const removedTickets = beforeTickets - this.getTotalTicketCount();
         let prunedCampaigns = 0;
-        if (removed > 0) {
+        if (removedTickets > 0) {
             this.markDirty('ticketBook');
             const cleanup = this.pruneOrphanCampaigns({ save: false });
             prunedCampaigns = cleanup.removed.length;
             this.save(true);
         }
         return {
-            removedTickets: removed,
+            removedTickets,
+            removedRows,
             prunedCampaigns
         };
     },
@@ -310,13 +419,17 @@ export const dataRecordMethods = {
     countTicketsByCampaignId(campaignId) {
         const targetId = String(campaignId || '').trim();
         if (!targetId) return 0;
-        return (this.state.ticketBook || []).filter((ticket) => ticket?.campaignId === targetId).length;
+        return (this.state.ticketBook || []).reduce((sum, ticket) => {
+            return sum + (ticket?.campaignId === targetId ? this.getTicketQuantity(ticket) : 0);
+        }, 0);
     },
 
     countTicketsByCampaignIds(campaignIds = []) {
         const ids = new Set((campaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
         if (!ids.size) return 0;
-        return (this.state.ticketBook || []).filter((ticket) => ids.has(String(ticket?.campaignId || '').trim())).length;
+        return (this.state.ticketBook || []).reduce((sum, ticket) => {
+            return sum + (ids.has(String(ticket?.campaignId || '').trim()) ? this.getTicketQuantity(ticket) : 0);
+        }, 0);
     },
 
     removeCampaign(id, { cascadeTickets = true } = {}) {
@@ -331,13 +444,13 @@ export const dataRecordMethods = {
         }
 
         const beforeCampaigns = this.state.campaigns.length;
-        const beforeTickets = this.state.ticketBook.length;
+        const beforeTickets = this.getTotalTicketCount();
         this.state.campaigns = this.state.campaigns.filter((item) => item?.id !== targetId);
 
         let removedTickets = 0;
         if (cascadeTickets) {
             this.state.ticketBook = this.state.ticketBook.filter((ticket) => ticket?.campaignId !== targetId);
-            removedTickets = beforeTickets - this.state.ticketBook.length;
+            removedTickets = beforeTickets - this.getTotalTicketCount();
         }
 
         const removedCampaign = beforeCampaigns !== this.state.campaigns.length;
@@ -361,14 +474,14 @@ export const dataRecordMethods = {
             return { removedCampaigns: 0, removedTickets: 0 };
         }
 
-        const beforeTickets = this.state.ticketBook.length;
+        const beforeTickets = this.getTotalTicketCount();
         this.state.campaigns = [];
 
         let removedTickets = 0;
         if (cascadeTickets) {
             const idSet = new Set(campaignIds.map((item) => String(item)));
             this.state.ticketBook = this.state.ticketBook.filter((ticket) => !idSet.has(String(ticket?.campaignId || '')));
-            removedTickets = beforeTickets - this.state.ticketBook.length;
+            removedTickets = beforeTickets - this.getTotalTicketCount();
         }
 
         this.markDirty('campaigns');
@@ -379,7 +492,7 @@ export const dataRecordMethods = {
 
     addToFavorites(nums) {
         const key = nums.join(',');
-        if (this.state.favorites.some(f => f.numbers.join(',') === key)) {
+        if (this.state.favorites.some((f) => f.numbers.join(',') === key)) {
             UIManager.toast('이미 즐겨찾기에 있습니다.', 'warning');
             return false;
         }

@@ -5,12 +5,13 @@ export function registerPwaLifecycle() {
 
     // BroadcastChannel: SW 업데이트 수락 신호를 모든 탭에 전파
     let updateChannel = null;
+    const channelClientId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     try {
         if (typeof BroadcastChannel !== 'undefined') {
             updateChannel = new BroadcastChannel(SW_UPDATE_CHANNEL);
             updateChannel.addEventListener('message', (e) => {
-                if (e.data?.type === 'SW_UPDATED') {
-                    // 다른 탭에서 업데이트를 수락했으면 이 탭도 새로고침
+                if (e.data?.type === 'SW_ACTIVATED' && e.data?.senderId !== channelClientId) {
+                    // 다른 탭에서 새 워커 활성화가 끝난 뒤에만 새로고침
                     window.location.reload();
                 }
             });
@@ -58,8 +59,6 @@ export function registerPwaLifecycle() {
         if (reloadBtn) {
             reloadBtn.onclick = () => {
                 reloadOnControllerChange = true;
-                // 다른 탭에도 업데이트 신호 전파
-                try { updateChannel?.postMessage({ type: 'SW_UPDATED' }); } catch (_e) { /* 채널 전송 실패 무시 */ }
                 worker.postMessage({ action: 'skipWaiting' });
             };
         }
@@ -81,6 +80,11 @@ export function registerPwaLifecycle() {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing || !reloadOnControllerChange) return;
         refreshing = true;
+        try {
+            updateChannel?.postMessage({ type: 'SW_ACTIVATED', senderId: channelClientId });
+        } catch (_e) {
+            // 채널 전송 실패는 무시
+        }
         window.location.reload();
     });
 

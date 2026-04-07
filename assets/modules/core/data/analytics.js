@@ -2,7 +2,11 @@ import { estimateLatestDrawKST } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
 export const dataAnalyticsMethods = {
     getDataFreshness() {
-        const latestDrawNo = Math.max(0, Math.floor(Number(this.state.winningStats?.[0]?.draw_no || 0)));
+        const dataHealth = this.mergeDataHealth(this.dataHealth || this.getDefaultDataHealth());
+        const latestDrawNo = Math.max(
+            0,
+            Math.floor(Number(dataHealth.latestDrawNo || this.state.winningStats?.[0]?.draw_no || 0))
+        );
         const staticLatestDrawNo = Math.max(0, Math.floor(Number(this.state.staticLatestDrawNo || 0)));
         const estimatedLatestDrawNo = Math.max(0, Math.floor(Number(estimateLatestDrawKST() || 0)));
         const behindBy = latestDrawNo > 0 && estimatedLatestDrawNo > 0
@@ -13,6 +17,9 @@ export const dataAnalyticsMethods = {
             : 0;
         const hasCustomProxy = Boolean(this.resolveProxyConfig()?.url);
         return {
+            availability: dataHealth.availability,
+            source: dataHealth.source,
+            dataHealthMessage: dataHealth.message,
             latestDrawNo,
             staticLatestDrawNo,
             estimatedLatestDrawNo,
@@ -21,12 +28,20 @@ export const dataAnalyticsMethods = {
             hasProxy: hasCustomProxy,
             hasCustomProxy,
             canAutoSync: true,
-            isStale: behindBy > 0
+            isPartial: dataHealth.availability === 'partial',
+            isUnavailable: dataHealth.availability === 'none' || latestDrawNo <= 0,
+            isStale: dataHealth.availability === 'full' && behindBy > 0
         };
     },
 
     getStaleDataMessage(featureLabel = '기능') {
         const freshness = this.getDataFreshness();
+        if (freshness.isPartial) {
+            return `${featureLabel}은 사용할 수 있지만 현재 데이터는 부분 복구 상태입니다. 최신 회차 일부만 반영되어 결과가 제한될 수 있습니다.`;
+        }
+        if (freshness.isUnavailable) {
+            return `${featureLabel}에 필요한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.`;
+        }
         if (!freshness.isStale) return '';
         return `${featureLabel}을 계속 진행할 수 있지만 최신 데이터가 ${freshness.behindBy}회차 뒤처져 있을 수 있습니다.`;
     },
@@ -153,11 +168,12 @@ export const dataAnalyticsMethods = {
             if (!ticket) continue;
 
             const hadChecked = Boolean(ticket.checked);
+            const quantity = this.getTicketQuantity(ticket);
             const targetDrawNo = Number(ticket.targetDrawNo);
             if (!Number.isFinite(targetDrawNo) || targetDrawNo > latestDrawNo) {
                 if (hadChecked) {
                     ticket.checked = null;
-                    resetToPending++;
+                    resetToPending += quantity;
                     changed++;
                 }
                 continue;
@@ -167,7 +183,7 @@ export const dataAnalyticsMethods = {
             if (!draw) {
                 if (hadChecked) {
                     ticket.checked = null;
-                    resetToPending++;
+                    resetToPending += quantity;
                     changed++;
                 }
                 continue;
@@ -187,15 +203,15 @@ export const dataAnalyticsMethods = {
             const prevRank = Number(ticket.checked?.rank);
 
             ticket.checked = nextChecked;
-            rechecked++;
-            if (rank > 0) wins++;
-            else losses++;
+            rechecked += quantity;
+            if (rank > 0) wins += quantity;
+            else losses += quantity;
 
             const resultChanged = !hadChecked || prevDrawNo !== nextChecked.drawNo || prevRank !== nextChecked.rank;
             if (resultChanged) changed++;
             if (!hadChecked) {
-                newlySettled++;
-                if (rank > 0) newlySettledWins++;
+                newlySettled += quantity;
+                if (rank > 0) newlySettledWins += quantity;
             }
         }
 

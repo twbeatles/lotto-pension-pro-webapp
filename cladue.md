@@ -5,8 +5,8 @@
 표준 AI 핸드오프 문서는 아래 파일입니다.
 
 - `claude.md`
-- 최신 갱신일: 2026-04-05
-- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md`
+- 최신 갱신일: 2026-04-07
+- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md`
 
 이번 기준 문서에는 아래 운영 변경이 반영되어 있습니다.
 
@@ -25,6 +25,9 @@
 - 체크 탭 카드형 리스트 + 검색/티켓 상태 필터 + 스캔 결과 고정 노출
 - 과거 회차 티켓 저장 직후 즉시 정산
 - sync/import/local-update cleanup 후 stale `checked` 티켓 재정합성
+- 티켓북 동일 구매 `quantity` 그룹화와 `xN` 표시
+- Import 후 `syncMeta.local_restore` 재구성
+- `dataHealth` 기반 partial recovery / route gate
 - 미래 회차 `localUpdates` 저장 차단 + `syncMeta.lastSuccessDrawNo` clamp
 - 티켓 삭제/전체정리 후 orphan campaign 자동 정리
 - 히스토리 actual-log 저장(중복 기록 유지)
@@ -42,7 +45,7 @@
 - AI 후보풀 리랭킹 + 추천 점수/자동 선택 진단 표시
 - `npm run bench:ai` 전략 회귀평가 스크립트
 - 코어/기능 코드 분할(`core/app`, `core/data`, `core/strategy`, `features/*`)
-- `skipWaiting` 수락 시에만 서비스워커 reload
+- `skipWaiting` 수락 후 실제 activation(`controllerchange`)이 끝난 뒤에만 멀티탭 reload 전파
 - 서비스워커 캐시 버전 `v17`
 
 새로운 세션에서는 반드시 `claude.md`를 기준 문서로 참조하세요.

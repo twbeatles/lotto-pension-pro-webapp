@@ -135,7 +135,7 @@ export const appSettingsMethods = {
         const syncModeEl = $('#syncMetaMode');
         if (syncModeEl) syncModeEl.textContent = this.data.getSyncModeLabel(syncMeta.mode);
         const syncSourceEl = $('#syncMetaSource');
-        if (syncSourceEl) syncSourceEl.textContent = syncMeta.currentSource || '-';
+        if (syncSourceEl) syncSourceEl.textContent = syncMeta.currentSource || this.data.getDataHealthSourceLabel(freshness.source) || '-';
         const syncSuccessEl = $('#syncMetaLastSuccess');
         if (syncSuccessEl) syncSuccessEl.textContent = syncMeta.lastSuccessAt ? this.formatDateTime(syncMeta.lastSuccessAt) : '-';
         const syncDrawEl = $('#syncMetaLastDraw');
@@ -156,6 +156,12 @@ export const appSettingsMethods = {
         if (syncWarningEl) {
             if (activeProxyConfig?.invalid) {
                 syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
+            } else if (freshness.isUnavailable) {
+                syncWarningEl.textContent = freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
+            } else if (freshness.isPartial) {
+                syncWarningEl.textContent = freshness.dataHealthMessage
+                    ? `${freshness.dataHealthMessage} 통계/AI/백테스트는 전체 데이터 복구 후 사용할 수 있습니다.`
+                    : '부분 복구 상태입니다. 최신 일부 회차만 사용할 수 있어 통계 기반 기능이 제한됩니다.';
             } else if (freshness.isStale) {
                 syncWarningEl.textContent = freshness.canAutoSync
                     ? `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
@@ -170,7 +176,11 @@ export const appSettingsMethods = {
         const syncStateBadge = $('#settingsSyncStateBadge');
         if (syncStateBadge) {
             let syncState = { label: '최신', code: 'success' };
-            if (freshness.isStale) {
+            if (freshness.isUnavailable) {
+                syncState = { label: '데이터 없음', code: 'danger' };
+            } else if (freshness.isPartial) {
+                syncState = { label: '부분 복구', code: 'danger' };
+            } else if (freshness.isStale) {
                 syncState = freshness.canAutoSync
                     ? { label: `${freshness.behindBy}회차 차이`, code: 'warning' }
                     : { label: '업데이트 필요', code: 'danger' };

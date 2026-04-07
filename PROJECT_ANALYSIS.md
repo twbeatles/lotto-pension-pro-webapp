@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-04-05)
+# Lotto Webapp Structure Notes (2026-04-07)
 
 ## Summary
 
@@ -16,6 +16,12 @@
   - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
   - target draw defaults now follow the next draw automatically unless the user overrides them
   - sync diagnostics and local update cleanup were added to make runtime data issues observable
+  - ticket-book duplicates now merge by `quantity` and all user-facing counts follow physical ticket totals
+  - import reconstructs sync metadata as `local_restore` instead of persisting stale sync state
+  - runtime `dataHealth` now distinguishes `full` / `partial` / `none`
+  - if static JSON is unavailable, runtime can rebuild recent draws from local updates only and expose partial recovery mode
+  - `stats`, `ai`, and `bt` are gated behind full-data availability, while `gen` and `check` keep running with warnings
+  - service-worker update propagation across tabs now waits for activation (`controllerchange`) before broadcasting reload
   - `reconcileTicketChecks()` now revalidates stored `checked` tickets after sync/import/local-update cleanup
   - future local updates are sanitized centrally, and `syncMeta.lastSuccessDrawNo` is clamped to effective data
   - past-draw tickets settle immediately after save/import refresh, ticket delete/clear now also prune orphan campaigns, and history keeps actual-log duplicates
@@ -44,11 +50,13 @@
   - internal logic lives in feature-specific subdirectories
 - Notable implementation files:
   - `assets/modules/core/data/records.js`
-    - history actual-log merge helpers and orphan-campaign pruning
+    - ticket `quantity` grouping, history actual-log merge helpers, and orphan-campaign pruning
   - `assets/modules/core/data/analytics.js`
-    - full-ticket `checked` reconciliation against current winning stats
+    - full-ticket `checked` reconciliation against current winning stats, with quantity-aware settlement counts
   - `assets/modules/core/data/persistence.js`
-    - local-update sanitization and sync-meta clamping
+    - local-update sanitization, `local_restore` sync-meta reconstruction, and sync-meta clamping
+  - `assets/modules/core/data/sync.js`
+    - `dataHealth` classification, partial recovery, and sync reconstruction
   - `assets/modules/features/generator/form.js`
     - campaign reset restores target-draw auto-follow metadata
   - `assets/modules/features/dataio/support.js`
@@ -147,6 +155,7 @@ Operational rules:
 - App shell precache now includes the split core/feature modules and `assets/styles/*.css`
 - Core data precache now includes `data/winning_stats.json`
 - Reload after update only happens after explicit user acceptance
+- Multi-tab reload is broadcast only after the new service worker is actually activated
 - Production URL:
   - `https://twbeatles.github.io/lotto---webapp/`
 
@@ -194,5 +203,5 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md` should be treated as the current functional review artifact for the latest data-consistency hardening pass.
+- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md` should be treated as the current functional review artifact for the latest data-consistency hardening pass.
 - Other ad hoc review artifacts are not guaranteed to be versioned in-repo unless explicitly committed for the session.

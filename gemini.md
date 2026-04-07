@@ -5,11 +5,11 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-04-05`
+- Date: `2026-04-07`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-05.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md`
 
 ## Current Snapshot
 
@@ -23,6 +23,12 @@ Use it as the fast-start reference for the current structure and workflow.
 - Service worker cache version:
   - `v17`
 - Recent consistency fixes:
+  - ticket-book duplicates now merge by `quantity`, including quantity-aware delete/import/campaign counts
+  - import reconstructs `syncMeta` as `local_restore` instead of restoring stale sync metadata
+  - `dataHealth` distinguishes `full` / `partial` / `none`
+  - static JSON failure can fall back to local-only `winningStats` rebuild and partial recovery mode
+  - `stats`, `ai`, and `bt` are gated when data availability is not full
+  - service-worker multi-tab reload is broadcast only after activation, not immediately on update click
   - `reconcileTicketChecks()` revalidates stored `checked` tickets after sync/import/local-update cleanup
   - future local updates are sanitized, deduped, and capped at `estimateLatestDrawKST() + 2`
   - `syncMeta.lastSuccessDrawNo` now clamps to effective winning data
@@ -90,7 +96,7 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/index.js`
   - app entrypoint
 - `assets/modules/bootstrap/pwa.js`
-  - service worker registration and update UX
+  - service worker registration and activation-ordered update UX
 - `assets/modules/core/LottoApp.js`
   - facade, implementation in `core/app`; target-draw auto-management and mobile more/install sync live here
 - `assets/modules/core/UIManager.js`
@@ -106,13 +112,13 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning metadata rendering
 - `assets/modules/core/data/records.js`
-  - actual-log history merge and orphan-campaign pruning helpers
+  - ticket `quantity` grouping, actual-log history merge, and orphan-campaign pruning helpers
 - `assets/modules/core/data/analytics.js`
   - `reconcileTicketChecks()` for whole-ticket settlement revalidation
 - `assets/modules/core/data/persistence.js`
-  - local-update sanitization and sync-meta clamping
+  - local-update sanitization, `local_restore` sync-meta reconstruction, and sync-meta clamping
 - `assets/modules/core/data/sync.js`
-  - single-draw payload diagnostics, sync warning tracking, and post-refresh ticket reconciliation
+  - data-health classification, partial recovery, single-draw payload diagnostics, sync warning tracking, and post-refresh ticket reconciliation
 - `assets/modules/features/Check.js`
   - card-list based check flow and scanned/ticket filter handling
 - `assets/modules/features/backtest/ui.js`

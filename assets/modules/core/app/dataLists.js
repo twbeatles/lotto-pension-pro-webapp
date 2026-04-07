@@ -28,7 +28,10 @@ export const appDataListMethods = {
             const filter = $('#ticketFilter')?.value || 'all';
             const filterLabels = { all: '전체', pending: '예정', win: '당첨', lose: '미당첨' };
             const filterLabel = filterLabels[filter] || filter;
-            const visibleCount = (this.data.state.ticketBook || []).filter((item) => filter === 'all' || this.getTicketStatusMeta(item).code === filter).length;
+            const visibleTickets = (this.data.state.ticketBook || []).filter((item) => {
+                return filter === 'all' || this.getTicketStatusMeta(item).code === filter;
+            });
+            const visibleCount = this.data.getTotalTicketCount(visibleTickets);
             const confirmed = await UIManager.confirm({
                 title: `티켓북에서 '${filterLabel}' 항목을 삭제할까요?`,
                 message: `${visibleCount}개 티켓이 삭제됩니다.`
@@ -219,8 +222,11 @@ export const appDataListMethods = {
                 if (action === 'qr') UIManager.showQR(item.numbers);
                 if (action === 'delete' && source === 'ticket') {
                     const result = this.data.removeTicket(item.id);
-                    if (result.removed && result.prunedCampaigns > 0) {
-                        UIManager.toast(`티켓 삭제 후 캠페인 ${result.prunedCampaigns}개를 자동 정리했습니다.`, 'success');
+                    if (result.removed) {
+                        const cleanupSuffix = result.prunedCampaigns > 0
+                            ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리`
+                            : '';
+                        UIManager.toast(`${result.removedTickets}개 티켓 삭제${cleanupSuffix}`, 'success');
                     }
                     this.renderDataLists();
                 }
@@ -314,19 +320,25 @@ export const appDataListMethods = {
             .filter((item) => this.matchesSearch(this.getDataListState('ticket').query, [
                 (item.numbers || []).join(', '),
                 item.targetDrawNo,
-                this.getTicketStatusMeta(item).label
+                this.getTicketStatusMeta(item).label,
+                `x${this.data.getTicketQuantity(item)}`
             ]));
         const ticketPage = this.paginateItems('ticket', tickets);
+        ticketPage.summaryText = `총 ${this.data.getTotalTicketCount(tickets)}개 티켓`;
         if (!ticketPage.totalItems) {
             renderEmpty('#ticketList', 'ph-ticket', this.getDataListState('ticket').query ? '검색 결과가 없습니다.' : '조건에 맞는 티켓이 없습니다.');
         } else {
             $('#ticketList').innerHTML = ticketPage.items.map((item) => {
                 const status = this.getTicketStatusMeta(item);
+                const quantity = this.data.getTicketQuantity(item);
                 return `
                     <div class="result-item" data-id="${this.escapeHtml(item.id)}">
                         <div class="result-main">
                             <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
-                            <span class="result-meta">${item.targetDrawNo}회차 · ${status.label}</span>
+                            <span class="result-meta result-meta-inline">
+                                <span>${item.targetDrawNo}회차 · ${status.label}</span>
+                                ${quantity > 1 ? `<span class="badge status-badge ticket-quantity-badge">x${quantity}</span>` : ''}
+                            </span>
                         </div>
                         <div class="result-actions">
                             <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
@@ -470,7 +482,7 @@ export const appDataListMethods = {
         const nextPage = Math.min(totalPages, page + 1);
 
         el.innerHTML = `
-            <span class="pagination-summary">총 ${totalItems}개</span>
+            <span class="pagination-summary">${pageInfo?.summaryText || `총 ${totalItems}개`}</span>
             <div class="pagination-actions">
                 <button class="btn ghost sm" data-page-scope="${scope}" data-page="${prevPage}" ${page <= 1 ? 'disabled' : ''}>이전</button>
                 <span class="pagination-page">${page} / ${totalPages}</span>

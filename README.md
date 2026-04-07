@@ -7,6 +7,29 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 기능 구현 정합성 3차 보강 반영 (2026-04-07)
+
+- **티켓북 `quantity` 모델 도입** (`records.js`, `dataLists.js`, `Check.js`, `generator/*`, `ai/form.js`)
+  - 동일한 `targetDrawNo + source + campaignId + numbers + strategyRequest` 조합은 중복 row 대신 `quantity` 로 누적됩니다.
+  - 티켓/캠페인 삭제 카운트, 저장소 요약, 확인 탭 표시는 이제 grouped row 수가 아니라 실제 물리 티켓 수량 기준으로 동작합니다.
+  - 티켓 목록과 확인 탭에는 `xN` 배지가 표시됩니다.
+- **Import 후 `syncMeta` 재구성 + 부분 복구 상태 도입** (`sync.js`, `persistence.js`, `defaults.js`, `postImportRefresh.js`)
+  - `syncMeta.mode = local_restore` 를 추가했고, Import 후에는 백업에 저장되지 않은 `syncMeta` 를 현재 유효 `winningStats` 기준으로 다시 구성합니다.
+  - 비영속 `dataHealth` 상태(`full | partial | none`)를 도입해 정적 JSON 실패 시 `local_only` 기반 부분 복구 여부를 구분합니다.
+  - cold start 에서 정적 JSON 이 실패하면 최근 `24`회 window 기준 partial recovery 를 시도합니다.
+- **부분 복구 모드 UX/게이트 추가** (`moduleLoader.js`, `settingsPanel.js`, `latestDraw.js`, `pages.css`)
+  - `stats`, `ai`, `bt` 는 전체 데이터가 없으면 공통 게이트 패널을 렌더링합니다.
+  - `gen`, `check`, 최신 회차 카드, 데이터 관리 화면은 partial 상태에서도 유지되며 경고 배너만 표시합니다.
+  - 설정 모달에서는 stale 과 partial 을 분리해 노출합니다.
+- **PWA 멀티탭 업데이트 순서 수정** (`pwa.js`)
+  - BroadcastChannel 전파는 업데이트 버튼 클릭 시점이 아니라 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 발생합니다.
+  - 다른 탭은 activation-complete 신호를 받은 뒤에만 reload 되어 조기 reload 를 피합니다.
+- **회귀 테스트 추가** (`scripts/smoke/`)
+  - `ticket-quantity grouping`
+  - `partial winning-stats recovery`
+  - `local-restore sync-meta`
+  - `route data-gate`
+
 ## 기능 구현 정합성 2차 보강 반영 (2026-04-05)
 
 - **티켓 정산 재정합성 추가** (`analytics.js`, `sync.js`, `dataio/postImportRefresh.js`)
@@ -124,7 +147,8 @@
   - `beforeinstallprompt` 이벤트를 캡처해 데스크톱 사이드바, 설정 모달, 모바일 `더보기` 시트에 설치 버튼을 동기화합니다.
   - 설치 완료 후 버튼을 자동으로 숨기고 toast로 안내합니다.
 - **SW 업데이트 멀티탭 전파** (`pwa.js`)
-  - `BroadcastChannel('lotto-sw-update')` 를 도입해 SW 업데이트를 수락한 탭이 나머지 모든 탭에 reload 신호를 전파합니다.
+  - `BroadcastChannel('lotto-sw-update')` 를 도입했습니다.
+  - 현재는 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 activation-complete 신호를 전파하도록 조정되어, 다른 탭의 조기 reload 를 막습니다.
 - **접근성 개선** (`UIManager.js`, `index.html`)
   - `#toast-live-region` (`aria-live="polite"`) 영역을 추가해 스크린 리더가 toast 알림을 읽을 수 있습니다.
   - toast 요소에 `role="status"` 를 추가했습니다.
@@ -276,6 +300,7 @@
   - 목표 회차 입력은 다음 회차를 자동 추적하며, 필요 시 즉시 재설정 가능
 - 티켓북/캠페인:
   - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
+  - 동일한 티켓 조합은 중복 row 대신 `quantity` 로 묶입니다.
   - 과거 회차 티켓은 저장 즉시 정산되어 상태가 바로 반영됩니다.
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
   - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
@@ -302,6 +327,7 @@
 - 당첨 확인:
   - 즐겨찾기/히스토리/티켓/스캔 결과를 카드형 리스트로 탐색
   - 검색, 티켓 상태 필터, 키보드 선택 이동, 모바일 단일 컬럼 레이아웃 지원
+  - grouped ticket 은 `xN` 수량 배지와 실제 보유 수량 메타를 함께 표시
 - 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
 - 모바일 최적화 화면:
   - 세이프 영역 대응, 반응형 레이아웃
@@ -318,11 +344,14 @@
 - 오프라인 앱 지원:
   - 네트워크가 없을 때도 기본 기능 사용 가능
   - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 사용자 프록시 우선)
+  - 정적 JSON 실패 시 최근 일부 회차만으로 `partial recovery` 상태를 구성할 수 있음
+  - partial 상태에서는 생성/확인은 유지되지만 통계/예측/시뮬레이션은 게이트 처리됨
   - 데스크톱 사이드바, 설정 모달, 모바일 `더보기`를 통한 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
   - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
+  - `syncMeta` 는 백업에 포함하지 않으며, Import 후 `local_restore` 메타를 현재 유효 데이터 기준으로 재구성합니다.
   - Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리되며, 완료 toast 에 cleanup 수치가 표시됩니다.
 - 데이터 관리:
   - 즐겨찾기/히스토리/티켓/캠페인 검색 + 페이지네이션
@@ -429,11 +458,11 @@ node scripts/smoke/smoke.mjs
 - `strict-filter`, `wheel-fixed`, `draw-normalization`
 - `campaign-limit`, `campaign-cascade`, `campaign-empty-save`, `campaign reset autofill recovery`
 - `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
-- `ticket-dedupe`, `immediate ticket settlement`, `ticket-reconcile`, `requestNumbers replace`
-- `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`
+- `ticket-dedupe`, `ticket-quantity grouping`, `immediate ticket settlement`, `ticket-reconcile`, `requestNumbers replace`
+- `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`, `partial winning-stats recovery`, `local-restore sync-meta`
 - `target-draw autofill`, `refreshCurrentRoute stale`, `future local-updates guard`, `clear-local-updates reconcile`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
-- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`
+- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`, `route data-gate`
 - `strategy-preset-crud`, `runtime-asset-localization`
 - `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `history actual-log`
 

@@ -1,7 +1,7 @@
 # 잠재적 이슈 & 개선 필요 항목
 
 > 최초 작성: 2026-03-16
-> 최종 갱신: 2026-04-05 — 데이터 정합성 2차 보강 및 문서 동기화 반영
+> 최종 갱신: 2026-04-07 — 데이터 정합성 3차 보강 및 문서 동기화 반영
 > 기준 커밋: `a474ce8` (분석 기준) → 현재 main (처리 완료)
 > 참조: `CLAUDE.md`, `README.md`, 전체 소스 정적 분석
 
@@ -65,6 +65,52 @@
 `favorites` 는 기존대로 번호 unique 정책을 유지.
 
 회귀 테스트 `history actual-log` 추가 완료.
+
+---
+
+### ✅ [HIGH → DONE] 티켓북 중복 row 정책이 실제 구매 수량을 표현하지 못함
+
+**파일:** `assets/modules/core/data/records.js`, `assets/modules/core/app/dataLists.js`, `assets/modules/features/Check.js`, `assets/modules/features/generator/*`, `assets/modules/features/ai/form.js`
+
+티켓북 저장 모델을 grouped row + `quantity` 구조로 전환.
+동일 key(`targetDrawNo + source + campaignId + numbers + strategyRequest`)는 새 row 대신 기존 row 의 수량만 증가.
+티켓 삭제/캠페인 삭제/저장소 요약/확인 UI 는 모두 실제 물리 티켓 수량 기준으로 계산되며, 목록과 확인 탭에는 `xN` 배지가 표시됨.
+
+회귀 테스트 `ticket-quantity grouping` 추가 완료.
+
+---
+
+### ✅ [HIGH → DONE] Import 후 `syncMeta` 가 현재 유효 데이터셋과 어긋날 수 있음
+
+**파일:** `assets/modules/core/data/persistence.js`, `assets/modules/core/data/sync.js`, `assets/modules/features/dataio/postImportRefresh.js`
+
+`syncMeta` 는 계속 backup/export 대상에서 제외하고, Import 완료 후 `fetchWinningStats()` 로 복원된 effective draw 기준으로 `markLocalRestoreSuccess()` 를 호출해 `syncMeta.mode = local_restore` 로 재구성.
+`lastSuccessDrawNo`, `currentSource`, `lastSuccessAt` 도 현재 유효 데이터 기준으로 다시 기록됨.
+
+회귀 테스트 `local-restore sync-meta` 추가 완료.
+
+---
+
+### ✅ [HIGH → DONE] 정적 JSON 실패 시 앱이 full/stale/partial 상태를 구분하지 못함
+
+**파일:** `assets/modules/core/data/defaults.js`, `assets/modules/core/data/sync.js`, `assets/modules/core/data/analytics.js`, `assets/modules/core/app/moduleLoader.js`, `assets/modules/core/app/settingsPanel.js`
+
+비영속 `dataHealth` 상태를 도입하고 `full | partial | none` 을 구분.
+정적 JSON 실패 시에도 `localUpdates` 만으로 `winningStats` 를 복원할 수 있게 했으며, cold start 에서는 최근 `24`회 기준 partial recovery 를 시도.
+`stats`, `ai`, `bt` 는 partial/none 상태에서 공통 gate panel 을 보여주고, `gen` / `check` 는 warning banner 만 표시한 채 계속 사용 가능.
+
+회귀 테스트 `partial winning-stats recovery`, `route data-gate` 추가 완료.
+
+---
+
+### ✅ [MEDIUM → DONE] PWA 멀티탭 업데이트가 activation 전 조기 reload 될 수 있음
+
+**파일:** `assets/modules/bootstrap/pwa.js`
+
+BroadcastChannel 전파 시점을 업데이트 버튼 클릭 시점이 아니라 새 서비스워커 activation 이후(`controllerchange`)로 이동.
+initiating tab 은 activation 완료 후 self reload + `SW_ACTIVATED` 브로드캐스트를 보내고, 다른 탭은 그 신호를 받은 뒤에만 reload.
+
+회귀 테스트 `service-worker reload policy` 갱신 완료.
 
 ---
 

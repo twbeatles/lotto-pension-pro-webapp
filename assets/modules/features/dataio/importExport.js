@@ -30,18 +30,19 @@ export const dataIoImportMethods = {
             const incomingStrategyPresets = this.normalizeStrategyPresets(normalized.strategyPresets);
             const importOptions = this.getImportOptionsFromUI();
             const merge = importOptions.mode === 'merge';
+            const incomingTicketTotal = this.data.getTotalTicketCount(incomingTickets);
 
             if (merge) {
                 const incomingTotal = incomingFav.length
                     + incomingHist.length
-                    + incomingTickets.length
+                    + incomingTicketTotal
                     + incomingCampaigns.length
                     + incomingLocalUpdates.length
                     + incomingStrategyPresets.length;
 
                 const beforeFav = this.data.state.favorites.length;
                 const beforeHist = this.data.state.history.length;
-                const beforeTickets = this.data.state.ticketBook.length;
+                const beforeTickets = this.data.getTotalTicketCount();
                 const beforeCampaignIds = new Set(
                     (this.data.state.campaigns || [])
                         .map((item) => String(item?.id || '').trim())
@@ -95,7 +96,7 @@ export const dataIoImportMethods = {
 
                 const newFav = this.data.state.favorites.length - beforeFav;
                 const newHist = this.data.state.history.length - beforeHist;
-                const newTickets = this.data.state.ticketBook.length - beforeTickets;
+                const newTickets = this.data.getTotalTicketCount() - beforeTickets;
                 const newCampaigns = (this.data.state.campaigns || []).filter((item) => {
                     const campaignId = String(item?.id || '').trim();
                     return campaignId && !beforeCampaignIds.has(campaignId);
@@ -139,7 +140,7 @@ export const dataIoImportMethods = {
                 UIManager.toast(UI_STRINGS.dataio.overwriteComplete({
                     added: incomingFav.length
                         + incomingHist.length
-                        + incomingTickets.length
+                        + incomingTicketTotal
                         + this.data.state.campaigns.length
                         + incomingLocalUpdates.length
                         + incomingStrategyPresets.length,

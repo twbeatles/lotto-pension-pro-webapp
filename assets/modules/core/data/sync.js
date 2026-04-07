@@ -27,6 +27,46 @@ const BUILTIN_SYNC_SINGLE_PROVIDERS = [
 ];
 
 export const dataSyncMethods = {
+    getWinningStatsDataHealth({ staticItems = [], localUpdates = [], mergedItems = [], staticError = null } = {}) {
+        const normalizedStatic = Array.isArray(staticItems) ? staticItems : [];
+        const normalizedLocalUpdates = Array.isArray(localUpdates) ? localUpdates : [];
+        const normalizedMerged = Array.isArray(mergedItems) ? mergedItems : [];
+        const latestDrawNo = Math.max(0, Math.floor(Number(normalizedMerged[0]?.draw_no || 0)));
+        const staticAvailable = normalizedStatic.length > 0;
+        const localAvailable = normalizedLocalUpdates.length > 0;
+
+        if (staticAvailable) {
+            return this.mergeDataHealth({
+                availability: 'full',
+                source: localAvailable ? 'static_local' : 'static',
+                latestDrawNo,
+                message: localAvailable
+                    ? '정적 JSON 전체 데이터에 로컬 최신 회차 보정이 함께 반영되어 있습니다.'
+                    : '정적 JSON 전체 데이터를 사용 중입니다.'
+            });
+        }
+
+        if (latestDrawNo > 0) {
+            return this.mergeDataHealth({
+                availability: 'partial',
+                source: localAvailable ? 'local_only' : 'none',
+                latestDrawNo,
+                message: localAvailable
+                    ? '정적 JSON을 불러오지 못해 로컬 최신 회차 일부 데이터만 사용 중입니다.'
+                    : '전체 데이터셋이 없어 최근 일부 회차만 사용할 수 있습니다.'
+            });
+        }
+
+        return this.mergeDataHealth({
+            availability: 'none',
+            source: 'none',
+            latestDrawNo: 0,
+            message: staticError
+                ? '정적 JSON과 로컬 보정 데이터를 모두 사용할 수 없습니다.'
+                : '사용 가능한 당첨 데이터가 없습니다.'
+        });
+    },
+
     async fetchWithTimeout(url, options = {}, timeoutMs = this.SYNC_FETCH_TIMEOUT_MS, externalSignal = null) {
         return measureAsync('sync.fetch', async () => {
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -96,44 +136,69 @@ export const dataSyncMethods = {
         try {
             updateStatus('로또 확인 중', 'var(--warning)');
 
-            const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
-            const staticData = json.data || json || [];
-            const normalizedStatic = (Array.isArray(staticData) ? staticData : [])
-                .map((row) => this.normalizeDrawItem(row))
-                .filter(Boolean)
-                .sort((a, b) => b.draw_no - a.draw_no);
-            this.state.staticLatestDrawNo = normalizedStatic[0]?.draw_no || 0;
-
             const localUpdates = this.getLocalUpdates();
+            let normalizedStatic = [];
+            let staticError = null;
+
+            try {
+                const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
+                const staticData = json.data || json || [];
+                normalizedStatic = (Array.isArray(staticData) ? staticData : [])
+                    .map((row) => this.normalizeDrawItem(row))
+                    .filter(Boolean)
+                    .sort((a, b) => b.draw_no - a.draw_no);
+            } catch (error) {
+                staticError = error;
+                console.warn('정적 당첨 데이터 조회 실패', error);
+            }
+            this.state.staticLatestDrawNo = normalizedStatic[0]?.draw_no || 0;
 
             const mergedMap = new Map();
             normalizedStatic.forEach((d) => mergedMap.set(Number(d.draw_no), d));
             localUpdates.forEach(d => mergedMap.set(Number(d.draw_no), d));
 
-            this.state.winningStats = Array.from(mergedMap.values())
+            const mergedItems = Array.from(mergedMap.values())
                 .map((row) => this.normalizeDrawItem(row))
                 .filter(Boolean)
                 .sort((a, b) => b.draw_no - a.draw_no);
+            this.state.winningStats = mergedItems;
             this.buildAnalyticsCache();
+
+            const dataHealth = this.getWinningStatsDataHealth({
+                staticItems: normalizedStatic,
+                localUpdates,
+                mergedItems,
+                staticError
+            });
+            this.setDataHealth(dataHealth);
 
             this.setSyncMeta({
                 mode: this.getSyncMode(),
-                currentSource: localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON'
+                currentSource: dataHealth.availability === 'full'
+                    ? (localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON')
+                    : this.getDataHealthSourceLabel(dataHealth.source)
             });
             this.lastWinningStatsLoad = {
-                ok: true,
+                ok: dataHealth.availability !== 'none',
                 offline: false,
-                error: '',
+                error: String(staticError?.message || ''),
                 updatedAt: new Date().toISOString()
             };
+
+            if (dataHealth.availability === 'none') {
+                updateStatus('데이터 없음', 'var(--danger)');
+                return false;
+            }
 
             this.clampSyncMetaToWinningStats({ immediate: false });
             await this.reconcileTicketChecks({ silent: !notifyTicketSettle });
 
             const freshness = this.getDataFreshness();
-            if (freshness.latestDrawNo > 0 && freshness.isStale) {
+            if (freshness.isPartial) {
+                updateStatus('부분 복구', 'var(--warning)');
+            } else if (freshness.latestDrawNo > 0 && freshness.isStale) {
                 updateStatus(`${freshness.behindBy}회차 지연`, 'var(--warning)');
             } else {
                 updateStatus('최신', 'var(--success)');
@@ -144,6 +209,12 @@ export const dataSyncMethods = {
             const offline = typeof this.app?.isProbablyOffline === 'function'
                 ? await this.app.isProbablyOffline({ forceProbe: true })
                 : (typeof navigator !== 'undefined' && navigator.onLine === false);
+            this.setDataHealth({
+                availability: 'none',
+                source: 'none',
+                latestDrawNo: 0,
+                message: '당첨 데이터를 구성하지 못했습니다.'
+            });
             this.lastWinningStatsLoad = {
                 ok: false,
                 offline,
@@ -552,10 +623,14 @@ export const dataSyncMethods = {
                 currentSource: syncSource
             });
 
-            const latestKnown = this.state.winningStats[0]?.draw_no || 1000;
+            const latestKnown = Math.max(0, Number(this.state.winningStats[0]?.draw_no || 0));
             const estNo = estimateLatestDrawKST();
+            const hasExistingData = latestKnown > 0;
+            const rangeFrom = hasExistingData
+                ? latestKnown + 1
+                : Math.max(1, estNo - this.PARTIAL_RECOVERY_WINDOW + 1);
 
-            if (latestKnown >= estNo) {
+            if (hasExistingData && latestKnown >= estNo) {
                 log(UI_STRINGS.sync.logUpToDate, 'SYNC_UP_TO_DATE');
                 if (profile.trigger !== 'idle') {
                     this.markSyncSuccess({
@@ -573,7 +648,14 @@ export const dataSyncMethods = {
                 return true;
             }
 
-            log(UI_STRINGS.sync.logRange(latestKnown + 1, estNo), 'SYNC_RANGE_START');
+            if (hasExistingData) {
+                log(UI_STRINGS.sync.logRange(rangeFrom, estNo), 'SYNC_RANGE_START');
+            } else {
+                log(
+                    `정적 JSON이 없어 최근 ${this.PARTIAL_RECOVERY_WINDOW}회차(${rangeFrom}~${estNo}) 부분 복구를 시도합니다.`,
+                    'SYNC_PARTIAL_RECOVERY_START'
+                );
+            }
             log(UI_STRINGS.sync.logSource(syncSource), 'SYNC_PROXY_SOURCE');
 
             if (proxyConfig?.invalid) {
@@ -589,7 +671,7 @@ export const dataSyncMethods = {
             const fetched = new Set();
 
             const chunkResult = await this.fetchRangeChunkedFromProxy(
-                latestKnown + 1,
+                rangeFrom,
                 estNo,
                 proxyConfig,
                 log,
@@ -605,7 +687,7 @@ export const dataSyncMethods = {
                 ...(chunkResult.missing || []),
                 ...(chunkResult.failedDraws || [])
             ]);
-            for (let drawNo = latestKnown + 1; drawNo <= estNo; drawNo++) {
+            for (let drawNo = rangeFrom; drawNo <= estNo; drawNo++) {
                 if (!fetched.has(drawNo)) fallbackTargets.add(drawNo);
             }
 
@@ -652,7 +734,7 @@ export const dataSyncMethods = {
                 }
                 clearWarningOnSuccess = true;
             } else {
-                if (latestKnown < estNo) {
+                if (!hasExistingData || latestKnown < estNo) {
                     const failureMessage = '예상 최신 회차 응답을 확인하지 못했습니다.';
                     log(failureMessage, 'SYNC_NO_UPDATE_STALE');
                     await this.settlePendingTickets({

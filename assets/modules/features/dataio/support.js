@@ -47,13 +47,14 @@ export const dataIoSupportMethods = {
 
     normalizeTicketItems(items) {
         if (!Array.isArray(items)) return [];
-        return items
+        const normalized = items
             .map((x) => this.data.normalizeTicketEntry(x))
             .filter(Boolean)
             .map((x) => ({
                 ...x,
                 source: ['generator', 'ai', 'import'].includes(x.source) ? x.source : 'import'
             }));
+        return this.data.mergeTicketEntries([], normalized);
     },
 
     normalizeCampaignItems(items) {
@@ -86,15 +87,7 @@ export const dataIoSupportMethods = {
     },
 
     mergeTickets(existing, incoming) {
-        const merged = [...existing];
-        const seen = new Set(existing.map((x) => this.data.buildTicketKey(x)));
-        incoming.forEach((x) => {
-            const key = this.data.buildTicketKey(x);
-            if (seen.has(key)) return;
-            seen.add(key);
-            merged.unshift(x);
-        });
-        return merged;
+        return this.data.mergeTicketEntries(existing, incoming);
     },
 
     mergeLocalUpdates(existing, incoming) {

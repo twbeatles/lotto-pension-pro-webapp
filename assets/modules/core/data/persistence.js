@@ -134,6 +134,17 @@ export const dataPersistenceMethods = {
         });
     },
 
+    markLocalRestoreSuccess({ drawNo = 0 } = {}) {
+        return this.setSyncMeta({
+            mode: 'local_restore',
+            currentSource: this.getLocalRestoreSourceLabel(),
+            lastSuccessAt: new Date().toISOString(),
+            lastSuccessDrawNo: Math.max(0, Math.floor(Number(drawNo || 0))),
+            lastFailureAt: '',
+            lastFailureMessage: ''
+        });
+    },
+
     markSyncFailure(message, { source = '', mode = this.getSyncMode() } = {}) {
         return this.setSyncMeta({
             mode,
@@ -216,7 +227,7 @@ export const dataPersistenceMethods = {
                 counts: {
                     favorites: this.state.favorites?.length || 0,
                     history: this.state.history?.length || 0,
-                    tickets: this.state.ticketBook?.length || 0,
+                    tickets: this.getTotalTicketCount(),
                     campaigns: this.state.campaigns?.length || 0,
                     presets: this.state.strategyPresets?.length || 0,
                     localUpdates: Array.isArray(this.localUpdatesCache) ? this.localUpdatesCache.length : 0
@@ -228,7 +239,7 @@ export const dataPersistenceMethods = {
             [CONFIG.KEYS.FAV, this.state.favorites?.length || 0],
             [CONFIG.KEYS.HIST, this.state.history?.length || 0],
             [CONFIG.KEYS.SETTINGS, 1],
-            [CONFIG.KEYS.TICKET_BOOK, this.state.ticketBook?.length || 0],
+            [CONFIG.KEYS.TICKET_BOOK, this.getTotalTicketCount()],
             [CONFIG.KEYS.CAMPAIGNS, this.state.campaigns?.length || 0],
             [CONFIG.KEYS.ALERT_PREFS, 1],
             [CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets?.length || 0],
@@ -247,7 +258,7 @@ export const dataPersistenceMethods = {
         const counts = {
             favorites: this.state.favorites?.length || 0,
             history: this.state.history?.length || 0,
-            tickets: this.state.ticketBook?.length || 0,
+            tickets: this.getTotalTicketCount(),
             campaigns: this.state.campaigns?.length || 0,
             presets: this.state.strategyPresets?.length || 0,
             localUpdates: this.getLocalUpdates().length
@@ -383,6 +394,7 @@ export const dataPersistenceMethods = {
     load() {
         try {
             if (typeof localStorage === 'undefined') return;
+            this.dataHealth = this.getDefaultDataHealth();
             let needsPersist = false;
             const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', [], CONFIG.KEYS.FAV);
             const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', [], CONFIG.KEYS.HIST);
@@ -415,7 +427,7 @@ export const dataPersistenceMethods = {
             const rawSyncMeta = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}', {}, CONFIG.KEYS.SYNC_META);
 
             const normalizedTickets = Array.isArray(rawTickets)
-                ? rawTickets.map((x) => this.normalizeTicketEntry(x)).filter(Boolean)
+                ? this.mergeTicketEntries([], rawTickets)
                 : [];
             const normalizedCampaigns = Array.isArray(rawCampaigns)
                 ? rawCampaigns.map((x) => this.normalizeCampaignEntry(x)).filter(Boolean)
@@ -424,7 +436,10 @@ export const dataPersistenceMethods = {
             const normalizedStrategyPresets = this.mergeStrategyPresets(rawStrategyPresets);
             const normalizedSyncMeta = this.mergeSyncMeta(rawSyncMeta);
 
-            if (Array.isArray(rawTickets) && normalizedTickets.length !== rawTickets.length) needsPersist = true;
+            if (Array.isArray(rawTickets)) {
+                const normalizedTicketShape = normalizedTickets.map((ticket) => this.normalizeTicketEntry(ticket)).filter(Boolean);
+                if (JSON.stringify(normalizedTicketShape) !== JSON.stringify(rawTickets)) needsPersist = true;
+            }
             if (Array.isArray(rawCampaigns) && normalizedCampaigns.length !== rawCampaigns.length) needsPersist = true;
             if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
             if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length) needsPersist = true;

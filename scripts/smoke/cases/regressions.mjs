@@ -206,6 +206,67 @@ function runTicketDedupeRegression() {
     const keyA = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestA });
     const keyB = dm.buildTicketKey({ ...base, strategyRequest: strategyRequestB });
     assert.equal(keyA, keyB, 'ticket dedupe key must be stable across key order differences');
+
+    const campaignKeyA = dm.buildTicketKey({ ...base, campaignId: 'camp_a', strategyRequest: strategyRequestA });
+    const campaignKeyB = dm.buildTicketKey({ ...base, campaignId: 'camp_b', strategyRequest: strategyRequestA });
+    assert.notEqual(campaignKeyA, campaignKeyB, 'campaignId must participate in ticket dedupe key');
+}
+
+function runTicketQuantityGroupingRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+
+    const first = dm.addTicket([1, 2, 3, 4, 5, 6], {
+        source: 'generator',
+        targetDrawNo: 1210,
+        strategyRequest: { strategyId: 'ensemble_weighted', params: {}, filters: {} }
+    });
+    const second = dm.addTicket([1, 2, 3, 4, 5, 6], {
+        source: 'generator',
+        targetDrawNo: 1210,
+        strategyRequest: { strategyId: 'ensemble_weighted', params: {}, filters: {} }
+    });
+
+    assert.equal(first?.inserted, true, 'first addTicket call must insert a row');
+    assert.equal(second?.incremented, true, 'duplicate addTicket call must increase quantity');
+    assert.equal(dm.state.ticketBook.length, 1, 'duplicate single-ticket adds must keep one grouped row');
+    assert.equal(dm.state.ticketBook[0].quantity, 2, 'duplicate single-ticket adds must increase quantity');
+
+    const bulk = dm.addTicketsBulk([
+        {
+            id: 'ticket_camp_a_1',
+            numbers: [7, 8, 9, 10, 11, 12],
+            targetDrawNo: 1211,
+            source: 'import',
+            campaignId: 'camp_a'
+        },
+        {
+            id: 'ticket_camp_a_2',
+            numbers: [7, 8, 9, 10, 11, 12],
+            targetDrawNo: 1211,
+            source: 'import',
+            campaignId: 'camp_a'
+        },
+        {
+            id: 'ticket_camp_b_1',
+            numbers: [7, 8, 9, 10, 11, 12],
+            targetDrawNo: 1211,
+            source: 'import',
+            campaignId: 'camp_b'
+        }
+    ], { silent: true });
+
+    assert.equal(bulk.insertedRows, 2, 'bulk add must keep separate rows when campaignId differs');
+    assert.equal(bulk.incrementedRows, 1, 'bulk add must merge duplicate rows within the same campaign');
+    assert.equal(bulk.addedQuantity, 3, 'bulk add must count physical ticket quantity');
+    assert.equal(dm.countTicketsByCampaignId('camp_a'), 2, 'campaign ticket count must use physical ticket quantity');
+    assert.equal(dm.countTicketsByCampaignId('camp_b'), 1, 'campaign ticket count must preserve separate campaign rows');
+
+    const campATicket = dm.state.ticketBook.find((ticket) => ticket.campaignId === 'camp_a');
+    assert.equal(campATicket?.quantity, 2, 'same-campaign duplicate tickets must merge into one grouped row');
+
+    const removed = dm.removeTicket(campATicket?.id);
+    assert.equal(removed.removedTickets, 2, 'ticket delete must remove the full grouped quantity at once');
 }
 
 function runImmediateTicketSettlementRegression() {
@@ -222,14 +283,14 @@ function runImmediateTicketSettlementRegression() {
         source: 'generator',
         targetDrawNo: 1209
     });
-    assert.equal(settled?.checked?.drawNo, 1209, 'past-draw single ticket must settle immediately');
-    assert.equal(settled?.checked?.rank, 1, 'past-draw single ticket must calculate rank immediately');
+    assert.equal(settled?.ticket?.checked?.drawNo, 1209, 'past-draw single ticket must settle immediately');
+    assert.equal(settled?.ticket?.checked?.rank, 1, 'past-draw single ticket must calculate rank immediately');
 
     const pending = dm.addTicket([8, 9, 10, 11, 12, 13], {
         source: 'generator',
         targetDrawNo: 1210
     });
-    assert.equal(pending?.checked, null, 'future-draw single ticket must stay pending');
+    assert.equal(pending?.ticket?.checked, null, 'future-draw single ticket must stay pending');
 
     const inserted = dm.addTicketsBulk([
         {
@@ -246,7 +307,8 @@ function runImmediateTicketSettlementRegression() {
         }
     ], { silent: true });
 
-    assert.equal(inserted, 2, 'bulk insert must keep both unique tickets');
+    assert.equal(inserted.insertedRows, 2, 'bulk insert must keep both unique tickets');
+    assert.equal(inserted.addedQuantity, 2, 'bulk insert must report physical ticket count');
     assert.equal(
         dm.state.ticketBook.find((ticket) => ticket.id === 'ticket_bulk_past')?.checked?.drawNo,
         1209,
@@ -444,6 +506,9 @@ function runCheckTargetDrawRegression() {
     try {
         const ctx = {
             data: {
+                getTicketQuantity() {
+                    return 1;
+                },
                 state: {
                     winningStats: [{
                         draw_no: 1209,
@@ -893,6 +958,10 @@ async function runRefreshCurrentRouteStaleRegression() {
         renderSettingsPanel() {
             calls.push('renderSettingsPanel');
         },
+        syncRouteDataNotice() {},
+        renderRouteDataGate() {
+            return false;
+        },
         ensureModule(name) {
             calls.push(`ensureModule:${name}`);
             return pending;
@@ -1026,7 +1095,206 @@ async function runWinningStatsLoadClassificationRegression() {
         const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
         assert.equal(result, false, 'winning stats fetch failure must still report false');
         assert.equal(dm.lastWinningStatsLoad.offline, false, 'online fetch failure must not be classified as offline');
-        assert.equal(statusText.textContent, '데이터 확인 실패', 'status text must not show offline for online fetch failures');
+        assert.equal(statusText.textContent, '데이터 없음', 'online fetch failure without fallback data must surface data-unavailable state');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runPartialWinningStatsRecoveryRegression() {
+    const previousDocument = globalThis.document;
+    const statusText = createField();
+    const statusDot = createField({ style: {} });
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+            if (selector === '.dot') return statusDot;
+            return null;
+        }
+    };
+
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+        dm.save = () => {};
+        dm.localUpdatesCache = [{
+            draw_no: 1210,
+            date: '2026-03-07',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }];
+        dm.fetchWithTimeout = async () => {
+            throw new Error('network-timeout');
+        };
+
+        const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
+        assert.equal(result, true, 'local-only winning stats must still hydrate partial recovery state');
+        assert.equal(dm.dataHealth.availability, 'partial', 'local-only hydrate must report partial availability');
+        assert.equal(dm.dataHealth.source, 'local_only', 'local-only hydrate must report local_only source');
+        assert.equal(dm.state.winningStats[0]?.draw_no, 1210, 'local-only hydrate must rebuild winning stats from local updates');
+        assert.equal(statusText.textContent, '부분 복구', 'partial recovery must surface a partial-recovery status label');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runLocalRestoreSyncMetaRegression() {
+    const previousDocument = globalThis.document;
+    const statusText = createField();
+    const statusDot = createField({ style: {} });
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+            if (selector === '.dot') return statusDot;
+            return null;
+        }
+    };
+
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+        dm.save = () => {};
+        dm.fetchWithTimeout = async () => ({
+            ok: true,
+            async json() {
+                return {
+                    data: [{
+                        draw_no: 1210,
+                        date: '2026-03-07',
+                        numbers: [1, 2, 3, 4, 5, 6],
+                        bonus: 7
+                    }]
+                };
+            }
+        });
+
+        const loaded = await dm.fetchWinningStats({ notifyTicketSettle: false });
+        assert.equal(loaded, true, 'static winning stats fetch must succeed in local-restore regression');
+
+        dm.markLocalRestoreSuccess({ drawNo: dm.state.winningStats[0]?.draw_no || 0 });
+
+        assert.equal(dm.state.syncMeta.mode, 'local_restore', 'import refresh must mark sync meta as local_restore');
+        assert.match(dm.state.syncMeta.currentSource, /로컬 복원/, 'local_restore sync meta must describe the reconstructed source');
+        assert.equal(dm.state.syncMeta.lastSuccessDrawNo, 1210, 'local_restore sync meta must reuse effective winningStats draw number');
+        assert.ok(dm.state.syncMeta.lastSuccessAt, 'local_restore sync meta must record success time');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runRouteDataGateRegression() {
+    const previousDocument = globalThis.document;
+    const pages = {};
+
+    const createPage = () => {
+        const state = {
+            gate: null,
+            banner: null
+        };
+        const header = {
+            insertAdjacentElement(_position, element) {
+                if (String(element.className || '').includes('data-health-gate')) {
+                    state.gate = element;
+                }
+                if (String(element.className || '').includes('data-health-banner')) {
+                    state.banner = element;
+                }
+                element.remove = () => {
+                    if (state.gate === element) state.gate = null;
+                    if (state.banner === element) state.banner = null;
+                };
+            }
+        };
+        return {
+            state,
+            classList: {
+                values: new Set(),
+                add(value) {
+                    this.values.add(value);
+                },
+                remove(value) {
+                    this.values.delete(value);
+                },
+                contains(value) {
+                    return this.values.has(value);
+                }
+            },
+            querySelector(selector) {
+                if (selector === '.page-header') return header;
+                if (selector === '.data-health-gate') return state.gate;
+                if (selector === '.data-health-banner') return state.banner;
+                return null;
+            }
+        };
+    };
+
+    pages['#page-stats'] = createPage();
+    pages['#page-check'] = createPage();
+
+    globalThis.document = {
+        querySelector(selector) {
+            return pages[selector] || null;
+        },
+        createElement() {
+            return {
+                className: '',
+                innerHTML: '',
+                remove() {}
+            };
+        }
+    };
+
+    try {
+        const ctx = {
+            data: {
+                lastWinningStatsLoad: { updatedAt: '2026-04-07T00:00:00.000Z' },
+                state: {
+                    winningStats: [{ draw_no: 1210 }]
+                },
+                getDataFreshness() {
+                    return {
+                        availability: 'partial',
+                        isPartial: true,
+                        isUnavailable: false,
+                        dataHealthMessage: '정적 JSON을 불러오지 못해 로컬 최신 회차 일부 데이터만 사용 중입니다.'
+                    };
+                }
+            },
+            routeRequiresFullData: LottoApp.prototype.routeRequiresFullData,
+            getRouteDataHealthCopy: LottoApp.prototype.getRouteDataHealthCopy,
+            clearRouteDataGate: LottoApp.prototype.clearRouteDataGate
+        };
+
+        const gated = LottoApp.prototype.renderRouteDataGate.call(ctx, 'stats');
+        assert.equal(gated, true, 'stats route must render a gate when data availability is partial');
+        assert.equal(pages['#page-stats'].classList.contains('route-data-gated'), true, 'gated route must add route-data-gated class');
+        assert.match(pages['#page-stats'].state.gate?.innerHTML || '', /다시 동기화/, 'gate panel must expose a resync action');
+
+        LottoApp.prototype.syncRouteDataNotice.call(ctx, 'check');
+        assert.match(pages['#page-check'].state.banner?.innerHTML || '', /부분 복구/, 'check route must show a partial-recovery banner');
+
+        ctx.data.getDataFreshness = () => ({
+            availability: 'full',
+            isPartial: false,
+            isUnavailable: false,
+            dataHealthMessage: ''
+        });
+
+        const cleared = LottoApp.prototype.renderRouteDataGate.call(ctx, 'stats');
+        assert.equal(cleared, false, 'stats route gate must clear once full data is restored');
+        assert.equal(pages['#page-stats'].classList.contains('route-data-gated'), false, 'full data must remove route-data-gated class');
+
+        LottoApp.prototype.syncRouteDataNotice.call(ctx, 'check');
+        assert.equal(pages['#page-check'].state.banner, null, 'full data must remove check-route availability banner');
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -1241,13 +1509,7 @@ async function runImportOrphanCampaignCleanupRegression() {
             version: 3,
             favorites: [],
             history: [],
-            ticketBook: [{
-                id: 'ticket_imported',
-                numbers: [1, 2, 3, 4, 5, 6],
-                targetDrawNo: 1210,
-                source: 'import',
-                campaignId: 'camp_new'
-            }],
+            ticketBook: [],
             campaigns: [{
                 id: 'camp_new',
                 name: 'imported campaign',
@@ -1299,7 +1561,7 @@ async function runImportOrphanCampaignCleanupRegression() {
             }
         });
 
-        assert.equal(data.state.ticketBook.length, 1, 'duplicate import ticket must still be deduped');
+        assert.equal(data.state.ticketBook.length, 1, 'merge import must preserve existing manual ticket rows');
         assert.equal(data.state.campaigns.length, 0, 'merge import must remove orphan campaigns with no linked tickets');
         assert.ok(
             toasts.some((item) => item.includes('정리 1개 캠페인')),
@@ -1422,7 +1684,12 @@ async function runCampaignEmptySaveRegression() {
                 },
                 addTicketsBulk() {
                     calls.push('addTicketsBulk');
-                    return 0;
+                    return {
+                        insertedRows: 0,
+                        incrementedRows: 0,
+                        addedQuantity: 0,
+                        affectedRows: 0
+                    };
                 },
                 addCampaign() {
                     calls.push('addCampaign');
@@ -1544,6 +1811,10 @@ async function runQrRouteCleanupRegression() {
             navItems: [],
             pageItems: [],
             navByTarget: new Map(),
+            syncRouteDataNotice() {},
+            renderRouteDataGate() {
+                return false;
+            },
             qr: {
                 async stop() {
                     calls.push('qr.stop');
@@ -1597,8 +1868,14 @@ async function runSyncGuardRegression() {
 async function runPostImportRefreshRegression() {
     const calls = [];
     const data = {
+        state: {
+            winningStats: [{ draw_no: 1211 }]
+        },
         async fetchWinningStats(options) {
             calls.push(`fetchWinningStats:${JSON.stringify(options)}`);
+        },
+        markLocalRestoreSuccess(options) {
+            calls.push(`markLocalRestoreSuccess:${JSON.stringify(options)}`);
         }
     };
     const app = {
@@ -1615,6 +1892,7 @@ async function runPostImportRefreshRegression() {
     await runPostImportRefresh({ data, app });
     assert.deepEqual(calls, [
         'fetchWinningStats:{"notifyTicketSettle":false}',
+        'markLocalRestoreSuccess:{"drawNo":1211}',
         'updateLatestWin',
         'refreshCurrentRoute',
         'renderDataLists'
@@ -1904,11 +2182,17 @@ function runDataListDomRegression() {
                         { numbers: [6, 7, 8, 9, 10, 11], date: '2026-02-01T00:00:00.000Z' }
                     ],
                     ticketBook: [
-                        { id: 'ticket<&"\'', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1210, checked: null }
+                        { id: 'ticket<&"\'', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1210, checked: null, quantity: 2 }
                     ],
                     campaigns: [
                         { id: 'campaign_1', name: '테스트 캠페인', startDrawNo: 1210, weeks: 4, setsPerWeek: 3 }
                     ]
+                },
+                getTicketQuantity(ticket) {
+                    return Number(ticket?.quantity || 1);
+                },
+                getTotalTicketCount(tickets = []) {
+                    return (tickets || []).reduce((sum, ticket) => sum + Number(ticket?.quantity || 1), 0);
                 },
                 getLocalUpdates() {
                     return [{ draw_no: 1211 }];
@@ -1940,6 +2224,8 @@ function runDataListDomRegression() {
         assert.match(favPagination.innerHTML, /총 1개/, 'favorite pagination summary must render');
         assert.match(favPagination.innerHTML, /1 \/ 1/, 'favorite pagination page text must render');
         assert.match(ticketList.innerHTML, /data-id="ticket&lt;&amp;&quot;&#39;"/, 'ticket data-id must be HTML-escaped');
+        assert.match(ticketList.innerHTML, /x2/, 'ticket list must render grouped quantity badge');
+        assert.match(ticketPagination.innerHTML, /총 2개 티켓/, 'ticket pagination summary must use physical ticket count');
         assert.match(localUpdatesSummary.textContent, /1개/, 'local updates summary must reflect stored local update count');
         assert.match(localUpdatesMeta.textContent, /1211회/, 'local updates meta must show latest local draw number');
         assert.equal(clearLocalUpdatesBtn.disabled, false, 'local updates clear button must be enabled when updates exist');
@@ -1977,6 +2263,17 @@ async function runServiceWorkerReloadPolicyRegression() {
     );
     assert.match(pwaSource, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
     assert.match(pwaSource, /if \(refreshing \|\| !reloadOnControllerChange\) return;/, 'controllerchange must ignore first-install activation');
+    assert.match(
+        pwaSource,
+        /if \(e\.data\?\.type === 'SW_ACTIVATED' && e\.data\?\.senderId !== channelClientId\)/,
+        'remote tabs must reload only after activation-complete broadcast from another tab'
+    );
+    assert.match(
+        pwaSource,
+        /updateChannel\?\.postMessage\(\{ type: 'SW_ACTIVATED', senderId: channelClientId \}\);/,
+        'activation-complete broadcast must happen after controllerchange'
+    );
+    assert.doesNotMatch(pwaSource, /SW_UPDATED/, 'legacy immediate reload broadcast must be removed');
     assert.match(pwaSource, /if \(reg\.waiting && navigator\.serviceWorker\.controller\) \{\s*showUpdateToast\(reg\.waiting\);/m, 'existing waiting SW must surface the update toast immediately');
     assert.match(pwaSource, /reg\.update\(\)\.catch\(\(\) => \{\}\);/, 'registration flow must proactively check for a newer SW script');
 }
@@ -2064,6 +2361,7 @@ export {
     runCampaignLimitRegression,
     runQrValidationRegression,
     runTicketDedupeRegression,
+    runTicketQuantityGroupingRegression,
     runImmediateTicketSettlementRegression,
     runTicketReconcileRegression,
     runCampaignResetAutofillRecoveryRegression,
@@ -2080,6 +2378,9 @@ export {
     runRefreshCurrentRouteStaleRegression,
     runSyncLatestWinRefreshRegression,
     runWinningStatsLoadClassificationRegression,
+    runPartialWinningStatsRecoveryRegression,
+    runLocalRestoreSyncMetaRegression,
+    runRouteDataGateRegression,
     runSyncInvalidPayloadRegression,
     runBuiltInSyncProviderRegression,
     runImportAlertOptionRegression,

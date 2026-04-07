@@ -94,15 +94,20 @@ export const generatorFormMethods = {
                 if (action === 'ticket') {
                     const request = this.getStrategyRequestFromUI();
                     const targetDrawNo = this.readNumberInput('genTargetDrawNo', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1);
-                    const added = this.app.data.addTicket(nums, {
+                    const result = this.app.data.addTicket(nums, {
                         source: 'generator',
                         targetDrawNo,
                         strategyRequest: request
                     });
-                    if (!added) {
-                        UIManager.toast('이미 티켓북에 있는 번호입니다.', 'warning');
+                    if (!result?.ticket) {
+                        UIManager.toast('티켓북 추가에 실패했습니다.', 'error');
                     } else {
-                        UIManager.toast(`${targetDrawNo}회차 티켓북에 추가했습니다.`, 'success');
+                        UIManager.toast(
+                            result.incremented
+                                ? `${targetDrawNo}회차 동일 티켓 수량을 x${result.quantity}로 늘렸습니다.`
+                                : `${targetDrawNo}회차 티켓북에 추가했습니다.`,
+                            'success'
+                        );
                         if (this.app.renderDataLists) this.app.renderDataLists();
                     }
                     return;

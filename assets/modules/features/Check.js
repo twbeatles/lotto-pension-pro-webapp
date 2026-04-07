@@ -175,6 +175,11 @@ export class CheckModule {
         return 'lose';
     }
 
+    getItemQuantity(item) {
+        if (this.source !== 'tickets') return 1;
+        return this.data.getTicketQuantity(item);
+    }
+
     formatDate(value) {
         if (!value) return '';
         const date = new Date(value);
@@ -207,13 +212,14 @@ export class CheckModule {
             const sourceLabel = UI_STRINGS.check.sourceLabels[this.source] || this.source;
             const ticketStatus = this.source === 'tickets' ? this.getTicketStatusCode(item) : 'all';
             const ticketStatusLabel = this.source === 'tickets' ? this.getTicketStatusLabel(item) : '';
+            const quantity = this.getItemQuantity(item);
 
             if (this.source === 'tickets' && this.ticketStatusFilter !== 'all' && ticketStatus !== this.ticketStatusFilter) {
                 return acc;
             }
 
             const metaText = this.source === 'tickets'
-                ? `${item.targetDrawNo}회차 ${ticketStatusLabel}`
+                ? `${item.targetDrawNo}회차 ${ticketStatusLabel}${quantity > 1 ? ` x${quantity}` : ''}`
                 : this.source === 'scanned'
                     ? (item.targetDrawNo ? `${item.targetDrawNo}회차 큐알 스캔` : '큐알 스캔 결과')
                     : `${sourceLabel} ${this.formatDate(item.date)}`;
@@ -227,7 +233,8 @@ export class CheckModule {
                 sourceLabel,
                 metaText,
                 ticketStatus,
-                ticketStatusLabel
+                ticketStatusLabel,
+                quantity
             });
             return acc;
         }, []);
@@ -285,8 +292,11 @@ export class CheckModule {
 
         const sourceLabel = UI_STRINGS.check.sourceLabels[this.source] || this.source;
         if (metaEl) {
+            const totalQuantity = visibleItems.reduce((sum, entry) => sum + Number(entry.quantity || 1), 0);
             metaEl.textContent = visibleItems.length
-                ? `${sourceLabel} ${visibleItems.length}개`
+                ? this.source === 'tickets'
+                    ? `${sourceLabel} ${totalQuantity}개 티켓 · ${visibleItems.length}개 조합`
+                    : `${sourceLabel} ${visibleItems.length}개`
                 : `${sourceLabel} 항목이 없습니다.`;
         }
 
@@ -301,10 +311,15 @@ export class CheckModule {
             return;
         }
 
-        listEl.innerHTML = visibleItems.map(({ key, item, index, metaText, sourceLabel: label, ticketStatusLabel }) => {
+        listEl.innerHTML = visibleItems.map(({ key, item, index, metaText, sourceLabel: label, ticketStatusLabel, quantity }) => {
             const isActive = key === this.selectedItemKey;
             const topBadge = this.source === 'tickets'
-                ? `<span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${ticketStatusLabel}</span>`
+                ? `
+                    <span class="check-target-card-badges">
+                        <span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${ticketStatusLabel}</span>
+                        ${quantity > 1 ? `<span class="badge status-badge ticket-quantity-badge">x${quantity}</span>` : ''}
+                    </span>
+                `
                 : `<span class="badge status-badge">${label}</span>`;
             const optionId = `check-option-${this.source}-${index}`;
 
@@ -374,6 +389,7 @@ export class CheckModule {
     renderMissingTargetDraw(ticket, targetDrawNo) {
         this.currentTicket = ticket.numbers;
         this.currentDrawNo = targetDrawNo;
+        const quantity = this.data.getTicketQuantity(ticket);
 
         const area = $('#checkResultArea');
         if (!area) return;
@@ -391,7 +407,7 @@ export class CheckModule {
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
-          <div class="meta">${targetDrawNo}회 결과 데이터가 없습니다. 아직 추첨 전이거나 동기화되지 않았습니다.</div>
+          <div class="meta">${targetDrawNo}회 결과 데이터가 없습니다. 아직 추첨 전이거나 동기화되지 않았습니다.${quantity > 1 ? ` / 보유 수량: <b>x${quantity}</b>` : ''}</div>
         </div>
       </div>
     `;
@@ -423,6 +439,7 @@ export class CheckModule {
 
         const rankText = rank ? `${rank}등` : '낙첨';
         const hitText = rank === 2 ? '5+보너스' : `${matchCount}`;
+        const quantity = this.data.getTicketQuantity(ticket);
 
         area.innerHTML = `
       <div class="check-result">
@@ -445,7 +462,7 @@ export class CheckModule {
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, winSet)}</div>
-          <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${bonusHit ? '있음' : '없음'}</b></div>
+          <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${bonusHit ? '있음' : '없음'}</b>${quantity > 1 ? ` / 보유 수량: <b>x${quantity}</b>` : ''}</div>
         </div>
       </div>
     `;
@@ -504,6 +521,7 @@ export class CheckModule {
         const note = results.length > 50
             ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
             : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
+        const quantity = this.data.getTicketQuantity(ticket);
 
         const cards = limited.map((result) => {
             const rankText = `${result.rank}등`;
@@ -545,6 +563,7 @@ export class CheckModule {
           <div class="label">내 번호</div>
           <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
           ${note}
+          ${quantity > 1 ? `<div class="meta">보유 수량: <b>x${quantity}</b></div>` : ''}
         </div>
         <div class="check-cards">${cards}</div>
       </div>

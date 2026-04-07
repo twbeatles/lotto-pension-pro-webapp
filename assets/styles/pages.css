@@ -548,6 +548,60 @@
   margin-top: 0;
 }
 
+.route-data-gated>.data-health-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.route-data-gated>:not(.page-header):not(.data-health-gate):not(.data-health-banner) {
+  display: none !important;
+}
+
+.data-health-gate-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.data-health-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+[data-theme="light"] .data-health-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: #ead7ac;
+}
+
+.result-meta-inline {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-quantity-badge {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.check-target-card-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* Checkbox */
 .check-box {
   display: flex;

@@ -177,9 +177,10 @@ export const generatorActionMethods = {
             }
 
             if (localToken !== this.campaignToken) return false;
-            inserted = this.data.addTicketsBulk(tickets, { silent: true });
+            const bulkResult = this.data.addTicketsBulk(tickets, { silent: true });
+            inserted = bulkResult.addedQuantity;
             let campaign = null;
-            if (inserted > 0) {
+            if (bulkResult.insertedRows > 0) {
                 campaign = this.data.addCampaign({
                     id: campaignId,
                     name: `${startDraw}회 시작 ${weeks}주`,
@@ -195,7 +196,10 @@ export const generatorActionMethods = {
                 UIManager.toast(`필터 조건으로 ${totalCreated}/${requestedTotal}개만 생성되었습니다.`, 'warning', 3500);
             }
             if (inserted > 0) {
-                UIManager.toast(`캠페인 생성 완료: ${inserted}/${totalCreated}개 티켓 추가`, 'success');
+                UIManager.toast(
+                    `캠페인 생성 완료: 티켓 ${inserted}개 반영${bulkResult.insertedRows !== inserted ? ` (${bulkResult.insertedRows}개 조합)` : ''}`,
+                    'success'
+                );
             } else if (totalCreated > 0) {
                 UIManager.toast('생성된 티켓이 모두 중복되어 캠페인을 저장하지 않았습니다.', 'warning', 3500);
             } else {

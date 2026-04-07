@@ -26,6 +26,7 @@ export class LottoApp {
         this.moduleConstructors = {};
         this.pendingModulePromises = new Map();
         this.dataListDelegationBound = false;
+        this.dataHealthActionsBound = false;
         this.routeToken = 0;
         this.navItems = [];
         this.pageItems = [];
@@ -453,6 +454,7 @@ export class LottoApp {
         this.bindMobileMoreSheet();
         this.bindDataEvents();
         this.bindDataListDelegation();
+        this.bindDataHealthActions();
         this.bindPersistenceEvents();
         this._bindOfflineBanner();
         this._bindAutoSyncLifecycle();
@@ -470,7 +472,7 @@ export class LottoApp {
         this.updateLatestWin({ offline: !latestLoaded && Boolean(this.data.lastWinningStatsLoad?.offline) });
 
         const hasCustomProxy = Boolean(this.data.resolveProxyConfig()?.url);
-        if (!latestLoaded || hasCustomProxy) {
+        if (!latestLoaded || hasCustomProxy || this.data.getDataFreshness().availability !== 'full') {
             this.queueAutoSync(hasCustomProxy ? 'proxy-bootstrap' : 'bootstrap-recovery', {
                 delayMs: latestLoaded ? 400 : 150,
                 force: true

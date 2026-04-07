@@ -28,8 +28,10 @@ import {
     runHiddenAttributeStyleRegression,
     runHistoryActualLogRegression,
     runImmediateTicketSettlementRegression,
+    runLocalRestoreSyncMetaRegression,
     runLocalUpdatesFutureGuardRegression,
     runOrphanCampaignAutoCleanupRegression,
+    runPartialWinningStatsRecoveryRegression,
     runQrScanReentryGuardRegression,
     runQrRouteCleanupRegression,
     runQrValidationRegression,
@@ -43,6 +45,8 @@ import {
     runStrategyPresetCrudRegression,
     runStrictFilterRegression,
     runTicketReconcileRegression,
+    runTicketQuantityGroupingRegression,
+    runRouteDataGateRegression,
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runBuiltInSyncProviderRegression,
@@ -82,6 +86,7 @@ async function main() {
     runCampaignCascadeRegression();
     runQrValidationRegression();
     runTicketDedupeRegression();
+    runTicketQuantityGroupingRegression();
     runImmediateTicketSettlementRegression();
     await runTicketReconcileRegression();
     runCampaignResetAutofillRecoveryRegression();
@@ -99,6 +104,9 @@ async function main() {
     await runRefreshCurrentRouteStaleRegression();
     await runSyncLatestWinRefreshRegression();
     await runWinningStatsLoadClassificationRegression();
+    await runPartialWinningStatsRecoveryRegression();
+    await runLocalRestoreSyncMetaRegression();
+    runRouteDataGateRegression();
     await runSyncInvalidPayloadRegression();
     runBuiltInSyncProviderRegression();
     await runImportAlertOptionRegression();
@@ -132,6 +140,7 @@ async function main() {
     console.log('[PASS] campaign-cascade regression');
     console.log('[PASS] qr-validation regression');
     console.log('[PASS] ticket-dedupe regression');
+    console.log('[PASS] ticket-quantity grouping regression');
     console.log('[PASS] immediate ticket settlement regression');
     console.log('[PASS] ticket-reconcile regression');
     console.log('[PASS] campaign reset autofill recovery regression');
@@ -149,6 +158,9 @@ async function main() {
     console.log('[PASS] refreshCurrentRoute stale regression');
     console.log('[PASS] sync-latest-win refresh regression');
     console.log('[PASS] winning-stats load classification regression');
+    console.log('[PASS] partial winning-stats recovery regression');
+    console.log('[PASS] local-restore sync-meta regression');
+    console.log('[PASS] route data-gate regression');
     console.log('[PASS] sync invalid payload regression');
     console.log('[PASS] built-in sync provider regression');
     console.log('[PASS] import-alert-options regression');

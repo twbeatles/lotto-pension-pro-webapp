@@ -25,6 +25,8 @@ export const LEGACY_STRATEGY_ALIASES = Object.freeze({
     random: 'random_baseline'
 });
 
+export const AUTO_STRATEGY_IDS = new Set(['auto_recent_top', 'auto_ensemble_top3']);
+
 export const STRATEGY_CATALOG = Object.freeze({
     random_baseline: {
         id: 'random_baseline',
@@ -42,7 +44,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'A',
         experimental: false,
         summary: '빈도/최근/공백 신호를 혼합',
-        description: '역대 당첨 번호의 빈도, 최근 출현 여부, 그리고 출현 공백 간격을 5:3:2 비율로 종합하여 점수를 매깁니다. 가장 균형 잡히고 권장되는 <strong>표준 인공지능 예측 모델</strong>입니다.',
+        description: '역대 당첨 번호의 빈도, 최근 출현 여부, 그리고 출현 공백 간격을 5:3:2 비율로 종합하여 점수를 매깁니다. 가장 균형 잡힌 <strong>대표 가중치 추천 모델</strong>로 쓰기 좋은 기본 전략입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -52,7 +54,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'A',
         experimental: false,
         summary: '강한 신호의 교집합을 다시 선별',
-        description: '빈도, 최근성, 공백, 페어 시너지, 구간 분산 신호를 각각 독립적으로 본 뒤, 여러 관점에서 동시에 점수가 높은 후보만 다시 랭킹하는 <strong>다중 합의형 전략</strong>입니다. 단일 기준에 치우치지 않아 AI 추천의 기본형으로 쓰기 좋습니다.',
+        description: '빈도, 최근성, 공백, 페어 시너지, 구간 분산 신호를 각각 독립적으로 본 뒤, 여러 관점에서 동시에 점수가 높은 후보만 다시 랭킹하는 <strong>다중 합의형 전략</strong>입니다. 단일 기준에 치우치지 않아 통계 추천의 기본형으로 쓰기 좋습니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6500 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -93,7 +95,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         experimental: false,
         scopes: ['ai'],
         summary: '최근 N회 기준 최상위 전략 자동 선택',
-        description: '최근 <strong>N회(현재 참조 회차 수)</strong>를 다시 검증해 가장 성적이 좋았던 전략 1개를 자동으로 골라 적용합니다. 사용자가 매번 전략을 비교하지 않아도 되는 실전형 자동 추천 모델입니다.',
+        description: '최근 성능을 다시 비교해 가장 성적이 좋았던 전략 1개를 자동으로 골라 적용합니다. 현재 참조 회차 수를 입력받지만, 실제 자동 비교 구간은 <strong>최대 30회</strong>까지 사용합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 5500, lookbackWindow: 20 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -104,7 +106,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         experimental: false,
         scopes: ['ai'],
         summary: '최근 상위 3개 전략을 자동 혼합',
-        description: '최근 N회 성능평가에서 상위권에 오른 전략 3개를 선택한 뒤, 각 전략의 현재 가중치를 성능 비율만큼 혼합합니다. 단일 전략보다 <strong>변동성을 줄이고 실사용 체감</strong>을 높이기 위한 자동 앙상블 모델입니다.',
+        description: '최근 성능평가에서 상위권에 오른 전략 3개를 선택한 뒤, 각 전략의 현재 가중치를 성능 비율만큼 혼합합니다. 현재 참조 회차 수를 입력받지만, 실제 자동 비교 구간은 <strong>최대 30회</strong>까지 사용합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6000, lookbackWindow: 20 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -202,7 +204,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'A',
         experimental: false,
         summary: '후보군 기반 조합 확장',
-        description: '선택된 유력 후보군(통상 10수 내외)을 기반으로, 그 안에서 발생할 수 있는 <strong>모든 조합을 생성(풀 휠링)</strong>해내는 공격적이고 체계적인 다출 방식 시스템입니다.',
+        description: '선택된 유력 후보군(통상 10수 내외)을 기반으로, 그 안에서 점수가 높은 번호를 넓게 샘플링해 여러 조합을 탐색하는 <strong>후보군 기반 확장 전략</strong>입니다.',
         defaultParams: { ...BASE_PARAMS, wheelPoolSize: 10, wheelGuarantee: 4 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -212,7 +214,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '소수 티켓 중심 축약 휠',
-        description: '풀 휠링과 달리, 후보군 내에서 <strong>3개만 맞아도 최소 일정 등수(보통 5등)를 보장</strong>하도록 수학적으로 조합 수를 압축한 극강의 가성비 조합 축약 모델입니다.',
+        description: '풀 휠링보다 적은 수의 조합으로 후보군을 샘플링하는 <strong>축약형 확장 전략</strong>입니다. 제한된 조합 수 안에서 후보군을 폭넓게 탐색하고 싶을 때 적합합니다.',
         defaultParams: { ...BASE_PARAMS, wheelPoolSize: 9, wheelGuarantee: 3 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -222,7 +224,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: true,
         summary: '결번-출현 리듬 기반',
-        description: '<strong>[실험 모델]</strong> 번호별로 출현과 결번이 순환하는 리듬 패턴을 수학적으로 추적하여, 다음 타이밍에 출현으로 전환될 확률이 높은 번호를 신경망 형태로 추정합니다.',
+        description: '<strong>[실험 모델]</strong> 번호별로 출현과 결번이 순환하는 리듬 패턴을 수학적으로 추적하여, 다음 타이밍에 출현 쪽으로 기울 수 있는 번호를 휴리스틱하게 추정합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -267,6 +269,10 @@ export function resolveStrategyId(value) {
 export function getStrategyMeta(id) {
     const resolved = resolveStrategyId(id);
     return STRATEGY_CATALOG[resolved] || STRATEGY_CATALOG.ensemble_weighted;
+}
+
+export function isAutoStrategyId(value) {
+    return AUTO_STRATEGY_IDS.has(resolveStrategyId(value));
 }
 
 export function listStrategies({ includeExperimental = false, scope = null } = {}) {

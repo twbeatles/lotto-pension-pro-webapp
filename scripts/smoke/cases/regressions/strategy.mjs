@@ -1,0 +1,263 @@
+import {
+    assert,
+    assertTicketShape,
+    buildBackupPayload,
+    buildSmokeRequest,
+    GeneratorModule,
+    passesFilters,
+    readFile,
+    resolve,
+    StrategyEngine
+} from './support.mjs';
+
+function runBacktestSmoke(stats) {
+    const startIndex = Math.max(30, stats.length - 50);
+    const sample = stats.slice(startIndex);
+    assert.ok(sample.length >= 20, 'backtest smoke requires at least 20 draws');
+
+    const request = buildSmokeRequest();
+    let tickets = 0;
+    let totalPrize = 0;
+    let wins = 0;
+    for (let i = 10; i < Math.min(sample.length, 22); i++) {
+        const history = sample.slice(0, i);
+        const draw = sample[i];
+        const engine = new StrategyEngine(history);
+        const sets = engine.generateMultipleSets(2, request, { sourceData: history });
+        assertTicketShape(sets, 2);
+        for (const set of sets) {
+            const result = engine.evaluateTicketSet(set, draw, { payoutMode: 'hybrid_dynamic_first' });
+            assert.ok(Number.isFinite(result.rank), 'rank must be finite');
+            assert.ok(Number.isFinite(result.prize), 'prize must be finite');
+            tickets += 1;
+            totalPrize += Number(result.prize || 0);
+            if (result.rank >= 1 && result.rank <= 5) wins += 1;
+        }
+    }
+    assert.ok(tickets > 0, 'backtest smoke must generate tickets');
+    assert.ok(totalPrize >= 0, 'totalPrize must be non-negative');
+    return { tickets, totalPrize, wins };
+}
+
+function runStrictFilterRegression(stats) {
+    const request = {
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 3000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 20260301,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {
+            oddEven: null,
+            highLow: null,
+            sumRange: [1, 10],
+            acRange: null,
+            maxConsecutivePairs: null,
+            endDigitUniqueMin: null
+        }
+    };
+    const engine = new StrategyEngine(stats);
+    const sets = engine.generateMultipleSets(5, request, { maxAttempts: 30 });
+    assert.equal(sets.length, 0, 'impossible filter must not produce fallback sets');
+    assert.ok(sets.every((set) => passesFilters(set, request.filters)), 'all generated sets must pass filters');
+}
+
+function runWheelFixedNumbersRegression(stats) {
+    const engine = new StrategyEngine(stats);
+    const fixed = [10, 20, 30, 40, 45];
+    const request = {
+        strategyId: 'wheel_full',
+        params: {
+            simulationCount: 5000,
+            lookbackWindow: 20,
+            wheelPoolSize: 10,
+            wheelGuarantee: 4,
+            seed: 12345,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    };
+
+    const set = engine.generateSet(request, { fixed, maxAttempts: 40 });
+    assert.ok(Array.isArray(set), 'wheel strategy must generate a set');
+    fixed.forEach((n) => {
+        assert.ok(set.includes(n), `wheel strategy must preserve fixed number ${n}`);
+    });
+}
+
+function runAdaptiveRecommendationDiagnosticsRegression(stats) {
+    const engine = new StrategyEngine(stats);
+    const adaptiveResult = engine.recommendFromSimulation({
+        strategyId: 'auto_recent_top',
+        params: {
+            simulationCount: 1200,
+            lookbackWindow: 120,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 20260414,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    }, {
+        setCount: 3
+    });
+
+    assert.equal(
+        adaptiveResult?.simulation?.diagnostics?.effectiveAdaptiveWindow,
+        30,
+        'auto recommendation diagnostics must expose the capped evaluation window'
+    );
+    assert.equal(
+        adaptiveResult?.simulation?.diagnostics?.fallbackMode,
+        'none',
+        'successful auto recommendation must report fallbackMode none'
+    );
+
+    const uniformFallback = engine.recommendFromSimulation({
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 1000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 20260414,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {
+            oddEven: null,
+            highLow: null,
+            sumRange: [1, 10],
+            acRange: null,
+            maxConsecutivePairs: null,
+            endDigitUniqueMin: null
+        }
+    }, {
+        setCount: 1
+    });
+
+    assert.equal(
+        uniformFallback?.simulation?.diagnostics?.fallbackMode,
+        'uniform_weights',
+        'zero-accepted recommendation must report the uniform weight fallback mode'
+    );
+}
+
+function runCampaignDerivedSeedRegression(stats) {
+    const baseRequest = {
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 2000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 777,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    };
+
+    const week0Request = GeneratorModule.prototype.getCampaignRuntimeRequest.call({}, baseRequest, 0);
+    const week1Request = GeneratorModule.prototype.getCampaignRuntimeRequest.call({}, baseRequest, 1);
+
+    assert.equal(baseRequest.params.seed, 777, 'campaign runtime request must not mutate the original seed');
+    assert.equal(week0Request.params.seed, 777, 'week 0 must keep the original seed');
+    assert.equal(week1Request.params.seed, 778, 'later campaign weeks must derive a distinct runtime seed');
+
+    const engine = new StrategyEngine(stats);
+    const week0A = engine.generateMultipleSets(3, week0Request, { maxAttempts: 300 });
+    const week1A = engine.generateMultipleSets(3, week1Request, { maxAttempts: 300 });
+    const week0B = engine.generateMultipleSets(
+        3,
+        GeneratorModule.prototype.getCampaignRuntimeRequest.call({}, baseRequest, 0),
+        { maxAttempts: 300 }
+    );
+    const week1B = engine.generateMultipleSets(
+        3,
+        GeneratorModule.prototype.getCampaignRuntimeRequest.call({}, baseRequest, 1),
+        { maxAttempts: 300 }
+    );
+
+    assert.notDeepEqual(week0A, week1A, 'derived seeds must diversify week-to-week campaign output');
+    assert.deepEqual(week0A, week0B, 'campaign week 0 output must stay reproducible');
+    assert.deepEqual(week1A, week1B, 'campaign week 1 output must stay reproducible');
+}
+
+async function runRecommendationRuntimePolicyRegression() {
+    const [aiRenderingSource, workerSource, workerClientSource] = await Promise.all([
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/strategy.worker.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/core/StrategyWorkerClient.js'), 'utf8')
+    ]);
+
+    assert.match(
+        aiRenderingSource,
+        /if \(workerTimedOut && isAutoStrategyId\(request\.strategyId\)\)/,
+        'auto strategy timeouts must short-circuit instead of falling back to main-thread recommendation'
+    );
+    assert.match(
+        aiRenderingSource,
+        /executionMode,\s*fallbackMode,\s*effectiveAdaptiveWindow/s,
+        'AI rendering must read the richer diagnostics fields'
+    );
+    assert.match(
+        workerSource,
+        /executionMode:\s*'worker'/,
+        'strategy worker must mark worker-based recommendation diagnostics'
+    );
+    assert.match(
+        workerClientSource,
+        /if \(isAutoStrategyId\(payload\?\.request\?\.strategyId\)\)/,
+        'worker timeout calculation must treat auto recommendation strategies separately'
+    );
+}
+
+function runBackupSmoke(stats) {
+    const state = {
+        theme: 'dark',
+        customProxy: 'https://example-proxy.local/proxy/latest',
+        favorites: [{ numbers: [1, 2, 3, 4, 5, 6], date: '2026-02-28T00:00:00.000Z' }],
+        history: [{ numbers: [7, 8, 9, 10, 11, 12], date: '2026-02-28T00:00:00.000Z' }],
+        ticketBook: [],
+        campaigns: [],
+        alertPrefs: { enableInApp: true, enableSystemNotification: false, notifyOnNewResult: true },
+        strategyPrefs: {
+            generator: buildSmokeRequest(),
+            ai: buildSmokeRequest(),
+            backtest: buildSmokeRequest()
+        },
+        strategyPresets: [
+            {
+                id: 'preset_1',
+                scope: 'backtest',
+                name: 'smoke preset',
+                request: buildSmokeRequest(),
+                createdAt: '2026-02-28T00:00:00.000Z',
+                updatedAt: '2026-02-28T00:00:00.000Z'
+            }
+        ]
+    };
+    const localUpdates = [stats.at(-1), stats.at(-1)];
+    const payload = buildBackupPayload(state, {
+        localUpdates,
+        strategyPresets: state.strategyPresets
+    });
+
+    assert.equal(payload.version, 3, 'backup version must be 3');
+    assert.ok(Array.isArray(payload.localUpdates), 'localUpdates must be array');
+    assert.ok(Array.isArray(payload.strategyPresets), 'strategyPresets must be array');
+    assert.ok(payload.localUpdates.length >= 1, 'localUpdates must include at least one item');
+    assert.ok(payload.strategyPresets.length >= 1, 'strategyPresets must include at least one item');
+}
+
+export {
+    runAdaptiveRecommendationDiagnosticsRegression,
+    runBacktestSmoke,
+    runBackupSmoke,
+    runCampaignDerivedSeedRegression,
+    runRecommendationRuntimePolicyRegression,
+    runStrictFilterRegression,
+    runWheelFixedNumbersRegression
+};

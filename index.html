@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="로또 6/45 번호 생성기 웹앱">
+    <meta name="description" content="로또 6/45 번호 생성과 통계 추천을 지원하는 웹앱">
     <meta name="theme-color" content="#0f172a">
     <title>로또 6/45 프로</title>
     <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
@@ -23,7 +23,7 @@
     <!-- SEO & Social Tags -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="로또 6/45 프로">
-    <meta property="og:description" content="인공지능 기반 로또 번호 생성 및 당첨 분석 (앱 설치 지원)">
+    <meta property="og:description" content="통계 기반 로또 번호 생성 및 추천, 당첨 분석 (앱 설치 지원)">
     <meta property="og:image" content="assets/icons/icon-512.png">
 </head>
 
@@ -47,7 +47,7 @@
                 </button>
                 <button class="nav-item" data-target="ai">
                     <i class="ph ph-brain"></i>
-                    <span>인공지능 예측</span>
+                    <span>통계 추천</span>
                 </button>
                 <button class="nav-item" data-target="bt">
                     <i class="ph ph-flask"></i>
@@ -356,18 +356,18 @@
                 </div>
             </section>
 
-            <!-- 3. 인공지능 -->
+            <!-- 3. 통계 추천 -->
             <section id="page-ai" class="page">
                 <header class="page-header">
-                    <h2>인공지능 예측</h2>
-                    <p class="subtitle">통계적 알고리즘이 다음 회차 번호를 예측합니다.</p>
+                    <h2>통계 추천</h2>
+                    <p class="subtitle">통계적 알고리즘이 과거 데이터 기반으로 번호를 추천합니다.</p>
                 </header>
 
                 <div class="card glass full-width" style="margin-bottom: 24px; text-align: left;">
-                    <h3 style="font-size: 16px; margin-bottom: 8px;"><i class="ph-fill ph-info"></i> 예측 방식 안내</h3>
+                    <h3 style="font-size: 16px; margin-bottom: 8px;"><i class="ph-fill ph-info"></i> 추천 방식 안내</h3>
                     <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6;">
-                        본 인공지능 예측 시스템은 <strong>최근 당첨 번호의 패턴, 빈도수, 미출현 기간</strong> 등을 종합적으로 분석하여 번호를 추천합니다.
-                        단순 랜덤이 아닌 가중치 기반 알고리즘을 사용하여 통계적으로 유의미한 조합을 생성하려 노력합니다.
+                        본 통계 추천 시스템은 <strong>최근 당첨 번호의 패턴, 빈도수, 미출현 기간</strong> 등을 종합적으로 분석하여 번호를 추천합니다.
+                        단순 랜덤이 아닌 가중치 기반 알고리즘으로 여러 후보를 탐색해 참고용 조합을 제안합니다.
                         (※ 당첨을 보장하지 않습니다.)
                     </p>
                 </div>
@@ -378,7 +378,7 @@
 
                         <div class="model-selector" style="margin-bottom: 20px; width: min(680px, 100%);">
                             <label for="aiModelSelect"
-                                style="display:block; margin-bottom:8px; color:var(--text-muted); font-size:14px;">예측 모델
+                                style="display:block; margin-bottom:8px; color:var(--text-muted); font-size:14px;">추천 모델
                                 선택</label>
                             <select id="aiModelSelect" class="input-field"
                                 style="background: rgba(0,0,0,0.3); border-color: var(--primary-glow);"></select>
@@ -388,7 +388,7 @@
                                 <span>실험 전략 보기</span>
                             </label>
                             <div class="preset-bar">
-                                <select id="aiPresetSelect" class="input-field preset-select" aria-label="AI 전략 프리셋"></select>
+                                <select id="aiPresetSelect" class="input-field preset-select" aria-label="통계 추천 전략 프리셋"></select>
                                 <div class="preset-actions">
                                     <button id="aiPresetLoadBtn" class="btn ghost sm" type="button">불러오기</button>
                                     <button id="aiPresetSaveBtn" class="btn ghost sm" type="button">현재값 저장</button>
@@ -455,11 +455,11 @@
                         </div>
 
                         <button id="aiPredictBtn" class="btn primary lg">
-                            <i class="ph-bold ph-brain"></i> 예측 시작
+                            <i class="ph-bold ph-brain"></i> 추천 시작
                         </button>
                     </div>
                     <div id="aiOutput" class="ai-output">
-                        <!-- 인공지능 카드 -->
+                        <!-- 통계 추천 카드 -->
                     </div>
                     <div class="card glass console-log">
                         <h3>분석 로그</h3>
@@ -822,7 +822,7 @@
             </button>
             <button class="nav-item" data-target="ai">
                 <i class="ph ph-brain"></i>
-                <span>예측</span>
+                <span>추천</span>
             </button>
             <button class="nav-item" data-target="check">
                 <i class="ph ph-check-circle"></i>

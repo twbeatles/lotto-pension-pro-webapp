@@ -54,6 +54,8 @@ export class DataManager {
             error: '',
             updatedAt: ''
         };
+        this._syncRunId = 0;
+        this._activeSyncRunId = 0;
     }
 }
 

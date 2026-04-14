@@ -5,11 +5,11 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-04-07`
+- Date: `2026-04-14`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146`
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-14.md`
 
 ## Current Snapshot
 
@@ -23,6 +23,9 @@ Use it as the fast-start reference for the current structure and workflow.
 - Service worker cache version:
   - `v17`
 - Recent consistency fixes:
+  - generator strategy selection is now driven by the selected strategy request; legacy toggles only act as quick presets
+  - generated-number runtime state now preserves provenance (`numbers`, `strategyRequest`, `createdAt`, `source`)
+  - sync runs are internally abortable for both manual and auto paths while public cancel remains manual-only
   - ticket-book duplicates now merge by `quantity`, including quantity-aware delete/import/campaign counts
   - import reconstructs `syncMeta` as `local_restore` instead of restoring stale sync metadata
   - `dataHealth` distinguishes `full` / `partial` / `none`
@@ -41,16 +44,26 @@ Use it as the fast-start reference for the current structure and workflow.
   - actual style slices live in `assets/styles/*.css`
 - Split core internals:
   - `assets/modules/core/app/`
+  - `assets/modules/core/app/moduleLoader/`
+  - `assets/modules/core/app/dataLists/`
   - `assets/modules/core/data/`
+  - `assets/modules/core/data/records/`
+  - `assets/modules/core/data/persistence/`
+  - `assets/modules/core/data/sync/`
+  - `assets/modules/core/ui/`
   - `assets/modules/core/strategy/`
 - Split feature internals:
   - `assets/modules/features/ai/`
   - `assets/modules/features/backtest/`
+  - `assets/modules/features/check/`
   - `assets/modules/features/dataio/`
   - `assets/modules/features/generator/`
 - Smoke layout:
   - `scripts/smoke/helpers/`
   - `scripts/smoke/cases/`
+  - `scripts/smoke/cases/regressions/`
+  - `scripts/smoke/cases/regressions/manifest.mjs`
+  - `scripts/smoke/cases/regressions/support.mjs`
   - `scripts/smoke/smoke.mjs`
 - AI strategy additions:
   - richer context + reranking in `assets/modules/core/strategy/`
@@ -106,9 +119,9 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/core/app/latestDraw.js`
   - latest draw card refresh + target-draw autofill sync
 - `assets/modules/core/app/moduleLoader.js`
-  - route stale guard and QR cleanup on route exit
+  - barrel for route stale guard, route data gate, and request bridge logic
 - `assets/modules/core/app/dataLists.js`
-  - list rendering + local update summary/clear action
+  - barrel for list state/render/pagination/events
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning metadata rendering
 - `assets/modules/core/data/records.js`
@@ -120,9 +133,13 @@ Use it as the fast-start reference for the current structure and workflow.
 - `assets/modules/core/data/sync.js`
   - data-health classification, partial recovery, single-draw payload diagnostics, sync warning tracking, and post-refresh ticket reconciliation
 - `assets/modules/features/Check.js`
-  - card-list based check flow and scanned/ticket filter handling
+  - facade; implementation split into `features/check/events.js`, `list.js`, `results.js`
 - `assets/modules/features/backtest/ui.js`
-  - persisted state re-render and mini charts
+  - barrel for `features/backtest/events.js`, `rendering.js`, `strategyForm.js`
+- `scripts/smoke/cases/regressions/manifest.mjs`
+  - regression execution order and shared pass labels
+- `scripts/smoke/cases/regressions/support.mjs`
+  - shared smoke imports/utilities reused by domain-specific regression modules
 - `assets/modules/features/generator/form.js`
   - campaign reset restores target-draw auto-follow metadata
 - `assets/modules/features/dataio/support.js`

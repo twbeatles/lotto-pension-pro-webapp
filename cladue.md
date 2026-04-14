@@ -5,8 +5,8 @@
 표준 AI 핸드오프 문서는 아래 파일입니다.
 
 - `claude.md`
-- 최신 갱신일: 2026-04-07
-- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md`
+- 최신 갱신일: 2026-04-14
+- 최신 기능 점검 문서: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-14.md`
 
 이번 기준 문서에는 아래 운영 변경이 반영되어 있습니다.
 
@@ -45,6 +45,8 @@
 - AI 후보풀 리랭킹 + 추천 점수/자동 선택 진단 표시
 - `npm run bench:ai` 전략 회귀평가 스크립트
 - 코어/기능 코드 분할(`core/app`, `core/data`, `core/strategy`, `features/*`)
+- 추가 구조 분할(`core/app/moduleLoader`, `core/app/dataLists`, `core/ui`, `features/check`, `scripts/smoke/cases/regressions/*`)
+- smoke 실행 계획/공통 의존성 분리(`manifest.mjs`, `support.mjs`)
 - `skipWaiting` 수락 후 실제 activation(`controllerchange`)이 끝난 뒤에만 멀티탭 reload 전파
 - 서비스워커 캐시 버전 `v17`
 

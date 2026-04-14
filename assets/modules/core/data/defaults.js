@@ -339,6 +339,26 @@ export const dataDefaultsMethods = {
         return err;
     },
 
+    isActiveSyncRun(runId) {
+        if (!runId) return true;
+        return runId === this._activeSyncRunId;
+    },
+
+    ensureActiveSyncRun(runId) {
+        if (!this.isActiveSyncRun(runId)) {
+            throw this.createAbortError('Sync aborted');
+        }
+        return true;
+    },
+
+    abortSyncInFlight({ force = false } = {}) {
+        if (!this.syncAbortController) return false;
+        if (!force && !this.syncCancelable) return false;
+        if (this.syncAbortController.signal.aborted) return false;
+        this.syncAbortController.abort();
+        return true;
+    },
+
     isAbortError(err) {
         if (!err) return false;
         if (err.name === 'AbortError') return true;
@@ -371,9 +391,6 @@ export const dataDefaultsMethods = {
     },
 
     cancelActiveSync() {
-        if (!this.syncAbortController || !this.syncCancelable) return false;
-        if (this.syncAbortController.signal.aborted) return false;
-        this.syncAbortController.abort();
-        return true;
+        return this.abortSyncInFlight({ force: false });
     }
 };

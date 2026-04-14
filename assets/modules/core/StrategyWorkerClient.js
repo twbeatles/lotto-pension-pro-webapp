@@ -1,7 +1,10 @@
+import { isAutoStrategyId } from './StrategyCatalog.js';
+
 const DEFAULT_TIMEOUT_MS = 8000;
 const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
+const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
 
 /** 저속 네트워크(2G/slow-2G) 감지 시 타임아웃을 배수로 확장 */
 function getNetworkSlowFactor() {
@@ -94,8 +97,12 @@ export class StrategyWorkerClient {
         }
         if (type === 'RECOMMEND') {
             const simulationCount = Math.max(1000, Number(payload?.request?.params?.simulationCount || 5000));
-            const base = Math.min(DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200), RECOMMEND_TIMEOUT_CAP_MS);
-            return Math.min(Math.ceil(base * slowFactor), RECOMMEND_TIMEOUT_CAP_MS);
+            const base = DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200);
+            if (isAutoStrategyId(payload?.request?.strategyId)) {
+                const autoBase = Math.min(Math.ceil(base * 2.5), AUTO_RECOMMEND_TIMEOUT_CAP_MS);
+                return Math.min(Math.ceil(autoBase * slowFactor), AUTO_RECOMMEND_TIMEOUT_CAP_MS);
+            }
+            return Math.min(Math.ceil(Math.min(base, RECOMMEND_TIMEOUT_CAP_MS) * slowFactor), RECOMMEND_TIMEOUT_CAP_MS);
         }
         return Math.min(Math.ceil(DEFAULT_TIMEOUT_MS * slowFactor), RECOMMEND_TIMEOUT_CAP_MS);
     }

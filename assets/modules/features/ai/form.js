@@ -138,7 +138,12 @@ export const aiFormMethods = {
             const pickBtn = e.target.closest('.pick-btn');
             if (pickBtn) {
                 const nums = String(pickBtn.dataset.nums || '').split(',').map(Number).filter(Number.isFinite);
-                if (nums.length === 6) this.app.requestNumbers(nums);
+                if (nums.length === 6) {
+                    this.app.requestNumbers(nums, {
+                        strategyRequest: this.lastRequest || this.buildStrategyRequest(),
+                        source: 'ai'
+                    });
+                }
                 return;
             }
 

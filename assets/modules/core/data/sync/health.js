@@ -1,0 +1,69 @@
+export const dataSyncHealthMethods = {
+    getWinningStatsDataHealth({ staticItems = [], localUpdates = [], mergedItems = [], staticError = null } = {}) {
+        const normalizedStatic = Array.isArray(staticItems) ? staticItems : [];
+        const normalizedLocalUpdates = Array.isArray(localUpdates) ? localUpdates : [];
+        const normalizedMerged = Array.isArray(mergedItems) ? mergedItems : [];
+        const latestDrawNo = Math.max(0, Math.floor(Number(normalizedMerged[0]?.draw_no || 0)));
+        const staticAvailable = normalizedStatic.length > 0;
+        const localAvailable = normalizedLocalUpdates.length > 0;
+
+        if (staticAvailable) {
+            return this.mergeDataHealth({
+                availability: 'full',
+                source: localAvailable ? 'static_local' : 'static',
+                latestDrawNo,
+                message: localAvailable
+                    ? '정적 JSON 전체 데이터에 로컬 최신 회차 보정이 함께 반영되어 있습니다.'
+                    : '정적 JSON 전체 데이터를 사용 중입니다.'
+            });
+        }
+
+        if (latestDrawNo > 0) {
+            return this.mergeDataHealth({
+                availability: 'partial',
+                source: localAvailable ? 'local_only' : 'none',
+                latestDrawNo,
+                message: localAvailable
+                    ? '정적 JSON을 불러오지 못해 로컬 최신 회차 일부 데이터만 사용 중입니다.'
+                    : '전체 데이터셋이 없어 최근 일부 회차만 사용할 수 있습니다.'
+            });
+        }
+
+        return this.mergeDataHealth({
+            availability: 'none',
+            source: 'none',
+            latestDrawNo: 0,
+            message: staticError
+                ? '정적 JSON과 로컬 보정 데이터를 모두 사용할 수 없습니다.'
+                : '사용 가능한 당첨 데이터가 없습니다.'
+        });
+    },
+
+    createSyncProfile(options = {}) {
+        const trigger = String(options?.trigger || '');
+        if (['idle', 'auto', 'online', 'resume', 'proxy-change'].includes(trigger)) {
+            return {
+                trigger,
+                silent: true,
+                settleSilent: true,
+                toast: false,
+                requestSystemNotification: false
+            };
+        }
+        return {
+            trigger: trigger === 'refresh' ? 'refresh' : 'manual',
+            silent: false,
+            settleSilent: false,
+            toast: true,
+            requestSystemNotification: true
+        };
+    },
+
+    logSync(code, message, meta = null) {
+        if (meta && typeof meta === 'object') {
+            console.log(`[${code}] ${message}`, meta);
+            return;
+        }
+        console.log(`[${code}] ${message}`);
+    }
+};

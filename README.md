@@ -7,6 +7,28 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 구조 분할 리팩토링 반영 (2026-04-14)
+
+- 이번 패스는 **동작 변경 없이 책임 분리 중심의 구조 정리**를 목표로 했습니다.
+- 기존 public entry path 는 유지했습니다.
+  - `assets/modules/core/LottoApp.js`
+  - `assets/modules/core/DataManager.js`
+  - `assets/modules/core/UIManager.js`
+  - `assets/modules/features/Check.js`
+  - `scripts/smoke/cases/regressions.mjs`
+- 내부 구현은 facade + barrel 패턴으로 분리했습니다.
+  - `assets/modules/core/data/records/`
+  - `assets/modules/core/data/persistence/`
+  - `assets/modules/core/data/sync/`
+  - `assets/modules/core/app/moduleLoader/`
+  - `assets/modules/core/app/dataLists/`
+  - `assets/modules/core/ui/`
+  - `assets/modules/features/check/`
+  - `assets/modules/features/backtest/`
+  - `scripts/smoke/cases/regressions/`
+- 스모크 테스트는 도메인별 barrel 구조로 재배치했고, `manifest.mjs` 실행 계획 + `support.mjs` 공통 의존성 모듈을 추가했습니다.
+- `facade export parity` / `regression barrel export parity` 회귀를 추가해 분할 중 export 누락을 방지했습니다.
+
 ## 기능 구현 정합성 3차 보강 반영 (2026-04-07)
 
 - **티켓북 `quantity` 모델 도입** (`records.js`, `dataLists.js`, `Check.js`, `generator/*`, `ai/form.js`)
@@ -67,7 +89,7 @@
   - 네이티브 `select size="10"`을 카드형 리스트로 교체했습니다.
   - 검색, 소스 탭, 티켓 상태 필터, 키보드 탐색, 스캔 결과 고정 노출, 모바일 단일 컬럼 흐름을 지원합니다.
 - **모바일 내비/설치 CTA 정리** (`LottoApp.js`, `index.html`, `assets/styles/responsive.css`)
-  - 모바일 하단 내비를 `생성/통계/예측/확인/데이터 + 더보기` 구조로 단순화했습니다.
+- 모바일 하단 내비를 `생성/통계/추천/확인/데이터 + 더보기` 구조로 단순화했습니다.
   - `더보기` 바텀시트에서 `시뮬레이션`, `설정`, `앱 설치`에 접근할 수 있습니다.
   - PWA 설치 버튼은 데스크톱 사이드바뿐 아니라 설정 모달과 모바일 `더보기`에도 동기화됩니다.
 
@@ -87,20 +109,20 @@
   - `campaign reset autofill recovery`
   - `import orphan-campaign cleanup`
 
-## AI 예측 다양화·자동선택 반영 (2026-03-21)
+## 통계 추천 다양화·자동선택 반영 (2026-03-21)
 
 - **전략 다양화** (`StrategyCatalog.js`, `core/strategy/*`)
   - 신규 전략 `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle` 를 추가했습니다.
-  - AI 탭 전용 자동 전략 `auto_recent_top`, `auto_ensemble_top3` 를 추가했습니다.
+  - 추천 탭 전용 자동 전략 `auto_recent_top`, `auto_ensemble_top3` 를 추가했습니다.
 - **자동 추천 로직 강화** (`weights.js`, `generation.js`, `evaluation.js`)
   - 최근 `N회` 성능을 다시 측정해 상위 전략 1개를 자동 선택하거나, 상위 3개 전략의 현재 가중치를 혼합하는 방식이 동작합니다.
-  - `aiLookbackWindow` 입력값이 자동 전략의 최근 평가 범위로도 사용됩니다.
+  - `aiLookbackWindow` 입력값이 자동 전략 비교에 반영되며, 실제 자동 평가 구간은 최대 30회로 제한됩니다.
   - 추천 단계는 단순 샘플링만 하지 않고, 후보풀을 만든 뒤 세트 점수 기반으로 리랭킹하고 유사 조합을 분산합니다.
 - **설명 가능성 강화** (`features/ai/rendering.js`)
-  - AI 로그에 `리랭킹 후보풀`, `최고 추천 점수`, `최근 N회 자동 비교`, `자동 선택 결과`를 표시합니다.
-  - 추천 카드 상세에 `추천 점수`, `페어 시너지`, `프로파일 적합도`, `공백 균형`, 번호별 `추세/회귀/베이즈` 신호를 표시합니다.
-- **AI 평가 스크립트 추가** (`scripts/perf/ai_eval.mjs`, `package.json`)
-  - `npm run bench:ai` 로 최근 회차 구간에 대한 전략별 AI 추천 회귀평가를 실행할 수 있습니다.
+  - 추천 로그에 `리랭킹 후보풀`, `최고 내부 랭킹 점수`, `실제 자동 평가 회차 수`, `자동 선택 결과`를 표시합니다.
+  - 추천 카드 상세에 `내부 랭킹 점수`, `페어 시너지`, `프로파일 적합도`, `공백 균형`, 번호별 `추세/회귀/베이즈` 신호를 표시합니다.
+- **추천 평가 스크립트 추가** (`scripts/perf/ai_eval.mjs`, `package.json`)
+  - `npm run bench:ai` 로 최근 회차 구간에 대한 전략별 통계 추천 회귀평가를 실행할 수 있습니다.
   - 최근 20회 단기 검증 기준으로 `auto_ensemble_top3` 가 `4개 이상 적중 draw 비율`에서 경쟁력 있는 결과를 보였습니다.
 
 ## 기능 정합성·운영 진단 강화 반영 (2026-03-19)
@@ -170,7 +192,7 @@
   - 가로 스크롤 제거
   - 패널/배지/버튼 폭 정리
   - 좁은 화면에서 설정 내용을 실제로 확인할 수 있도록 개선
-- `예측`, `실험`, `확인` 탭의 lazy import 경로를 수정해 탭 전환 오류를 복구했습니다.
+- `추천`, `실험`, `확인` 탭의 lazy import 경로를 수정해 탭 전환 오류를 복구했습니다.
 - 최신 회차 동기화 정책은 현재 `기본 자동 동기화 + 사용자 프록시 우선`입니다.
   - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 조회합니다.
   - 사용자 프록시는 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용합니다.
@@ -185,10 +207,10 @@
 
 - 당시 모바일 하단 탐색을 `gen/stats/ai/bt/check/data` 6탭으로 통일했습니다.
   - 현재는 2026-03-27 기준 `gen/stats/ai/check/data + 더보기(bt/settings/install)` 구조로 다시 정리되어 있습니다.
-- 생성/AI/백테스트 화면에 전략 프리셋 CRUD를 추가했습니다.
+- 생성/추천/백테스트 화면에 전략 프리셋 CRUD를 추가했습니다.
   - 현재값 저장/불러오기/삭제
   - scope별 저장소 분리(`generator`, `ai`, `backtest`)
-- AI 추천의 `생성 탭으로` 동작은 기존 생성 결과를 교체하는 정책으로 고정했습니다.
+- 추천 탭의 `생성 탭으로` 동작은 기존 생성 결과를 교체하는 정책으로 고정했습니다.
 - 캠페인 삭제/전체삭제는 연결된 `campaignId` 티켓을 함께 삭제합니다.
 - 최신 당첨결과 카드는 오프라인/데이터 없음 상태를 명시적으로 표시하며, 동기화 직후 현재 탭과 무관하게 즉시 갱신됩니다.
 - 백업 Import 옵션에 `alertPrefs` 적용 체크를 추가했습니다.
@@ -280,7 +302,7 @@
 ### 인코딩 정리 2차 (2026-03-01)
 
 - 메인 상태 텍스트(`최신`, `업데이트 가능`, `오프라인`) 깨짐 현상을 복구했습니다.
-- 생성/시뮬레이션/AI 탭의 토스트, 버튼 라벨, 로그 메시지, 접근성 라벨(`aria-label`)의 깨진 문구를 정리했습니다.
+- 생성/시뮬레이션/추천 탭의 토스트, 버튼 라벨, 로그 메시지, 접근성 라벨(`aria-label`)의 깨진 문구를 정리했습니다.
 - 사용자 화면에서 보이는 한글 문구 기준으로 전역 점검을 수행했습니다.
 
 ### 기능 품질 강화 3차 (2026-03-01)
@@ -299,14 +321,14 @@
 - 번호 생성: 스마트 추천, 연속수 제한, 고정수/제외수 설정, QR 생성
   - 목표 회차 입력은 다음 회차를 자동 추적하며, 필요 시 즉시 재설정 가능
 - 티켓북/캠페인:
-  - 생성 결과와 AI 결과를 회차 기준으로 티켓북에 저장
+  - 생성 결과와 추천 결과를 회차 기준으로 티켓북에 저장
   - 동일한 티켓 조합은 중복 row 대신 `quantity` 로 묶입니다.
   - 과거 회차 티켓은 저장 즉시 정산되어 상태가 바로 반영됩니다.
   - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
   - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
   - 캠페인 삭제 시 연결 티켓 cascade 삭제
   - 동기화 시 미정산 티켓 자동 정산
-- 인공지능 예측:
+- 통계 추천:
   - 다중 전략(앙상블, 균형, 고빈도/저빈도, 컨센서스, 베이지안, 모멘텀, 평균회귀 등) 지원
   - 최근 `N회` 기준 상위 전략 자동 선택(`auto_recent_top`)
   - 최근 상위 3개 전략 혼합 자동 앙상블(`auto_ensemble_top3`)
@@ -315,7 +337,7 @@
   - 추천 조합별 근거 신호(빈도/최근성/공백/페어/추세/회귀/베이즈/필터) 표시
   - 결과를 생성 탭으로 교체 가져오기 지원
 - 전략 프리셋:
-  - 생성/AI/백테스트별 저장·불러오기·삭제
+  - 생성/추천/백테스트별 저장·불러오기·삭제
   - 백업 v3의 `strategyPresets`와 같은 저장소 사용
 - 전략 시뮬레이션:
   - 단일/다중 전략 비교(최대 5개)
@@ -345,7 +367,7 @@
   - 네트워크가 없을 때도 기본 기능 사용 가능
   - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 사용자 프록시 우선)
   - 정적 JSON 실패 시 최근 일부 회차만으로 `partial recovery` 상태를 구성할 수 있음
-  - partial 상태에서는 생성/확인은 유지되지만 통계/예측/시뮬레이션은 게이트 처리됨
+  - partial 상태에서는 생성/확인은 유지되지만 통계/추천/시뮬레이션은 게이트 처리됨
   - 데스크톱 사이드바, 설정 모달, 모바일 `더보기`를 통한 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
   - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.

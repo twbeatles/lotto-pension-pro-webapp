@@ -5,11 +5,11 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-04-07`
+- Date: `2026-04-14`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-14.md`
 
 ## Current State
 
@@ -18,10 +18,17 @@ Use it to restore context quickly and avoid missing the current structure.
 - PWA bootstrap was moved to `assets/modules/bootstrap/pwa.js`.
 - Large files were split into facade entry files plus internal modules:
   - `assets/modules/core/app/`
+  - `assets/modules/core/app/moduleLoader/`
+  - `assets/modules/core/app/dataLists/`
   - `assets/modules/core/data/`
+  - `assets/modules/core/data/records/`
+  - `assets/modules/core/data/persistence/`
+  - `assets/modules/core/data/sync/`
+  - `assets/modules/core/ui/`
   - `assets/modules/core/strategy/`
   - `assets/modules/features/ai/`
   - `assets/modules/features/backtest/`
+  - `assets/modules/features/check/`
   - `assets/modules/features/dataio/`
   - `assets/modules/features/generator/`
 - Styles were split into `assets/styles/*.css`.
@@ -29,9 +36,18 @@ Use it to restore context quickly and avoid missing the current structure.
 - Smoke tests were split into:
   - `scripts/smoke/helpers/`
   - `scripts/smoke/cases/`
+  - `scripts/smoke/cases/regressions/`
+  - `scripts/smoke/cases/regressions/manifest.mjs`
+  - `scripts/smoke/cases/regressions/support.mjs`
   - `scripts/smoke/smoke.mjs`
+- Additional facade/barrel safety regressions were added:
+  - `runFacadeExportParityRegression()`
+  - `runRegressionBarrelExportParityRegression()`
 - Service worker cache version is `v17`.
 - Recent functional consistency fixes:
+  - generator strategy selection is now driven by the selected strategy request; legacy toggles only behave as quick presets
+  - generated-number runtime state now preserves provenance (`numbers`, `strategyRequest`, `createdAt`, `source`) through save/export/request bridge flows
+  - sync runs are now internally abortable for both manual and auto paths, while public cancel behavior remains manual-only
   - grouped ticket-book rows now use `quantity` instead of duplicate entries, and physical ticket counts flow through delete/import/campaign summaries
   - import no longer preserves stale sync metadata; it reconstructs `syncMeta` as `local_restore` from the effective winning dataset
   - `dataHealth` now distinguishes `full` / `partial` / `none`
@@ -139,31 +155,35 @@ Use it to restore context quickly and avoid missing the current structure.
 - `assets/modules/core/LottoApp.js`
   - facade, implementation in `core/app`; owns `_bindOfflineBanner()`, `_bindPwaInstallPrompt()`, `bindMobileMoreSheet()`, `_loadDataListStateFromSession()`, target-draw auto-management helpers
 - `assets/modules/core/UIManager.js`
-  - toast, QR modal, common dialog modal, focus trap, `renderBalls()` accessibility labels
+  - facade/static state; implementation split into `core/ui/modal.js`, `dialog.js`, `qrModal.js`, `toast.js`, `balls.js`
 - `assets/modules/core/DataManager.js`
   - facade, implementation in `core/data`
 - `assets/modules/core/app/moduleLoader.js`
-  - route stale guard in `refreshCurrentRoute()`, QR scanner cleanup on route exit
+  - barrel for route/data-health/request bridge logic in `core/app/moduleLoader/`
 - `assets/modules/core/app/latestDraw.js`
   - latest draw card + target-draw autofill synchronization
 - `assets/modules/core/app/dataLists.js`
-  - list rendering + localUpdates summary/clear action
+  - barrel for list state/render/pagination/events in `core/app/dataLists/`
 - `assets/modules/core/app/settingsPanel.js`
   - sync warning meta rendering (`syncMeta.lastWarningMessage`)
 - `assets/modules/core/data/records.js`
-  - ticket `quantity` grouping, history actual-log merge, and orphan-campaign pruning shared by delete/import flows
+  - barrel for generated/ticket/campaign/saved-list record methods in `core/data/records/`
 - `assets/modules/core/data/analytics.js`
   - `reconcileTicketChecks()` for full ticket settlement revalidation and quantity-aware settlement counts
 - `assets/modules/core/data/persistence.js`
-  - `sanitizeLocalUpdates()`, `local_restore` sync-meta helpers, and `syncMeta` clamp helpers
+  - barrel for proxy/storage/local-update/load-save helpers in `core/data/persistence/`
 - `assets/modules/core/data/sync.js`
-  - data-health classification, partial recovery, single-draw payload diagnostics, sync warning meta updates, and post-refresh ticket reconciliation
+  - barrel for sync health/http/payload/provider/range/orchestrator helpers in `core/data/sync/`
 - `assets/modules/core/app/moduleLoader.js`
   - route stale guard, route data gates, and partial-recovery banners
 - `assets/modules/features/Check.js`
-  - card-list based check UI, search/filter/selection state, scanned source handling
+  - facade; implementation split into `features/check/events.js`, `list.js`, `results.js`
 - `assets/modules/features/backtest/ui.js`
-  - persisted backtest state re-render + mini metric charts
+  - barrel for `features/backtest/events.js`, `rendering.js`, `strategyForm.js`
+- `scripts/smoke/cases/regressions/manifest.mjs`
+  - ordered regression execution plan and barrel export list used by `smoke.mjs` and parity checks
+- `scripts/smoke/cases/regressions/support.mjs`
+  - shared smoke-only imports/utilities reused by domain regression modules
 - `assets/modules/features/generator/form.js`
   - campaign reset restores target-draw auto-follow metadata
 - `assets/modules/features/dataio/support.js`

@@ -44,7 +44,7 @@ export const generatorFormMethods = {
         const clearBtn = $('#clearResults');
         if (clearBtn) clearBtn.addEventListener('click', () => {
             $('#genResultList').innerHTML = '';
-            this.data.state.generated = [];
+            this.data.setGeneratedEntries([]);
         });
 
         const saveAllBtn = $('#saveAllBtn');
@@ -74,8 +74,9 @@ export const generatorFormMethods = {
                 if (!itemEl) return;
 
                 const idx = Number(itemEl.dataset.idx);
-                const nums = this.data.state.generated[idx];
-                if (!nums) return;
+                const entry = this.getGeneratedEntry(idx);
+                const nums = entry?.numbers;
+                if (!entry || !nums) return;
 
                 const action = btn.dataset.action;
                 if (action === 'copy') {
@@ -94,11 +95,12 @@ export const generatorFormMethods = {
                 if (action === 'ticket') {
                     const request = this.getStrategyRequestFromUI();
                     const targetDrawNo = this.readNumberInput('genTargetDrawNo', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1);
-                    const result = this.app.data.addTicket(nums, {
-                        source: 'generator',
-                        targetDrawNo,
-                        strategyRequest: request
-                    });
+                    const result = this.saveGeneratedEntryToTicket(entry, targetDrawNo)
+                        || this.app.data.addTicket(nums, {
+                            source: 'generator',
+                            targetDrawNo,
+                            strategyRequest: request
+                        });
                     if (!result?.ticket) {
                         UIManager.toast('티켓북 추가에 실패했습니다.', 'error');
                     } else {

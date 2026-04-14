@@ -4,7 +4,43 @@ import { UIManager } from '../../core/UIManager.js';
 import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+
+function deriveCampaignRuntimeRequest(baseRequest, weekIndex = 0) {
+    const normalizedWeekIndex = Math.max(0, Math.floor(Number(weekIndex) || 0));
+    const baseSeed = baseRequest?.params?.seed;
+    const hasSeed = baseSeed !== null
+        && baseSeed !== undefined
+        && baseSeed !== ''
+        && Number.isFinite(Number(baseSeed));
+
+    return {
+        ...baseRequest,
+        params: {
+            ...(baseRequest?.params || {}),
+            seed: hasSeed ? (Math.floor(Number(baseSeed)) + normalizedWeekIndex) : null
+        }
+    };
+}
+
 export const generatorActionMethods = {
+    getGeneratedEntry(index) {
+        return this.data.getGeneratedEntries()[Number(index)] || null;
+    },
+
+    saveGeneratedEntryToTicket(entry, targetDrawNo) {
+        const generatedEntry = this.data.normalizeGeneratedEntry(entry, { source: 'generator' });
+        if (!generatedEntry) return null;
+        return this.app.data.addTicket(generatedEntry.numbers, {
+            source: generatedEntry.source || 'generator',
+            targetDrawNo,
+            strategyRequest: generatedEntry.strategyRequest || this.getStrategyRequestFromUI()
+        });
+    },
+
+    getCampaignRuntimeRequest(baseRequest, weekIndex = 0) {
+        return deriveCampaignRuntimeRequest(baseRequest, weekIndex);
+    },
+
     async generate() {
         if (this.isGenerating || this.isGeneratingCampaign) return false;
         startMark('generator.generate');
@@ -24,21 +60,21 @@ export const generatorActionMethods = {
                 return;
             }
 
-            this.syncStrategyFromLegacyToggles();
             const request = this.getStrategyRequestFromUI();
-            this.data.setStrategyPrefs('generator', request);
-            this.data.save();
             if ($('#limitConsecutive')?.checked) {
                 request.filters.maxConsecutivePairs = request.filters.maxConsecutivePairs ?? 1;
             }
+            this.data.setStrategyPrefs('generator', request);
+            this.data.save();
 
             const listEl = $('#genResultList');
             listEl.innerHTML = '';
-            this.data.state.generated = [];
+            this.data.setGeneratedEntries([]);
             this.engine = new StrategyEngine(this.data.state.winningStats);
 
             let sets = [];
             let fallback = false;
+            const createdAt = new Date().toISOString();
             startMark('generator.worker');
             try {
                 const result = await this.workerClient.generate({
@@ -62,9 +98,16 @@ export const generatorActionMethods = {
             }
 
             if (localToken !== this.generationToken) return false;
-            sets.forEach((nums, i) => {
-                this.data.state.generated.push(nums);
-                this.renderResultItem(nums, i, listEl);
+            const generatedEntries = this.data.setGeneratedEntries(
+                sets.map((numbers) => ({
+                    numbers,
+                    strategyRequest: request,
+                    createdAt,
+                    source: 'generator'
+                }))
+            );
+            generatedEntries.forEach((entry, i) => {
+                this.renderResultItem(entry.numbers, i, listEl);
             });
             produced = sets.length;
             if (produced < requested) {
@@ -126,6 +169,7 @@ export const generatorActionMethods = {
             const campaignId = this.data.createId('campaign');
             for (let i = 0; i < weeks; i++) {
                 const targetDrawNo = startDraw + i;
+                const runtimeRequest = deriveCampaignRuntimeRequest(request, i);
                 let sets = [];
                 let fallback = false;
                 startMark('generator.worker');
@@ -133,7 +177,7 @@ export const generatorActionMethods = {
                     const result = await this.workerClient.generate({
                         statsData: this.data.state.winningStats,
                         count: setsPerWeek,
-                        request,
+                        request: runtimeRequest,
                         fixed,
                         exclude,
                         maxAttempts: Math.max(240, setsPerWeek * 120)
@@ -146,7 +190,7 @@ export const generatorActionMethods = {
                         UIManager.toast(uiStrings.workerFallbackCampaign, 'warning');
                     }
                     console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
-                    sets = this.engine.generateMultipleSets(setsPerWeek, request, {
+                    sets = this.engine.generateMultipleSets(setsPerWeek, runtimeRequest, {
                         fixed,
                         exclude,
                         maxAttempts: Math.max(240, setsPerWeek * 120)
@@ -167,7 +211,7 @@ export const generatorActionMethods = {
                         targetDrawNo,
                         source: 'generator',
                         campaignId,
-                        strategyRequest: request,
+                        strategyRequest: runtimeRequest,
                         memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
                         createdAt: new Date().toISOString(),
                         checked: null
@@ -238,10 +282,11 @@ export const generatorActionMethods = {
     },
 
     saveAll() {
-        if (!this.data.state.generated.length) return;
+        const generatedEntries = this.data.getGeneratedEntries();
+        if (!generatedEntries.length) return;
         const createdAt = new Date().toISOString();
-        const nextEntries = this.data.state.generated.map((nums) => ({
-            numbers: nums,
+        const nextEntries = generatedEntries.map((entry) => ({
+            numbers: entry.numbers,
             date: createdAt
         }));
         this.data.state.history = this.data.mergeHistoryEntries(nextEntries, this.data.state.history)

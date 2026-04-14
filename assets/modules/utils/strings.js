@@ -22,7 +22,9 @@ export const UI_STRINGS = {
         workerFallbackCampaign: '캠페인 생성 워커가 지연되어 메인 스레드로 전환합니다.'
     },
     ai: {
-        workerFallback: '워커 응답이 지연되어 메인 스레드 추천으로 전환합니다.'
+        workerFallback: '워커 응답이 지연되어 메인 스레드 통계 추천으로 전환합니다.',
+        workerTimeoutAuto: '자동 비교 전략 계산이 지연되었습니다. 시뮬레이션 수를 낮춰 다시 시도하세요.',
+        uniformFallback: '채택 샘플이 부족해 균등 가중치로 추천했습니다.'
     },
     backtest: {
         stopped: '시뮬레이션을 중지했습니다.',

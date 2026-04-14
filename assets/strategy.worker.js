@@ -62,6 +62,18 @@ self.onmessage = async (event) => {
         const result = engine.recommendFromSimulation(request, { setCount });
         const sets = toArray(result?.sets, []);
         const explanations = sets.map((set) => engine.explainSet(set, request));
+        const diagnostics = result?.simulation?.diagnostics
+            ? {
+                ...result.simulation.diagnostics,
+                executionMode: 'worker',
+                fallbackMode: result.simulation.diagnostics.fallbackMode || 'none',
+                effectiveAdaptiveWindow: result.simulation.diagnostics.effectiveAdaptiveWindow ?? null
+            }
+            : {
+                executionMode: 'worker',
+                fallbackMode: 'none',
+                effectiveAdaptiveWindow: null
+            };
 
         self.postMessage({
             type: 'DONE',
@@ -69,7 +81,12 @@ self.onmessage = async (event) => {
             payload: {
                 jobType: 'RECOMMEND',
                 sets,
-                simulation: result?.simulation || null,
+                simulation: result?.simulation
+                    ? {
+                        ...result.simulation,
+                        diagnostics
+                    }
+                    : null,
                 explanations
             }
         });

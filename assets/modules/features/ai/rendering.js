@@ -2,7 +2,7 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { AdvancedMonteCarlo } from '../../core/MonteCarlo.js';
-import { getStrategyMeta, STRATEGY_CATALOG, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { getStrategyMeta, isAutoStrategyId, STRATEGY_CATALOG, resolveStrategyId } from '../../core/StrategyCatalog.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 
@@ -14,6 +14,29 @@ function formatAdaptiveSelection(adaptive = null) {
     return adaptive.selectedStrategies
         .map((item) => `${getStrategyMeta(item.strategyId).label}(${Number(item.compositeScore || 0).toFixed(1)})`)
         .join(' + ');
+}
+
+function formatTierLabel(tier = '') {
+    const labels = { A: '기본', B: '확장', C: '실험' };
+    return `${String(tier || '-').toUpperCase()} · ${labels[tier] || '참고'}`;
+}
+
+function normalizeSimulation(result, { executionMode = 'worker', workerTimedOut = false } = {}) {
+    if (!result?.simulation) return result;
+    const current = result.simulation.diagnostics || {};
+    const fallbackMode = current.fallbackMode && current.fallbackMode !== 'none'
+        ? current.fallbackMode
+        : (workerTimedOut ? 'worker_timeout' : 'none');
+    result.simulation = {
+        ...result.simulation,
+        diagnostics: {
+            ...current,
+            executionMode,
+            fallbackMode,
+            effectiveAdaptiveWindow: current.effectiveAdaptiveWindow ?? current.adaptive?.evaluationWindow ?? null
+        }
+    };
+    return result;
 }
 
 export const aiRenderingMethods = {
@@ -55,6 +78,7 @@ export const aiRenderingMethods = {
             let results = [];
             let explanations = [];
             let fallback = false;
+            let workerTimedOut = false;
             startMark('ai.worker');
 
             try {
@@ -63,16 +87,31 @@ export const aiRenderingMethods = {
                     request,
                     setCount: targetSetCount
                 });
+                result = normalizeSimulation(result, { executionMode: 'worker' });
                 results = Array.isArray(result?.sets) ? result.sets : [];
                 explanations = Array.isArray(result?.explanations) ? result.explanations : [];
             } catch (err) {
+                workerTimedOut = this.isWorkerTimeoutError(err);
+                if (workerTimedOut && isAutoStrategyId(request.strategyId)) {
+                    const message = UI_STRINGS.ai.workerTimeoutAuto;
+                    this.appendLog(log, `> ${message}`, 'var(--warning)');
+                    UIManager.toast(message, 'warning');
+                    const handledError = new Error(message);
+                    handledError.userFacingHandled = true;
+                    throw handledError;
+                }
+
                 fallback = true;
-                if (this.isWorkerTimeoutError(err)) {
+                if (workerTimedOut) {
                     UIManager.toast(UI_STRINGS.ai.workerFallback, 'warning');
                 }
                 console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
                 result = this.engine.recommendFromSimulation(request, { setCount: targetSetCount });
+                result = normalizeSimulation(result, {
+                    executionMode: 'main_thread',
+                    workerTimedOut
+                });
                 results = Array.isArray(result?.sets) ? result.sets : [];
                 explanations = results.map((set) => this.engine.explainSet(set, request));
             } finally {
@@ -97,11 +136,26 @@ export const aiRenderingMethods = {
             const diagnostics = result?.simulation?.diagnostics || {};
             const accepted = Number(diagnostics.accepted || 0);
             const simulationCount = Number(diagnostics.simulationCount || request.params.simulationCount || 0);
+            const executionMode = diagnostics.executionMode || 'worker';
+            const fallbackMode = diagnostics.fallbackMode || 'none';
+
+            if (executionMode === 'main_thread') {
+                const executionLabel = workerTimedOut
+                    ? '메인 스레드 (워커 타임아웃 후 대체)'
+                    : '메인 스레드';
+                this.appendLog(log, `> 실행 경로: ${executionLabel}`);
+            } else {
+                this.appendLog(log, '> 실행 경로: 워커');
+            }
             this.appendLog(log, `> 채택된 샘플: ${accepted}/${simulationCount}`);
+            if (fallbackMode === 'uniform_weights') {
+                this.appendLog(log, `> ${UI_STRINGS.ai.uniformFallback}`, 'var(--warning)');
+                UIManager.toast(UI_STRINGS.ai.uniformFallback, 'warning');
+            }
 
             const adaptive = diagnostics.adaptive || explanations[0]?.adaptive || null;
             if (adaptive?.evaluationWindow) {
-                this.appendLog(log, `> 최근 ${adaptive.evaluationWindow}회 기준 자동 비교를 반영했습니다.`);
+                this.appendLog(log, `> 실제 자동 평가 회차 수: 최근 ${adaptive.evaluationWindow}회`);
             }
             const adaptiveSelection = formatAdaptiveSelection(adaptive);
             if (adaptiveSelection) {
@@ -114,7 +168,7 @@ export const aiRenderingMethods = {
             }
             const topScore = Number(diagnostics.topScore || 0);
             if (topScore > 0) {
-                this.appendLog(log, `> 최고 추천 점수: ${topScore.toFixed(4)}`);
+                this.appendLog(log, `> 최고 내부 랭킹 점수: ${topScore.toFixed(4)}`);
             }
 
             this.app.data.state.aiResults = results;
@@ -123,11 +177,12 @@ export const aiRenderingMethods = {
             this.renderResults(results, explanations);
         } catch (e) {
             console.error('인공지능 분석 오류:', e);
+            if (e?.userFacingHandled) return;
             this.appendLog(log, `> 오류: ${e.message}`, 'var(--danger)');
             UIManager.toast('분석 중 오류가 발생했습니다.', 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 실행';
+            btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 추천';
             aiContainer?.classList.remove('fx-active');
             endMark('ai.run', { strategyId: request.strategyId });
         }
@@ -158,7 +213,7 @@ export const aiRenderingMethods = {
                 </span>
                 ${exp ? `
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--primary); font-size:11px;">
-                    점수: ${Number(exp.summary.recommendationScore || 0).toFixed(3)}
+                    랭킹: ${Number(exp.summary.recommendationScore || 0).toFixed(3)}
                 </span>` : ''}
             `;
 
@@ -189,9 +244,9 @@ export const aiRenderingMethods = {
                 <details class="ai-explain" style="margin-top:10px;">
                     <summary style="cursor:pointer; color:var(--text-muted);">상세 보기</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
-                        <div>전략: <b>${strategyLabel}</b> (근거 등급 ${exp.evidenceTier})</div>
+                        <div>전략: <b>${strategyLabel}</b> (분류 ${formatTierLabel(exp.evidenceTier)})</div>
                         ${adaptive ? `<div>자동 선택: <b>${formatAdaptiveSelection(adaptive)}</b></div>` : ''}
-                        <div>가중치: <b>${exp.summary.setWeight}</b>, 추천 점수: <b>${Number(exp.summary.recommendationScore || 0).toFixed(4)}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
+                        <div>가중치: <b>${exp.summary.setWeight}</b>, 내부 랭킹 점수: <b>${Number(exp.summary.recommendationScore || 0).toFixed(4)}</b>, 필터 통과: <b>${exp.filtersPass ? '예' : '아니오'}</b></div>
                         <div>페어 시너지: <b>${Number(exp.summary.pairSynergy || 0).toFixed(4)}</b>, 프로파일 적합도: <b>${Number(exp.summary.profileScore || 0).toFixed(4)}</b>, 공백 균형: <b>${Number(exp.summary.gapBalanceScore || 0).toFixed(4)}</b></div>
                         <div style="margin-top:6px; display:grid; gap:4px;">
                             ${exp.signals.map((s) => `<div>#${s.number} 가중치:${s.weight} / 빈도:${s.frequencyScore} / 최근성:${s.recencyScore} / 공백:${s.gapScore} / 페어:${s.pairScore} / 추세:${s.trendScore} / 회귀:${s.overdueRatio} / 베이즈:${s.bayesScore}</div>`).join('')}
@@ -218,7 +273,7 @@ export const aiRenderingMethods = {
         });
 
         const tierIcons = { A: 'A', B: 'B', C: 'C' };
-        const tierLabels = { A: '검증됨', B: '사용 가능', C: '실험 단계' };
+        const tierLabels = { A: '기본', B: '확장', C: '실험' };
         const tierColors = { A: 'var(--success)', B: 'var(--primary)', C: 'var(--warning)' };
 
         const selectedCard = `
@@ -233,7 +288,7 @@ export const aiRenderingMethods = {
                     <h4>${selectedMeta.label}</h4>
                     <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
                     ${(selectedId === 'auto_recent_top' || selectedId === 'auto_ensemble_top3')
-                        ? '<div class="guide-warning"><i class="ph-bold ph-sparkle"></i> 최근 참조 회차 수 입력값이 자동 비교에 사용됩니다.</div>'
+                        ? '<div class="guide-warning"><i class="ph-bold ph-sparkle"></i> 최근 참조 회차 입력값이 자동 비교에 사용되며, 실제 비교 구간은 최대 30회입니다.</div>'
                         : ''}
                     ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 실험 단계 모델입니다. 사용 전에 시뮬레이션 검증을 권장합니다.</div>' : ''}
                     ${this._renderDefaultFilters(selectedMeta)}

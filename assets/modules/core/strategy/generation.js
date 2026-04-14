@@ -187,14 +187,22 @@ export const strategyGenerationMethods = {
             return {
                 weights: Array(46).fill(1),
                 request: normalized,
-                diagnostics: { accepted: 0, simulationCount: simCount, fallback: true }
+                diagnostics: {
+                    accepted: 0,
+                    simulationCount: simCount,
+                    fallbackMode: 'uniform_weights'
+                }
             };
         }
 
         return {
             weights: counts,
             request: normalized,
-            diagnostics: { accepted, simulationCount: simCount, fallback: false }
+            diagnostics: {
+                accepted,
+                simulationCount: simCount,
+                fallbackMode: 'none'
+            }
         };
     },
 
@@ -261,6 +269,7 @@ export const strategyGenerationMethods = {
                 diagnostics: {
                     ...(sim.diagnostics || {}),
                     adaptive: execution.adaptive || null,
+                    effectiveAdaptiveWindow: execution.adaptive?.evaluationWindow ?? null,
                     uniqueCandidates: rankedCandidates.length,
                     candidatePoolTarget,
                     reranked: true,

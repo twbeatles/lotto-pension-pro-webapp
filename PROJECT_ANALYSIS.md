@@ -1,4 +1,4 @@
-# Lotto Webapp Structure Notes (2026-04-07)
+# Lotto Webapp Structure Notes (2026-04-14)
 
 ## Summary
 
@@ -9,9 +9,12 @@
   - total rows: `1208`
   - missing draw: `146`
 - Current direction:
+  - generator strategy execution is now bound to the selected request, and generated results preserve provenance metadata
+  - sync is internally abortable across manual/auto paths while public cancel remains manual-only
   - settings and operational state are managed from a global settings modal
   - modal, destructive action, and prompt UX are now centralized in `UIManager`
   - large files were split into facade entry files plus internal modules
+  - smoke regressions now use domain modules plus a shared `manifest.mjs` execution plan and `support.mjs` dependency layer
   - AI strategy selection now includes richer weighting, reranking, and adaptive recent-performance-based auto strategies
   - latest draw sync now uses automatic fallback by default and prefers a user proxy only when it matches the official `/proxy/latest` contract
   - target draw defaults now follow the next draw automatically unless the user overrides them
@@ -49,14 +52,20 @@
   - `assets/modules/features/DataIO.js`
   - internal logic lives in feature-specific subdirectories
 - Notable implementation files:
+  - `assets/modules/core/app/moduleLoader.js`
+    - barrel, with implementation split into `core/app/moduleLoader/`
+  - `assets/modules/core/app/dataLists.js`
+    - barrel, with implementation split into `core/app/dataLists/`
+  - `assets/modules/core/UIManager.js`
+    - facade/static container, with implementation split into `core/ui/`
   - `assets/modules/core/data/records.js`
-    - ticket `quantity` grouping, history actual-log merge helpers, and orphan-campaign pruning
+    - barrel for generated/ticket/campaign/saved-list record helpers
   - `assets/modules/core/data/analytics.js`
     - full-ticket `checked` reconciliation against current winning stats, with quantity-aware settlement counts
   - `assets/modules/core/data/persistence.js`
-    - local-update sanitization, `local_restore` sync-meta reconstruction, and sync-meta clamping
+    - barrel for proxy/storage/local-update/load-save helpers
   - `assets/modules/core/data/sync.js`
-    - `dataHealth` classification, partial recovery, and sync reconstruction
+    - barrel for health/http/payload/provider/range/orchestrator helpers
   - `assets/modules/features/generator/form.js`
     - campaign reset restores target-draw auto-follow metadata
   - `assets/modules/features/dataio/support.js`
@@ -70,6 +79,9 @@
   - `scripts/smoke/smoke.mjs` stays as the entrypoint
   - shared helpers live in `scripts/smoke/helpers/`
   - regression cases live in `scripts/smoke/cases/`
+  - domain regression modules live in `scripts/smoke/cases/regressions/`
+  - `manifest.mjs` defines regression order / labels / export parity expectations
+  - `support.mjs` centralizes common smoke imports/utilities
 
 ## UX Notes
 
@@ -203,5 +215,5 @@ Important regression areas:
 
 - Lint and smoke are the main automated safety net in this repo.
 - Node still emits `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` does not set `"type": "module"`.
-- `FUNCTIONAL_IMPLEMENTATION_REVIEW_2026-04-07.md` should be treated as the current functional review artifact for the latest data-consistency hardening pass.
+- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-14.md` should be treated as the current functional review artifact for the latest consistency + refactor pass.
 - Other ad hoc review artifacts are not guaranteed to be versioned in-repo unless explicitly committed for the session.

@@ -1,6 +1,51 @@
 import { UIManager } from '../UIManager.js';
+import { CONFIG } from '../../utils/config.js';
 
 export const appNetworkLifecycleMethods = {
+    handleRemotePersistenceSync({ keys = [] } = {}) {
+        const normalizedKeys = (Array.isArray(keys) ? keys : [])
+            .map((key) => String(key || '').trim())
+            .filter(Boolean);
+        if (!normalizedKeys.length) return;
+
+        normalizedKeys.forEach((key) => this._remoteStateSyncKeys.add(key));
+        if (this._remoteStateSyncTimer) return;
+
+        this._remoteStateSyncTimer = setTimeout(() => {
+            const pendingKeys = [...this._remoteStateSyncKeys];
+            this._remoteStateSyncKeys.clear();
+            this._remoteStateSyncTimer = null;
+            void this._rehydrateAfterRemotePersistenceSync(pendingKeys);
+        }, 80);
+    },
+
+    _syncLoadedModulesFromState() {
+        this.generator?.applySavedStrategyPrefs?.();
+        this.generator?.presetController?.render?.();
+        this.ai?.applySavedStrategyPrefs?.();
+        this.ai?.presetController?.render?.();
+        this.ai?.renderModelGuide?.();
+        this.backtest?.applySavedStrategyPrefs?.();
+        this.backtest?.presetController?.render?.();
+    },
+
+    async _rehydrateAfterRemotePersistenceSync(_keys = []) {
+        const keySet = new Set((Array.isArray(_keys) ? _keys : []).map((key) => String(key || '').trim()).filter(Boolean));
+        this.data.runWithBroadcastSuppressed?.(() => this.data.load());
+        if (keySet.has(CONFIG.KEYS.LOCAL_UPDATES)) {
+            await this.data.fetchWinningStats?.({ notifyTicketSettle: false });
+        }
+        this.applyTheme();
+        this.renderSettingsPanel?.();
+        this.updateLatestWin?.();
+        this.bindTargetDrawInputs?.();
+        this._syncLoadedModulesFromState?.();
+        await this.refreshCurrentRoute?.();
+        if (this.currentRoute === 'data') {
+            this.renderDataLists?.();
+        }
+    },
+
     getNetworkProbeTargets() {
         const targets = [];
         const seen = new Set();
@@ -12,7 +57,7 @@ export const appNetworkLifecycleMethods = {
         };
 
         try {
-            const sameOriginProbe = new URL('manifest.json', window.location.href);
+            const sameOriginProbe = new URL('online-check.txt', window.location.href);
             sameOriginProbe.searchParams.set('__online_check', String(Date.now()));
             push('same-origin probe', sameOriginProbe.toString());
         } catch (_e) {

@@ -56,6 +56,11 @@ export class DataManager {
         };
         this._syncRunId = 0;
         this._activeSyncRunId = 0;
+        this._tabInstanceId = '';
+        this._crossTabChannel = null;
+        this._crossTabStorageHandler = null;
+        this._crossTabSyncBound = false;
+        this._suppressCrossTabBroadcast = false;
     }
 }
 

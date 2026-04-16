@@ -63,6 +63,9 @@ export const dataPersistenceLoadSaveMethods = {
             this.state.syncMeta = normalizedSyncMeta;
             this.localUpdatesCache = normalizedLocalUpdates.items;
 
+            const orphanCleanup = this.pruneOrphanCampaigns({ save: false });
+            if (orphanCleanup.removed.length > 0) needsPersist = true;
+
             const localUpdateWarning = this.buildLocalUpdateWarningMessage(normalizedLocalUpdates);
             if (localUpdateWarning) {
                 this.state.syncMeta = this.mergeSyncMeta({

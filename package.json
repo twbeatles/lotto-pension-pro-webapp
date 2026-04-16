@@ -9,7 +9,10 @@
     "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",
     "format:check": "prettier --check \"**/*.{js,mjs,json,md,css,html}\"",
     "format:write": "prettier --write \"**/*.{js,mjs,json,md,css,html}\"",
-    "bench:ai": "node scripts/perf/ai_eval.mjs"
+    "sync:sw-manifest": "node scripts/generate_sw_manifest.mjs",
+    "test:offline": "node scripts/tests/offline_playwright.mjs",
+    "bench:ai": "node scripts/perf/ai_eval.mjs",
+    "bench:ai:full": "node scripts/perf/ai_eval.mjs --full --start 1100 --end 1209 --set-count 5 --simulation-count 5000 --lookback 20 --seed 2026"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -19,6 +22,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-html": "^8.1.4",
     "globals": "^17.4.0",
+    "playwright": "^1.55.0",
     "prettier": "^3.8.1"
   }
 }

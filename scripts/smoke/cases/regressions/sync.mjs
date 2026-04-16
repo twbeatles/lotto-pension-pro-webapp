@@ -164,6 +164,52 @@ async function runWinningStatsLoadClassificationRegression() {
     }
 }
 
+function runUnexpectedStaticHoleClassificationRegression() {
+    const dm = new DataManager();
+    const staticItems = [1, 2, 4].map((drawNo) => ({
+        draw_no: drawNo,
+        date: `2026-03-0${drawNo}`,
+        numbers: [1, 2, 3, 4, 5, 6],
+        bonus: 7
+    }));
+
+    const health = dm.getWinningStatsDataHealth({
+        staticItems,
+        localUpdates: [],
+        mergedItems: [...staticItems].sort((a, b) => b.draw_no - a.draw_no),
+        staticError: null
+    });
+
+    assert.equal(health.availability, 'partial', 'unexpected static holes must downgrade data availability to partial');
+    assert.equal(health.source, 'static', 'partial static hole without local updates must still report static source');
+    assert.match(health.message, /누락 회차: 3/, 'partial static hole message must identify the unexpected missing draw');
+}
+
+function runExpectedMissingDrawAllowanceRegression() {
+    const dm = new DataManager();
+    const staticItems = [];
+
+    for (let drawNo = 1; drawNo <= 147; drawNo++) {
+        if (drawNo === 146) continue;
+        staticItems.push({
+            draw_no: drawNo,
+            date: `2026-03-${String(((drawNo - 1) % 28) + 1).padStart(2, '0')}`,
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        });
+    }
+
+    const health = dm.getWinningStatsDataHealth({
+        staticItems,
+        localUpdates: [],
+        mergedItems: [...staticItems].sort((a, b) => b.draw_no - a.draw_no),
+        staticError: null
+    });
+
+    assert.equal(health.availability, 'full', 'documented missing draws must not break full-data classification');
+    assert.equal(health.source, 'static', 'allowed missing-draw classification must preserve static source');
+}
+
 async function runPartialWinningStatsRecoveryRegression() {
     const previousDocument = globalThis.document;
     const statusText = createField();
@@ -546,7 +592,7 @@ async function runOfflineProbeRecoveryRegression() {
         const offline = await app.isProbablyOffline({ forceProbe: true });
         assert.equal(offline, false, 'successful reachability probe must override false navigator.onLine state');
         assert.ok(fetchCalls.length >= 1, 'offline probe must issue a network reachability request');
-        assert.match(fetchCalls[0], /manifest\.json\?__online_check=/, 'offline probe must prefer same-origin probe URL first');
+        assert.match(fetchCalls[0], /online-check\.txt\?__online_check=/, 'offline probe must prefer the uncached same-origin probe URL first');
     } finally {
         if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
         else delete globalThis.navigator;
@@ -602,6 +648,7 @@ export {
     runAutoSyncFallbackRegression,
     runBackgroundAutoSyncRegression,
     runBuiltInSyncProviderRegression,
+    runExpectedMissingDrawAllowanceRegression,
     runOfflineProbeRecoveryRegression,
     runPartialWinningStatsRecoveryRegression,
     runProxyChangeAbortRegression,
@@ -611,5 +658,6 @@ export {
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runSyncLatestWinRefreshRegression,
+    runUnexpectedStaticHoleClassificationRegression,
     runWinningStatsLoadClassificationRegression
 };

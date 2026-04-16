@@ -5,11 +5,11 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-04-14`
+- Date: `2026-04-16`
 - Static data latest draw: `1209`
 - Static data rows: `1208`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-14.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-16.md`
 
 ## Current State
 
@@ -43,17 +43,20 @@ Use it to restore context quickly and avoid missing the current structure.
 - Additional facade/barrel safety regressions were added:
   - `runFacadeExportParityRegression()`
   - `runRegressionBarrelExportParityRegression()`
-- Service worker cache version is `v17`.
+- Service worker cache version is `v18`.
+- Service worker precache is generated from `scripts/generate_sw_manifest.mjs` into `assets/sw-precache-manifest.js`.
 - Recent functional consistency fixes:
   - generator strategy selection is now driven by the selected strategy request; legacy toggles only behave as quick presets
   - generated-number runtime state now preserves provenance (`numbers`, `strategyRequest`, `createdAt`, `source`) through save/export/request bridge flows
   - sync runs are now internally abortable for both manual and auto paths, while public cancel behavior remains manual-only
   - grouped ticket-book rows now use `quantity` instead of duplicate entries, and physical ticket counts flow through delete/import/campaign summaries
-  - import no longer preserves stale sync metadata; it reconstructs `syncMeta` as `local_restore` from the effective winning dataset
-  - `dataHealth` now distinguishes `full` / `partial` / `none`
+  - import no longer preserves stale sync metadata; it records `local_restore` only when winning data is rebuilt successfully and `local_restore_failed` otherwise
+  - `dataHealth` now distinguishes `full` / `partial` / `none` using structural completeness, not just static JSON presence
   - if static JSON fails, runtime data can rebuild `winningStats` from local updates only and expose partial recovery mode
   - `stats`, `ai`, and `bt` are gated when data availability is not `full`, while `gen` and `check` stay usable with warnings
   - multi-tab SW reload now broadcasts only after activation (`controllerchange`), preventing premature reloads in other tabs
+  - app-owned localStorage updates now also sync across tabs through `BroadcastChannel('lotto-data-sync')` with `storage` fallback
+  - cold start `load()` now prunes orphan campaigns before persisting normalized state
   - `reconcileTicketChecks()` revalidates stored `checked` tickets after sync/import/local-update cleanup
   - future-draw `localUpdates` are dropped by `sanitizeLocalUpdates()` and `syncMeta.lastSuccessDrawNo` is clamped to effective data
   - orphan campaigns are now pruned not only on import, but also after ticket delete / ticket-book clear
@@ -105,6 +108,7 @@ Use it to restore context quickly and avoid missing the current structure.
   - Without a user proxy, the app still attempts runtime sync and stores fetched draws into local updates.
   - Unsupported proxy formats are ignored and surfaced as warnings in settings.
   - `data/winning_stats.json` is install-precached for offline stability.
+  - same-origin reachability probe now uses `/online-check.txt` and is explicitly bypassed by the SW fetch handler.
   - Sync race condition: if the proxy config changes while a sync is in flight, the old request is cancelled and a new one starts.
   - Range fetch responses are Content-Type validated — HTML error pages are rejected before JSON parsing.
   - Single-draw fallback sync now logs invalid payload shapes (`SYNC_FETCH_ONE_INVALID_PAYLOAD`) instead of silently swallowing them.
@@ -153,7 +157,7 @@ Use it to restore context quickly and avoid missing the current structure.
 - `assets/modules/bootstrap/pwa.js`
   - service worker registration, update UX, BroadcastChannel multi-tab reload
 - `assets/modules/core/LottoApp.js`
-  - facade, implementation in `core/app`; owns `_bindOfflineBanner()`, `_bindPwaInstallPrompt()`, `bindMobileMoreSheet()`, `_loadDataListStateFromSession()`, target-draw auto-management helpers
+  - facade, implementation in `core/app`; owns `_bindOfflineBanner()`, `_bindPwaInstallPrompt()`, `bindMobileMoreSheet()`, `_loadDataListStateFromSession()`, target-draw auto-management helpers, remote persistence rehydrate entry
 - `assets/modules/core/UIManager.js`
   - facade/static state; implementation split into `core/ui/modal.js`, `dialog.js`, `qrModal.js`, `toast.js`, `balls.js`
 - `assets/modules/core/DataManager.js`
@@ -165,15 +169,21 @@ Use it to restore context quickly and avoid missing the current structure.
 - `assets/modules/core/app/dataLists.js`
   - barrel for list state/render/pagination/events in `core/app/dataLists/`
 - `assets/modules/core/app/settingsPanel.js`
-  - sync warning meta rendering (`syncMeta.lastWarningMessage`)
+  - sync warning meta rendering (`syncMeta.lastWarningMessage`) and `local_restore_failed` state badge/warning
 - `assets/modules/core/data/records.js`
   - barrel for generated/ticket/campaign/saved-list record methods in `core/data/records/`
 - `assets/modules/core/data/analytics.js`
   - `reconcileTicketChecks()` for full ticket settlement revalidation and quantity-aware settlement counts
 - `assets/modules/core/data/persistence.js`
   - barrel for proxy/storage/local-update/load-save helpers in `core/data/persistence/`
+- `assets/modules/core/data/persistence/storage.js`
+  - app-owned storage broadcasting, `BroadcastChannel` setup, and same-tab suppression
+- `assets/modules/core/data/persistence/loadSave.js`
+  - cold-start orphan campaign cleanup before persist
 - `assets/modules/core/data/sync.js`
   - barrel for sync health/http/payload/provider/range/orchestrator helpers in `core/data/sync/`
+- `assets/modules/core/data/sync/health.js`
+  - structural completeness check for static winning stats (`CONFIG.LIMITS.MISSING_DRAWS` aware)
 - `assets/modules/core/app/moduleLoader.js`
   - route stale guard, route data gates, and partial-recovery banners
 - `assets/modules/features/Check.js`
@@ -209,7 +219,11 @@ Use it to restore context quickly and avoid missing the current structure.
 - `assets/app.css`
   - style aggregate entrypoint
 - `sw.js`
-  - app shell precache and fetch policy
+  - generated precache manifest import, online-check bypass, and fetch policy
+- `scripts/generate_sw_manifest.mjs`
+  - generates repo-tracked `assets/sw-precache-manifest.js`
+- `scripts/tests/offline_playwright.mjs`
+  - opt-in browser check for offline gate behavior and cross-tab state sync
 - `ISSUES.md`
   - static analysis findings log (all items from 2026-03-17 session are resolved)
 
@@ -233,6 +247,11 @@ Runtime-only data health:
 - `source` — `static | static_local | local_only | none`
 - `latestDrawNo`
 - `message`
+
+Important sync modes:
+
+- `local_restore`
+- `local_restore_failed`
 
 sessionStorage keys:
 
@@ -264,11 +283,16 @@ Official supported custom proxy shape:
 ```bash
 python -m http.server 5173
 npm install
+npm run sync:sw-manifest
 npm run lint
 npm run build
 node scripts/smoke/smoke.mjs
 npm run bench:ai
+npm run bench:ai:full
+npm run test:offline
 ```
+
+- `npm run test:offline` requires a local `Chrome`/`Edge` channel or a Playwright-installed Chromium (`npx playwright install chromium`).
 
 Local URL:
 
@@ -297,16 +321,18 @@ Recommended manual checks:
 11. Destructive actions and preset overwrite/delete paths open the common confirm modal correctly
 12. Service worker update acceptance and reload behavior
 13. Partial recovery mode: verify `stats/ai/bt` gate while `gen/check/data` remain usable
-14. Import after backup restore: verify `syncMeta.mode = local_restore`
-15. Grouped ticket quantity behavior (`xN`, delete counts, campaign counts)
-16. Go offline → verify offline banner appears; go online → verify banner hides and toast fires
-17. On supported browser: verify PWA install buttons appear in sidebar/settings/mobile more
-18. Save a past-draw ticket and verify it settles immediately without waiting for another sync
-19. Reset generator campaign options and verify target-draw auto-follow resumes on the next latest-draw change
-20. Run merge/overwrite import with orphan campaigns and verify cleanup count appears in the completion toast
-21. Clear local updates and verify stale checked tickets return to pending while the applied draw in settings clamps down to the effective latest draw
-22. Delete the last ticket linked to a campaign and verify the orphan campaign disappears immediately
-23. Save the same number set multiple times and verify history keeps separate log entries
+14. Import after backup restore: verify success path records `syncMeta.mode = local_restore`
+15. Simulate restore failure and verify `syncMeta.mode = local_restore_failed` with failure message
+16. Grouped ticket quantity behavior (`xN`, delete counts, campaign counts)
+17. Go offline → verify offline banner appears; go online → verify banner hides and toast fires
+18. On supported browser: verify PWA install buttons appear in sidebar/settings/mobile more
+19. Save a past-draw ticket and verify it settles immediately without waiting for another sync
+20. Reset generator campaign options and verify target-draw auto-follow resumes on the next latest-draw change
+21. Run merge/overwrite import with orphan campaigns and verify cleanup count appears in the completion toast
+22. Clear local updates and verify stale checked tickets return to pending while the applied draw in settings clamps down to the effective latest draw
+23. Delete the last ticket linked to a campaign and verify the orphan campaign disappears immediately
+24. Save the same number set multiple times and verify history keeps separate log entries
+25. With two tabs open, change tickets/settings in one tab and verify the other tab rehydrates automatically
 
 ## Session Template
 

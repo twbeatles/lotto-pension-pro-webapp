@@ -45,6 +45,8 @@ export class LottoApp {
         this._autoSyncTimer = null;
         this._autoSyncPendingForce = false;
         this._lastAutoSyncAt = 0;
+        this._remoteStateSyncTimer = null;
+        this._remoteStateSyncKeys = new Set();
         this.AUTO_SYNC_MIN_INTERVAL_MS = 60000;
         this.NETWORK_PROBE_TIMEOUT_MS = 3200;
         this.OFFLINE_CONFIRM_RETRY_MS = 1200;
@@ -102,6 +104,7 @@ export class LottoApp {
         if (this.data.setApp) this.data.setApp(this);
 
         UIManager.init();
+        this.data.initCrossTabSync?.();
         this.data.load();
         this.applyTheme();
 

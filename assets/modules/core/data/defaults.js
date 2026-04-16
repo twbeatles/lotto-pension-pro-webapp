@@ -116,6 +116,7 @@ export const dataDefaultsMethods = {
 
     getSyncModeLabel(mode = this.state.syncMeta?.mode) {
         if (mode === 'local_restore') return '로컬 복원';
+        if (mode === 'local_restore_failed') return '로컬 복원 실패';
         if (mode === 'custom_proxy' || mode === 'proxy_opt_in') return '사용자 프록시';
         if (mode === 'automatic_fallback') return '기본 자동 동기화';
         return '정적 JSON 전용';

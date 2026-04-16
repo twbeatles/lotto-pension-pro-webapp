@@ -1,10 +1,109 @@
 import { CONFIG } from '../../../utils/config.js';
 import { UIManager } from '../../UIManager.js';
 
+const STORAGE_SYNC_CHANNEL = 'lotto-data-sync';
+const APP_OWNED_STORAGE_KEYS = new Set([
+    CONFIG.KEYS.FAV,
+    CONFIG.KEYS.HIST,
+    CONFIG.KEYS.SETTINGS,
+    CONFIG.KEYS.TICKET_BOOK,
+    CONFIG.KEYS.CAMPAIGNS,
+    CONFIG.KEYS.ALERT_PREFS,
+    CONFIG.KEYS.STRATEGY_PRESETS,
+    CONFIG.KEYS.SYNC_META,
+    CONFIG.KEYS.LOCAL_UPDATES
+]);
+
+function createTabInstanceId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return `tab_${crypto.randomUUID()}`;
+    }
+    return `tab_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export const dataPersistenceStorageMethods = {
-    _safeSetItem(key, value) {
+    getTabInstanceId() {
+        if (!this._tabInstanceId) {
+            this._tabInstanceId = createTabInstanceId();
+        }
+        return this._tabInstanceId;
+    },
+
+    isAppOwnedStorageKey(key = '') {
+        return APP_OWNED_STORAGE_KEYS.has(String(key || '').trim());
+    },
+
+    runWithBroadcastSuppressed(task) {
+        const previous = this._suppressCrossTabBroadcast === true;
+        this._suppressCrossTabBroadcast = true;
         try {
+            return typeof task === 'function' ? task() : undefined;
+        } finally {
+            this._suppressCrossTabBroadcast = previous;
+        }
+    },
+
+    initCrossTabSync() {
+        if (this._crossTabSyncBound || typeof window === 'undefined') return;
+
+        this.getTabInstanceId();
+
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                this._crossTabChannel = new BroadcastChannel(STORAGE_SYNC_CHANNEL);
+                this._crossTabChannel.addEventListener('message', (event) => {
+                    const payload = event?.data || {};
+                    if (payload.type !== 'APP_STATE_SYNC') return;
+                    if (payload.senderId === this.getTabInstanceId()) return;
+                    const keys = Array.isArray(payload.keys)
+                        ? payload.keys.filter((key) => this.isAppOwnedStorageKey(key))
+                        : [];
+                    if (!keys.length) return;
+                    this.app?.handleRemotePersistenceSync?.({ keys, source: 'broadcast' });
+                });
+            }
+        } catch (_e) {
+            this._crossTabChannel = null;
+        }
+
+        this._crossTabStorageHandler = (event) => {
+            const key = String(event?.key || '').trim();
+            if (!key || !this.isAppOwnedStorageKey(key)) return;
+            if (typeof localStorage !== 'undefined' && event?.storageArea && event.storageArea !== localStorage) return;
+            this.app?.handleRemotePersistenceSync?.({ keys: [key], source: 'storage' });
+        };
+        window.addEventListener('storage', this._crossTabStorageHandler);
+        this._crossTabSyncBound = true;
+    },
+
+    notifyCrossTabStateChange({ keys = [] } = {}) {
+        if (this._suppressCrossTabBroadcast) return;
+        const normalizedKeys = [...new Set((Array.isArray(keys) ? keys : [])
+            .map((key) => String(key || '').trim())
+            .filter((key) => this.isAppOwnedStorageKey(key)))];
+        if (!normalizedKeys.length) return;
+
+        try {
+            this._crossTabChannel?.postMessage({
+                type: 'APP_STATE_SYNC',
+                senderId: this.getTabInstanceId(),
+                keys: normalizedKeys,
+                updatedAt: Date.now()
+            });
+        } catch (_e) {
+            // BroadcastChannel delivery failure should not block persistence.
+        }
+    },
+
+    _safeSetItem(key, value, options = {}) {
+        try {
+            const previousValue = localStorage.getItem(key);
+            if (previousValue === value) return true;
             localStorage.setItem(key, value);
+            if (!options?.suppressBroadcast && this.isAppOwnedStorageKey(key)) {
+                this.notifyCrossTabStateChange({ keys: [key] });
+            }
+            return true;
         } catch (e) {
             if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
                 console.error(`[persistence] localStorage 저장 공간 초과 (${key})`, e);
@@ -12,6 +111,7 @@ export const dataPersistenceStorageMethods = {
             } else {
                 console.error(`[persistence] localStorage 저장 실패 (${key})`, e);
             }
+            return false;
         }
     },
 

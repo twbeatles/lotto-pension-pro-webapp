@@ -29,6 +29,32 @@
 - 스모크 테스트는 도메인별 barrel 구조로 재배치했고, `manifest.mjs` 실행 계획 + `support.mjs` 공통 의존성 모듈을 추가했습니다.
 - `facade export parity` / `regression barrel export parity` 회귀를 추가해 분할 중 export 누락을 방지했습니다.
 
+## 오프라인·데이터 정합성·멀티탭 안정화 반영 (2026-04-16)
+
+- **서비스워커 precache 생성 스크립트 도입** (`scripts/generate_sw_manifest.mjs`, `assets/sw-precache-manifest.js`, `sw.js`)
+  - 수동 `APP_SHELL_ASSETS` 배열을 제거하고, 저장소 기준 자산 목록을 생성 스크립트로 관리합니다.
+  - `assets/modules/**`, `assets/styles/**`, workers, vendor, icons, `manifest.json`, `index.html`, `data/winning_stats.json`이 precache manifest에 반영됩니다.
+  - same-origin reachability probe용 `online-check.txt`는 별도 정적 자산으로 추가했으며 precache 대상에서는 제외합니다.
+- **오프라인 판별 보정** (`networkLifecycle.js`, `sw.js`)
+  - `manifest.json` 대신 `/online-check.txt?__online_check=` 경로를 사용하도록 probe를 교체했습니다.
+  - 서비스워커 fetch 핸들러는 이 probe 경로를 캐시/가로채기에서 제외해 false online 판정을 줄입니다.
+- **정적 데이터 health 판정 강화** (`sync/health.js`)
+  - `getWinningStatsDataHealth()`는 단순 파일 존재 여부가 아니라 회차 연속성/구조 완전성 기준으로 `full | partial | none`을 판단합니다.
+  - `CONFIG.LIMITS.MISSING_DRAWS = [146]`는 허용 누락 회차로 실제 health 판정과 회귀 테스트에 연결됩니다.
+- **Import 후 복원 메타 보강** (`postImportRefresh.js`, `defaults.js`, `settingsPanel.js`)
+  - Import 후 `fetchWinningStats()`가 실제로 유효 데이터를 복원한 경우에만 `syncMeta.mode = local_restore`를 기록합니다.
+  - 복원 실패 시 `syncMeta.mode = local_restore_failed`와 실패 원인을 남기고, 설정 패널에도 별도 경고 상태로 노출합니다.
+- **멀티탭 저장소 동기화 추가** (`persistence/storage.js`, `networkLifecycle.js`, `LottoApp.js`)
+  - 앱 소유 storage key 변경 시 `BroadcastChannel('lotto-data-sync')`로 변경 사항을 전파합니다.
+  - 미지원 환경에서는 `storage` 이벤트를 fallback으로 사용합니다.
+  - 다른 탭은 persisted state를 다시 읽고 현재 라우트/설정/최신 회차/데이터 리스트를 재수화합니다.
+- **cold start orphan campaign 정리 확대** (`persistence/loadSave.js`)
+  - 앱 시작 시 `load()` 마지막 단계에서 orphan campaign을 자동 정리하고, 실제 변경이 있으면 즉시 저장합니다.
+- **검증 루틴 확장** (`scripts/smoke/`, `scripts/tests/offline_playwright.mjs`, `scripts/perf/ai_eval.mjs`)
+  - smoke에 `unexpected static hole`, `expected missing draw`, `post-import restore failure`, `orphan campaign migration`, `service-worker manifest parity` 회귀를 추가했습니다.
+  - Playwright 기반 `npm run test:offline` 시나리오를 추가해 오프라인 lazy route 진입, 데이터 게이트, 멀티탭 자동 재수화를 실브라우저에서 확인합니다.
+  - `npm run bench:ai`는 빠른 회귀 확인용 quick preset으로 축소했고, 기존 범위는 `npm run bench:ai:full`로 분리했습니다.
+
 ## 기능 구현 정합성 3차 보강 반영 (2026-04-07)
 
 - **티켓북 `quantity` 모델 도입** (`records.js`, `dataLists.js`, `Check.js`, `generator/*`, `ai/form.js`)
@@ -37,6 +63,7 @@
   - 티켓 목록과 확인 탭에는 `xN` 배지가 표시됩니다.
 - **Import 후 `syncMeta` 재구성 + 부분 복구 상태 도입** (`sync.js`, `persistence.js`, `defaults.js`, `postImportRefresh.js`)
   - `syncMeta.mode = local_restore` 를 추가했고, Import 후에는 백업에 저장되지 않은 `syncMeta` 를 현재 유효 `winningStats` 기준으로 다시 구성합니다.
+  - 복원 자체가 실패하면 `syncMeta.mode = local_restore_failed` 로 남기고 실패 원인을 유지합니다.
   - 비영속 `dataHealth` 상태(`full | partial | none`)를 도입해 정적 JSON 실패 시 `local_only` 기반 부분 복구 여부를 구분합니다.
   - cold start 에서 정적 JSON 이 실패하면 최근 `24`회 window 기준 partial recovery 를 시도합니다.
 - **부분 복구 모드 UX/게이트 추가** (`moduleLoader.js`, `settingsPanel.js`, `latestDraw.js`, `pages.css`)
@@ -122,7 +149,8 @@
   - 추천 로그에 `리랭킹 후보풀`, `최고 내부 랭킹 점수`, `실제 자동 평가 회차 수`, `자동 선택 결과`를 표시합니다.
   - 추천 카드 상세에 `내부 랭킹 점수`, `페어 시너지`, `프로파일 적합도`, `공백 균형`, 번호별 `추세/회귀/베이즈` 신호를 표시합니다.
 - **추천 평가 스크립트 추가** (`scripts/perf/ai_eval.mjs`, `package.json`)
-  - `npm run bench:ai` 로 최근 회차 구간에 대한 전략별 통계 추천 회귀평가를 실행할 수 있습니다.
+  - `npm run bench:ai` 는 빠른 회귀 확인용 quick preset 입니다.
+  - 전체 범위 평가는 `npm run bench:ai:full` 로 분리했습니다.
   - 최근 20회 단기 검증 기준으로 `auto_ensemble_top3` 가 `4개 이상 적중 draw 비율`에서 경쟁력 있는 결과를 보였습니다.
 
 ## 기능 정합성·운영 진단 강화 반영 (2026-03-19)
@@ -366,14 +394,15 @@
 - 오프라인 앱 지원:
   - 네트워크가 없을 때도 기본 기능 사용 가능
   - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 사용자 프록시 우선)
+  - same-origin probe는 precache 자산이 아닌 `/online-check.txt`를 사용하며, 서비스워커는 해당 probe를 캐시 경로에서 제외합니다.
   - 정적 JSON 실패 시 최근 일부 회차만으로 `partial recovery` 상태를 구성할 수 있음
   - partial 상태에서는 생성/확인은 유지되지만 통계/추천/시뮬레이션은 게이트 처리됨
   - 데스크톱 사이드바, 설정 모달, 모바일 `더보기`를 통한 홈 화면 설치 지원
   - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
-  - install 시 `winning_stats.json`도 precache되어 첫 오프라인 진입 안정성을 높입니다.
+  - install precache 목록은 `assets/sw-precache-manifest.js` 생성 파일로 관리되며, `winning_stats.json`도 포함됩니다.
 - 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
   - Import 옵션: `merge/overwrite` + `theme/proxy/strategyPrefs/alerts` 적용 체크박스
-  - `syncMeta` 는 백업에 포함하지 않으며, Import 후 `local_restore` 메타를 현재 유효 데이터 기준으로 재구성합니다.
+  - `syncMeta` 는 백업에 포함하지 않으며, Import 후 유효 데이터가 재구성되면 `local_restore`, 실패하면 `local_restore_failed` 메타를 기록합니다.
   - Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리되며, 완료 toast 에 cleanup 수치가 표시됩니다.
 - 데이터 관리:
   - 즐겨찾기/히스토리/티켓/캠페인 검색 + 페이지네이션
@@ -398,7 +427,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-- 서비스워커: 같은 출처 리소스 중심 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v17`)
+- 서비스워커: 생성된 precache manifest 기반 같은 출처 리소스 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v18`)
 
 ## 프로젝트 구조
 
@@ -422,7 +451,8 @@ lotto---webapp/
 │   ├── vendor/              # 로컬 런타임 vendor 자산(font/icon/QR/캡처)
 │   ├── app.css              # 스타일 집계 엔트리
 │   ├── backtest.worker.js   # 시뮬레이션 워커
-│   └── strategy.worker.js   # 생성/추천 워커
+│   ├── strategy.worker.js   # 생성/추천 워커
+│   └── sw-precache-manifest.js # 생성된 서비스워커 precache manifest
 ├── data/                    # 정적 데이터
 │   └── winning_stats.json   # 로또 당첨 이력
 ├── proxy/                   # 프록시 워커 예시
@@ -432,6 +462,7 @@ lotto---webapp/
 ├── eslint.config.mjs        # ESLint flat config
 ├── index.html               # 앱 진입점
 ├── manifest.json            # 웹앱 설치 설정
+├── online-check.txt         # same-origin 네트워크 reachability probe
 ├── package.json             # 개발 스크립트/의존성
 ├── package-lock.json        # npm lockfile
 ├── THIRD_PARTY_NOTICES.md   # 로컬 vendor 자산 고지
@@ -464,6 +495,12 @@ npm run lint
 npm run build
 ```
 
+서비스워커 precache manifest를 수동 동기화해야 할 때:
+
+```bash
+npm run sync:sw-manifest
+```
+
 필요 시 자동 수정:
 
 ```bash
@@ -485,15 +522,27 @@ node scripts/smoke/smoke.mjs
 - `target-draw autofill`, `refreshCurrentRoute stale`, `future local-updates guard`, `clear-local-updates reconcile`
 - `persistence-flush`, `notification-permission`, `data-list pagination`
 - `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`, `route data-gate`
+- `post-import-refresh failure`, `cold-start orphan migration`
 - `strategy-preset-crud`, `runtime-asset-localization`
-- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `history actual-log`
+- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `service-worker manifest parity`, `history actual-log`
+- `unexpected static hole classification`, `expected missing draw allowance`
 
 성능 회귀를 함께 확인하려면:
 
 ```bash
 node scripts/perf/bench.mjs
 npm run bench:ai
+npm run bench:ai:full
 ```
+
+실브라우저 오프라인/멀티탭 검증은 opt-in 입니다:
+
+```bash
+npm run test:offline
+```
+
+- `test:offline` 는 시스템 `Chrome`/`Edge` 채널 또는 설치된 Playwright Chromium 중 하나를 사용합니다.
+- 시스템 브라우저가 없으면 `npx playwright install chromium` 후 다시 실행합니다.
 
 ## 라이선스
 

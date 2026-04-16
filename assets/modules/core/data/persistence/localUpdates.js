@@ -40,6 +40,15 @@ export const dataPersistenceLocalUpdateMethods = {
         });
     },
 
+    markLocalRestoreFailure(message, { source = this.getLocalRestoreSourceLabel() } = {}) {
+        return this.setSyncMeta({
+            mode: 'local_restore_failed',
+            currentSource: source || this.getLocalRestoreSourceLabel(),
+            lastFailureAt: new Date().toISOString(),
+            lastFailureMessage: String(message || '백업 복원 후 당첨 데이터를 다시 구성하지 못했습니다.').slice(0, 240)
+        });
+    },
+
     markSyncFailure(message, { source = '', mode = this.getSyncMode() } = {}) {
         return this.setSyncMeta({
             mode,

@@ -3,6 +3,10 @@ import {
     readFile,
     resolve
 } from './support.mjs';
+import {
+    buildPrecacheManifest,
+    renderManifestSource
+} from '../../../generate_sw_manifest.mjs';
 
 async function runRuntimeAssetLocalizationRegression() {
     const targets = [
@@ -43,14 +47,30 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v17';/, 'service worker cache version must be bumped');
-    assert.match(swSource, /const DATA_CORE_ASSETS = \[/, 'service worker must define core data precache assets');
-    assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must be precached during install');
+    assert.match(swSource, /const CACHE_VERSION = 'v18';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /importScripts\('\.\/assets\/sw-precache-manifest\.js'\);/, 'service worker must import the generated precache manifest');
+    assert.match(swSource, /const PRECACHE_MANIFEST = self\.__SW_PRECACHE_MANIFEST \|\| FALLBACK_PRECACHE_MANIFEST;/, 'service worker must consume the generated precache manifest');
+    assert.match(swSource, /const DATA_CORE_ASSETS = Array\.isArray\(PRECACHE_MANIFEST\.data\)/, 'service worker must read data precache entries from the manifest');
+    assert.match(swSource, /const ONLINE_CHECK_PATH_SUFFIX = '\/online-check\.txt';/, 'service worker must reserve the online-check path');
+    assert.match(swSource, /if \(url\.pathname\.endsWith\(ONLINE_CHECK_PATH_SUFFIX\)\) return;/, 'service worker must bypass cache handling for the online-check probe path');
+    assert.match(swSource, /\.\/data\/winning_stats\.json/, 'winning_stats.json must stay in the precache manifest fallback');
     assert.match(swSource, /const dataCache = await caches\.open\(CACHE_DATA\);/, 'data cache must be opened during install precache');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/, 'data cache must allow a longer mobile timeout before offline fallback');
     assert.match(swSource, /function isAppShellCodeRequest\(request, url\)/, 'service worker must classify JS/CSS/font assets separately');
     assert.match(swSource, /networkFirstWithTimeout\(event\.request, CACHE_APP_SHELL, 3500\)/, 'app-shell code assets must prefer network-first delivery');
     assert.doesNotMatch(swSource, /__network_probe/, 'service worker must not special-case the deprecated probe route anymore');
+}
+
+async function runServiceWorkerManifestParityRegression() {
+    const manifestSource = await readFile(resolve(process.cwd(), 'assets/sw-precache-manifest.js'), 'utf8');
+    const expectedManifest = await buildPrecacheManifest();
+
+    assert.equal(
+        manifestSource.trim(),
+        renderManifestSource(expectedManifest).trim(),
+        'generated SW precache manifest must stay in sync with the manifest generator'
+    );
+    assert.doesNotMatch(manifestSource, /online-check\.txt/, 'online-check probe file must stay out of the precache manifest');
 }
 
 async function runHiddenAttributeStyleRegression() {
@@ -82,5 +102,6 @@ export {
     runLocalFontPathRegression,
     runRuntimeAssetLocalizationRegression,
     runServiceWorkerCoreDataPrecacheRegression,
+    runServiceWorkerManifestParityRegression,
     runServiceWorkerReloadPolicyRegression
 };

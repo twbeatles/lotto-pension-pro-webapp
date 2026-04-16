@@ -335,6 +335,52 @@ function runStoredListNormalizationRegression() {
     }
 }
 
+function runLoadOrphanCampaignMigrationRegression() {
+    const previousDocument = globalThis.document;
+    const previousStorage = globalThis.localStorage;
+    const store = new Map([
+        [CONFIG.KEYS.FAV, '[]'],
+        [CONFIG.KEYS.HIST, '[]'],
+        [CONFIG.KEYS.SETTINGS, '{}'],
+        [CONFIG.KEYS.TICKET_BOOK, '[]'],
+        [CONFIG.KEYS.CAMPAIGNS, JSON.stringify([
+            { id: 'camp_orphan', name: 'orphan', startDrawNo: 1210, weeks: 1, setsPerWeek: 1 }
+        ])],
+        [CONFIG.KEYS.ALERT_PREFS, '{}'],
+        [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
+        [CONFIG.KEYS.SYNC_META, '{}'],
+        [CONFIG.KEYS.LOCAL_UPDATES, '[]']
+    ]);
+
+    globalThis.document = {
+        querySelector() {
+            return null;
+        }
+    };
+    globalThis.localStorage = {
+        getItem(key) {
+            return store.has(key) ? store.get(key) : null;
+        },
+        setItem(key, value) {
+            store.set(key, String(value));
+        }
+    };
+
+    try {
+        const dm = new DataManager();
+        dm.load();
+
+        assert.equal(dm.state.campaigns.length, 0, 'cold-start load must prune orphan campaigns from persisted state');
+        assert.deepEqual(JSON.parse(store.get(CONFIG.KEYS.CAMPAIGNS)), [], 'orphan-campaign migration must persist the cleaned campaign list');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+
+        if (previousStorage === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = previousStorage;
+    }
+}
+
 function runLocalUpdatesFutureGuardRegression() {
     const dm = new DataManager();
     dm.save = () => {};
@@ -813,11 +859,19 @@ async function runPostImportRefreshRegression() {
         state: {
             winningStats: [{ draw_no: 1211 }]
         },
+        dataHealth: {
+            availability: 'none'
+        },
         async fetchWinningStats(options) {
             calls.push(`fetchWinningStats:${JSON.stringify(options)}`);
+            data.dataHealth = { availability: 'full' };
+            return true;
         },
         markLocalRestoreSuccess(options) {
             calls.push(`markLocalRestoreSuccess:${JSON.stringify(options)}`);
+        },
+        markLocalRestoreFailure(message) {
+            calls.push(`markLocalRestoreFailure:${message}`);
         }
     };
     const app = {
@@ -839,6 +893,49 @@ async function runPostImportRefreshRegression() {
         'refreshCurrentRoute',
         'renderDataLists'
     ], 'post-import refresh order must be preserved');
+}
+
+async function runPostImportRefreshFailureRegression() {
+    const calls = [];
+    const data = {
+        state: {
+            winningStats: []
+        },
+        dataHealth: {
+            availability: 'none',
+            message: '백업 복원 후 당첨 데이터를 다시 구성하지 못했습니다.'
+        },
+        async fetchWinningStats(options) {
+            calls.push(`fetchWinningStats:${JSON.stringify(options)}`);
+            return false;
+        },
+        markLocalRestoreSuccess(options) {
+            calls.push(`markLocalRestoreSuccess:${JSON.stringify(options)}`);
+        },
+        markLocalRestoreFailure(message) {
+            calls.push(`markLocalRestoreFailure:${message}`);
+        }
+    };
+    const app = {
+        updateLatestWin() {
+            calls.push('updateLatestWin');
+        },
+        async refreshCurrentRoute() {
+            calls.push('refreshCurrentRoute');
+        },
+        renderDataLists() {
+            calls.push('renderDataLists');
+        }
+    };
+
+    await runPostImportRefresh({ data, app });
+    assert.deepEqual(calls, [
+        'fetchWinningStats:{"notifyTicketSettle":false}',
+        'markLocalRestoreFailure:백업 복원 후 당첨 데이터를 다시 구성하지 못했습니다.',
+        'updateLatestWin',
+        'refreshCurrentRoute',
+        'renderDataLists'
+    ], 'post-import refresh must mark a local-restore failure when winning data rebuild fails');
 }
 
 function runPersistenceFlushRegression() {
@@ -890,9 +987,11 @@ export {
     runImmediateTicketSettlementRegression,
     runImportAlertOptionRegression,
     runImportOrphanCampaignCleanupRegression,
+    runLoadOrphanCampaignMigrationRegression,
     runLocalRestoreSyncMetaRegression,
     runLocalUpdatesFutureGuardRegression,
     runOrphanCampaignAutoCleanupRegression,
+    runPostImportRefreshFailureRegression,
     runPostImportRefreshRegression,
     runPersistenceFlushRegression,
     runStoredListNormalizationRegression,

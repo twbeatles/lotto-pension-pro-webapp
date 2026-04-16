@@ -10,12 +10,13 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 
 function parseArgs(argv = []) {
     const out = {
-        start: 1100,
+        start: 1208,
         end: 1209,
-        setCount: 5,
-        simulationCount: 5000,
-        lookbackWindow: 20,
+        setCount: 2,
+        simulationCount: 400,
+        lookbackWindow: 12,
         seed: 2026,
+        full: false,
         includeExperimental: false,
         strategies: null
     };
@@ -60,6 +61,10 @@ function parseArgs(argv = []) {
         }
         if (arg === '--include-experimental') {
             out.includeExperimental = true;
+            continue;
+        }
+        if (arg === '--full') {
+            out.full = true;
         }
     }
 
@@ -74,6 +79,14 @@ function loadStats() {
 function getStrategyIds(args) {
     if (Array.isArray(args.strategies) && args.strategies.length) {
         return args.strategies;
+    }
+    if (!args.full) {
+        return [
+            'auto_ensemble_top3',
+            'auto_recent_top',
+            'consensus_portfolio',
+            'bayesian_smooth'
+        ];
     }
     return listStrategies({ includeExperimental: args.includeExperimental, scope: 'ai' }).map((item) => item.id);
 }
@@ -97,10 +110,11 @@ function rankTicket(ticket, draw) {
 }
 
 function createRequest(strategyId, args) {
+    const simulationFloor = args.full ? 1000 : 250;
     return {
         strategyId,
         params: {
-            simulationCount: Math.max(1000, Math.floor(Number(args.simulationCount) || 5000)),
+            simulationCount: Math.max(simulationFloor, Math.floor(Number(args.simulationCount) || 5000)),
             lookbackWindow: Math.max(5, Math.floor(Number(args.lookbackWindow) || 20)),
             wheelPoolSize: null,
             wheelGuarantee: null,
@@ -186,6 +200,7 @@ function main() {
         setCount: args.setCount,
         simulationCount: args.simulationCount,
         lookbackWindow: args.lookbackWindow,
+        full: args.full,
         includeExperimental: args.includeExperimental,
         strategies: rows
     };

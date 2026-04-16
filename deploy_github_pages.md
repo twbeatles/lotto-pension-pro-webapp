@@ -26,6 +26,7 @@
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
 - 동기화 메타에는 최근 응답 구조 경고(`lastWarningAt`, `lastWarningMessage`)도 함께 저장됨
 - 설치 시 `data/winning_stats.json`은 서비스워커 data cache에 precache됨
+- Import 후 유효 데이터 복원이 성공하면 `syncMeta.mode = local_restore`, 실패하면 `syncMeta.mode = local_restore_failed` 로 기록됨
 - 과거 회차 티켓을 저장하거나 가져올 때 이미 당첨 데이터가 있으면 즉시 정산됨
 - `reconcileTicketChecks()` 가 앱 초기 로드, 최신 회차 sync 직후, Import 후 post-refresh, 로컬 업데이트 정리 후 reload 시 `checked` 상태를 재검증함
 - Import 후에는 백업에 저장되지 않은 `syncMeta` 를 `local_restore` 모드로 다시 구성함
@@ -53,6 +54,7 @@
 - Import 완료 toast 에는 orphan campaign cleanup 수치가 함께 표시됩니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
 - 자동 동기화 경로가 모두 실패하면 정적 JSON + 로컬 업데이트 상태를 그대로 유지합니다.
+- 앱 소유 storage key 변경은 `BroadcastChannel('lotto-data-sync')` 또는 `storage` fallback으로 다른 탭에 전파됩니다.
 
 ## 3) 프록시 모드 (선택)
 
@@ -79,11 +81,12 @@
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v17`
+- 현재 `sw.js` 캐시 버전: `v18`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
-- `data/winning_stats.json`은 install 시 `CACHE_DATA`에 precache됩니다.
-- `DataIO.js` 의존 모듈인 `assets/modules/utils/backup.js`도 precache 대상에 포함되어야 오프라인 Data 탭 로딩이 안정적입니다.
-- 현재는 `assets/vendor/`의 font/icon/QR/캡처 자산, `assets/styles/*.css`, 분할된 `assets/modules/core/*`, `assets/modules/features/*` 내부 모듈도 precache 대상입니다.
+- precache 자산 목록은 수동 배열이 아니라 `scripts/generate_sw_manifest.mjs`가 생성하는 `assets/sw-precache-manifest.js`를 기준으로 관리합니다.
+- `data/winning_stats.json`은 install 시 data cache에 precache됩니다.
+- `assets/vendor/`의 font/icon/QR/캡처 자산, `assets/styles/*.css`, 분할된 `assets/modules/core/*`, `assets/modules/features/*` 내부 모듈도 generated manifest에 포함됩니다.
+- same-origin 온라인 판별은 `/online-check.txt?__online_check=` probe를 사용하며, 서비스워커는 이 경로를 캐시/가로채기에서 제외합니다.
 - 첫 설치에서는 자동 reload 하지 않으며, 업데이트 reload은 사용자가 토스트에서 수락한 경우에만 수행됩니다.
 - 멀티탭 환경에서는 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 activation-complete 신호를 전파합니다.
 - 다른 탭은 이 activation-complete 신호를 받은 뒤에만 reload 되어 조기 reload 를 피합니다.
@@ -105,6 +108,7 @@
 
 ```bash
 node scripts/smoke/smoke.mjs
+npm run test:offline
 ```
 
 ## 6) 트러블슈팅: "문자가 깨져서 보임" (예: `理쒖떊`)
@@ -117,6 +121,7 @@ node scripts/smoke/smoke.mjs
    - 생성/AI/시뮬레이션/확인 탭 버튼/라벨/토스트
    - 공용 확인 모달/설정 모달/모바일 더보기 시트 문구
 5. 필요 시 `sw.js`의 `CACHE_VERSION`을 상향해 캐시 강제 갱신
+6. precache 목록이 바뀐 경우 `npm run sync:sw-manifest`를 먼저 실행해 generated manifest를 갱신
 
 ## 7) 로컬 실행
 
@@ -134,10 +139,12 @@ python -m http.server 5173
 
 ```bash
 npm install
+npm run sync:sw-manifest
 npm run lint
 npm run build
 node scripts/smoke/smoke.mjs
 node scripts/perf/bench.mjs
+npm run bench:ai
 ```
 
 선택:
@@ -145,7 +152,12 @@ node scripts/perf/bench.mjs
 ```bash
 npm run lint:fix
 npm run format:check
+npm run bench:ai:full
+npm run test:offline
 ```
+
+- `test:offline` 는 시스템 `Chrome`/`Edge` 또는 설치된 Playwright Chromium이 필요합니다.
+- 시스템 브라우저가 없으면 `npx playwright install chromium` 후 다시 실행합니다.
 
 `smoke`에는 아래 회귀 항목이 포함됩니다.
 
@@ -182,4 +194,7 @@ npm run format:check
 - `check` 탭 이탈 시 QR 스캐너가 정리되는지(`qr route cleanup`)
 - 서비스워커가 첫 설치에서 자동 reload 하지 않는지(`service-worker reload policy`)
 - 서비스워커 install precache에 `winning_stats.json`이 포함되는지(`service-worker core data precache`)
+- generated precache manifest와 실제 자산 목록이 일치하는지(`service-worker manifest parity`)
+- 정적 데이터의 예기치 않은 hole이 `partial`로 분류되고, 허용 누락 회차 `146`은 `full`을 깨지 않는지
+- post-import refresh 실패 시 `local_restore_failed`가 기록되는지
 - Pretendard 폰트가 절대 same-origin 경로를 사용하는지(`local-font-path`)

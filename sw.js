@@ -1,110 +1,32 @@
-const CACHE_VERSION = 'v17';
+const CACHE_VERSION = 'v18';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
+const FALLBACK_PRECACHE_MANIFEST = {
+    appShell: [
+        './',
+        './index.html',
+        './manifest.json',
+        './assets/app.css'
+    ],
+    data: [
+        './data/winning_stats.json'
+    ]
+};
 
-const APP_SHELL_ASSETS = [
-    './',
-    './index.html',
-    './manifest.json',
-    './assets/app.css',
-    './assets/icons/icon-192.png',
-    './assets/icons/icon-512.png',
-    './assets/backtest.worker.js',
-    './assets/strategy.worker.js',
-    './assets/modules/index.js',
-    './assets/modules/bootstrap/pwa.js',
-    './assets/modules/core/LottoApp.js',
-    './assets/modules/core/DataManager.js',
-    './assets/modules/core/StrategyWorkerClient.js',
-    './assets/modules/core/StrategyCatalog.js',
-    './assets/modules/core/StrategyEngine.js',
-    './assets/modules/core/StrategyFilters.js',
-    './assets/modules/core/MonteCarlo.js',
-    './assets/modules/core/UIManager.js',
-    './assets/modules/utils/utils.js',
-    './assets/modules/utils/config.js',
-    './assets/modules/utils/backup.js',
-    './assets/modules/utils/loader.js',
-    './assets/modules/utils/perf.js',
-    './assets/modules/utils/strategyPresets.js',
-    './assets/modules/core/app/dataLists.js',
-    './assets/modules/core/app/latestDraw.js',
-    './assets/modules/core/app/moduleLoader.js',
-    './assets/modules/core/app/settingsPanel.js',
-    './assets/modules/core/app/theme.js',
-    './assets/modules/core/data/analytics.js',
-    './assets/modules/core/data/defaults.js',
-    './assets/modules/core/data/persistence.js',
-    './assets/modules/core/data/records.js',
-    './assets/modules/core/data/sync.js',
-    './assets/modules/core/strategy/context.js',
-    './assets/modules/core/strategy/evaluation.js',
-    './assets/modules/core/strategy/generation.js',
-    './assets/modules/core/strategy/request.js',
-    './assets/modules/core/strategy/shared.js',
-    './assets/modules/core/strategy/weights.js',
-    './assets/modules/features/Ai.js',
-    './assets/modules/features/Backtest.js',
-    './assets/modules/features/Check.js',
-    './assets/modules/features/DataIO.js',
-    './assets/modules/features/Generator.js',
-    './assets/modules/features/QrScanner.js',
-    './assets/modules/features/Stats.js',
-    './assets/modules/features/ai/form.js',
-    './assets/modules/features/ai/rendering.js',
-    './assets/modules/features/backtest/run.js',
-    './assets/modules/features/backtest/ui.js',
-    './assets/modules/features/dataio/importExport.js',
-    './assets/modules/features/dataio/postImportRefresh.js',
-    './assets/modules/features/dataio/support.js',
-    './assets/modules/features/generator/actions.js',
-    './assets/modules/features/generator/form.js',
-    './assets/styles/tokens.css',
-    './assets/styles/layout.css',
-    './assets/styles/components.css',
-    './assets/styles/pages.css',
-    './assets/styles/modals.css',
-    './assets/styles/responsive.css',
-    './assets/vendor/pretendard/PretendardVariable.woff2',
-    './assets/vendor/qrcode/qrcode.min.js',
-    './assets/vendor/html2canvas/html2canvas.min.js',
-    './assets/vendor/html5-qrcode/html5-qrcode.min.js',
-    './assets/vendor/html5-qrcode/third_party/zxing-js.umd.js',
-    './assets/vendor/phosphor/src/regular/style.css',
-    './assets/vendor/phosphor/src/regular/Phosphor.woff2',
-    './assets/vendor/phosphor/src/regular/Phosphor.woff',
-    './assets/vendor/phosphor/src/regular/Phosphor.ttf',
-    './assets/vendor/phosphor/src/regular/Phosphor.svg',
-    './assets/vendor/phosphor/src/bold/style.css',
-    './assets/vendor/phosphor/src/bold/Phosphor-Bold.woff2',
-    './assets/vendor/phosphor/src/bold/Phosphor-Bold.woff',
-    './assets/vendor/phosphor/src/bold/Phosphor-Bold.ttf',
-    './assets/vendor/phosphor/src/bold/Phosphor-Bold.svg',
-    './assets/vendor/phosphor/src/fill/style.css',
-    './assets/vendor/phosphor/src/fill/Phosphor-Fill.woff2',
-    './assets/vendor/phosphor/src/fill/Phosphor-Fill.woff',
-    './assets/vendor/phosphor/src/fill/Phosphor-Fill.ttf',
-    './assets/vendor/phosphor/src/fill/Phosphor-Fill.svg',
-    './assets/vendor/phosphor/src/thin/style.css',
-    './assets/vendor/phosphor/src/thin/Phosphor-Thin.woff2',
-    './assets/vendor/phosphor/src/thin/Phosphor-Thin.woff',
-    './assets/vendor/phosphor/src/thin/Phosphor-Thin.ttf',
-    './assets/vendor/phosphor/src/thin/Phosphor-Thin.svg',
-    './assets/vendor/phosphor/src/light/style.css',
-    './assets/vendor/phosphor/src/light/Phosphor-Light.woff2',
-    './assets/vendor/phosphor/src/light/Phosphor-Light.woff',
-    './assets/vendor/phosphor/src/light/Phosphor-Light.ttf',
-    './assets/vendor/phosphor/src/light/Phosphor-Light.svg',
-    './assets/vendor/phosphor/src/duotone/style.css',
-    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.woff2',
-    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.woff',
-    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.ttf',
-    './assets/vendor/phosphor/src/duotone/Phosphor-Duotone.svg'
-];
+try {
+    importScripts('./assets/sw-precache-manifest.js');
+} catch (_e) {
+    self.__SW_PRECACHE_MANIFEST = FALLBACK_PRECACHE_MANIFEST;
+}
 
-const DATA_CORE_ASSETS = [
-    './data/winning_stats.json'
-];
+const PRECACHE_MANIFEST = self.__SW_PRECACHE_MANIFEST || FALLBACK_PRECACHE_MANIFEST;
+const APP_SHELL_ASSETS = Array.isArray(PRECACHE_MANIFEST.appShell)
+    ? PRECACHE_MANIFEST.appShell
+    : FALLBACK_PRECACHE_MANIFEST.appShell;
+const DATA_CORE_ASSETS = Array.isArray(PRECACHE_MANIFEST.data)
+    ? PRECACHE_MANIFEST.data
+    : FALLBACK_PRECACHE_MANIFEST.data;
+const ONLINE_CHECK_PATH_SUFFIX = '/online-check.txt';
 
 self.addEventListener('message', (event) => {
     if (event.data?.action === 'skipWaiting') {
@@ -197,6 +119,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
+    if (url.pathname.endsWith(ONLINE_CHECK_PATH_SUFFIX)) return;
 
     const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
     if (isDataRequest) {

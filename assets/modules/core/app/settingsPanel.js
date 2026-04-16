@@ -154,7 +154,9 @@ export const appSettingsMethods = {
         }
         const syncWarningEl = $('#syncMetaWarning');
         if (syncWarningEl) {
-            if (activeProxyConfig?.invalid) {
+            if (syncMeta.mode === 'local_restore_failed' && syncMeta.lastFailureMessage) {
+                syncWarningEl.textContent = `백업 복원은 완료됐지만 당첨 데이터 재구성에 실패했습니다. ${syncMeta.lastFailureMessage}`;
+            } else if (activeProxyConfig?.invalid) {
                 syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
             } else if (freshness.isUnavailable) {
                 syncWarningEl.textContent = freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
@@ -176,7 +178,9 @@ export const appSettingsMethods = {
         const syncStateBadge = $('#settingsSyncStateBadge');
         if (syncStateBadge) {
             let syncState = { label: '최신', code: 'success' };
-            if (freshness.isUnavailable) {
+            if (syncMeta.mode === 'local_restore_failed') {
+                syncState = { label: '복원 실패', code: 'danger' };
+            } else if (freshness.isUnavailable) {
                 syncState = { label: '데이터 없음', code: 'danger' };
             } else if (freshness.isPartial) {
                 syncState = { label: '부분 복구', code: 'danger' };

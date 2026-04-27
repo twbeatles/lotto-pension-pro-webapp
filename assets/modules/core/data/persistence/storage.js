@@ -21,6 +21,14 @@ function createTabInstanceId() {
     return `tab_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function getUtf8ByteLength(value = '') {
+    const text = String(value || '');
+    if (typeof TextEncoder !== 'undefined') {
+        return new TextEncoder().encode(text).length;
+    }
+    return unescape(encodeURIComponent(text)).length;
+}
+
 export const dataPersistenceStorageMethods = {
     getTabInstanceId() {
         if (!this._tabInstanceId) {
@@ -59,7 +67,10 @@ export const dataPersistenceStorageMethods = {
                         ? payload.keys.filter((key) => this.isAppOwnedStorageKey(key))
                         : [];
                     if (!keys.length) return;
-                    this.app?.handleRemotePersistenceSync?.({ keys, source: 'broadcast' });
+                    this.app?.handleRemotePersistenceSync?.({
+                        keys,
+                        source: 'broadcast'
+                    });
                 });
             }
         } catch (_e) {
@@ -70,7 +81,10 @@ export const dataPersistenceStorageMethods = {
             const key = String(event?.key || '').trim();
             if (!key || !this.isAppOwnedStorageKey(key)) return;
             if (typeof localStorage !== 'undefined' && event?.storageArea && event.storageArea !== localStorage) return;
-            this.app?.handleRemotePersistenceSync?.({ keys: [key], source: 'storage' });
+            this.app?.handleRemotePersistenceSync?.({
+                keys: [key],
+                source: 'storage'
+            });
         };
         window.addEventListener('storage', this._crossTabStorageHandler);
         this._crossTabSyncBound = true;
@@ -78,9 +92,13 @@ export const dataPersistenceStorageMethods = {
 
     notifyCrossTabStateChange({ keys = [] } = {}) {
         if (this._suppressCrossTabBroadcast) return;
-        const normalizedKeys = [...new Set((Array.isArray(keys) ? keys : [])
-            .map((key) => String(key || '').trim())
-            .filter((key) => this.isAppOwnedStorageKey(key)))];
+        const normalizedKeys = [
+            ...new Set(
+                (Array.isArray(keys) ? keys : [])
+                    .map((key) => String(key || '').trim())
+                    .filter((key) => this.isAppOwnedStorageKey(key))
+            )
+        ];
         if (!normalizedKeys.length) return;
 
         try {
@@ -171,7 +189,7 @@ export const dataPersistenceStorageMethods = {
         const bytes = entries.reduce((sum, [key]) => {
             try {
                 const raw = localStorage.getItem(key) || '';
-                return sum + key.length + raw.length;
+                return sum + getUtf8ByteLength(key) + getUtf8ByteLength(raw);
             } catch (_e) {
                 return sum;
             }
@@ -193,7 +211,12 @@ export const dataPersistenceStorageMethods = {
         if (counts.localUpdates > 60) warnings.push(`로컬 업데이트 ${counts.localUpdates}개`);
 
         let status = 'normal';
-        if (bytes >= this.STORAGE_DANGER_BYTES || counts.tickets > 400 || counts.history > 450 || counts.campaigns > 120) {
+        if (
+            bytes >= this.STORAGE_DANGER_BYTES ||
+            counts.tickets > 400 ||
+            counts.history > 450 ||
+            counts.campaigns > 120
+        ) {
             status = 'danger';
         } else if (bytes >= this.STORAGE_WARNING_BYTES || warnings.length) {
             status = 'warning';

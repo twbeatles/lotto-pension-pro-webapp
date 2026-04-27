@@ -56,8 +56,16 @@ function runLatestWinPlaceholderRegression() {
         };
         LottoApp.prototype.updateLatestWin.call(ctx, { offline: true });
         assert.equal(latestDrawNo.textContent, '오프라인', 'latest draw badge must show offline state');
-        assert.match(latestWinBalls.innerHTML, /최신 당첨결과를 불러오지 못했습니다/, 'latest win card must render offline placeholder');
-        assert.match(latestWinMeta.innerHTML, /오프라인 상태입니다/, 'latest win card must explain offline placeholder');
+        assert.match(
+            latestWinBalls.innerHTML,
+            /최신 당첨결과를 불러오지 못했습니다/,
+            'latest win card must render offline placeholder'
+        );
+        assert.match(
+            latestWinMeta.innerHTML,
+            /오프라인 상태입니다/,
+            'latest win card must explain offline placeholder'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -105,10 +113,18 @@ async function runQrScanReentryGuardRegression() {
             QrScannerModule.prototype.onScanSuccess.call(ctx, 'qr')
         ]);
 
-        assert.equal(calls.filter((x) => x === 'parse').length, 1, 'QR success handler must parse only once while busy');
+        assert.equal(
+            calls.filter((x) => x === 'parse').length,
+            1,
+            'QR success handler must parse only once while busy'
+        );
         assert.equal(calls.filter((x) => x === 'stop').length, 1, 'QR success handler must stop scanner only once');
         assert.equal(calls.filter((x) => x === 'route:check').length, 1, 'QR success handler must route only once');
-        assert.equal(calls.filter((x) => x === 'set:1').length, 1, 'QR success handler must set scanned numbers only once');
+        assert.equal(
+            calls.filter((x) => x === 'set:1').length,
+            1,
+            'QR success handler must set scanned numbers only once'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -147,7 +163,11 @@ async function runQrRouteCleanupRegression() {
         };
 
         await LottoApp.prototype.route.call(ctx, 'gen');
-        assert.deepEqual(calls, ['qr.stop', 'updateLatestWin'], 'leaving check route must stop QR scanner before rendering next route');
+        assert.deepEqual(
+            calls,
+            ['qr.stop', 'updateLatestWin'],
+            'leaving check route must stop QR scanner before rendering next route'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -163,51 +183,63 @@ async function runNotificationPermissionRegression() {
 
     try {
         const deniedCalls = [];
-        await LottoApp.prototype.handleSystemNotificationToggle.call({
-            data: {
-                async requestNotificationPermission() {
-                    deniedCalls.push('request');
-                    return { code: 'denied', label: '차단됨' };
+        await LottoApp.prototype.handleSystemNotificationToggle.call(
+            {
+                data: {
+                    async requestNotificationPermission() {
+                        deniedCalls.push('request');
+                        return { code: 'denied', label: '차단됨' };
+                    },
+                    setAlertPrefs(next) {
+                        deniedCalls.push(`set:${JSON.stringify(next)}`);
+                    }
                 },
-                setAlertPrefs(next) {
-                    deniedCalls.push(`set:${JSON.stringify(next)}`);
+                renderDataLists() {
+                    deniedCalls.push('render');
                 }
             },
-            renderDataLists() {
-                deniedCalls.push('render');
-            }
-        }, true);
+            true
+        );
 
-        assert.deepEqual(deniedCalls, [
-            'request',
-            'set:{"enableSystemNotification":false}',
-            'render'
-        ], 'denied notification permission must revert the toggle state');
-        assert.ok(toasts.some((item) => item.startsWith('info:')), 'denied flow must show 안내 toast');
+        assert.deepEqual(
+            deniedCalls,
+            ['request', 'set:{"enableSystemNotification":false}', 'render'],
+            'denied notification permission must revert the toggle state'
+        );
+        assert.ok(
+            toasts.some((item) => item.startsWith('info:')),
+            'denied flow must show 안내 toast'
+        );
 
         toasts.length = 0;
         const grantedCalls = [];
-        await LottoApp.prototype.handleSystemNotificationToggle.call({
-            data: {
-                async requestNotificationPermission() {
-                    grantedCalls.push('request');
-                    return { code: 'granted', label: '허용됨' };
+        await LottoApp.prototype.handleSystemNotificationToggle.call(
+            {
+                data: {
+                    async requestNotificationPermission() {
+                        grantedCalls.push('request');
+                        return { code: 'granted', label: '허용됨' };
+                    },
+                    setAlertPrefs(next) {
+                        grantedCalls.push(`set:${JSON.stringify(next)}`);
+                    }
                 },
-                setAlertPrefs(next) {
-                    grantedCalls.push(`set:${JSON.stringify(next)}`);
+                renderDataLists() {
+                    grantedCalls.push('render');
                 }
             },
-            renderDataLists() {
-                grantedCalls.push('render');
-            }
-        }, true);
+            true
+        );
 
-        assert.deepEqual(grantedCalls, [
-            'request',
-            'set:{"enableSystemNotification":true}',
-            'render'
-        ], 'granted notification permission must keep system notifications enabled');
-        assert.ok(toasts.some((item) => item.startsWith('success:')), 'granted flow must show success toast');
+        assert.deepEqual(
+            grantedCalls,
+            ['request', 'set:{"enableSystemNotification":true}', 'render'],
+            'granted notification permission must keep system notifications enabled'
+        );
+        assert.ok(
+            toasts.some((item) => item.startsWith('success:')),
+            'granted flow must show success toast'
+        );
     } finally {
         UIManager.toast = previousToast;
     }
@@ -277,14 +309,24 @@ function runDataListDomRegression() {
                         numbers: [1, 2, 3, 4, 5, idx + 6],
                         date: `2026-03-${String((idx % 25) + 1).padStart(2, '0')}T00:00:00.000Z`
                     })),
-                    history: [
-                        { numbers: [6, 7, 8, 9, 10, 11], date: '2026-02-01T00:00:00.000Z' }
-                    ],
+                    history: [{ numbers: [6, 7, 8, 9, 10, 11], date: '2026-02-01T00:00:00.000Z' }],
                     ticketBook: [
-                        { id: 'ticket<&"\'', numbers: [1, 2, 3, 4, 5, 6], targetDrawNo: 1210, checked: null, quantity: 2 }
+                        {
+                            id: 'ticket<&"\'',
+                            numbers: [1, 2, 3, 4, 5, 6],
+                            targetDrawNo: 1210,
+                            checked: null,
+                            quantity: 2
+                        }
                     ],
                     campaigns: [
-                        { id: 'campaign_1', name: '테스트 캠페인', startDrawNo: 1210, weeks: 4, setsPerWeek: 3 }
+                        {
+                            id: 'campaign_1',
+                            name: '테스트 캠페인',
+                            startDrawNo: 1210,
+                            weeks: 4,
+                            setsPerWeek: 3
+                        }
                     ]
                 },
                 getTicketQuantity(ticket) {
@@ -322,12 +364,92 @@ function runDataListDomRegression() {
         assert.ok(!favList.innerHTML.includes('2026. 3. 11.'), 'favorite search must filter out unmatched rows');
         assert.match(favPagination.innerHTML, /총 1개/, 'favorite pagination summary must render');
         assert.match(favPagination.innerHTML, /1 \/ 1/, 'favorite pagination page text must render');
-        assert.match(ticketList.innerHTML, /data-id="ticket&lt;&amp;&quot;&#39;"/, 'ticket data-id must be HTML-escaped');
+        assert.match(
+            ticketList.innerHTML,
+            /data-id="ticket&lt;&amp;&quot;&#39;"/,
+            'ticket data-id must be HTML-escaped'
+        );
         assert.match(ticketList.innerHTML, /x2/, 'ticket list must render grouped quantity badge');
-        assert.match(ticketPagination.innerHTML, /총 2개 티켓/, 'ticket pagination summary must use physical ticket count');
-        assert.match(localUpdatesSummary.textContent, /1개/, 'local updates summary must reflect stored local update count');
+        assert.match(
+            ticketPagination.innerHTML,
+            /총 2개 티켓/,
+            'ticket pagination summary must use physical ticket count'
+        );
+        assert.match(
+            localUpdatesSummary.textContent,
+            /1개/,
+            'local updates summary must reflect stored local update count'
+        );
         assert.match(localUpdatesMeta.textContent, /1211회/, 'local updates meta must show latest local draw number');
-        assert.equal(clearLocalUpdatesBtn.disabled, false, 'local updates clear button must be enabled when updates exist');
+        assert.equal(
+            clearLocalUpdatesBtn.disabled,
+            false,
+            'local updates clear button must be enabled when updates exist'
+        );
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runCheckTargetCardAttributeEscapingRegression() {
+    const previousDocument = globalThis.document;
+    const listEl = createField();
+    const metaEl = createField();
+    const ticketFilterRow = createField({ hidden: false });
+
+    globalThis.document = createDocumentStub({
+        '#checkTargetCards': listEl,
+        '#checkSelectionMeta': metaEl,
+        '#checkTicketStatusRow': ticketFilterRow
+    });
+
+    try {
+        const ctx = {
+            source: 'tickets',
+            ticketStatusFilter: 'all',
+            searchQuery: '',
+            selectedItemKey: '',
+            dateFormatter: new Intl.DateTimeFormat('ko-KR'),
+            data: {
+                state: {
+                    ticketBook: [
+                        {
+                            id: 'ticket" autofocus onfocus="alert(1)',
+                            numbers: [1, 2, 3, 4, 5, 6],
+                            targetDrawNo: 1221,
+                            checked: null,
+                            quantity: 1
+                        }
+                    ]
+                },
+                getTicketQuantity(ticket) {
+                    return Number(ticket?.quantity || 1);
+                }
+            },
+            getList: CheckModule.prototype.getList,
+            getTicketStatusLabel: CheckModule.prototype.getTicketStatusLabel,
+            getTicketStatusCode: CheckModule.prototype.getTicketStatusCode,
+            getItemQuantity: CheckModule.prototype.getItemQuantity,
+            formatDate: CheckModule.prototype.formatDate,
+            buildItemKey: CheckModule.prototype.buildItemKey,
+            matchesQuery: CheckModule.prototype.matchesQuery,
+            getVisibleItems: CheckModule.prototype.getVisibleItems,
+            ensureSelection: CheckModule.prototype.ensureSelection
+        };
+
+        CheckModule.prototype.renderList.call(ctx);
+
+        assert.doesNotMatch(
+            listEl.innerHTML,
+            /data-item-key="ticket" autofocus/,
+            'check target card must not allow injected attributes through data-item-key'
+        );
+        assert.match(
+            listEl.innerHTML,
+            /data-item-key="ticket&quot; autofocus onfocus=&quot;alert\(1\)"/,
+            'check target card must HTML-escape data-item-key values'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -348,10 +470,26 @@ async function runRecommendationCopyRegression() {
     assert.match(readmeSource, /통계 추천:/, 'README must document the recommendation feature with the new wording');
     assert.doesNotMatch(readmeSource, /인공지능 예측:/, 'README must drop the legacy AI prediction section title');
     assert.doesNotMatch(catalogSource, /표준 인공지능/, 'strategy catalog must not claim a standard AI model');
-    assert.doesNotMatch(catalogSource, /신경망 형태/, 'strategy catalog must not describe heuristic logic as a neural network');
-    assert.doesNotMatch(catalogSource, /3개만 맞아도 최소 일정 등수/, 'wheeling copy must not promise guaranteed hit behavior');
-    assert.match(aiRenderingSource, /const tierLabels = \{ A: '기본', B: '확장', C: '실험' \};/, 'tier labels must use the softened wording');
-    assert.match(aiRenderingSource, /내부 랭킹 점수/, 'recommendation detail copy must use the internal ranking wording');
+    assert.doesNotMatch(
+        catalogSource,
+        /신경망 형태/,
+        'strategy catalog must not describe heuristic logic as a neural network'
+    );
+    assert.doesNotMatch(
+        catalogSource,
+        /3개만 맞아도 최소 일정 등수/,
+        'wheeling copy must not promise guaranteed hit behavior'
+    );
+    assert.match(
+        aiRenderingSource,
+        /const tierLabels = \{ A: '기본', B: '확장', C: '실험' \};/,
+        'tier labels must use the softened wording'
+    );
+    assert.match(
+        aiRenderingSource,
+        /내부 랭킹 점수/,
+        'recommendation detail copy must use the internal ranking wording'
+    );
 }
 
 function runFacadeExportParityRegression() {
@@ -379,26 +517,12 @@ function runFacadeExportParityRegression() {
         assert.equal(typeof DataManager.prototype[name], 'function', `DataManager prototype must expose ${name}()`);
     });
 
-    const uiManagerMethods = [
-        'init',
-        'openModal',
-        'closeModal',
-        'toast',
-        'renderBalls',
-        'copyNumbers',
-        'showQR'
-    ];
+    const uiManagerMethods = ['init', 'openModal', 'closeModal', 'toast', 'renderBalls', 'copyNumbers', 'showQR'];
     uiManagerMethods.forEach((name) => {
         assert.equal(typeof UIManager[name], 'function', `UIManager must expose static ${name}()`);
     });
 
-    const checkModuleMethods = [
-        'bindEvents',
-        'onEnter',
-        'run',
-        'renderList',
-        'setScannedNumbers'
-    ];
+    const checkModuleMethods = ['bindEvents', 'onEnter', 'run', 'renderList', 'setScannedNumbers'];
     checkModuleMethods.forEach((name) => {
         assert.equal(typeof CheckModule.prototype[name], 'function', `CheckModule prototype must expose ${name}()`);
     });
@@ -413,6 +537,7 @@ async function runRegressionBarrelExportParityRegression() {
 }
 
 export {
+    runCheckTargetCardAttributeEscapingRegression,
     runDataListDomRegression,
     runDataListPaginationRegression,
     runFacadeExportParityRegression,

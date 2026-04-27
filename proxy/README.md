@@ -32,6 +32,7 @@ wrangler deploy proxy/worker.js
 - 기본값: `hybrid` (기존 형식 + 정규화 형식 동시 제공)
 - `?format=legacy`: 기존 형식 (`data.list[0]`)
 - `?format=normalized`: 정규화 형식 (`data: [{ draw_no, numbers, ... }]`)
+- 앱은 `draw_no`/`ltEpsd`를 정수 `>= 1`로만 수락하므로 프록시 응답도 소수/문자열 소수/0/음수 회차를 반환하지 않아야 합니다.
 
 `/proxy/range` 응답 형식:
 

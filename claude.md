@@ -5,11 +5,11 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-04-16`
-- Static data latest draw: `1209`
-- Static data rows: `1208`
+- Date: `2026-04-27`
+- Static data latest draw: `1221`
+- Static data rows: `1220`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-16.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-27.md`
 
 ## Current State
 
@@ -52,6 +52,13 @@ Use it to restore context quickly and avoid missing the current structure.
   - grouped ticket-book rows now use `quantity` instead of duplicate entries, and physical ticket counts flow through delete/import/campaign summaries
   - import no longer preserves stale sync metadata; it records `local_restore` only when winning data is rebuilt successfully and `local_restore_failed` otherwise
   - `dataHealth` now distinguishes `full` / `partial` / `none` using structural completeness, not just static JSON presence
+  - when local updates exist, `dataHealth` now evaluates merged static + local data and can classify `static_local` as `partial` if intermediate draws are missing
+  - sync payload draw numbers are accepted only as integers `>= 1`
+  - favorites/history import now uses central stored-number normalization; decimal, duplicate, and out-of-range numbers are dropped at import time
+  - imported ticket IDs are bounded and normalized to safe `[A-Za-z0-9_-]` characters
+  - check-target cards escape `data-item-key` and rendered metadata before writing HTML attributes
+  - storage summary accounting uses UTF-8 bytes rather than JavaScript string length
+  - `package.json` declares `"type": "module"` to avoid Node ESM typeless package warnings
   - if static JSON fails, runtime data can rebuild `winningStats` from local updates only and expose partial recovery mode
   - `stats`, `ai`, and `bt` are gated when data availability is not `full`, while `gen` and `check` stay usable with warnings
   - multi-tab SW reload now broadcasts only after activation (`controllerchange`), preventing premature reloads in other tabs
@@ -247,6 +254,7 @@ Runtime-only data health:
 - `source` — `static | static_local | local_only | none`
 - `latestDrawNo`
 - `message`
+- `static_local` can still be `partial` when merged local updates create intermediate draw gaps
 
 Important sync modes:
 
@@ -277,6 +285,14 @@ Official supported custom proxy shape:
 - `CONFIG.LIMITS.MAX_BACKTEST_SPAN` — `300`
 - `CONFIG.KEYS.SESSION_DATA_LIST_STATE` — sessionStorage key for data list state
 - `CONFIG.KEYS.LOCAL_UPDATES` — local draw override storage key
+
+## Static Winning Data
+
+- Source file: `data/winning_stats.json`
+- Current max draw: `1221`
+- Current rows: `1220`
+- Allowed missing draw: `[146]`
+- Freshness is guarded by the `static data freshness budget` smoke regression.
 
 ## Quick Start
 
@@ -333,6 +349,8 @@ Recommended manual checks:
 23. Delete the last ticket linked to a campaign and verify the orphan campaign disappears immediately
 24. Save the same number set multiple times and verify history keeps separate log entries
 25. With two tabs open, change tickets/settings in one tab and verify the other tab rehydrates automatically
+26. Verify merged local-update gaps classify data as partial instead of full
+27. Verify import strict normalization, sync draw integer guard, check-card escaping, storage byte accounting, and precache reachability smoke cases
 
 ## Session Template
 

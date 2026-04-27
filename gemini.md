@@ -5,11 +5,11 @@
 This is the current context note for Gemini-family agents working in `lotto---webapp`.
 Use it as the fast-start reference for the current structure and workflow.
 
-- Date: `2026-04-16`
-- Static data latest draw: `1209`
-- Static data rows: `1208`
+- Date: `2026-04-27`
+- Static data latest draw: `1221`
+- Static data rows: `1220`
 - Missing draw: `146`
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-16.md`
+- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-27.md`
 
 ## Current Snapshot
 
@@ -31,6 +31,14 @@ Use it as the fast-start reference for the current structure and workflow.
   - ticket-book duplicates now merge by `quantity`, including quantity-aware delete/import/campaign counts
   - import reconstructs `syncMeta` as `local_restore` only on successful winning-data rebuild, and records `local_restore_failed` on restore failure
   - `dataHealth` distinguishes `full` / `partial` / `none` using structural completeness
+  - local updates are now evaluated as merged static + local data, so `static_local` can still be `partial` if intermediate draws are missing
+  - sync payload draw numbers must be integer `>= 1`; decimal/zero/negative draw payloads are rejected
+  - favorites/history import now uses central stored-number normalization and drops decimals, duplicates, and out-of-range values
+  - imported ticket IDs are bounded and normalized to safe `[A-Za-z0-9_-]` characters
+  - check-target card rendering escapes `data-item-key` and metadata before writing HTML attributes
+  - storage summary accounting now uses UTF-8 bytes, not JavaScript string length
+  - `package.json` declares `"type": "module"` to avoid Node ESM typeless package warnings
+  - static data freshness and service-worker precache reachability are covered by smoke regressions
   - static JSON failure can fall back to local-only `winningStats` rebuild and partial recovery mode
   - `stats`, `ai`, and `bt` are gated when data availability is not full
   - service-worker multi-tab reload is broadcast only after activation, not immediately on update click
@@ -189,6 +197,19 @@ Main keys:
 - `lotto_pro_sync_meta_v1`
 - `lotto_pro_updates_v2` (`CONFIG.KEYS.LOCAL_UPDATES`)
 
+Static winning data:
+
+- `data/winning_stats.json`
+- current max draw: `1221`
+- current rows: `1220`
+- allowed missing draw: `[146]`
+
+Runtime-only data health:
+
+- `availability`: `full | partial | none`
+- `source`: `static | static_local | local_only | none`
+- `static_local` can be `partial` when merged local updates leave intermediate draw gaps
+
 Important sync modes:
 
 - `local_restore`
@@ -249,6 +270,11 @@ Local URL:
 17. common confirm modal flows for destructive actions and preset overwrite/delete
 18. service worker update acceptance and reload
 19. two-tab auto rehydrate after ticket/settings change
+20. merged local-update gap classification and static data freshness budget
+21. import stored-list strict normalization and sync payload integer guard
+22. check target-card attribute escaping
+23. storage summary byte accounting
+24. service-worker precache reachability
 
 ## Session Template
 

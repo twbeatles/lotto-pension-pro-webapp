@@ -24,6 +24,12 @@ export const recordNormalizeMethods = {
         return Number.isFinite(quantity) ? quantity : 1;
     },
 
+    normalizeRecordId(value, prefix = 'id') {
+        const raw = typeof value === 'string' ? value.trim().slice(0, 120) : '';
+        if (/^[A-Za-z0-9_-]{1,120}$/.test(raw)) return raw;
+        return this.createId(prefix);
+    },
+
     getTicketQuantity(ticket) {
         return this.normalizeTicketQuantity(ticket?.quantity);
     },
@@ -46,13 +52,13 @@ export const recordNormalizeMethods = {
         const numbers = this.normalizeNumbers(raw.numbers || []);
         if (numbers.length !== 6) return null;
 
-        const rawDate = typeof raw.date === 'string'
-            ? raw.date
-            : (typeof raw.created_at === 'string' ? raw.created_at : '');
+        const rawDate =
+            typeof raw.date === 'string' ? raw.date : typeof raw.created_at === 'string' ? raw.created_at : '';
+        const parsedDate = rawDate ? new Date(rawDate) : null;
 
         return {
             numbers,
-            date: rawDate || new Date().toISOString()
+            date: parsedDate && !Number.isNaN(parsedDate.getTime()) ? rawDate : new Date().toISOString()
         };
     },
 
@@ -83,24 +89,25 @@ export const recordNormalizeMethods = {
         const checkedRank = Number(raw?.checked?.rank);
 
         const ticket = {
-            id: raw.id || this.createId('ticket'),
+            id: this.normalizeRecordId(raw.id, 'ticket'),
             numbers,
             targetDrawNo: Math.floor(targetDrawNo),
             source,
             quantity: this.normalizeTicketQuantity(raw.quantity),
-            campaignId: (typeof raw.campaignId === 'string' && raw.campaignId.trim())
-                ? raw.campaignId.trim().slice(0, 120)
-                : '',
-            strategyRequest: raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
+            campaignId:
+                typeof raw.campaignId === 'string' && raw.campaignId.trim() ? raw.campaignId.trim().slice(0, 120) : '',
+            strategyRequest:
+                raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
             memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 200) : '',
             createdAt: raw.createdAt || new Date().toISOString(),
-            checked: Number.isFinite(checkedDraw) && Number.isFinite(checkedRank) && checkedRank >= 0 && checkedRank <= 5
-                ? {
-                    drawNo: Math.floor(checkedDraw),
-                    rank: Math.floor(checkedRank),
-                    checkedAt: raw.checked.checkedAt || new Date().toISOString()
-                }
-                : null
+            checked:
+                Number.isFinite(checkedDraw) && Number.isFinite(checkedRank) && checkedRank >= 0 && checkedRank <= 5
+                    ? {
+                          drawNo: Math.floor(checkedDraw),
+                          rank: Math.floor(checkedRank),
+                          checkedAt: raw.checked.checkedAt || new Date().toISOString()
+                      }
+                    : null
         };
 
         this.buildTicketKey(ticket);
@@ -125,7 +132,8 @@ export const recordNormalizeMethods = {
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
             weeks: normalizedWeeks,
             setsPerWeek: normalizedSetsPerWeek,
-            strategyRequest: raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
+            strategyRequest:
+                raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
             createdAt: raw.createdAt || new Date().toISOString()
         };
     },
@@ -134,7 +142,7 @@ export const recordNormalizeMethods = {
         if (ticket && typeof ticket.__dedupeKey === 'string') {
             return ticket.__dedupeKey;
         }
-        const strategySnapshot = ticket?.strategyRequest ? (this.stableStringify(ticket.strategyRequest) || '-') : '-';
+        const strategySnapshot = ticket?.strategyRequest ? this.stableStringify(ticket.strategyRequest) || '-' : '-';
         const key = [
             ticket?.targetDrawNo,
             ticket?.source || '-',

@@ -7,6 +7,26 @@
 
 - GitHub Pages: https://twbeatles.github.io/lotto---webapp/
 
+## 기능 구현 정합성 4차 보강 반영 (2026-04-27)
+
+- **정적 당첨 데이터 최신화**
+  - `data/winning_stats.json`을 1221회(`2026-04-25`)까지 갱신했습니다.
+  - 현재 정적 데이터는 `1220`개 row이며, 회차 범위는 `1..1221`, 허용 누락은 `146`회차뿐입니다.
+- **merged 데이터 health 판정 강화** (`assets/modules/core/data/sync/health.js`)
+  - `localUpdates`가 있으면 정적 데이터 단독이 아니라 merged 데이터 구조를 기준으로 `full | partial | none`을 판단합니다.
+  - 정적 데이터 이후 로컬 최신 회차만 있고 중간 회차가 비는 경우 `static_local`이어도 `partial`로 분류됩니다.
+- **Import/동기화 정규화 강화** (`records/normalize.js`, `dataio/support.js`, `sync/payload.js`)
+  - 즐겨찾기/히스토리 Import는 중앙 번호 정규화 경로를 사용합니다.
+  - 소수, 중복, 범위 외 번호는 Import 시점에 제거됩니다.
+  - 동기화 payload의 `draw_no`/`ltEpsd`는 정수 `>= 1`만 허용합니다.
+  - 외부 입력 티켓 ID는 길이 제한과 안전 문자 정책을 적용합니다.
+- **확인 탭 렌더링 안전성 보강** (`features/check/list.js`)
+  - 카드의 `data-item-key`와 메타/상태 텍스트를 attribute-safe escape 후 렌더링합니다.
+- **운영 진단 보강**
+  - 저장소 사용량 계산은 문자열 길이가 아니라 UTF-8 byte 기준으로 계산합니다.
+  - `package.json`에 `"type": "module"`을 추가해 Node ESM typeless package 경고를 제거했습니다.
+  - smoke에 정적 데이터 최신성 예산, service-worker precache reachability, 저장소 byte accounting 회귀를 추가했습니다.
+
 ## 구조 분할 리팩토링 반영 (2026-04-14)
 
 - 이번 패스는 **동작 변경 없이 책임 분리 중심의 구조 정리**를 목표로 했습니다.
@@ -212,6 +232,9 @@
   - `CONFIG.KEYS.SESSION_DATA_LIST_STATE`: sessionStorage 키를 중앙화했습니다.
 - **최신 회차 카드 안전성** (`latestDraw.js`)
   - `winningStats` 배열 자체가 null/undefined인 경우를 `Array.isArray()` 로 추가 방어합니다.
+- **개발 도구 ESM 정합화** (`package.json`)
+  - `package.json`은 `"type": "module"`을 선언합니다.
+  - smoke/perf 스크립트와 `proxy/worker.js`는 ESM 기준으로 동작합니다.
 
 ## 최근 안정화/정합성 반영 (2026-03-16)
 
@@ -427,6 +450,7 @@ graph LR
 - 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
 - 배포: 정적 호스팅(GitHub Pages 호환)
 - 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
+  - 현재 정적 JSON 기준 최신 회차: `1221`, row 수: `1220`, 허용 누락: `[146]`
 - 서비스워커: 생성된 precache manifest 기반 같은 출처 리소스 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v18`)
 
 ## 프로젝트 구조
@@ -519,12 +543,13 @@ node scripts/smoke/smoke.mjs
 - `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
 - `ticket-dedupe`, `ticket-quantity grouping`, `immediate ticket settlement`, `ticket-reconcile`, `requestNumbers replace`
 - `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`, `partial winning-stats recovery`, `local-restore sync-meta`
+- `sync payload draw integer guard`, `merged local-updates gap classification`, `static data freshness budget`
 - `target-draw autofill`, `refreshCurrentRoute stale`, `future local-updates guard`, `clear-local-updates reconcile`
-- `persistence-flush`, `notification-permission`, `data-list pagination`
-- `data-list DOM`, `proxy-policy`, `import-alert-options`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`, `route data-gate`
+- `persistence-flush`, `storage summary byte accounting`, `notification-permission`, `data-list pagination`
+- `data-list DOM`, `check target-card attribute escaping`, `proxy-policy`, `import-alert-options`, `import stored-list strict normalization`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`, `route data-gate`
 - `post-import-refresh failure`, `cold-start orphan migration`
 - `strategy-preset-crud`, `runtime-asset-localization`
-- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `service-worker manifest parity`, `history actual-log`
+- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `service-worker manifest parity`, `service-worker precache reachability`, `history actual-log`
 - `unexpected static hole classification`, `expected missing draw allowance`
 
 성능 회귀를 함께 확인하려면:

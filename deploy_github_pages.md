@@ -21,6 +21,9 @@
 ## 2) 데이터 운영
 
 - 기본 데이터 소스: `data/winning_stats.json`
+  - 현재 정적 JSON 기준 최신 회차: `1221`
+  - 현재 row 수: `1220`
+  - 허용 누락 회차: `[146]`
 - 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 자동 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
@@ -33,10 +36,13 @@
 - 미래 회차 `localUpdates` 는 `estimateLatestDrawKST() + 2` 상한을 넘으면 저장하지 않고 제외함
 - `syncMeta.lastSuccessDrawNo` 는 실제 유효 최신 회차보다 높게 남지 않도록 clamp 됨
 - 정적 JSON 이 실패하면 `localUpdates` 만으로 recent draw 를 복원해 `partial recovery` 상태가 될 수 있음
+- `localUpdates` 가 있으면 정적 JSON 단독이 아니라 merged 데이터 구조를 기준으로 health 를 판단하며, 중간 회차가 비면 `static_local`도 `partial`이 될 수 있음
 - partial 상태에서는 `gen/check/data` 는 유지되지만 `stats/ai/bt` 는 gate UI 로 제한됨
 - Merge/Overwrite Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됨
 - 마지막 연결 티켓이 삭제되거나 티켓북 전체 정리 후에도 orphan campaign 은 자동 정리됨
 - 티켓북 동일 조합은 grouped row + `quantity` 로 저장되며, 삭제/요약/캠페인 카운트는 실제 티켓 수량 기준으로 계산됨
+- 티켓 ID, 저장 번호 목록, 동기화 payload 회차는 Import/Sync 시점에 중앙 정규화되며, 비정상 번호/회차는 더 엄격하게 거부됨
+- 저장소 사용량은 UTF-8 byte 기준으로 계산됨
 - 히스토리는 번호 unique 스냅샷이 아니라 실제 저장/가져오기 로그를 유지함
 - 동기화 실행 정책:
   - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
@@ -176,7 +182,11 @@ npm run test:offline
 - sync 성공 후 최신 당첨결과 카드가 항상 갱신되는지(`sync-latest-win refresh`)
 - 미래 회차 `localUpdates` 가 저장 시 제외되고 경고가 남는지(`future local-updates guard`)
 - 로컬 업데이트 정리 후 stale `checked` 티켓과 `syncMeta.lastSuccessDrawNo` 가 함께 교정되는지(`clear-local-updates reconcile`)
+- merged 정적+로컬 업데이트에 중간 회차 구멍이 있으면 `partial`로 분류되는지(`merged local-updates gap classification`)
+- 단건 sync payload 회차가 정수 `>= 1`일 때만 수락되는지(`sync payload draw integer guard`)
+- 정적 JSON이 예상 최신 회차보다 과도하게 뒤처지면 실패하는지(`static data freshness budget`)
 - Import `alerts` 옵션 기본값과 적용 여부가 맞는지(`import-alert-options`)
+- 즐겨찾기/히스토리 Import가 중앙 정규화 기준으로 소수/중복/범위 외 번호를 제거하는지(`import stored-list strict normalization`)
 - Import 후 orphan campaign 이 정리되는지(`import orphan-campaign cleanup`)
 - 티켓 삭제/전체정리 후 orphan campaign 이 즉시 정리되는지(`orphan-campaign auto-cleanup`)
 - 히스토리가 duplicate actual-log 를 유지하는지(`history actual-log`)
@@ -187,6 +197,8 @@ npm run test:offline
 - 시스템 알림 토글이 권한 요청/원복/테스트 알림 흐름대로 동작하는지(`notification-permission`)
 - 데이터 탭 검색/페이지네이션이 100개 초과 데이터에서도 동작하는지(`data-list pagination`)
 - 데이터 탭 렌더러가 실제 DOM에서 검색/페이지네이션/attribute 계약을 지키는지(`data-list DOM`)
+- 확인 탭 카드의 `data-item-key`와 메타 텍스트가 안전하게 escape 되는지(`check target-card attribute escaping`)
+- 저장소 요약이 문자열 길이가 아니라 byte 기준으로 계산되는지(`storage summary byte accounting`)
 - 전용 워커 외 프록시 형식이 자동 fallback으로 내려가는지(`proxy-policy`)
 - 목표 회차 기본값이 최신 회차 기준 다음 회차를 계속 추적하는지(`target-draw autofill`)
 - `refreshCurrentRoute()` stale guard가 이전 탭 렌더를 막는지(`refreshCurrentRoute stale`)
@@ -195,6 +207,7 @@ npm run test:offline
 - 서비스워커가 첫 설치에서 자동 reload 하지 않는지(`service-worker reload policy`)
 - 서비스워커 install precache에 `winning_stats.json`이 포함되는지(`service-worker core data precache`)
 - generated precache manifest와 실제 자산 목록이 일치하는지(`service-worker manifest parity`)
+- generated precache manifest URL이 실제 정적 파일로 도달 가능한지(`service-worker precache reachability`)
 - 정적 데이터의 예기치 않은 hole이 `partial`로 분류되고, 허용 누락 회차 `146`은 `full`을 깨지 않는지
 - post-import refresh 실패 시 `local_restore_failed`가 기록되는지
 - Pretendard 폰트가 절대 same-origin 경로를 사용하는지(`local-font-path`)

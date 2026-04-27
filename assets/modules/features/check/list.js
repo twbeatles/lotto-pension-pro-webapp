@@ -2,6 +2,15 @@ import { $, $$ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 export const checkListMethods = {
     getList() {
         if (this.source === 'scanned') return this.scanned;
@@ -47,7 +56,9 @@ export const checkListMethods = {
             item?.date,
             this.formatDate(item?.date),
             metaText
-        ].join(' ').toLowerCase();
+        ]
+            .join(' ')
+            .toLowerCase();
         return haystack.includes(this.searchQuery);
     },
 
@@ -60,15 +71,22 @@ export const checkListMethods = {
             const ticketStatusLabel = this.source === 'tickets' ? this.getTicketStatusLabel(item) : '';
             const quantity = this.getItemQuantity(item);
 
-            if (this.source === 'tickets' && this.ticketStatusFilter !== 'all' && ticketStatus !== this.ticketStatusFilter) {
+            if (
+                this.source === 'tickets' &&
+                this.ticketStatusFilter !== 'all' &&
+                ticketStatus !== this.ticketStatusFilter
+            ) {
                 return acc;
             }
 
-            const metaText = this.source === 'tickets'
-                ? `${item.targetDrawNo}회차 ${ticketStatusLabel}${quantity > 1 ? ` x${quantity}` : ''}`
-                : this.source === 'scanned'
-                    ? (item.targetDrawNo ? `${item.targetDrawNo}회차 큐알 스캔` : '큐알 스캔 결과')
-                    : `${sourceLabel} ${this.formatDate(item.date)}`;
+            const metaText =
+                this.source === 'tickets'
+                    ? `${item.targetDrawNo}회차 ${ticketStatusLabel}${quantity > 1 ? ` x${quantity}` : ''}`
+                    : this.source === 'scanned'
+                      ? item.targetDrawNo
+                          ? `${item.targetDrawNo}회차 큐알 스캔`
+                          : '큐알 스캔 결과'
+                      : `${sourceLabel} ${this.formatDate(item.date)}`;
 
             if (!this.matchesQuery(item, metaText)) return acc;
 
@@ -108,12 +126,16 @@ export const checkListMethods = {
         if (!items.length) return;
         this.ensureSelection(items);
 
-        const currentIndex = Math.max(0, items.findIndex((entry) => entry.key === this.selectedItemKey));
-        const nextIndex = direction === 'start'
-            ? 0
-            : direction === 'end'
-                ? items.length - 1
-                : Math.min(items.length - 1, Math.max(0, currentIndex + Number(direction || 0)));
+        const currentIndex = Math.max(
+            0,
+            items.findIndex((entry) => entry.key === this.selectedItemKey)
+        );
+        const nextIndex =
+            direction === 'start'
+                ? 0
+                : direction === 'end'
+                  ? items.length - 1
+                  : Math.min(items.length - 1, Math.max(0, currentIndex + Number(direction || 0)));
 
         if (items[nextIndex]?.key === this.selectedItemKey) return;
         this.selectedItemKey = items[nextIndex].key;
@@ -157,30 +179,38 @@ export const checkListMethods = {
             return;
         }
 
-        listEl.innerHTML = visibleItems.map(({ key, item, index, metaText, sourceLabel: label, ticketStatusLabel, quantity }) => {
-            const isActive = key === this.selectedItemKey;
-            const topBadge = this.source === 'tickets'
-                ? `
+        listEl.innerHTML = visibleItems
+            .map(({ key, item, index, metaText, sourceLabel: label, ticketStatusLabel, quantity }) => {
+                const isActive = key === this.selectedItemKey;
+                const escapedKey = escapeHtml(key);
+                const escapedMetaText = escapeHtml(metaText);
+                const escapedTicketStatusLabel = escapeHtml(ticketStatusLabel);
+                const escapedSourceLabel = escapeHtml(label);
+                const quantityText = Math.max(1, Math.floor(Number(quantity) || 1));
+                const topBadge =
+                    this.source === 'tickets'
+                        ? `
                     <span class="check-target-card-badges">
-                        <span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${ticketStatusLabel}</span>
-                        ${quantity > 1 ? `<span class="badge status-badge ticket-quantity-badge">x${quantity}</span>` : ''}
+                        <span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${escapedTicketStatusLabel}</span>
+                        ${quantityText > 1 ? `<span class="badge status-badge ticket-quantity-badge">x${quantityText}</span>` : ''}
                     </span>
                 `
-                : `<span class="badge status-badge">${label}</span>`;
-            const optionId = `check-option-${this.source}-${index}`;
+                        : `<span class="badge status-badge">${escapedSourceLabel}</span>`;
+                const optionId = `check-option-${this.source}-${index}`;
 
-            return `
+                return `
                 <button class="check-target-card ${isActive ? 'active' : ''}" type="button" role="option"
                     id="${optionId}" tabindex="${isActive ? '0' : '-1'}"
-                    aria-selected="${String(isActive)}" data-item-key="${key}">
+                    aria-selected="${String(isActive)}" data-item-key="${escapedKey}">
                     <div class="check-target-card-head">
                         ${topBadge}
-                        <span class="check-target-card-meta">${metaText}</span>
+                        <span class="check-target-card-meta">${escapedMetaText}</span>
                     </div>
                     <div class="ball-container sm check-target-card-balls">${UIManager.renderBalls(item.numbers, 'sm')}</div>
                 </button>
             `;
-        }).join('');
+            })
+            .join('');
     },
 
     getSelectedEntry() {

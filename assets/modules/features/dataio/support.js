@@ -8,7 +8,9 @@ export const dataIoSupportMethods = {
         $('#exportAll')?.addEventListener('click', () => this.exportAll());
         $('#importAllTrigger')?.addEventListener('click', () => $('#importInput')?.click());
         $('#importInput')?.addEventListener('change', (e) => this.importAll(e));
-        $('#importMode')?.addEventListener('change', (e) => this.applyImportModeDefaults(String(e.target.value || 'merge')));
+        $('#importMode')?.addEventListener('change', (e) =>
+            this.applyImportModeDefaults(String(e.target.value || 'merge'))
+        );
         this.applyImportModeDefaults(String($('#importMode')?.value || 'merge'));
     },
 
@@ -34,15 +36,7 @@ export const dataIoSupportMethods = {
 
     normalizeItems(items) {
         if (!Array.isArray(items)) return [];
-        return items
-            .filter((x) => x && Array.isArray(x.numbers))
-            .map((x) => ({
-                numbers: [...new Set(x.numbers.map(Number).filter((n) => n >= 1 && n <= 45))]
-                    .slice(0, 6)
-                    .sort((a, b) => a - b),
-                date: typeof x.date === 'string' ? x.date : new Date().toISOString()
-            }))
-            .filter((x) => x.numbers.length === 6);
+        return items.map((x) => this.data.normalizeStoredNumberEntry(x)).filter(Boolean);
     },
 
     normalizeTicketItems(items) {
@@ -106,19 +100,17 @@ export const dataIoSupportMethods = {
     },
 
     mergeCampaigns(existing, incoming) {
-        return [...incoming, ...existing]
-            .filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
+        return [...incoming, ...existing].filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
     },
 
     pruneCampaignsWithoutTickets(campaigns = [], tickets = [], targetCampaignIds = null) {
-        const targetIds = targetCampaignIds instanceof Set
-            ? targetCampaignIds
-            : new Set((targetCampaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const targetIds =
+            targetCampaignIds instanceof Set
+                ? targetCampaignIds
+                : new Set((targetCampaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
         const limitToTargets = targetIds.size > 0;
         const linkedCampaignIds = new Set(
-            (tickets || [])
-                .map((ticket) => String(ticket?.campaignId || '').trim())
-                .filter(Boolean)
+            (tickets || []).map((ticket) => String(ticket?.campaignId || '').trim()).filter(Boolean)
         );
 
         const kept = [];

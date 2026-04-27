@@ -1,6 +1,7 @@
 {
   "name": "lotto-webapp",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "description": "Lotto 6/45 webapp",
   "scripts": {

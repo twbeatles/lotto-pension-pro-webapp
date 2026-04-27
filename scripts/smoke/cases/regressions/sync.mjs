@@ -4,7 +4,9 @@ import {
     createField,
     DataManager,
     estimateLatestDrawKST,
-    LottoApp
+    LottoApp,
+    readFile,
+    resolve
 } from './support.mjs';
 
 async function runRefreshCurrentRouteStaleRegression() {
@@ -54,10 +56,11 @@ async function runRefreshCurrentRouteStaleRegression() {
     release();
     await task;
 
-    assert.deepEqual(calls, [
-        'renderSettingsPanel',
-        'ensureModule:stats'
-    ], 'refreshCurrentRoute must stop rendering stale route work after route changes');
+    assert.deepEqual(
+        calls,
+        ['renderSettingsPanel', 'ensureModule:stats'],
+        'refreshCurrentRoute must stop rendering stale route work after route changes'
+    );
 }
 
 async function runSyncLatestWinRefreshRegression() {
@@ -71,26 +74,33 @@ async function runSyncLatestWinRefreshRegression() {
         const estNo = estimateLatestDrawKST();
         const calls = [];
 
-        dm.state.winningStats = [{
-            draw_no: estNo - 1,
-            date: '2026-03-07',
-            numbers: [1, 2, 3, 4, 5, 6],
-            bonus: 7,
-            prize_amount: 0,
-            winners_count: 0,
-            total_sales: 0
-        }];
-        dm.resolveProxyConfig = () => ({ source: 'test', url: 'https://proxy.example/proxy/latest' });
-        dm.fetchRangeChunkedFromProxy = async () => ({
-            items: [{
-                draw_no: estNo,
-                date: '2026-03-14',
-                numbers: [2, 4, 6, 8, 10, 12],
-                bonus: 14,
+        dm.state.winningStats = [
+            {
+                draw_no: estNo - 1,
+                date: '2026-03-07',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7,
                 prize_amount: 0,
                 winners_count: 0,
                 total_sales: 0
-            }],
+            }
+        ];
+        dm.resolveProxyConfig = () => ({
+            source: 'test',
+            url: 'https://proxy.example/proxy/latest'
+        });
+        dm.fetchRangeChunkedFromProxy = async () => ({
+            items: [
+                {
+                    draw_no: estNo,
+                    date: '2026-03-14',
+                    numbers: [2, 4, 6, 8, 10, 12],
+                    bonus: 14,
+                    prize_amount: 0,
+                    winners_count: 0,
+                    total_sales: 0
+                }
+            ],
             missing: new Set(),
             failedDraws: new Set()
         });
@@ -115,12 +125,11 @@ async function runSyncLatestWinRefreshRegression() {
 
         const result = await dm._fetchLatestFromAPIInternal({ trigger: 'manual' }, null);
         assert.equal(result, true, 'sync must succeed in regression scenario');
-        assert.deepEqual(calls, [
-            'setLocalUpdates:1',
-            'fetchWinningStats',
-            'updateLatestWin',
-            'refreshCurrentRoute'
-        ], 'sync success must refresh latest win card before route refresh');
+        assert.deepEqual(
+            calls,
+            ['setLocalUpdates:1', 'fetchWinningStats', 'updateLatestWin', 'refreshCurrentRoute'],
+            'sync success must refresh latest win card before route refresh'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -157,7 +166,11 @@ async function runWinningStatsLoadClassificationRegression() {
         const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
         assert.equal(result, false, 'winning stats fetch failure must still report false');
         assert.equal(dm.lastWinningStatsLoad.offline, false, 'online fetch failure must not be classified as offline');
-        assert.equal(statusText.textContent, '데이터 없음', 'online fetch failure without fallback data must surface data-unavailable state');
+        assert.equal(
+            statusText.textContent,
+            '데이터 없음',
+            'online fetch failure without fallback data must surface data-unavailable state'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -182,7 +195,11 @@ function runUnexpectedStaticHoleClassificationRegression() {
 
     assert.equal(health.availability, 'partial', 'unexpected static holes must downgrade data availability to partial');
     assert.equal(health.source, 'static', 'partial static hole without local updates must still report static source');
-    assert.match(health.message, /누락 회차: 3/, 'partial static hole message must identify the unexpected missing draw');
+    assert.match(
+        health.message,
+        /누락 회차: 3/,
+        'partial static hole message must identify the unexpected missing draw'
+    );
 }
 
 function runExpectedMissingDrawAllowanceRegression() {
@@ -210,6 +227,46 @@ function runExpectedMissingDrawAllowanceRegression() {
     assert.equal(health.source, 'static', 'allowed missing-draw classification must preserve static source');
 }
 
+function runMergedLocalUpdatesGapClassificationRegression() {
+    const dm = new DataManager();
+    const staticItems = [];
+
+    for (let drawNo = 1; drawNo <= 1209; drawNo++) {
+        if (drawNo === 146) continue;
+        staticItems.push({
+            draw_no: drawNo,
+            date: `2026-01-${String(((drawNo - 1) % 28) + 1).padStart(2, '0')}`,
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        });
+    }
+
+    const localUpdates = [
+        {
+            draw_no: 1221,
+            date: '2026-04-25',
+            numbers: [6, 13, 18, 28, 30, 36],
+            bonus: 9
+        }
+    ];
+    const mergedItems = [...staticItems, ...localUpdates].sort((a, b) => b.draw_no - a.draw_no);
+
+    const health = dm.getWinningStatsDataHealth({
+        staticItems,
+        localUpdates,
+        mergedItems,
+        staticError: null
+    });
+
+    assert.equal(
+        health.availability,
+        'partial',
+        'merged local update gaps must downgrade data availability to partial'
+    );
+    assert.equal(health.source, 'static_local', 'merged gap classification must still report static_local source');
+    assert.match(health.message, /1210/, 'merged gap message must identify the first missing draw');
+}
+
 async function runPartialWinningStatsRecoveryRegression() {
     const previousDocument = globalThis.document;
     const statusText = createField();
@@ -229,12 +286,14 @@ async function runPartialWinningStatsRecoveryRegression() {
     try {
         const dm = new DataManager();
         dm.save = () => {};
-        dm.localUpdatesCache = [{
-            draw_no: 1210,
-            date: '2026-03-07',
-            numbers: [1, 2, 3, 4, 5, 6],
-            bonus: 7
-        }];
+        dm.localUpdatesCache = [
+            {
+                draw_no: 1210,
+                date: '2026-03-07',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7
+            }
+        ];
         dm.fetchWithTimeout = async () => {
             throw new Error('network-timeout');
         };
@@ -243,8 +302,16 @@ async function runPartialWinningStatsRecoveryRegression() {
         assert.equal(result, true, 'local-only winning stats must still hydrate partial recovery state');
         assert.equal(dm.dataHealth.availability, 'partial', 'local-only hydrate must report partial availability');
         assert.equal(dm.dataHealth.source, 'local_only', 'local-only hydrate must report local_only source');
-        assert.equal(dm.state.winningStats[0]?.draw_no, 1210, 'local-only hydrate must rebuild winning stats from local updates');
-        assert.equal(statusText.textContent, '부분 복구', 'partial recovery must surface a partial-recovery status label');
+        assert.equal(
+            dm.state.winningStats[0]?.draw_no,
+            1210,
+            'local-only hydrate must rebuild winning stats from local updates'
+        );
+        assert.equal(
+            statusText.textContent,
+            '부분 복구',
+            'partial recovery must surface a partial-recovery status label'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -336,11 +403,23 @@ function runRouteDataGateRegression() {
 
         const gated = LottoApp.prototype.renderRouteDataGate.call(ctx, 'stats');
         assert.equal(gated, true, 'stats route must render a gate when data availability is partial');
-        assert.equal(pages['#page-stats'].classList.contains('route-data-gated'), true, 'gated route must add route-data-gated class');
-        assert.match(pages['#page-stats'].state.gate?.innerHTML || '', /다시 동기화/, 'gate panel must expose a resync action');
+        assert.equal(
+            pages['#page-stats'].classList.contains('route-data-gated'),
+            true,
+            'gated route must add route-data-gated class'
+        );
+        assert.match(
+            pages['#page-stats'].state.gate?.innerHTML || '',
+            /다시 동기화/,
+            'gate panel must expose a resync action'
+        );
 
         LottoApp.prototype.syncRouteDataNotice.call(ctx, 'check');
-        assert.match(pages['#page-check'].state.banner?.innerHTML || '', /부분 복구/, 'check route must show a partial-recovery banner');
+        assert.match(
+            pages['#page-check'].state.banner?.innerHTML || '',
+            /부분 복구/,
+            'check route must show a partial-recovery banner'
+        );
 
         ctx.data.getDataFreshness = () => ({
             availability: 'full',
@@ -351,7 +430,11 @@ function runRouteDataGateRegression() {
 
         const cleared = LottoApp.prototype.renderRouteDataGate.call(ctx, 'stats');
         assert.equal(cleared, false, 'stats route gate must clear once full data is restored');
-        assert.equal(pages['#page-stats'].classList.contains('route-data-gated'), false, 'full data must remove route-data-gated class');
+        assert.equal(
+            pages['#page-stats'].classList.contains('route-data-gated'),
+            false,
+            'full data must remove route-data-gated class'
+        );
 
         LottoApp.prototype.syncRouteDataNotice.call(ctx, 'check');
         assert.equal(pages['#page-check'].state.banner, null, 'full data must remove check-route availability banner');
@@ -366,7 +449,12 @@ async function runSyncInvalidPayloadRegression() {
     const syncLogs = [];
     const uiLogs = [];
 
-    dm.buildCustomSingleFetchUrls = () => [{ label: 'test-proxy', url: 'https://proxy.example/proxy/latest?draw_no=1210' }];
+    dm.buildCustomSingleFetchUrls = () => [
+        {
+            label: 'test-proxy',
+            url: 'https://proxy.example/proxy/latest?draw_no=1210'
+        }
+    ];
     dm.buildBuiltInSingleFetchUrls = () => [];
     dm.fetchWithTimeout = async () => ({
         ok: true,
@@ -390,6 +478,61 @@ async function runSyncInvalidPayloadRegression() {
     assert.ok(
         uiLogs.some((entry) => entry.code === 'SYNC_FETCH_ONE_INVALID_PAYLOAD'),
         'unexpected payload shape must surface through sync log callback'
+    );
+}
+
+function runSyncPayloadDrawIntegerGuardRegression() {
+    const dm = new DataManager();
+
+    assert.equal(
+        dm.normalizeDrawItem({
+            draw_no: 1210.5,
+            date: '2026-02-07',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }),
+        null,
+        'decimal draw_no must be rejected'
+    );
+    assert.equal(
+        dm.normalizeDrawItem({
+            ltEpsd: '1211.5',
+            ltRflYmd: '20260214',
+            tm1WnNo: 1,
+            tm2WnNo: 2,
+            tm3WnNo: 3,
+            tm4WnNo: 4,
+            tm5WnNo: 5,
+            tm6WnNo: 6,
+            bnsWnNo: 7
+        }),
+        null,
+        'decimal official ltEpsd must be rejected'
+    );
+    assert.equal(
+        dm.sanitizeLocalUpdates([
+            {
+                draw_no: 1212.5,
+                date: '2026-02-21',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7
+            }
+        ]).droppedInvalid,
+        1,
+        'decimal local update draw numbers must be dropped as invalid'
+    );
+}
+
+async function runStaticDataFreshnessBudgetRegression() {
+    const raw = await readFile(resolve(process.cwd(), 'data/winning_stats.json'), 'utf8');
+    const items = JSON.parse(raw);
+    const maxDrawNo = Math.max(...items.map((item) => Number(item?.draw_no || 0)).filter(Number.isFinite));
+    const estimatedLatestDrawNo = estimateLatestDrawKST();
+    const staleBudgetDraws = 2;
+
+    assert.ok(
+        estimatedLatestDrawNo - maxDrawNo <= staleBudgetDraws,
+        `static winning data must be within ${staleBudgetDraws} draws of estimated latest draw`
     );
 }
 
@@ -461,7 +604,10 @@ async function runProxyChangeAbortRegression() {
         const calls = [];
         let currentProxyUrl = 'https://proxy-a.example/proxy/latest';
 
-        dm.resolveProxyConfig = () => ({ url: currentProxyUrl, source: currentProxyUrl });
+        dm.resolveProxyConfig = () => ({
+            url: currentProxyUrl,
+            source: currentProxyUrl
+        });
         dm._fetchLatestFromAPIInternal = async (_options, signal, runId) => {
             const localUrl = currentProxyUrl;
             calls.push(`start:${runId}:${localUrl}`);
@@ -478,22 +624,28 @@ async function runProxyChangeAbortRegression() {
                 }
 
                 signal?.addEventListener('abort', onAbort, { once: true });
-                setTimeout(() => {
-                    signal?.removeEventListener('abort', onAbort);
-                    if (signal?.aborted || !dm.isActiveSyncRun(runId)) {
-                        reject(dm.createAbortError('Sync aborted'));
-                        return;
-                    }
-                    calls.push(`resolve:${runId}:${localUrl}`);
-                    resolve(true);
-                }, localUrl.includes('proxy-a') ? 40 : 5);
+                setTimeout(
+                    () => {
+                        signal?.removeEventListener('abort', onAbort);
+                        if (signal?.aborted || !dm.isActiveSyncRun(runId)) {
+                            reject(dm.createAbortError('Sync aborted'));
+                            return;
+                        }
+                        calls.push(`resolve:${runId}:${localUrl}`);
+                        resolve(true);
+                    },
+                    localUrl.includes('proxy-a') ? 40 : 5
+                );
             });
         };
 
         const first = dm.fetchLatestFromAPI({ trigger: 'auto', silent: true });
         await new Promise((resolve) => setTimeout(resolve, 10));
         currentProxyUrl = 'https://proxy-b.example/proxy/latest';
-        const second = dm.fetchLatestFromAPI({ trigger: 'proxy-change', silent: true });
+        const second = dm.fetchLatestFromAPI({
+            trigger: 'proxy-change',
+            silent: true
+        });
 
         const [firstResult, secondResult] = await Promise.all([first, second]);
         assert.equal(firstResult, false, 'aborted stale sync must resolve to false');
@@ -517,12 +669,14 @@ async function runAutoSyncFallbackRegression() {
     const dm = new DataManager();
     const est = estimateLatestDrawKST();
     dm.save = () => {};
-    dm.state.winningStats = [{
-        draw_no: Math.max(1, est - 2),
-        date: '2026-03-07',
-        numbers: [1, 2, 3, 4, 5, 6],
-        bonus: 7
-    }];
+    dm.state.winningStats = [
+        {
+            draw_no: Math.max(1, est - 2),
+            date: '2026-03-07',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }
+    ];
     dm.state.staticLatestDrawNo = dm.state.winningStats[0].draw_no;
 
     let rangeCalls = 0;
@@ -548,9 +702,21 @@ async function runAutoSyncFallbackRegression() {
         assert.equal(result, false, 'manual sync must fail explicitly when automatic fallback sources return no data');
         assert.equal(rangeCalls, 1, 'range sync path must still run without configured custom proxy');
         assert.equal(fallbackCalls, 1, 'fallback single-draw sync must run without configured custom proxy');
-        assert.equal(dm.state.syncMeta.mode, 'automatic_fallback', 'sync meta mode must reflect automatic fallback mode');
-        assert.equal(dm.state.syncMeta.currentSource, '기본 자동 동기화', 'sync meta source must reflect automatic fallback source');
-        assert.match(dm.state.syncMeta.lastFailureMessage, /최신 회차/, 'sync meta must explain automatic sync failure reason');
+        assert.equal(
+            dm.state.syncMeta.mode,
+            'automatic_fallback',
+            'sync meta mode must reflect automatic fallback mode'
+        );
+        assert.equal(
+            dm.state.syncMeta.currentSource,
+            '기본 자동 동기화',
+            'sync meta source must reflect automatic fallback source'
+        );
+        assert.match(
+            dm.state.syncMeta.lastFailureMessage,
+            /최신 회차/,
+            'sync meta must explain automatic sync failure reason'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
@@ -592,7 +758,11 @@ async function runOfflineProbeRecoveryRegression() {
         const offline = await app.isProbablyOffline({ forceProbe: true });
         assert.equal(offline, false, 'successful reachability probe must override false navigator.onLine state');
         assert.ok(fetchCalls.length >= 1, 'offline probe must issue a network reachability request');
-        assert.match(fetchCalls[0], /online-check\.txt\?__online_check=/, 'offline probe must prefer the uncached same-origin probe URL first');
+        assert.match(
+            fetchCalls[0],
+            /online-check\.txt\?__online_check=/,
+            'offline probe must prefer the uncached same-origin probe URL first'
+        );
     } finally {
         if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
         else delete globalThis.navigator;
@@ -613,9 +783,11 @@ async function runBackgroundAutoSyncRegression() {
     app.isProbablyOffline = async () => false;
 
     await app.runAutoSync({ reason: 'proxy-bootstrap', force: true });
-    assert.deepEqual(calls, [
-        { silent: true, trigger: 'auto', reason: 'proxy-bootstrap' }
-    ], 'auto sync runner must dispatch a silent auto-triggered sync');
+    assert.deepEqual(
+        calls,
+        [{ silent: true, trigger: 'auto', reason: 'proxy-bootstrap' }],
+        'auto sync runner must dispatch a silent auto-triggered sync'
+    );
 
     app._lastAutoSyncAt = Date.now();
     await app.runAutoSync({ reason: 'resume' });
@@ -631,7 +803,11 @@ function runProxyPolicyRegression() {
 
     const supported = dm.validateCustomProxyUrl('https://worker.example/proxy/latest?foo=1');
     assert.equal(supported.valid, true, 'official /proxy/latest proxy must be supported');
-    assert.equal(supported.normalizedUrl, 'https://worker.example/proxy/latest?foo=1', 'supported proxy must be normalized');
+    assert.equal(
+        supported.normalizedUrl,
+        'https://worker.example/proxy/latest?foo=1',
+        'supported proxy must be normalized'
+    );
 
     const prefixStyle = dm.validateCustomProxyUrl('https://worker.example/?url=');
     assert.equal(prefixStyle.valid, false, 'generic ?url= proxy must no longer be supported');
@@ -640,8 +816,16 @@ function runProxyPolicyRegression() {
     const resolved = dm.resolveProxyConfig();
     assert.equal(resolved.invalid, true, 'unsupported stored proxy must be marked invalid');
     assert.equal(resolved.url, '', 'unsupported stored proxy must not be used at runtime');
-    assert.equal(dm.getSyncMode(resolved), 'automatic_fallback', 'unsupported proxy must fall back to automatic sync mode');
-    assert.equal(dm.getSyncSourceLabel(resolved), '기본 자동 동기화', 'unsupported proxy must report automatic sync source');
+    assert.equal(
+        dm.getSyncMode(resolved),
+        'automatic_fallback',
+        'unsupported proxy must fall back to automatic sync mode'
+    );
+    assert.equal(
+        dm.getSyncSourceLabel(resolved),
+        '기본 자동 동기화',
+        'unsupported proxy must report automatic sync source'
+    );
 }
 
 export {
@@ -650,14 +834,17 @@ export {
     runBuiltInSyncProviderRegression,
     runExpectedMissingDrawAllowanceRegression,
     runOfflineProbeRecoveryRegression,
+    runMergedLocalUpdatesGapClassificationRegression,
     runPartialWinningStatsRecoveryRegression,
     runProxyChangeAbortRegression,
     runProxyPolicyRegression,
     runRefreshCurrentRouteStaleRegression,
     runRouteDataGateRegression,
+    runStaticDataFreshnessBudgetRegression,
     runSyncGuardRegression,
     runSyncInvalidPayloadRegression,
     runSyncLatestWinRefreshRegression,
+    runSyncPayloadDrawIntegerGuardRegression,
     runUnexpectedStaticHoleClassificationRegression,
     runWinningStatsLoadClassificationRegression
 };

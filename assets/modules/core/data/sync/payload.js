@@ -2,16 +2,15 @@ export const dataSyncPayloadMethods = {
     normalizeDrawItem(raw) {
         if (!raw) return null;
         const drawNo = Number(raw.draw_no ?? raw.ltEpsd);
-        if (!drawNo || !Number.isFinite(drawNo)) return null;
+        if (!Number.isInteger(drawNo) || drawNo < 1) return null;
 
         const numbers = Array.isArray(raw.numbers)
             ? raw.numbers
             : [raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo, raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo];
 
         const dateRaw = String(raw.date ?? raw.ltRflYmd ?? '');
-        const date = dateRaw.length === 8
-            ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
-            : dateRaw;
+        const date =
+            dateRaw.length === 8 ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}` : dateRaw;
 
         const normalizedNumbers = (numbers || [])
             .map(Number)

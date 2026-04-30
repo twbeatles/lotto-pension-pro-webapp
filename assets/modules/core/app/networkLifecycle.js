@@ -3,9 +3,7 @@ import { CONFIG } from '../../utils/config.js';
 
 export const appNetworkLifecycleMethods = {
     handleRemotePersistenceSync({ keys = [] } = {}) {
-        const normalizedKeys = (Array.isArray(keys) ? keys : [])
-            .map((key) => String(key || '').trim())
-            .filter(Boolean);
+        const normalizedKeys = (Array.isArray(keys) ? keys : []).map((key) => String(key || '').trim()).filter(Boolean);
         if (!normalizedKeys.length) return;
 
         normalizedKeys.forEach((key) => this._remoteStateSyncKeys.add(key));
@@ -30,7 +28,9 @@ export const appNetworkLifecycleMethods = {
     },
 
     async _rehydrateAfterRemotePersistenceSync(_keys = []) {
-        const keySet = new Set((Array.isArray(_keys) ? _keys : []).map((key) => String(key || '').trim()).filter(Boolean));
+        const keySet = new Set(
+            (Array.isArray(_keys) ? _keys : []).map((key) => String(key || '').trim()).filter(Boolean)
+        );
         this.data.runWithBroadcastSuppressed?.(() => this.data.load());
         if (keySet.has(CONFIG.KEYS.LOCAL_UPDATES)) {
             await this.data.fetchWinningStats?.({ notifyTicketSettle: false });
@@ -139,12 +139,15 @@ export const appNetworkLifecycleMethods = {
             clearTimeout(this._autoSyncTimer);
             this._autoSyncTimer = null;
         }
-        this._autoSyncTimer = setTimeout(() => {
-            this._autoSyncTimer = null;
-            const nextForce = this._autoSyncPendingForce;
-            this._autoSyncPendingForce = false;
-            this.runAutoSync({ reason, force: nextForce });
-        }, Math.max(0, Number(delayMs) || 0));
+        this._autoSyncTimer = setTimeout(
+            () => {
+                this._autoSyncTimer = null;
+                const nextForce = this._autoSyncPendingForce;
+                this._autoSyncPendingForce = false;
+                this.runAutoSync({ reason, force: nextForce });
+            },
+            Math.max(0, Number(delayMs) || 0)
+        );
     },
 
     async runAutoSync({ reason = 'auto', force = false } = {}) {

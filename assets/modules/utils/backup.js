@@ -56,9 +56,7 @@ function normalizePreset(raw, index = 0) {
     const request = toObject(src.request || src.strategyRequest, null);
     if (!request) return null;
 
-    const id = (typeof src.id === 'string' && src.id.trim())
-        ? src.id.trim()
-        : `preset_${scope}_${name}_${index}`;
+    const id = typeof src.id === 'string' && src.id.trim() ? src.id.trim() : `preset_${scope}_${name}_${index}`;
 
     return {
         id,

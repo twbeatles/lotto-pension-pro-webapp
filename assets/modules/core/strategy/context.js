@@ -18,10 +18,11 @@ function summarizeSeries(series = []) {
 
     const sorted = [...series].sort((a, b) => a - b);
     const mean = sorted.reduce((acc, value) => acc + value, 0) / sorted.length;
-    const median = sorted.length % 2 === 0
-        ? (sorted[(sorted.length / 2) - 1] + sorted[sorted.length / 2]) / 2
-        : sorted[Math.floor(sorted.length / 2)];
-    const variance = sorted.reduce((acc, value) => acc + ((value - mean) ** 2), 0) / sorted.length;
+    const median =
+        sorted.length % 2 === 0
+            ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+            : sorted[Math.floor(sorted.length / 2)];
+    const variance = sorted.reduce((acc, value) => acc + (value - mean) ** 2, 0) / sorted.length;
     const std = Math.sqrt(variance);
 
     return {
@@ -122,12 +123,12 @@ export const strategyContextMethods = {
             } else {
                 let gapSum = 0;
                 for (let i = 1; i < indexes.length; i++) {
-                    gapSum += (indexes[i] - indexes[i - 1]);
+                    gapSum += indexes[i] - indexes[i - 1];
                 }
                 averageGap[n] = Math.max(gapSum / (indexes.length - 1), 1);
             }
 
-            pendingGap[n] = Math.max((totalDraws - 1) - indexes[indexes.length - 1], 0);
+            pendingGap[n] = Math.max(totalDraws - 1 - indexes[indexes.length - 1], 0);
         }
 
         let pairMatrixMax = 1;

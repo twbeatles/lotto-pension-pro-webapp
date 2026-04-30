@@ -3,16 +3,7 @@ import { $ } from './utils.js';
 import { UI_STRINGS } from './strings.js';
 
 export class StrategyPresetController {
-    constructor({
-        data,
-        scope,
-        selectId,
-        loadBtnId,
-        saveBtnId,
-        deleteBtnId,
-        getRequest,
-        applyRequest
-    }) {
+    constructor({ data, scope, selectId, loadBtnId, saveBtnId, deleteBtnId, getRequest, applyRequest }) {
         this.data = data;
         this.scope = scope;
         this.selectId = selectId;

@@ -28,7 +28,7 @@ export const appThemeMethods = {
         // Update icons if needed
         const icon = this.data.state.theme === 'light' ? 'ph-moon' : 'ph-sun';
         const btns = $$('#themeToggle i, #mobileThemeToggle i');
-        btns.forEach(i => i.className = `ph ${icon}`);
+        btns.forEach((i) => (i.className = `ph ${icon}`));
         this.renderSettingsPanel?.();
     }
 };

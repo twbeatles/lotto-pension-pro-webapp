@@ -8,16 +8,13 @@ import { UI_STRINGS } from '../../utils/strings.js';
 function deriveCampaignRuntimeRequest(baseRequest, weekIndex = 0) {
     const normalizedWeekIndex = Math.max(0, Math.floor(Number(weekIndex) || 0));
     const baseSeed = baseRequest?.params?.seed;
-    const hasSeed = baseSeed !== null
-        && baseSeed !== undefined
-        && baseSeed !== ''
-        && Number.isFinite(Number(baseSeed));
+    const hasSeed = baseSeed !== null && baseSeed !== undefined && baseSeed !== '' && Number.isFinite(Number(baseSeed));
 
     return {
         ...baseRequest,
         params: {
             ...(baseRequest?.params || {}),
-            seed: hasSeed ? (Math.floor(Number(baseSeed)) + normalizedWeekIndex) : null
+            seed: hasSeed ? Math.floor(Number(baseSeed)) + normalizedWeekIndex : null
         }
     };
 }
@@ -111,7 +108,11 @@ export const generatorActionMethods = {
             });
             produced = sets.length;
             if (produced < requested) {
-                UIManager.toast(`필터 조건으로 ${produced}/${requested}개만 생성되었습니다. 조건을 완화해보세요.`, 'warning', 3500);
+                UIManager.toast(
+                    `필터 조건으로 ${produced}/${requested}개만 생성되었습니다. 조건을 완화해보세요.`,
+                    'warning',
+                    3500
+                );
             }
         } finally {
             if (localToken === this.generationToken) {
@@ -138,7 +139,12 @@ export const generatorActionMethods = {
         this.syncBusyButtons?.();
 
         try {
-            const startDraw = Math.max(1, Math.floor(this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)));
+            const startDraw = Math.max(
+                1,
+                Math.floor(
+                    this.readNumberInput('campStartDraw', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1)
+                )
+            );
             weeks = Math.max(1, Math.floor(this.readNumberInput('campWeeks', 4)));
             setsPerWeek = Math.max(1, Math.floor(this.readNumberInput('campSetsPerWeek', 3)));
             requestedTotal = weeks * setsPerWeek;
@@ -155,11 +161,17 @@ export const generatorActionMethods = {
                 return;
             }
             if (setsPerWeek > CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK) {
-                UIManager.toast(`주당 세트 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK}세트입니다.`, 'warning');
+                UIManager.toast(
+                    `주당 세트 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK}세트입니다.`,
+                    'warning'
+                );
                 return;
             }
             if (requestedTotal > CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS) {
-                UIManager.toast(`캠페인 총 티켓 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`, 'warning');
+                UIManager.toast(
+                    `캠페인 총 티켓 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`,
+                    'warning'
+                );
                 return;
             }
 
@@ -289,7 +301,8 @@ export const generatorActionMethods = {
             numbers: entry.numbers,
             date: createdAt
         }));
-        this.data.state.history = this.data.mergeHistoryEntries(nextEntries, this.data.state.history)
+        this.data.state.history = this.data
+            .mergeHistoryEntries(nextEntries, this.data.state.history)
             .slice(0, CONFIG.LIMITS.MAX_HIST);
         this.data.markDirty?.('hist');
         this.data.save();

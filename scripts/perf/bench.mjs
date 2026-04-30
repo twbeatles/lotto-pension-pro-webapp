@@ -29,7 +29,14 @@ function runGenerateBench(stats) {
     const request = {
         strategyId: 'ensemble_weighted',
         params: { simulationCount: 5000, lookbackWindow: 20, wheelPoolSize: null, wheelGuarantee: null, seed: 42 },
-        filters: { oddEven: null, highLow: null, sumRange: null, acRange: null, maxConsecutivePairs: null, endDigitUniqueMin: null }
+        filters: {
+            oddEven: null,
+            highLow: null,
+            sumRange: null,
+            acRange: null,
+            maxConsecutivePairs: null,
+            endDigitUniqueMin: null
+        }
     };
     const engine = new StrategyEngine(stats);
     const rounds = 20;
@@ -50,7 +57,14 @@ function runRecommendBench(stats) {
     const request = {
         strategyId: 'ensemble_weighted',
         params: { simulationCount: 5000, lookbackWindow: 20, wheelPoolSize: null, wheelGuarantee: null, seed: 2026 },
-        filters: { oddEven: null, highLow: null, sumRange: null, acRange: null, maxConsecutivePairs: null, endDigitUniqueMin: null }
+        filters: {
+            oddEven: null,
+            highLow: null,
+            sumRange: null,
+            acRange: null,
+            maxConsecutivePairs: null,
+            endDigitUniqueMin: null
+        }
     };
     const engine = new StrategyEngine(stats);
     const rounds = 30;
@@ -68,17 +82,26 @@ function runRecommendBench(stats) {
 }
 
 function runBacktestLikeBench(stats) {
-    const requests = [
-        'ensemble_weighted',
-        'hot_frequency',
-        'cold_frequency',
-        'balance_oe_hl',
-        'stat_ac_sum'
-    ].map((strategyId, idx) => ({
-        strategyId,
-        params: { simulationCount: 5000, lookbackWindow: 20, wheelPoolSize: null, wheelGuarantee: null, seed: 100 + idx },
-        filters: { oddEven: null, highLow: null, sumRange: null, acRange: null, maxConsecutivePairs: null, endDigitUniqueMin: null }
-    }));
+    const requests = ['ensemble_weighted', 'hot_frequency', 'cold_frequency', 'balance_oe_hl', 'stat_ac_sum'].map(
+        (strategyId, idx) => ({
+            strategyId,
+            params: {
+                simulationCount: 5000,
+                lookbackWindow: 20,
+                wheelPoolSize: null,
+                wheelGuarantee: null,
+                seed: 100 + idx
+            },
+            filters: {
+                oddEven: null,
+                highLow: null,
+                sumRange: null,
+                acRange: null,
+                maxConsecutivePairs: null,
+                endDigitUniqueMin: null
+            }
+        })
+    );
 
     const sorted = [...stats].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
     const drawIndex = new Map();
@@ -208,11 +231,14 @@ function main() {
         assertThreshold('backtestLike.totalMs', backtestLike.totalMs, 7000)
     ];
     const baseline = readBaseline(args.baseline);
-    const comparison = compareWithBaseline({
-        generate,
-        recommend,
-        backtestLike
-    }, baseline);
+    const comparison = compareWithBaseline(
+        {
+            generate,
+            recommend,
+            backtestLike
+        },
+        baseline
+    );
     const regressionChecks = buildRegressionChecks(comparison, 10);
     const pass = [...thresholdChecks, ...regressionChecks].every((x) => x.ok);
 

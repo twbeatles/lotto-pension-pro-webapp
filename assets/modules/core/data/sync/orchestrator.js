@@ -7,6 +7,12 @@ export const dataSyncOrchestratorMethods = {
     async fetchWinningStats(options = {}) {
         const statusEl = $('#syncStatus');
         const notifyTicketSettle = options.notifyTicketSettle !== false;
+        const preserveExistingOnFailure = options.preserveExistingOnFailure !== false;
+        const previousWinningStats = Array.isArray(this.state.winningStats)
+            ? this.state.winningStats.map((row) => ({ ...row }))
+            : [];
+        const previousDataHealth = this.mergeDataHealth?.(this.dataHealth || this.getDefaultDataHealth()) || null;
+        const previousStaticLatestDrawNo = Math.max(0, Number(this.state.staticLatestDrawNo || 0));
         const updateStatus = (text, color) => {
             if (statusEl) {
                 statusEl.querySelector('.text') && (statusEl.querySelector('.text').textContent = text);
@@ -53,13 +59,62 @@ export const dataSyncOrchestratorMethods = {
                 mergedItems,
                 staticError
             });
+
+            if (
+                dataHealth.availability === 'none' &&
+                staticError &&
+                preserveExistingOnFailure &&
+                previousWinningStats.length
+            ) {
+                const preservedItems = previousWinningStats
+                    .map((row) => this.normalizeDrawItem(row))
+                    .filter(Boolean)
+                    .sort((a, b) => b.draw_no - a.draw_no);
+                if (preservedItems.length) {
+                    this.state.winningStats = preservedItems;
+                    this.state.staticLatestDrawNo = previousStaticLatestDrawNo || preservedItems[0]?.draw_no || 0;
+                    this.buildAnalyticsCache();
+                    const preservedHealth = this.mergeDataHealth({
+                        ...(previousDataHealth || {}),
+                        availability:
+                            previousDataHealth?.availability && previousDataHealth.availability !== 'none'
+                                ? previousDataHealth.availability
+                                : 'partial',
+                        source:
+                            previousDataHealth?.source && previousDataHealth.source !== 'none'
+                                ? previousDataHealth.source
+                                : 'static',
+                        latestDrawNo: preservedItems[0]?.draw_no || 0,
+                        message: '당첨 데이터 새로고침에 실패해 이전에 로드된 데이터를 유지합니다.'
+                    });
+                    this.setDataHealth(preservedHealth);
+                    this.setSyncMeta({
+                        mode: this.getSyncMode(),
+                        currentSource: this.getDataHealthSourceLabel(preservedHealth.source)
+                    });
+                    this.lastWinningStatsLoad = {
+                        ok: true,
+                        offline: false,
+                        error: String(staticError?.message || ''),
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.clampSyncMetaToWinningStats({ immediate: false });
+                    await this.reconcileTicketChecks({ silent: !notifyTicketSettle });
+                    updateStatus('이전 데이터 유지', 'var(--warning)');
+                    return true;
+                }
+            }
+
             this.setDataHealth(dataHealth);
 
             this.setSyncMeta({
                 mode: this.getSyncMode(),
-                currentSource: dataHealth.availability === 'full'
-                    ? (localUpdates.length ? '정적 JSON + 로컬 업데이트' : '정적 JSON')
-                    : this.getDataHealthSourceLabel(dataHealth.source)
+                currentSource:
+                    dataHealth.availability === 'full'
+                        ? localUpdates.length
+                            ? '정적 JSON + 로컬 업데이트'
+                            : '정적 JSON'
+                        : this.getDataHealthSourceLabel(dataHealth.source)
             });
             this.lastWinningStatsLoad = {
                 ok: dataHealth.availability !== 'none',
@@ -87,9 +142,10 @@ export const dataSyncOrchestratorMethods = {
             return true;
         } catch (e) {
             console.warn('당첨 데이터 조회 실패', e);
-            const offline = typeof this.app?.isProbablyOffline === 'function'
-                ? await this.app.isProbablyOffline({ forceProbe: true })
-                : (typeof navigator !== 'undefined' && navigator.onLine === false);
+            const offline =
+                typeof this.app?.isProbablyOffline === 'function'
+                    ? await this.app.isProbablyOffline({ forceProbe: true })
+                    : typeof navigator !== 'undefined' && navigator.onLine === false;
             this.setDataHealth({
                 availability: 'none',
                 source: 'none',
@@ -206,9 +262,7 @@ export const dataSyncOrchestratorMethods = {
             const latestKnown = Math.max(0, Number(this.state.winningStats[0]?.draw_no || 0));
             const estNo = estimateLatestDrawKST();
             const hasExistingData = latestKnown > 0;
-            const rangeFrom = hasExistingData
-                ? latestKnown + 1
-                : Math.max(1, estNo - this.PARTIAL_RECOVERY_WINDOW + 1);
+            const rangeFrom = hasExistingData ? latestKnown + 1 : Math.max(1, estNo - this.PARTIAL_RECOVERY_WINDOW + 1);
 
             if (hasExistingData && latestKnown >= estNo) {
                 log(UI_STRINGS.sync.logUpToDate, 'SYNC_UP_TO_DATE');
@@ -258,10 +312,7 @@ export const dataSyncOrchestratorMethods = {
                 newItems.push(item);
             });
 
-            const fallbackTargets = new Set([
-                ...(chunkResult.missing || []),
-                ...(chunkResult.failedDraws || [])
-            ]);
+            const fallbackTargets = new Set([...(chunkResult.missing || []), ...(chunkResult.failedDraws || [])]);
             for (let drawNo = rangeFrom; drawNo <= estNo; drawNo++) {
                 if (!fetched.has(drawNo)) fallbackTargets.add(drawNo);
             }
@@ -307,7 +358,10 @@ export const dataSyncOrchestratorMethods = {
                 this.app?.updateLatestWin?.();
                 await this.app?.refreshCurrentRoute();
                 if (profile.toast) {
-                    UIManager.toast(UI_STRINGS.sync.updatedCount(updatedCount, localUpdateResult.droppedFuture), 'success');
+                    UIManager.toast(
+                        UI_STRINGS.sync.updatedCount(updatedCount, localUpdateResult.droppedFuture),
+                        'success'
+                    );
                 }
                 clearWarningOnSuccess = true;
             } else {

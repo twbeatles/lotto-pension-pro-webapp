@@ -1,5 +1,15 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../UIManager.js';
+
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 export const appLatestDrawMethods = {
     renderLatestWinPlaceholder({
         badge = '데이터 없음',
@@ -12,15 +22,16 @@ export const appLatestDrawMethods = {
         const metaEl = $('#latestWinMeta');
         if (badgeEl) badgeEl.textContent = badge;
         if (ballsEl) {
+            const safeIcon = /^ph-[a-z0-9-]+$/i.test(String(icon || '')) ? icon : 'ph-database';
             ballsEl.innerHTML = `
                 <div class="latest-win-placeholder">
-                    <i class="ph ${icon}"></i>
-                    <span>${title}</span>
+                    <i class="ph ${safeIcon}"></i>
+                    <span>${escapeHtml(title)}</span>
                 </div>
             `;
         }
         if (metaEl) {
-            metaEl.innerHTML = `<div class="latest-win-placeholder-meta">${meta}</div>`;
+            metaEl.innerHTML = `<div class="latest-win-placeholder-meta">${escapeHtml(meta)}</div>`;
         }
     },
 
@@ -40,7 +51,8 @@ export const appLatestDrawMethods = {
         }
 
         $('#latestDrawNo').textContent = `${latest.draw_no}회`;
-        $('#latestWinBalls').innerHTML = UIManager.renderBalls(latest.numbers) +
+        $('#latestWinBalls').innerHTML =
+            UIManager.renderBalls(latest.numbers) +
             `<span style="margin:0 8px; color:var(--text-muted); font-weight:bold; font-size:1.2em;">+</span>` +
             `<span class="ball ${UIManager.getBallColor(latest.bonus)}">${latest.bonus}</span>`;
 
@@ -51,20 +63,21 @@ export const appLatestDrawMethods = {
         const freshnessNote = freshness.isPartial
             ? `<span class="badge status-badge is-warn">부분 복구</span><span>최근 일부 회차만 사용할 수 있습니다.</span>`
             : freshness.isStale
-                ? `<span class="badge status-badge is-warn">${freshness.behindBy}회차 지연</span><span>최신 회차와 차이가 있을 수 있습니다.</span>`
-                : '';
+              ? `<span class="badge status-badge is-warn">${freshness.behindBy}회차 지연</span><span>최신 회차와 차이가 있을 수 있습니다.</span>`
+              : '';
 
         $('#latestWinMeta').innerHTML = `
             <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-                <span>${latest.date} 추첨</span>
+                <span>${escapeHtml(latest.date)} 추첨</span>
                 ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
                 ${freshnessNote ? `<span style="display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;">${freshnessNote}</span>` : ''}
             </div>
         `;
 
-        const nextDrawNo = typeof this.getSuggestedNextDrawNo === 'function'
-            ? this.getSuggestedNextDrawNo()
-            : Number(latest.draw_no) + 1;
+        const nextDrawNo =
+            typeof this.getSuggestedNextDrawNo === 'function'
+                ? this.getSuggestedNextDrawNo()
+                : Number(latest.draw_no) + 1;
         ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'].forEach((id) => {
             if (typeof this.setTargetDrawInputValue === 'function') {
                 this.setTargetDrawInputValue(id, nextDrawNo, { force: false, userEdited: false });

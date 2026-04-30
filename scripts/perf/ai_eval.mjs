@@ -55,7 +55,10 @@ function parseArgs(argv = []) {
             continue;
         }
         if (arg === '--strategies' && next) {
-            out.strategies = next.split(',').map((item) => item.trim()).filter(Boolean);
+            out.strategies = next
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean);
             i++;
             continue;
         }
@@ -81,12 +84,7 @@ function getStrategyIds(args) {
         return args.strategies;
     }
     if (!args.full) {
-        return [
-            'auto_ensemble_top3',
-            'auto_recent_top',
-            'consensus_portfolio',
-            'bayesian_smooth'
-        ];
+        return ['auto_ensemble_top3', 'auto_recent_top', 'consensus_portfolio', 'bayesian_smooth'];
     }
     return listStrategies({ includeExperimental: args.includeExperimental, scope: 'ai' }).map((item) => item.id);
 }

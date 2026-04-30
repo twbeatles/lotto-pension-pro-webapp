@@ -14,13 +14,22 @@ Thumbs.db
 # Local temporary artifacts
 node_modules/
 .eslintcache
+.cache/
 .wrangler/
+.netlify/
+.vercel/
 .tmp_vendor/
 .tmp-*/
 coverage/
+.nyc_output/
+dist/
+build/
 playwright-report/
 test-results/
 .playwright/
+reports/
+bench-results/
+perf-results/
 
 # Package manager / tool logs
 npm-debug.log*
@@ -29,6 +38,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 *.log
+*.lcov
 *.tmp
 *.temp
 *.bak

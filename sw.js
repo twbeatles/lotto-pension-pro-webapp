@@ -2,15 +2,8 @@ const CACHE_VERSION = 'v18';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
-    appShell: [
-        './',
-        './index.html',
-        './manifest.json',
-        './assets/app.css'
-    ],
-    data: [
-        './data/winning_stats.json'
-    ]
+    appShell: ['./', './index.html', './manifest.json', './assets/app.css'],
+    data: ['./data/winning_stats.json']
 };
 
 try {
@@ -142,13 +135,17 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil((async () => {
-        const valid = new Set([CACHE_APP_SHELL, CACHE_DATA]);
-        const keys = await caches.keys();
-        await Promise.all(keys.map((key) => {
-            if (!valid.has(key)) return caches.delete(key);
-            return Promise.resolve();
-        }));
-        await self.clients.claim();
-    })());
+    event.waitUntil(
+        (async () => {
+            const valid = new Set([CACHE_APP_SHELL, CACHE_DATA]);
+            const keys = await caches.keys();
+            await Promise.all(
+                keys.map((key) => {
+                    if (!valid.has(key)) return caches.delete(key);
+                    return Promise.resolve();
+                })
+            );
+            await self.clients.claim();
+        })()
+    );
 });

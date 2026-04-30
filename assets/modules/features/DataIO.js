@@ -12,7 +12,4 @@ export class DataIOModule {
     }
 }
 
-Object.assign(DataIOModule.prototype,
-    dataIoSupportMethods,
-    dataIoImportMethods
-);
+Object.assign(DataIOModule.prototype, dataIoSupportMethods, dataIoImportMethods);

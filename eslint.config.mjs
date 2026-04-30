@@ -1,101 +1,102 @@
-import js from "@eslint/js";
-import htmlEslint from "@html-eslint/eslint-plugin";
-import globals from "globals";
-import eslintConfigPrettier from "eslint-config-prettier";
-import html from "eslint-plugin-html";
+import js from '@eslint/js';
+import htmlEslint from '@html-eslint/eslint-plugin';
+import globals from 'globals';
+import eslintConfigPrettier from 'eslint-config-prettier';
+import html from 'eslint-plugin-html';
 
 const baseJsRules = {
-  ...js.configs.recommended.rules,
-  "no-console": "off",
-  "no-unused-vars": ["warn", { argsIgnorePattern: "^_", caughtErrors: "none" }],
+    ...js.configs.recommended.rules,
+    'no-console': 'off',
+    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }]
 };
 
 export default [
-  {
-    ignores: ["data/**", "assets/icons/**"],
-  },
-  {
-    files: ["assets/modules/**/*.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.browser,
-      },
+    {
+        ignores: ['data/**', 'assets/icons/**']
     },
-    rules: baseJsRules,
-  },
-  {
-    files: ["assets/*.worker.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.worker,
-      },
+    {
+        files: ['assets/modules/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.browser
+            }
+        },
+        rules: baseJsRules
     },
-    rules: baseJsRules,
-  },
-  {
-    files: ["sw.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.serviceworker,
-      },
+    {
+        files: ['assets/*.worker.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.worker
+            }
+        },
+        rules: baseJsRules
     },
-    rules: baseJsRules,
-  },
-  {
-    files: ["proxy/**/*.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.serviceworker,
-      },
+    {
+        files: ['sw.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.serviceworker
+            }
+        },
+        rules: baseJsRules
     },
-    rules: baseJsRules,
-  },
-  {
-    files: ["scripts/**/*.mjs"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.node,
-      },
+    {
+        files: ['proxy/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.serviceworker
+            }
+        },
+        rules: baseJsRules
     },
-    rules: baseJsRules,
-  },
-  {
-    files: ["index.html"],
-    ...htmlEslint.configs["flat/recommended"],
-    rules: {
-      ...htmlEslint.configs["flat/recommended"].rules,
-      "@html-eslint/attrs-newline": "off",
-      "@html-eslint/element-newline": "off",
-      "@html-eslint/indent": "off",
-      "@html-eslint/no-extra-spacing-attrs": "off",
-      "@html-eslint/quotes": "off",
-      "@html-eslint/use-baseline": "off",
+    {
+        files: ['scripts/**/*.mjs'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.node
+            }
+        },
+        rules: baseJsRules
     },
-  },
-  {
-    files: ["index.html"],
-    plugins: { html },
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "script",
-      globals: {
-        ...globals.browser,
-      },
+    {
+        files: ['index.html'],
+        ...htmlEslint.configs['flat/recommended'],
+        rules: {
+            ...htmlEslint.configs['flat/recommended'].rules,
+            '@html-eslint/attrs-newline': 'off',
+            '@html-eslint/element-newline': 'off',
+            '@html-eslint/indent': 'off',
+            '@html-eslint/no-extra-spacing-attrs': 'off',
+            '@html-eslint/quotes': 'off',
+            '@html-eslint/require-closing-tags': 'off',
+            '@html-eslint/use-baseline': 'off'
+        }
     },
-    settings: {
-      "html/html-extensions": [".html"],
+    {
+        files: ['index.html'],
+        plugins: { html },
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'script',
+            globals: {
+                ...globals.browser
+            }
+        },
+        settings: {
+            'html/html-extensions': ['.html']
+        },
+        rules: baseJsRules
     },
-    rules: baseJsRules,
-  },
-  eslintConfigPrettier,
+    eslintConfigPrettier
 ];

@@ -64,7 +64,8 @@ export class DataManager {
     }
 }
 
-Object.assign(DataManager.prototype,
+Object.assign(
+    DataManager.prototype,
     dataDefaultsMethods,
     dataPersistenceMethods,
     dataRecordMethods,

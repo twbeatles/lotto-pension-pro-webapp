@@ -59,10 +59,14 @@ export const appModuleLoaderRegistryMethods = {
     preloadLikelyModules() {
         runWhenIdle(() => {
             import('../../../features/Ai.js')
-                .then((mod) => { this.moduleConstructors.ai = mod.AiModule; })
+                .then((mod) => {
+                    this.moduleConstructors.ai = mod.AiModule;
+                })
                 .catch(() => null);
             import('../../../features/Backtest.js')
-                .then((mod) => { this.moduleConstructors.backtest = mod.BacktestModule; })
+                .then((mod) => {
+                    this.moduleConstructors.backtest = mod.BacktestModule;
+                })
                 .catch(() => null);
 
             this.strategyWorker?.warmup?.().catch(() => null);

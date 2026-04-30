@@ -157,7 +157,8 @@ export class LottoApp {
     }
 }
 
-Object.assign(LottoApp.prototype,
+Object.assign(
+    LottoApp.prototype,
     appModuleLoaderMethods,
     appThemeMethods,
     appSettingsMethods,

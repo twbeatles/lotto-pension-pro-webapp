@@ -30,7 +30,11 @@ export const backtestRunMethods = {
         const span = end - start + 1;
         if (span > CONFIG.LIMITS.MAX_BACKTEST_SPAN) {
             endMark('backtest.run', { invalidRange: true, span });
-            return UIManager.toast(`백테스트 범위는 최대 ${CONFIG.LIMITS.MAX_BACKTEST_SPAN}회차까지 가능합니다.`, 'warning', 3000);
+            return UIManager.toast(
+                `백테스트 범위는 최대 ${CONFIG.LIMITS.MAX_BACKTEST_SPAN}회차까지 가능합니다.`,
+                'warning',
+                3000
+            );
         }
         if (!Number.isFinite(qty) || qty < 1) qty = 1;
         qty = Math.min(qty, this.MAX_QTY);
@@ -67,7 +71,9 @@ export const backtestRunMethods = {
                         const etaMs = Number(payload.etaMs || 0);
                         const etaText = etaMs > 0 ? `, 예상 ${(etaMs / 1000).toFixed(1)}초` : '';
                         const percent = Number(payload.percent || 0).toFixed(1);
-                        this.setProgressStatus(`진행률 ${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`);
+                        this.setProgressStatus(
+                            `진행률 ${payload.processedDraws}/${payload.totalDraws} (${percent}%)${etaText}`
+                        );
                     }
                 }
             }

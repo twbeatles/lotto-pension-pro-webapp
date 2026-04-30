@@ -95,4 +95,3 @@ export function runWhenIdle(task, timeout = 1200) {
         setTimeout(() => task(), 300);
     }
 }
-

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 function normalizeStats(raw) {
-    const list = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    const list = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
     return list
         .map((row) => ({
             draw_no: Number(row.draw_no),
@@ -85,10 +85,4 @@ function createDocumentStub(map = {}) {
     };
 }
 
-export {
-    normalizeStats,
-    buildSmokeRequest,
-    assertTicketShape,
-    createField,
-    createDocumentStub
-};
+export { normalizeStats, buildSmokeRequest, assertTicketShape, createField, createDocumentStub };

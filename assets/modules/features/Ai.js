@@ -44,7 +44,4 @@ export class AiModule {
     }
 }
 
-Object.assign(AiModule.prototype,
-    aiFormMethods,
-    aiRenderingMethods
-);
+Object.assign(AiModule.prototype, aiFormMethods, aiRenderingMethods);

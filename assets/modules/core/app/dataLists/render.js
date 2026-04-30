@@ -27,16 +27,24 @@ export const appDataListRenderMethods = {
 
         const favorites = (this.data.state.favorites || [])
             .map((item, rawIndex) => ({ item, rawIndex }))
-            .filter(({ item }) => this.matchesSearch(this.getDataListState('fav').query, [
-                (item.numbers || []).join(', '),
-                item.date,
-                this.formatDate(item.date)
-            ]));
+            .filter(({ item }) =>
+                this.matchesSearch(this.getDataListState('fav').query, [
+                    (item.numbers || []).join(', '),
+                    item.date,
+                    this.formatDate(item.date)
+                ])
+            );
         const favoritePage = this.paginateItems('fav', favorites);
         if (!favoritePage.totalItems) {
-            renderEmpty('#favList', 'ph-folder-open', this.getDataListState('fav').query ? '검색 결과가 없습니다.' : '저장된 즐겨찾기가 없습니다.');
+            renderEmpty(
+                '#favList',
+                'ph-folder-open',
+                this.getDataListState('fav').query ? '검색 결과가 없습니다.' : '저장된 즐겨찾기가 없습니다.'
+            );
         } else {
-            $('#favList').innerHTML = favoritePage.items.map(({ item, rawIndex }) => `
+            $('#favList').innerHTML = favoritePage.items
+                .map(
+                    ({ item, rawIndex }) => `
                 <div class="result-item" data-raw-index="${rawIndex}">
                     <div class="result-main">
                         <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
@@ -47,22 +55,32 @@ export const appDataListRenderMethods = {
                         <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         }
         this.renderPagination('#favPagination', 'fav', favoritePage);
 
         const history = (this.data.state.history || [])
             .map((item, rawIndex) => ({ item, rawIndex }))
-            .filter(({ item }) => this.matchesSearch(this.getDataListState('history').query, [
-                (item.numbers || []).join(', '),
-                item.date,
-                this.formatDate(item.date)
-            ]));
+            .filter(({ item }) =>
+                this.matchesSearch(this.getDataListState('history').query, [
+                    (item.numbers || []).join(', '),
+                    item.date,
+                    this.formatDate(item.date)
+                ])
+            );
         const historyPage = this.paginateItems('history', history);
         if (!historyPage.totalItems) {
-            renderEmpty('#historyList', 'ph-clock-counter-clockwise', this.getDataListState('history').query ? '검색 결과가 없습니다.' : '생성 히스토리가 없습니다.');
+            renderEmpty(
+                '#historyList',
+                'ph-clock-counter-clockwise',
+                this.getDataListState('history').query ? '검색 결과가 없습니다.' : '생성 히스토리가 없습니다.'
+            );
         } else {
-            $('#historyList').innerHTML = historyPage.items.map(({ item, rawIndex }) => `
+            $('#historyList').innerHTML = historyPage.items
+                .map(
+                    ({ item, rawIndex }) => `
                 <div class="result-item" data-raw-index="${rawIndex}">
                     <div class="result-main">
                         <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
@@ -73,28 +91,37 @@ export const appDataListRenderMethods = {
                         <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         }
         this.renderPagination('#historyPagination', 'history', historyPage);
 
         const ticketFilter = $('#ticketFilter')?.value || 'all';
         const tickets = (this.data.state.ticketBook || [])
             .filter((item) => ticketFilter === 'all' || this.getTicketStatusMeta(item).code === ticketFilter)
-            .filter((item) => this.matchesSearch(this.getDataListState('ticket').query, [
-                (item.numbers || []).join(', '),
-                item.targetDrawNo,
-                this.getTicketStatusMeta(item).label,
-                `x${this.data.getTicketQuantity(item)}`
-            ]));
+            .filter((item) =>
+                this.matchesSearch(this.getDataListState('ticket').query, [
+                    (item.numbers || []).join(', '),
+                    item.targetDrawNo,
+                    this.getTicketStatusMeta(item).label,
+                    `x${this.data.getTicketQuantity(item)}`
+                ])
+            );
         const ticketPage = this.paginateItems('ticket', tickets);
         ticketPage.summaryText = `총 ${this.data.getTotalTicketCount(tickets)}개 티켓`;
         if (!ticketPage.totalItems) {
-            renderEmpty('#ticketList', 'ph-ticket', this.getDataListState('ticket').query ? '검색 결과가 없습니다.' : '조건에 맞는 티켓이 없습니다.');
+            renderEmpty(
+                '#ticketList',
+                'ph-ticket',
+                this.getDataListState('ticket').query ? '검색 결과가 없습니다.' : '조건에 맞는 티켓이 없습니다.'
+            );
         } else {
-            $('#ticketList').innerHTML = ticketPage.items.map((item) => {
-                const status = this.getTicketStatusMeta(item);
-                const quantity = this.data.getTicketQuantity(item);
-                return `
+            $('#ticketList').innerHTML = ticketPage.items
+                .map((item) => {
+                    const status = this.getTicketStatusMeta(item);
+                    const quantity = this.data.getTicketQuantity(item);
+                    return `
                     <div class="result-item" data-id="${this.escapeHtml(item.id)}">
                         <div class="result-main">
                             <div class="ball-container sm">${UIManager.renderBalls(item.numbers, 'sm')}</div>
@@ -110,20 +137,25 @@ export const appDataListRenderMethods = {
                         </div>
                     </div>
                 `;
-            }).join('');
+                })
+                .join('');
         }
         this.renderPagination('#ticketPagination', 'ticket', ticketPage);
 
-        const campaigns = (this.data.state.campaigns || [])
-            .filter((item) => this.matchesSearch(this.getDataListState('campaign').query, [
-                item.name,
-                item.startDrawNo
-            ]));
+        const campaigns = (this.data.state.campaigns || []).filter((item) =>
+            this.matchesSearch(this.getDataListState('campaign').query, [item.name, item.startDrawNo])
+        );
         const campaignPage = this.paginateItems('campaign', campaigns);
         if (!campaignPage.totalItems) {
-            renderEmpty('#campaignList', 'ph-calendar-blank', this.getDataListState('campaign').query ? '검색 결과가 없습니다.' : '등록된 캠페인이 없습니다.');
+            renderEmpty(
+                '#campaignList',
+                'ph-calendar-blank',
+                this.getDataListState('campaign').query ? '검색 결과가 없습니다.' : '등록된 캠페인이 없습니다.'
+            );
         } else {
-            $('#campaignList').innerHTML = campaignPage.items.map((item) => `
+            $('#campaignList').innerHTML = campaignPage.items
+                .map(
+                    (item) => `
                 <div class="result-item" data-id="${this.escapeHtml(item.id)}">
                     <div class="result-main">
                         <strong class="result-title">${this.escapeHtml(item.name)}</strong>
@@ -133,7 +165,9 @@ export const appDataListRenderMethods = {
                         <button class="icon-btn" data-action="delete" title="삭제" aria-label="캠페인 삭제"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         }
         this.renderPagination('#campaignPagination', 'campaign', campaignPage);
 
@@ -146,10 +180,11 @@ export const appDataListRenderMethods = {
         }
         const localUpdatesMeta = $('#localUpdatesMeta');
         if (localUpdatesMeta) {
-            const latestLocalDraw = localUpdates.length ? Math.max(...localUpdates.map((item) => Number(item?.draw_no || 0))) : 0;
-            localUpdatesMeta.textContent = latestLocalDraw > 0
-                ? `가장 최근 로컬 반영 회차: ${latestLocalDraw}회`
-                : '정적 JSON만 사용 중입니다.';
+            const latestLocalDraw = localUpdates.length
+                ? Math.max(...localUpdates.map((item) => Number(item?.draw_no || 0)))
+                : 0;
+            localUpdatesMeta.textContent =
+                latestLocalDraw > 0 ? `가장 최근 로컬 반영 회차: ${latestLocalDraw}회` : '정적 JSON만 사용 중입니다.';
         }
         const clearLocalUpdatesBtn = $('#clearLocalUpdatesBtn');
         if (clearLocalUpdatesBtn) clearLocalUpdatesBtn.disabled = !localUpdates.length;

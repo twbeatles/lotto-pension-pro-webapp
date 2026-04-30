@@ -92,12 +92,12 @@ export class StrategyWorkerClient {
         const slowFactor = getNetworkSlowFactor();
         if (type === 'GENERATE') {
             const count = Math.max(1, Number(payload?.count || 1));
-            const base = Math.min(DEFAULT_TIMEOUT_MS + (count * 120), GENERATE_TIMEOUT_CAP_MS);
+            const base = Math.min(DEFAULT_TIMEOUT_MS + count * 120, GENERATE_TIMEOUT_CAP_MS);
             return Math.min(Math.ceil(base * slowFactor), GENERATE_TIMEOUT_CAP_MS);
         }
         if (type === 'RECOMMEND') {
             const simulationCount = Math.max(1000, Number(payload?.request?.params?.simulationCount || 5000));
-            const base = DEFAULT_TIMEOUT_MS + (Math.ceil(simulationCount / 1000) * 1200);
+            const base = DEFAULT_TIMEOUT_MS + Math.ceil(simulationCount / 1000) * 1200;
             if (isAutoStrategyId(payload?.request?.strategyId)) {
                 const autoBase = Math.min(Math.ceil(base * 2.5), AUTO_RECOMMEND_TIMEOUT_CAP_MS);
                 return Math.min(Math.ceil(autoBase * slowFactor), AUTO_RECOMMEND_TIMEOUT_CAP_MS);
@@ -145,6 +145,7 @@ export class StrategyWorkerClient {
                     continue;
                 }
                 if (isTimeout) {
+                    this.resetWorker();
                     throw this.createTimeoutError(resolvedTimeoutMs, true);
                 }
                 throw err;
@@ -172,4 +173,3 @@ export class StrategyWorkerClient {
         return this.post('RECOMMEND', payload);
     }
 }
-

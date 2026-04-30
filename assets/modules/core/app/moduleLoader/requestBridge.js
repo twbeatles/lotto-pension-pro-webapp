@@ -5,14 +5,19 @@ export const appModuleLoaderRequestBridgeMethods = {
     async requestNumbers(nums, meta = null) {
         if (!Array.isArray(nums) || nums.length !== 6) return;
         await this.route('gen');
-        this.data.setGeneratedEntries([{
-            numbers: nums,
-            strategyRequest: meta?.strategyRequest || null,
-            createdAt: meta?.createdAt || new Date().toISOString(),
-            source: meta?.source || 'generator'
-        }], {
-            source: meta?.source || 'generator'
-        });
+        this.data.setGeneratedEntries(
+            [
+                {
+                    numbers: nums,
+                    strategyRequest: meta?.strategyRequest || null,
+                    createdAt: meta?.createdAt || new Date().toISOString(),
+                    source: meta?.source || 'generator'
+                }
+            ],
+            {
+                source: meta?.source || 'generator'
+            }
+        );
         const list = $('#genResultList');
         if (list) {
             list.innerHTML = '';

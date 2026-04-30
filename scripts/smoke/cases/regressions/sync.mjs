@@ -138,6 +138,7 @@ async function runSyncLatestWinRefreshRegression() {
 
 async function runWinningStatsLoadClassificationRegression() {
     const previousDocument = globalThis.document;
+    const previousWarn = console.warn;
     const statusText = createField();
     const statusDot = createField({ style: {} });
     const statusEl = {
@@ -148,6 +149,10 @@ async function runWinningStatsLoadClassificationRegression() {
         }
     };
 
+    console.warn = (...args) => {
+        if (String(args[0] || '').includes('정적 당첨 데이터 조회 실패')) return;
+        previousWarn(...args);
+    };
     globalThis.document = createDocumentStub({
         '#syncStatus': statusEl
     });
@@ -172,6 +177,7 @@ async function runWinningStatsLoadClassificationRegression() {
             'online fetch failure without fallback data must surface data-unavailable state'
         );
     } finally {
+        console.warn = previousWarn;
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
@@ -269,6 +275,7 @@ function runMergedLocalUpdatesGapClassificationRegression() {
 
 async function runPartialWinningStatsRecoveryRegression() {
     const previousDocument = globalThis.document;
+    const previousWarn = console.warn;
     const statusText = createField();
     const statusDot = createField({ style: {} });
     const statusEl = {
@@ -279,6 +286,10 @@ async function runPartialWinningStatsRecoveryRegression() {
         }
     };
 
+    console.warn = (...args) => {
+        if (String(args[0] || '').includes('정적 당첨 데이터 조회 실패')) return;
+        previousWarn(...args);
+    };
     globalThis.document = createDocumentStub({
         '#syncStatus': statusEl
     });
@@ -313,6 +324,7 @@ async function runPartialWinningStatsRecoveryRegression() {
             'partial recovery must surface a partial-recovery status label'
         );
     } finally {
+        console.warn = previousWarn;
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
@@ -523,6 +535,46 @@ function runSyncPayloadDrawIntegerGuardRegression() {
     );
 }
 
+function runMalformedDrawDateRejectedRegression() {
+    const dm = new DataManager();
+
+    assert.equal(
+        dm.normalizeDrawItem({
+            draw_no: 1210,
+            date: '<img src=x onerror=alert(1)>',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }),
+        null,
+        'draw date must reject non-YYYY-MM-DD text'
+    );
+    assert.equal(
+        dm.normalizeDrawItem({
+            draw_no: 1210,
+            date: '2026-02-31',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }),
+        null,
+        'draw date must reject impossible calendar dates'
+    );
+    assert.deepEqual(
+        dm.normalizeDrawItem({
+            ltEpsd: 1210,
+            ltRflYmd: '20260425',
+            tm1WnNo: 1,
+            tm2WnNo: 2,
+            tm3WnNo: 3,
+            tm4WnNo: 4,
+            tm5WnNo: 5,
+            tm6WnNo: 6,
+            bnsWnNo: 7
+        })?.date,
+        '2026-04-25',
+        'official 8-digit dates must normalize to YYYY-MM-DD'
+    );
+}
+
 async function runStaticDataFreshnessBudgetRegression() {
     const raw = await readFile(resolve(process.cwd(), 'data/winning_stats.json'), 'utf8');
     const items = JSON.parse(raw);
@@ -659,6 +711,126 @@ async function runProxyChangeAbortRegression() {
             'proxy-change must allow the replacement sync to apply'
         );
     } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runProxyInputChangeAbortRegression() {
+    const previousDocument = globalThis.document;
+    const customProxyUrl = createField({
+        value: '',
+        addEventListener(type, handler) {
+            if (type === 'change') this._changeHandler = handler;
+        }
+    });
+
+    globalThis.document = createDocumentStub({
+        '#customProxyUrl': customProxyUrl
+    });
+
+    try {
+        const calls = [];
+        const ctx = {
+            data: {
+                state: {
+                    customProxy: 'https://proxy-a.example/proxy/latest'
+                },
+                abortSyncInFlight(options) {
+                    calls.push(`abort:${Boolean(options?.force)}`);
+                    return true;
+                },
+                markDirty(key) {
+                    calls.push(`dirty:${key}`);
+                },
+                save() {
+                    calls.push('save');
+                },
+                resolveProxyConfig() {
+                    return {
+                        url: '',
+                        invalid: false
+                    };
+                }
+            },
+            renderSettingsPanel() {
+                calls.push('renderSettingsPanel');
+            },
+            queueAutoSync(reason, options) {
+                calls.push(`queue:${reason}:${Boolean(options?.force)}`);
+            }
+        };
+
+        LottoApp.prototype.bindDataEvents.call(ctx);
+        customProxyUrl._changeHandler?.({ target: customProxyUrl });
+
+        assert.deepEqual(
+            calls,
+            ['abort:true', 'dirty:settings', 'save', 'renderSettingsPanel', 'queue:proxy-change:true'],
+            'proxy input changes must abort any in-flight sync and queue a replacement check even when cleared'
+        );
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+async function runWinningStatsPreserveExistingOnStaticFailureRegression() {
+    const previousDocument = globalThis.document;
+    const previousWarn = console.warn;
+    const statusText = createField();
+    const statusDot = createField({ style: {} });
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+            if (selector === '.dot') return statusDot;
+            return null;
+        }
+    };
+
+    console.warn = (...args) => {
+        if (String(args[0] || '').includes('정적 당첨 데이터 조회 실패')) return;
+        previousWarn(...args);
+    };
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+        dm.save = () => {};
+        dm.state.winningStats = [
+            {
+                draw_no: 1210,
+                date: '2026-03-07',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7
+            }
+        ];
+        dm.state.staticLatestDrawNo = 1210;
+        dm.dataHealth = dm.mergeDataHealth({
+            availability: 'full',
+            source: 'static',
+            latestDrawNo: 1210,
+            message: 'previous full data'
+        });
+        dm.localUpdatesCache = [];
+        dm.fetchWithTimeout = async () => {
+            throw new Error('transient-static-failure');
+        };
+
+        const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
+        assert.equal(result, true, 'transient static failure must preserve existing in-memory winning data');
+        assert.equal(dm.state.winningStats[0]?.draw_no, 1210, 'preserved winning stats must remain available');
+        assert.equal(dm.dataHealth.availability, 'full', 'preserved health should keep previous availability');
+        assert.match(
+            dm.dataHealth.message,
+            /이전에 로드된 데이터/,
+            'preserved health message must explain the fallback'
+        );
+        assert.equal(statusText.textContent, '이전 데이터 유지', 'status must surface preserved-data mode');
+    } finally {
+        console.warn = previousWarn;
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
@@ -833,9 +1005,11 @@ export {
     runBackgroundAutoSyncRegression,
     runBuiltInSyncProviderRegression,
     runExpectedMissingDrawAllowanceRegression,
+    runMalformedDrawDateRejectedRegression,
     runOfflineProbeRecoveryRegression,
     runMergedLocalUpdatesGapClassificationRegression,
     runPartialWinningStatsRecoveryRegression,
+    runProxyInputChangeAbortRegression,
     runProxyChangeAbortRegression,
     runProxyPolicyRegression,
     runRefreshCurrentRouteStaleRegression,
@@ -846,5 +1020,6 @@ export {
     runSyncLatestWinRefreshRegression,
     runSyncPayloadDrawIntegerGuardRegression,
     runUnexpectedStaticHoleClassificationRegression,
+    runWinningStatsPreserveExistingOnStaticFailureRegression,
     runWinningStatsLoadClassificationRegression
 };

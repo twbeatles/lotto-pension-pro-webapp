@@ -7,7 +7,8 @@ import {
     passesFilters,
     readFile,
     resolve,
-    StrategyEngine
+    StrategyEngine,
+    StrategyWorkerClient
 } from './support.mjs';
 
 function runBacktestSmoke(stats) {
@@ -62,7 +63,10 @@ function runStrictFilterRegression(stats) {
     const engine = new StrategyEngine(stats);
     const sets = engine.generateMultipleSets(5, request, { maxAttempts: 30 });
     assert.equal(sets.length, 0, 'impossible filter must not produce fallback sets');
-    assert.ok(sets.every((set) => passesFilters(set, request.filters)), 'all generated sets must pass filters');
+    assert.ok(
+        sets.every((set) => passesFilters(set, request.filters)),
+        'all generated sets must pass filters'
+    );
 }
 
 function runWheelFixedNumbersRegression(stats) {
@@ -90,20 +94,23 @@ function runWheelFixedNumbersRegression(stats) {
 
 function runAdaptiveRecommendationDiagnosticsRegression(stats) {
     const engine = new StrategyEngine(stats);
-    const adaptiveResult = engine.recommendFromSimulation({
-        strategyId: 'auto_recent_top',
-        params: {
-            simulationCount: 1200,
-            lookbackWindow: 120,
-            wheelPoolSize: null,
-            wheelGuarantee: null,
-            seed: 20260414,
-            payoutMode: 'hybrid_dynamic_first'
+    const adaptiveResult = engine.recommendFromSimulation(
+        {
+            strategyId: 'auto_recent_top',
+            params: {
+                simulationCount: 1200,
+                lookbackWindow: 120,
+                wheelPoolSize: null,
+                wheelGuarantee: null,
+                seed: 20260414,
+                payoutMode: 'hybrid_dynamic_first'
+            },
+            filters: {}
         },
-        filters: {}
-    }, {
-        setCount: 3
-    });
+        {
+            setCount: 3
+        }
+    );
 
     assert.equal(
         adaptiveResult?.simulation?.diagnostics?.effectiveAdaptiveWindow,
@@ -116,27 +123,30 @@ function runAdaptiveRecommendationDiagnosticsRegression(stats) {
         'successful auto recommendation must report fallbackMode none'
     );
 
-    const uniformFallback = engine.recommendFromSimulation({
-        strategyId: 'ensemble_weighted',
-        params: {
-            simulationCount: 1000,
-            lookbackWindow: 20,
-            wheelPoolSize: null,
-            wheelGuarantee: null,
-            seed: 20260414,
-            payoutMode: 'hybrid_dynamic_first'
+    const uniformFallback = engine.recommendFromSimulation(
+        {
+            strategyId: 'ensemble_weighted',
+            params: {
+                simulationCount: 1000,
+                lookbackWindow: 20,
+                wheelPoolSize: null,
+                wheelGuarantee: null,
+                seed: 20260414,
+                payoutMode: 'hybrid_dynamic_first'
+            },
+            filters: {
+                oddEven: null,
+                highLow: null,
+                sumRange: [1, 10],
+                acRange: null,
+                maxConsecutivePairs: null,
+                endDigitUniqueMin: null
+            }
         },
-        filters: {
-            oddEven: null,
-            highLow: null,
-            sumRange: [1, 10],
-            acRange: null,
-            maxConsecutivePairs: null,
-            endDigitUniqueMin: null
+        {
+            setCount: 1
         }
-    }, {
-        setCount: 1
-    });
+    );
 
     assert.equal(
         uniformFallback?.simulation?.diagnostics?.fallbackMode,
@@ -214,6 +224,29 @@ async function runRecommendationRuntimePolicyRegression() {
     );
 }
 
+async function runStrategyWorkerFinalTimeoutTerminatesRegression() {
+    const client = new StrategyWorkerClient();
+    let terminateCount = 0;
+    client.ensureWorker = function ensureFakeWorker() {
+        if (this.worker) return this.worker;
+        this.worker = {
+            postMessage() {},
+            terminate() {
+                terminateCount++;
+            }
+        };
+        return this.worker;
+    };
+
+    await assert.rejects(
+        () => client.post('GENERATE', { count: 1 }, 5, 0),
+        /WORKER_TIMEOUT_FINAL/,
+        'final worker timeout must reject with the final timeout code'
+    );
+    assert.equal(terminateCount, 1, 'final worker timeout must terminate the busy worker');
+    assert.equal(client.worker, null, 'final worker timeout must clear the worker instance');
+}
+
 function runBackupSmoke(stats) {
     const state = {
         theme: 'dark',
@@ -258,6 +291,7 @@ export {
     runBackupSmoke,
     runCampaignDerivedSeedRegression,
     runRecommendationRuntimePolicyRegression,
+    runStrategyWorkerFinalTimeoutTerminatesRegression,
     runStrictFilterRegression,
     runWheelFixedNumbersRegression
 };

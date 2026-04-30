@@ -50,4 +50,3 @@ export async function measureAsync(label, task, meta = null) {
     logPerf(label, durationMs, meta);
     return result;
 }
-

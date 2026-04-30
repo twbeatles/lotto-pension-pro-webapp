@@ -9,12 +9,12 @@ export const dataAnalyticsMethods = {
         );
         const staticLatestDrawNo = Math.max(0, Math.floor(Number(this.state.staticLatestDrawNo || 0)));
         const estimatedLatestDrawNo = Math.max(0, Math.floor(Number(estimateLatestDrawKST() || 0)));
-        const behindBy = latestDrawNo > 0 && estimatedLatestDrawNo > 0
-            ? Math.max(0, estimatedLatestDrawNo - latestDrawNo)
-            : 0;
-        const staticBehindBy = staticLatestDrawNo > 0 && estimatedLatestDrawNo > 0
-            ? Math.max(0, estimatedLatestDrawNo - staticLatestDrawNo)
-            : 0;
+        const behindBy =
+            latestDrawNo > 0 && estimatedLatestDrawNo > 0 ? Math.max(0, estimatedLatestDrawNo - latestDrawNo) : 0;
+        const staticBehindBy =
+            staticLatestDrawNo > 0 && estimatedLatestDrawNo > 0
+                ? Math.max(0, estimatedLatestDrawNo - staticLatestDrawNo)
+                : 0;
         const hasCustomProxy = Boolean(this.resolveProxyConfig()?.url);
         return {
             availability: dataHealth.availability,
@@ -125,9 +125,10 @@ export const dataAnalyticsMethods = {
         if (alertKey === this.lastTicketAlertKey) return;
         this.lastTicketAlertKey = alertKey;
 
-        const message = summary.wins > 0
-            ? `티켓 정산 완료: ${summary.settled}개 중 당첨 ${summary.wins}개`
-            : `티켓 정산 완료: ${summary.settled}개`;
+        const message =
+            summary.wins > 0
+                ? `티켓 정산 완료: ${summary.settled}개 중 당첨 ${summary.wins}개`
+                : `티켓 정산 완료: ${summary.settled}개`;
 
         if (prefs.enableInApp) {
             UIManager.toast(message, summary.wins > 0 ? 'success' : 'info', 3500);
@@ -193,11 +194,12 @@ export const dataAnalyticsMethods = {
             const nextChecked = {
                 drawNo: Number(draw.draw_no),
                 rank,
-                checkedAt: hadChecked
-                    && Number(ticket.checked?.drawNo) === Number(draw.draw_no)
-                    && Number(ticket.checked?.rank) === rank
-                    ? (ticket.checked?.checkedAt || checkedAt)
-                    : checkedAt
+                checkedAt:
+                    hadChecked &&
+                    Number(ticket.checked?.drawNo) === Number(draw.draw_no) &&
+                    Number(ticket.checked?.rank) === rank
+                        ? ticket.checked?.checkedAt || checkedAt
+                        : checkedAt
             };
             const prevDrawNo = Number(ticket.checked?.drawNo);
             const prevRank = Number(ticket.checked?.rank);
@@ -270,9 +272,9 @@ export const dataAnalyticsMethods = {
         const oddEven = [0, 0];
         const pairCounts = new Map();
 
-        source.forEach(d => {
+        source.forEach((d) => {
             const nums = d.numbers || [];
-            nums.forEach(n => {
+            nums.forEach((n) => {
                 if (n < 1 || n > 45) return;
                 freq[n]++;
                 if (n <= 10) rangeCounts[0]++;

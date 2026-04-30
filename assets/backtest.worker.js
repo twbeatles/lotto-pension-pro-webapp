@@ -89,9 +89,7 @@ function summarizeReport(report) {
     const winCount = report.counts[1] + report.counts[2] + report.counts[3] + report.counts[4] + report.counts[5];
     const roi = report.cost > 0 ? ((report.totalPrize - report.cost) / report.cost) * 100 : 0;
     const hitRate = report.tickets > 0 ? (winCount / report.tickets) * 100 : 0;
-    const fillRate = report.requestedTickets > 0
-        ? (report.generatedTickets / report.requestedTickets) * 100
-        : 100;
+    const fillRate = report.requestedTickets > 0 ? (report.generatedTickets / report.requestedTickets) * 100 : 100;
     return {
         ...report,
         winCount,
@@ -122,7 +120,16 @@ function postWinsIfNeeded(winsBuffer, force = false) {
     winsBuffer.length = 0;
 }
 
-async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRequest, strategy, strategyRequests, payoutMode }) {
+async function runBacktest({
+    statsData = [],
+    startDraw,
+    endDraw,
+    qty,
+    strategyRequest,
+    strategy,
+    strategyRequests,
+    payoutMode
+}) {
     const start = Number(startDraw);
     const end = Number(endDraw);
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 1 || end < 1 || start > end) {
@@ -233,9 +240,8 @@ async function runBacktest({ statsData = [], startDraw, endDraw, qty, strategyRe
             }
 
             report.draws++;
-            report.fillRate = report.requestedTickets > 0
-                ? (report.generatedTickets / report.requestedTickets) * 100
-                : 100;
+            report.fillRate =
+                report.requestedTickets > 0 ? (report.generatedTickets / report.requestedTickets) * 100 : 100;
             processedTotal++;
             strategyProgress[reqIndex].draws++;
             const didPostProgress = maybePostProgress(report);

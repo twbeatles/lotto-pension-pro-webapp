@@ -64,16 +64,16 @@ self.onmessage = async (event) => {
         const explanations = sets.map((set) => engine.explainSet(set, request));
         const diagnostics = result?.simulation?.diagnostics
             ? {
-                ...result.simulation.diagnostics,
-                executionMode: 'worker',
-                fallbackMode: result.simulation.diagnostics.fallbackMode || 'none',
-                effectiveAdaptiveWindow: result.simulation.diagnostics.effectiveAdaptiveWindow ?? null
-            }
+                  ...result.simulation.diagnostics,
+                  executionMode: 'worker',
+                  fallbackMode: result.simulation.diagnostics.fallbackMode || 'none',
+                  effectiveAdaptiveWindow: result.simulation.diagnostics.effectiveAdaptiveWindow ?? null
+              }
             : {
-                executionMode: 'worker',
-                fallbackMode: 'none',
-                effectiveAdaptiveWindow: null
-            };
+                  executionMode: 'worker',
+                  fallbackMode: 'none',
+                  effectiveAdaptiveWindow: null
+              };
 
         self.postMessage({
             type: 'DONE',
@@ -83,9 +83,9 @@ self.onmessage = async (event) => {
                 sets,
                 simulation: result?.simulation
                     ? {
-                        ...result.simulation,
-                        diagnostics
-                    }
+                          ...result.simulation,
+                          diagnostics
+                      }
                     : null,
                 explanations
             }

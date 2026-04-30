@@ -18,11 +18,4 @@ export class UIManager {
     }
 }
 
-Object.assign(
-    UIManager,
-    uiModalMethods,
-    uiDialogMethods,
-    uiQrModalMethods,
-    uiToastMethods,
-    uiBallMethods
-);
+Object.assign(UIManager, uiModalMethods, uiDialogMethods, uiQrModalMethods, uiToastMethods, uiBallMethods);

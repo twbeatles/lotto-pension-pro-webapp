@@ -163,20 +163,32 @@ export const backtestStrategyFormMethods = {
             return;
         }
 
-        const header = ['strategy_id', 'strategy_label', 'roi', 'hit_rate', 'draws', 'tickets', 'total_cost', 'total_prize', 'win_count'];
+        const header = [
+            'strategy_id',
+            'strategy_label',
+            'roi',
+            'hit_rate',
+            'draws',
+            'tickets',
+            'total_cost',
+            'total_prize',
+            'win_count'
+        ];
         const lines = [header.join(',')];
         this.lastComparisons.forEach((x) => {
-            lines.push([
-                x.strategyId || '',
-                this.getStrategyLabel(x.strategyId),
-                Number(x.roi || 0).toFixed(4),
-                Number(x.hitRate || 0).toFixed(4),
-                Number(x.draws || 0),
-                Number(x.tickets || 0),
-                Number(x.cost || 0),
-                Number(x.totalPrize || 0),
-                Number(x.winCount || 0)
-            ].join(','));
+            lines.push(
+                [
+                    x.strategyId || '',
+                    this.getStrategyLabel(x.strategyId),
+                    Number(x.roi || 0).toFixed(4),
+                    Number(x.hitRate || 0).toFixed(4),
+                    Number(x.draws || 0),
+                    Number(x.tickets || 0),
+                    Number(x.cost || 0),
+                    Number(x.totalPrize || 0),
+                    Number(x.winCount || 0)
+                ].join(',')
+            );
         });
 
         const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });

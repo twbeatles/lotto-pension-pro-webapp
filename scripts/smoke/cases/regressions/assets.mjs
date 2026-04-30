@@ -22,7 +22,7 @@ async function runServiceWorkerReloadPolicyRegression() {
     );
     assert.match(
         pwaSource,
-        /navigator\.serviceWorker\.register\('sw\.js', \{ updateViaCache: 'none' \}\)/,
+        /navigator\.serviceWorker\s*\.register\('sw\.js',\s*\{\s*updateViaCache: 'none'\s*\}\)/,
         'SW registration must bypass stale HTTP cache when checking for updates'
     );
     assert.match(pwaSource, /reloadOnControllerChange = true;/, 'update acceptance must arm controllerchange reload');
@@ -153,7 +153,7 @@ async function runHiddenAttributeStyleRegression() {
     );
     assert.match(
         htmlSource,
-        /<div id="offlineBanner" hidden aria-hidden="true"/,
+        /<div\b(?=[^>]*\bid="offlineBanner")(?=[^>]*\bhidden\b)(?=[^>]*\baria-hidden="true")/,
         'offline banner must still default to the hidden state in markup'
     );
 }

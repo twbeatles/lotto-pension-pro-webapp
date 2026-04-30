@@ -36,7 +36,4 @@ export class BacktestModule {
     }
 }
 
-Object.assign(BacktestModule.prototype,
-    backtestUiMethods,
-    backtestRunMethods
-);
+Object.assign(BacktestModule.prototype, backtestUiMethods, backtestRunMethods);

@@ -36,7 +36,4 @@ export class GeneratorModule {
     }
 }
 
-Object.assign(GeneratorModule.prototype,
-    generatorFormMethods,
-    generatorActionMethods
-);
+Object.assign(GeneratorModule.prototype, generatorFormMethods, generatorActionMethods);

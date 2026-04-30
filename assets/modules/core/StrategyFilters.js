@@ -52,7 +52,7 @@ function bitCount10(mask) {
     let n = mask;
     let count = 0;
     while (n) {
-        n &= (n - 1);
+        n &= n - 1;
         count++;
     }
     return count;
@@ -67,10 +67,10 @@ function evaluateSortedNumbers(sorted, f) {
 
     for (let i = 0; i < sorted.length; i++) {
         const n = sorted[i];
-        if ((n % 2) !== 0) odd++;
+        if (n % 2 !== 0) odd++;
         if (n > 23) high++;
         sum += n;
-        endDigitMask |= (1 << (n % 10));
+        endDigitMask |= 1 << (n % 10);
         if (i > 0 && n === sorted[i - 1] + 1) consecutivePairs++;
     }
 

@@ -94,19 +94,22 @@ export const dataDefaultsMethods = {
         const lastSuccessDrawNo = Math.max(0, Math.floor(Number(input.lastSuccessDrawNo || 0)));
         return {
             mode: typeof input.mode === 'string' && input.mode.trim() ? input.mode.trim() : defaults.mode,
-            currentSource: typeof input.currentSource === 'string' && input.currentSource.trim()
-                ? input.currentSource.trim()
-                : defaults.currentSource,
+            currentSource:
+                typeof input.currentSource === 'string' && input.currentSource.trim()
+                    ? input.currentSource.trim()
+                    : defaults.currentSource,
             lastSuccessAt: typeof input.lastSuccessAt === 'string' ? input.lastSuccessAt : defaults.lastSuccessAt,
             lastSuccessDrawNo,
             lastFailureAt: typeof input.lastFailureAt === 'string' ? input.lastFailureAt : defaults.lastFailureAt,
-            lastFailureMessage: typeof input.lastFailureMessage === 'string'
-                ? input.lastFailureMessage.slice(0, 240)
-                : defaults.lastFailureMessage,
+            lastFailureMessage:
+                typeof input.lastFailureMessage === 'string'
+                    ? input.lastFailureMessage.slice(0, 240)
+                    : defaults.lastFailureMessage,
             lastWarningAt: typeof input.lastWarningAt === 'string' ? input.lastWarningAt : defaults.lastWarningAt,
-            lastWarningMessage: typeof input.lastWarningMessage === 'string'
-                ? input.lastWarningMessage.slice(0, 240)
-                : defaults.lastWarningMessage
+            lastWarningMessage:
+                typeof input.lastWarningMessage === 'string'
+                    ? input.lastWarningMessage.slice(0, 240)
+                    : defaults.lastWarningMessage
         };
     },
 
@@ -177,18 +180,20 @@ export const dataDefaultsMethods = {
             if (!item || typeof item !== 'object') return;
             const scope = typeof item.scope === 'string' ? item.scope.trim() : '';
             const name = typeof item.name === 'string' ? item.name.trim() : '';
-            const request = item.request && typeof item.request === 'object'
-                ? item.request
-                : (item.strategyRequest && typeof item.strategyRequest === 'object' ? item.strategyRequest : null);
+            const request =
+                item.request && typeof item.request === 'object'
+                    ? item.request
+                    : item.strategyRequest && typeof item.strategyRequest === 'object'
+                      ? item.strategyRequest
+                      : null;
             if (!scope || !name || !request) return;
             if (!this.isStrategyScope(scope)) return;
 
             const normalizedRequest = this.normalizeStrategyPresetRequest(scope, request);
             if (!normalizedRequest) return;
 
-            const id = (typeof item.id === 'string' && item.id.trim())
-                ? item.id.trim()
-                : `preset_${scope}_${name}_${index}`;
+            const id =
+                typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `preset_${scope}_${name}_${index}`;
             const scopeNameKey = `${scope}|${name}`;
             if (byId.has(id) || byScopeName.has(scopeNameKey)) return;
 
@@ -217,9 +222,7 @@ export const dataDefaultsMethods = {
     getStrategyPresets(scope = '') {
         const targetScope = String(scope || '').trim();
         const list = this.mergeStrategyPresets(this.state.strategyPresets || []);
-        const filtered = targetScope
-            ? list.filter((item) => item.scope === targetScope)
-            : list;
+        const filtered = targetScope ? list.filter((item) => item.scope === targetScope) : list;
         return filtered.sort((a, b) => {
             const byUpdated = String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
             if (byUpdated !== 0) return byUpdated;
@@ -243,7 +246,9 @@ export const dataDefaultsMethods = {
 
     saveStrategyPreset(scope, name, request, description = '') {
         const normalizedScope = String(scope || '').trim();
-        const normalizedName = String(name || '').trim().slice(0, 80);
+        const normalizedName = String(name || '')
+            .trim()
+            .slice(0, 80);
         const normalizedRequest = this.normalizeStrategyPresetRequest(normalizedScope, request);
         if (!this.isStrategyScope(normalizedScope) || !normalizedName || !normalizedRequest) return null;
 
@@ -251,20 +256,20 @@ export const dataDefaultsMethods = {
         const now = new Date().toISOString();
         const nextPreset = existing
             ? {
-                ...existing,
-                description: String(description || existing.description || '').slice(0, 200),
-                request: normalizedRequest,
-                updatedAt: now
-            }
+                  ...existing,
+                  description: String(description || existing.description || '').slice(0, 200),
+                  request: normalizedRequest,
+                  updatedAt: now
+              }
             : {
-                id: this.createId('preset'),
-                scope: normalizedScope,
-                name: normalizedName,
-                description: String(description || '').slice(0, 200),
-                request: normalizedRequest,
-                createdAt: now,
-                updatedAt: now
-            };
+                  id: this.createId('preset'),
+                  scope: normalizedScope,
+                  name: normalizedName,
+                  description: String(description || '').slice(0, 200),
+                  request: normalizedRequest,
+                  createdAt: now,
+                  updatedAt: now
+              };
 
         const remaining = (this.state.strategyPresets || []).filter((item) => item?.id !== nextPreset.id);
         this.state.strategyPresets = this.mergeStrategyPresets([nextPreset, ...remaining]);

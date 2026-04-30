@@ -38,7 +38,10 @@ export const appDataListEventMethods = {
             if (!confirmed) return;
             const result = this.data.clearTicketBook(filter);
             const cleanupSuffix = result.prunedCampaigns > 0 ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리` : '';
-            UIManager.toast(`${result.removedTickets}개 티켓 삭제${cleanupSuffix}`, result.removedTickets > 0 ? 'success' : 'info');
+            UIManager.toast(
+                `${result.removedTickets}개 티켓 삭제${cleanupSuffix}`,
+                result.removedTickets > 0 ? 'success' : 'info'
+            );
             this.renderDataLists();
         });
 
@@ -49,7 +52,10 @@ export const appDataListEventMethods = {
                 return;
             }
             const linkedTickets = this.data.countTicketsByCampaignIds(campaigns.map((item) => item.id));
-            const detail = linkedTickets > 0 ? `캠페인 ${campaigns.length}개와 연결 티켓 ${linkedTickets}개가 함께 삭제됩니다.` : `캠페인 ${campaigns.length}개가 삭제됩니다.`;
+            const detail =
+                linkedTickets > 0
+                    ? `캠페인 ${campaigns.length}개와 연결 티켓 ${linkedTickets}개가 함께 삭제됩니다.`
+                    : `캠페인 ${campaigns.length}개가 삭제됩니다.`;
             const confirmed = await UIManager.confirm({
                 title: '캠페인을 모두 삭제할까요?',
                 message: detail
@@ -76,7 +82,10 @@ export const appDataListEventMethods = {
             if (!confirmed) return;
 
             this.data.clearLocalUpdates?.();
-            await this.data.fetchWinningStats({ notifyTicketSettle: false });
+            await this.data.fetchWinningStats({
+                notifyTicketSettle: false,
+                preserveExistingOnFailure: false
+            });
             this.updateLatestWin();
             await this.refreshCurrentRoute();
             this.renderDataLists();
@@ -150,13 +159,12 @@ export const appDataListEventMethods = {
         });
 
         $('#customProxyUrl')?.addEventListener('change', (e) => {
+            this.data.abortSyncInFlight?.({ force: true });
             this.data.state.customProxy = e.target.value.trim();
             this.data.markDirty?.('settings');
             this.data.save();
             this.renderSettingsPanel();
-            if (this.data.resolveProxyConfig?.()?.url) {
-                this.queueAutoSync?.('proxy-change', { delayMs: 300, force: true });
-            }
+            this.queueAutoSync?.('proxy-change', { delayMs: 300, force: true });
         });
     },
 
@@ -192,7 +200,10 @@ export const appDataListEventMethods = {
                     if (action === 'delete') {
                         void (async () => {
                             const linkedTickets = this.data.countTicketsByCampaignId(campaign.id);
-                            const detail = linkedTickets > 0 ? `연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.` : '이 캠페인만 삭제됩니다.';
+                            const detail =
+                                linkedTickets > 0
+                                    ? `연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.`
+                                    : '이 캠페인만 삭제됩니다.';
                             const confirmed = await UIManager.confirm({
                                 title: `'${campaign.name}' 캠페인을 삭제할까요?`,
                                 message: detail
@@ -200,10 +211,7 @@ export const appDataListEventMethods = {
                             if (!confirmed) return;
                             const result = this.data.removeCampaign(campaign.id, { cascadeTickets: true });
                             if (result.removedCampaign) {
-                                UIManager.toast(
-                                    `캠페인 1개, 연결 티켓 ${result.removedTickets}개 삭제`,
-                                    'success'
-                                );
+                                UIManager.toast(`캠페인 1개, 연결 티켓 ${result.removedTickets}개 삭제`, 'success');
                             }
                             this.renderDataLists();
                         })();
@@ -211,9 +219,12 @@ export const appDataListEventMethods = {
                     return;
                 }
 
-                const item = source === 'ticket'
-                    ? (this.data.state.ticketBook || []).find((x) => x.id === itemEl.dataset.id)
-                    : (source === 'fav' ? this.data.state.favorites : this.data.state.history)[Number(itemEl.dataset.rawIndex)];
+                const item =
+                    source === 'ticket'
+                        ? (this.data.state.ticketBook || []).find((x) => x.id === itemEl.dataset.id)
+                        : (source === 'fav' ? this.data.state.favorites : this.data.state.history)[
+                              Number(itemEl.dataset.rawIndex)
+                          ];
                 if (!item) return;
 
                 if (action === 'copy') UIManager.copyNumbers(item.numbers);
@@ -221,9 +232,8 @@ export const appDataListEventMethods = {
                 if (action === 'delete' && source === 'ticket') {
                     const result = this.data.removeTicket(item.id);
                     if (result.removed) {
-                        const cleanupSuffix = result.prunedCampaigns > 0
-                            ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리`
-                            : '';
+                        const cleanupSuffix =
+                            result.prunedCampaigns > 0 ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리` : '';
                         UIManager.toast(`${result.removedTickets}개 티켓 삭제${cleanupSuffix}`, 'success');
                     }
                     this.renderDataLists();

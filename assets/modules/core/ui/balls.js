@@ -14,9 +14,12 @@ export const uiBallMethods = {
         const key = `${list.join(',')}|${size}`;
         if (this._ballCache.has(key)) return this._ballCache.get(key);
 
-        const html = list.map((n) => (
-            `<span class="ball ${this.getBallColor(n)} ${size}" role="img" aria-label="${n}번 번호" title="${n}번 번호">${n}</span>`
-        )).join('');
+        const html = list
+            .map(
+                (n) =>
+                    `<span class="ball ${this.getBallColor(n)} ${size}" role="img" aria-label="${n}번 번호" title="${n}번 번호">${n}</span>`
+            )
+            .join('');
 
         if (this._ballCache.size >= 1000) {
             const iter = this._ballCache.keys();

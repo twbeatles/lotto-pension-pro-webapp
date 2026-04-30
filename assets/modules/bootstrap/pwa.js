@@ -21,23 +21,26 @@ export function registerPwaLifecycle() {
     }
 
     const registerSW = () => {
-        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
-            console.log('서비스 워커 등록 완료:', reg.scope);
-            if (reg.waiting && navigator.serviceWorker.controller) {
-                showUpdateToast(reg.waiting);
-            }
-            reg.update().catch(() => {});
+        navigator.serviceWorker
+            .register('sw.js', { updateViaCache: 'none' })
+            .then((reg) => {
+                console.log('서비스 워커 등록 완료:', reg.scope);
+                if (reg.waiting && navigator.serviceWorker.controller) {
+                    showUpdateToast(reg.waiting);
+                }
+                reg.update().catch(() => {});
 
-            reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                if (!newWorker) return;
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        showUpdateToast(newWorker);
-                    }
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    if (!newWorker) return;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            showUpdateToast(newWorker);
+                        }
+                    });
                 });
-            });
-        }).catch((err) => console.log('서비스 워커 등록 실패:', err));
+            })
+            .catch((err) => console.log('서비스 워커 등록 실패:', err));
     };
 
     let reloadOnControllerChange = false;

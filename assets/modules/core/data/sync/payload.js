@@ -1,4 +1,23 @@
 export const dataSyncPayloadMethods = {
+    normalizeDrawDate(rawValue = '') {
+        const raw = String(rawValue ?? '').trim();
+        if (!raw) return '';
+
+        const normalized = /^\d{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}` : raw;
+        const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return '';
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+            return '';
+        }
+
+        return normalized;
+    },
+
     normalizeDrawItem(raw) {
         if (!raw) return null;
         const drawNo = Number(raw.draw_no ?? raw.ltEpsd);
@@ -8,9 +27,8 @@ export const dataSyncPayloadMethods = {
             ? raw.numbers
             : [raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo, raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo];
 
-        const dateRaw = String(raw.date ?? raw.ltRflYmd ?? '');
-        const date =
-            dateRaw.length === 8 ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}` : dateRaw;
+        const date = this.normalizeDrawDate(raw.date ?? raw.ltRflYmd ?? '');
+        if (!date) return null;
 
         const normalizedNumbers = (numbers || [])
             .map(Number)

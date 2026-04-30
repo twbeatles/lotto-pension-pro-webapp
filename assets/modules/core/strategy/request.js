@@ -13,15 +13,18 @@ export const strategyRequestMethods = {
 
         params.simulationCount = Math.floor(clamp(params.simulationCount, 1000, 20000, base.params.simulationCount));
         params.lookbackWindow = Math.floor(clamp(params.lookbackWindow, 5, 120, base.params.lookbackWindow));
-        params.wheelPoolSize = params.wheelPoolSize === null
-            ? null
-            : Math.floor(clamp(params.wheelPoolSize, 7, 20, meta.defaultParams.wheelPoolSize || 10));
-        params.wheelGuarantee = params.wheelGuarantee === null
-            ? null
-            : Math.floor(clamp(params.wheelGuarantee, 2, 5, meta.defaultParams.wheelGuarantee || 3));
-        params.seed = (raw.params && raw.params.seed !== undefined && raw.params.seed !== null && raw.params.seed !== '')
-            ? Math.floor(Number(raw.params.seed))
-            : null;
+        params.wheelPoolSize =
+            params.wheelPoolSize === null
+                ? null
+                : Math.floor(clamp(params.wheelPoolSize, 7, 20, meta.defaultParams.wheelPoolSize || 10));
+        params.wheelGuarantee =
+            params.wheelGuarantee === null
+                ? null
+                : Math.floor(clamp(params.wheelGuarantee, 2, 5, meta.defaultParams.wheelGuarantee || 3));
+        params.seed =
+            raw.params && raw.params.seed !== undefined && raw.params.seed !== null && raw.params.seed !== ''
+                ? Math.floor(Number(raw.params.seed))
+                : null;
         params.payoutMode = resolvePayoutMode(params.payoutMode);
 
         const filters = sanitizeFilters({
@@ -56,7 +59,8 @@ export const strategyRequestMethods = {
         const { weights, context, adaptive } = this.computeWeightsFromNormalized(normalizedRequest, sourceData, {
             context: options.context
         });
-        const isWheel = normalizedRequest.strategyId === 'wheel_full' || normalizedRequest.strategyId === 'wheel_reduced_t3';
+        const isWheel =
+            normalizedRequest.strategyId === 'wheel_full' || normalizedRequest.strategyId === 'wheel_reduced_t3';
 
         return {
             normalizedRequest,

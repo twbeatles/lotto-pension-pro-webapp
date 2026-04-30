@@ -72,6 +72,58 @@ function runLatestWinPlaceholderRegression() {
     }
 }
 
+function runLatestWinDateEscapingRegression() {
+    const previousDocument = globalThis.document;
+    const latestDrawNo = createField();
+    const latestWinBalls = createField();
+    const latestWinMeta = createField();
+
+    globalThis.document = createDocumentStub({
+        '#latestDrawNo': latestDrawNo,
+        '#latestWinBalls': latestWinBalls,
+        '#latestWinMeta': latestWinMeta
+    });
+
+    try {
+        const ctx = {
+            data: {
+                state: {
+                    winningStats: [
+                        {
+                            draw_no: 1221,
+                            date: '2026-04-25<script>alert(1)</script>',
+                            numbers: [1, 2, 3, 4, 5, 6],
+                            bonus: 7,
+                            prize_amount: 0
+                        }
+                    ]
+                },
+                getDataFreshness() {
+                    return {};
+                }
+            },
+            getSuggestedNextDrawNo() {
+                return 1222;
+            },
+            setTargetDrawInputValue() {
+                return false;
+            }
+        };
+
+        LottoApp.prototype.updateLatestWin.call(ctx);
+
+        assert.doesNotMatch(latestWinMeta.innerHTML, /<script>/, 'latest win date must not render raw tags');
+        assert.match(
+            latestWinMeta.innerHTML,
+            /2026-04-25&lt;script&gt;alert\(1\)&lt;\/script&gt;/,
+            'latest win date must be HTML-escaped in metadata'
+        );
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 async function runQrScanReentryGuardRegression() {
     const previousDocument = globalThis.document;
     const calls = [];
@@ -541,6 +593,7 @@ export {
     runDataListDomRegression,
     runDataListPaginationRegression,
     runFacadeExportParityRegression,
+    runLatestWinDateEscapingRegression,
     runLatestWinPlaceholderRegression,
     runNotificationPermissionRegression,
     runQrRouteCleanupRegression,

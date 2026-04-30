@@ -15,6 +15,11 @@ const regressionExecutionPlan = [
         argKey: 'stats180'
     },
     {
+        name: 'runStrategyWorkerFinalTimeoutTerminatesRegression',
+        label: 'strategy worker final-timeout termination regression',
+        awaited: true
+    },
+    {
         name: 'runDrawNormalizationRegression',
         label: 'draw-normalization regression'
     },
@@ -164,6 +169,15 @@ const regressionExecutionPlan = [
         label: 'sync payload draw integer guard regression'
     },
     {
+        name: 'runMalformedDrawDateRejectedRegression',
+        label: 'malformed draw date rejection regression'
+    },
+    {
+        name: 'runWinningStatsPreserveExistingOnStaticFailureRegression',
+        label: 'winning-stats transient failure preserve regression',
+        awaited: true
+    },
+    {
         name: 'runStaticDataFreshnessBudgetRegression',
         label: 'static data freshness budget regression',
         awaited: true
@@ -180,6 +194,11 @@ const regressionExecutionPlan = [
     {
         name: 'runImportOrphanCampaignCleanupRegression',
         label: 'import orphan-campaign cleanup regression',
+        awaited: true
+    },
+    {
+        name: 'runImportSafetyLimitsRegression',
+        label: 'import safety limits regression',
         awaited: true
     },
     {
@@ -261,6 +280,10 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runProxyInputChangeAbortRegression',
+        label: 'proxy input change abort regression'
+    },
+    {
         name: 'runServiceWorkerReloadPolicyRegression',
         label: 'service-worker reload policy regression',
         awaited: true
@@ -289,6 +312,10 @@ const regressionExecutionPlan = [
         name: 'runLocalFontPathRegression',
         label: 'local font path regression',
         awaited: true
+    },
+    {
+        name: 'runLatestWinDateEscapingRegression',
+        label: 'latest win date escaping regression'
     },
     {
         name: 'runRecommendationCopyRegression',

@@ -56,8 +56,11 @@ export const uiDialogMethods = {
 
         if (!modal || !titleEl || !messageEl || !confirmBtn || !cancelBtn) return null;
 
-        titleEl.textContent = title || (kind === 'prompt' ? UI_STRINGS.dialog.promptTitle : UI_STRINGS.dialog.confirmTitle);
-        messageEl.textContent = message || (kind === 'prompt' ? UI_STRINGS.dialog.defaultPromptMessage : UI_STRINGS.dialog.defaultConfirmMessage);
+        titleEl.textContent =
+            title || (kind === 'prompt' ? UI_STRINGS.dialog.promptTitle : UI_STRINGS.dialog.confirmTitle);
+        messageEl.textContent =
+            message ||
+            (kind === 'prompt' ? UI_STRINGS.dialog.defaultPromptMessage : UI_STRINGS.dialog.defaultConfirmMessage);
         confirmBtn.textContent = confirmText;
         cancelBtn.textContent = cancelText;
 

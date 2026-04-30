@@ -76,10 +76,8 @@ export const strategyGenerationMethods = {
 
         const candidates = [];
         const excludeSet = new Set(exclude || []);
-        const available = Array.from({ length: 45 }, (_, idx) => idx + 1)
-            .filter((n) => !excludeSet.has(n));
-        const sortedByWeight = [...available]
-            .sort((a, b) => (weights[b] || 1) - (weights[a] || 1));
+        const available = Array.from({ length: 45 }, (_, idx) => idx + 1).filter((n) => !excludeSet.has(n));
+        const sortedByWeight = [...available].sort((a, b) => (weights[b] || 1) - (weights[a] || 1));
         for (const n of sortedByWeight) {
             if (!candidates.includes(n)) candidates.push(n);
             if (candidates.length >= poolSize) break;
@@ -179,7 +177,9 @@ export const strategyGenerationMethods = {
                 : this.sampleWithConstraints(execution.weights, [], [], rng);
             if (!set) continue;
             if (!filterEvaluator(set, { assumeSorted: true })) continue;
-            set.forEach((n) => { counts[n] += 1; });
+            set.forEach((n) => {
+                counts[n] += 1;
+            });
             accepted++;
         }
 

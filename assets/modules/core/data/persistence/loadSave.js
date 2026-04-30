@@ -9,7 +9,11 @@ export const dataPersistenceLoadSaveMethods = {
             let needsPersist = false;
             const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', [], CONFIG.KEYS.FAV);
             const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', [], CONFIG.KEYS.HIST);
-            const rawLocalUpdates = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.LOCAL_UPDATES) || '[]', [], CONFIG.KEYS.LOCAL_UPDATES);
+            const rawLocalUpdates = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.LOCAL_UPDATES) || '[]',
+                [],
+                CONFIG.KEYS.LOCAL_UPDATES
+            );
 
             const normalizedFavorites = Array.isArray(rawFavorites)
                 ? rawFavorites.map((x) => this.normalizeStoredNumberEntry(x)).filter(Boolean)
@@ -19,27 +23,55 @@ export const dataPersistenceLoadSaveMethods = {
                 : [];
             const normalizedLocalUpdates = this.sanitizeLocalUpdates(rawLocalUpdates);
 
-            if (!Array.isArray(rawFavorites) || JSON.stringify(normalizedFavorites) !== JSON.stringify(rawFavorites)) needsPersist = true;
-            if (!Array.isArray(rawHistory) || JSON.stringify(normalizedHistory) !== JSON.stringify(rawHistory)) needsPersist = true;
-            if (!Array.isArray(rawLocalUpdates) || JSON.stringify(normalizedLocalUpdates.items) !== JSON.stringify(rawLocalUpdates)) needsPersist = true;
+            if (!Array.isArray(rawFavorites) || JSON.stringify(normalizedFavorites) !== JSON.stringify(rawFavorites))
+                needsPersist = true;
+            if (!Array.isArray(rawHistory) || JSON.stringify(normalizedHistory) !== JSON.stringify(rawHistory))
+                needsPersist = true;
+            if (
+                !Array.isArray(rawLocalUpdates) ||
+                JSON.stringify(normalizedLocalUpdates.items) !== JSON.stringify(rawLocalUpdates)
+            )
+                needsPersist = true;
 
             this.state.favorites = normalizedFavorites;
             this.state.history = normalizedHistory;
 
-            const settings = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}', {}, CONFIG.KEYS.SETTINGS);
+            const settings = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.SETTINGS) || '{}',
+                {},
+                CONFIG.KEYS.SETTINGS
+            );
             this.state.theme = settings.theme === 'light' ? 'light' : 'dark';
             this.state.customProxy = typeof settings.customProxy === 'string' ? settings.customProxy : '';
             this.state.strategyPrefs = this.mergeStrategyPrefs(settings.strategyPrefs);
 
-            const rawTickets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]', [], CONFIG.KEYS.TICKET_BOOK);
-            const rawCampaigns = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]', [], CONFIG.KEYS.CAMPAIGNS);
-            const rawAlertPrefs = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}', {}, CONFIG.KEYS.ALERT_PREFS);
-            const rawStrategyPresets = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]', [], CONFIG.KEYS.STRATEGY_PRESETS);
-            const rawSyncMeta = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}', {}, CONFIG.KEYS.SYNC_META);
+            const rawTickets = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.TICKET_BOOK) || '[]',
+                [],
+                CONFIG.KEYS.TICKET_BOOK
+            );
+            const rawCampaigns = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.CAMPAIGNS) || '[]',
+                [],
+                CONFIG.KEYS.CAMPAIGNS
+            );
+            const rawAlertPrefs = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.ALERT_PREFS) || '{}',
+                {},
+                CONFIG.KEYS.ALERT_PREFS
+            );
+            const rawStrategyPresets = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.STRATEGY_PRESETS) || '[]',
+                [],
+                CONFIG.KEYS.STRATEGY_PRESETS
+            );
+            const rawSyncMeta = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}',
+                {},
+                CONFIG.KEYS.SYNC_META
+            );
 
-            const normalizedTickets = Array.isArray(rawTickets)
-                ? this.mergeTicketEntries([], rawTickets)
-                : [];
+            const normalizedTickets = Array.isArray(rawTickets) ? this.mergeTicketEntries([], rawTickets) : [];
             const normalizedCampaigns = Array.isArray(rawCampaigns)
                 ? rawCampaigns.map((x) => this.normalizeCampaignEntry(x)).filter(Boolean)
                 : [];
@@ -48,12 +80,15 @@ export const dataPersistenceLoadSaveMethods = {
             const normalizedSyncMeta = this.mergeSyncMeta(rawSyncMeta);
 
             if (Array.isArray(rawTickets)) {
-                const normalizedTicketShape = normalizedTickets.map((ticket) => this.normalizeTicketEntry(ticket)).filter(Boolean);
+                const normalizedTicketShape = normalizedTickets
+                    .map((ticket) => this.normalizeTicketEntry(ticket))
+                    .filter(Boolean);
                 if (JSON.stringify(normalizedTicketShape) !== JSON.stringify(rawTickets)) needsPersist = true;
             }
             if (Array.isArray(rawCampaigns) && normalizedCampaigns.length !== rawCampaigns.length) needsPersist = true;
             if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
-            if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length) needsPersist = true;
+            if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length)
+                needsPersist = true;
             if (JSON.stringify(normalizedSyncMeta) !== JSON.stringify(rawSyncMeta || {})) needsPersist = true;
 
             this.state.ticketBook = normalizedTickets;

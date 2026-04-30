@@ -21,9 +21,9 @@
 ## 2) 데이터 운영
 
 - 기본 데이터 소스: `data/winning_stats.json`
-  - 현재 정적 JSON 기준 최신 회차: `1221`
-  - 현재 row 수: `1220`
-  - 허용 누락 회차: `[146]`
+    - 현재 정적 JSON 기준 최신 회차: `1221`
+    - 현재 row 수: `1220`
+    - 허용 누락 회차: `[146]`
 - 실행 중 동기화: 앱의 최신 데이터 동기화 버튼 또는 앱 시작 후 백그라운드 자동 동기화
 - 로컬 업데이트 저장 위치: `localStorage.lotto_pro_updates_v2`
 - 동기화 메타 저장 위치: `localStorage.lotto_pro_sync_meta_v1`
@@ -42,16 +42,19 @@
 - 마지막 연결 티켓이 삭제되거나 티켓북 전체 정리 후에도 orphan campaign 은 자동 정리됨
 - 티켓북 동일 조합은 grouped row + `quantity` 로 저장되며, 삭제/요약/캠페인 카운트는 실제 티켓 수량 기준으로 계산됨
 - 티켓 ID, 저장 번호 목록, 동기화 payload 회차는 Import/Sync 시점에 중앙 정규화되며, 비정상 번호/회차는 더 엄격하게 거부됨
+- 동기화 payload 날짜는 유효한 `YYYY-MM-DD` 또는 공식 `YYYYMMDD`만 수락함
+- Import는 백업 파일 크기, 티켓 총량, 전략 스냅샷 크기 상한을 적용함
 - 저장소 사용량은 UTF-8 byte 기준으로 계산됨
 - 히스토리는 번호 unique 스냅샷이 아니라 실제 저장/가져오기 로그를 유지함
 - 동기화 실행 정책:
-  - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
-  - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
-  - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
-  - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
-  - 비지원 프록시 형식은 설정 경고를 띄우고 기본 자동 동기화로 전환
-  - JSON 구조가 예상과 다르면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그와 설정 경고를 남김
-  - fallback 단건 요청은 최근 120회차로 제한
+    - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
+    - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
+    - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
+    - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
+    - 비지원 프록시 형식은 설정 경고를 띄우고 기본 자동 동기화로 전환
+    - JSON 구조가 예상과 다르면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그와 설정 경고를 남김
+    - fallback 단건 요청은 최근 120회차로 제한
+    - 프록시 설정을 바꾸면 기존 in-flight sync를 먼저 취소하고 새 설정 또는 기본 자동 경로로 다시 확인
 
 메모:
 
@@ -84,6 +87,7 @@
 - `?url=`, `{draw_no}`, `{url}` 형태는 저장돼 있어도 런타임에서 사용하지 않고 기본 자동 동기화로 전환합니다.
 - 설정 모달에는 비지원 프록시 형식에 대한 경고와 fallback 상태가 함께 표시됩니다.
 - 내장 fallback보다 안정적인 운영이 필요하면 사용자 프록시를 권장합니다.
+- 프록시 Worker의 `/proxy/latest`는 `draw_no`를 생략하면 KST 기준 예상 최신 회차를 조회합니다.
 
 ## 4) 서비스워커/캐시 운영
 
@@ -123,9 +127,9 @@ npm run test:offline
 2. DevTools > Application > Clear storage로 캐시/스토리지 정리 후 재접속
 3. 배포 브랜치의 최신 커밋 반영 여부 확인
 4. 로컬에서 화면 문구 검증:
-   - 메인 동기화 상태 텍스트
-   - 생성/AI/시뮬레이션/확인 탭 버튼/라벨/토스트
-   - 공용 확인 모달/설정 모달/모바일 더보기 시트 문구
+    - 메인 동기화 상태 텍스트
+    - 생성/AI/시뮬레이션/확인 탭 버튼/라벨/토스트
+    - 공용 확인 모달/설정 모달/모바일 더보기 시트 문구
 5. 필요 시 `sw.js`의 `CACHE_VERSION`을 상향해 캐시 강제 갱신
 6. precache 목록이 바뀐 경우 `npm run sync:sw-manifest`를 먼저 실행해 generated manifest를 갱신
 
@@ -151,6 +155,8 @@ npm run build
 node scripts/smoke/smoke.mjs
 node scripts/perf/bench.mjs
 npm run bench:ai
+npm run test:happy
+npm run test:sync-live
 ```
 
 선택:

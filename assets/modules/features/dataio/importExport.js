@@ -7,6 +7,15 @@ export const dataIoImportMethods = {
         const input = e.currentTarget;
         const file = input.files?.[0];
         if (!file) return;
+        if (Number(file.size || 0) > CONFIG.LIMITS.MAX_IMPORT_BYTES) {
+            UIManager.toast(
+                `백업 파일은 최대 ${(CONFIG.LIMITS.MAX_IMPORT_BYTES / (1024 * 1024)).toFixed(1)}MB까지 가져올 수 있습니다.`,
+                'error',
+                3500
+            );
+            input.value = '';
+            return;
+        }
 
         try {
             const text = await file.text();
@@ -20,7 +29,8 @@ export const dataIoImportMethods = {
             const incomingFav = this.normalizeItems(normalized.favorites);
             const incomingHist = this.normalizeItems(normalized.history);
             const incomingTheme = normalized.settings?.theme === 'light' ? 'light' : 'dark';
-            const incomingProxy = typeof normalized.settings?.customProxy === 'string' ? normalized.settings.customProxy : '';
+            const incomingProxy =
+                typeof normalized.settings?.customProxy === 'string' ? normalized.settings.customProxy : '';
             const incomingStrategyPrefs = normalized.settings?.strategyPrefs || null;
             const incomingTickets = this.normalizeTicketItems(normalized.ticketBook);
             const incomingCampaigns = this.normalizeCampaignItems(normalized.campaigns);
@@ -31,29 +41,37 @@ export const dataIoImportMethods = {
             const importOptions = this.getImportOptionsFromUI();
             const merge = importOptions.mode === 'merge';
             const incomingTicketTotal = this.data.getTotalTicketCount(incomingTickets);
+            const projectedTicketTotal = merge
+                ? this.data.getTotalTicketCount([...(this.data.state.ticketBook || []), ...incomingTickets])
+                : incomingTicketTotal;
+            if (projectedTicketTotal > CONFIG.LIMITS.MAX_IMPORT_TICKETS) {
+                UIManager.toast(
+                    `티켓북은 최대 ${CONFIG.LIMITS.MAX_IMPORT_TICKETS}개 티켓까지 가져올 수 있습니다.`,
+                    'error',
+                    3500
+                );
+                return;
+            }
 
             if (merge) {
-                const incomingTotal = incomingFav.length
-                    + incomingHist.length
-                    + incomingTicketTotal
-                    + incomingCampaigns.length
-                    + incomingLocalUpdates.length
-                    + incomingStrategyPresets.length;
+                const incomingTotal =
+                    incomingFav.length +
+                    incomingHist.length +
+                    incomingTicketTotal +
+                    incomingCampaigns.length +
+                    incomingLocalUpdates.length +
+                    incomingStrategyPresets.length;
 
                 const beforeFav = this.data.state.favorites.length;
                 const beforeHist = this.data.state.history.length;
                 const beforeTickets = this.data.getTotalTicketCount();
                 const beforeCampaignIds = new Set(
-                    (this.data.state.campaigns || [])
-                        .map((item) => String(item?.id || '').trim())
-                        .filter(Boolean)
+                    (this.data.state.campaigns || []).map((item) => String(item?.id || '').trim()).filter(Boolean)
                 );
                 const beforeUpdates = this.data.getLocalUpdates().length;
                 const beforePresets = (this.data.state.strategyPresets || []).length;
                 const incomingCampaignIds = new Set(
-                    incomingCampaigns
-                        .map((item) => String(item?.id || '').trim())
-                        .filter(Boolean)
+                    incomingCampaigns.map((item) => String(item?.id || '').trim()).filter(Boolean)
                 );
 
                 this.data.state.favorites = this.mergeByNumbers(this.data.state.favorites, incomingFav);
@@ -109,14 +127,17 @@ export const dataIoImportMethods = {
                 const duplicateTotal = Math.max(incomingTotal - addedTotal - skippedTotal, 0);
                 const appliedSettings = this.describeAppliedSettings(importOptions);
 
-                UIManager.toast(UI_STRINGS.dataio.mergeComplete({
-                    added: addedTotal,
-                    duplicate: duplicateTotal,
-                    skipped: skippedTotal,
-                    applied: appliedSettings,
-                    cleaned: prunedCampaigns,
-                    futureDropped: incomingLocalUpdateResult.droppedFuture
-                }), 'success');
+                UIManager.toast(
+                    UI_STRINGS.dataio.mergeComplete({
+                        added: addedTotal,
+                        duplicate: duplicateTotal,
+                        skipped: skippedTotal,
+                        applied: appliedSettings,
+                        cleaned: prunedCampaigns,
+                        futureDropped: incomingLocalUpdateResult.droppedFuture
+                    }),
+                    'success'
+                );
             } else {
                 this.data.state.favorites = incomingFav;
                 this.data.state.history = incomingHist;
@@ -137,18 +158,22 @@ export const dataIoImportMethods = {
                 if (importOptions.applyTheme) this.app.applyTheme();
                 const appliedSettings = this.describeAppliedSettings(importOptions);
                 const prunedCampaigns = overwriteCampaignCleanup.removed.length;
-                UIManager.toast(UI_STRINGS.dataio.overwriteComplete({
-                    added: incomingFav.length
-                        + incomingHist.length
-                        + incomingTicketTotal
-                        + this.data.state.campaigns.length
-                        + incomingLocalUpdates.length
-                        + incomingStrategyPresets.length,
-                    skipped: prunedCampaigns,
-                    applied: appliedSettings,
-                    cleaned: prunedCampaigns,
-                    futureDropped: incomingLocalUpdateResult.droppedFuture
-                }), 'success');
+                UIManager.toast(
+                    UI_STRINGS.dataio.overwriteComplete({
+                        added:
+                            incomingFav.length +
+                            incomingHist.length +
+                            incomingTicketTotal +
+                            this.data.state.campaigns.length +
+                            incomingLocalUpdates.length +
+                            incomingStrategyPresets.length,
+                        skipped: prunedCampaigns,
+                        applied: appliedSettings,
+                        cleaned: prunedCampaigns,
+                        futureDropped: incomingLocalUpdateResult.droppedFuture
+                    }),
+                    'success'
+                );
             }
 
             if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {

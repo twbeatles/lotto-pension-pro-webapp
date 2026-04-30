@@ -16,10 +16,12 @@ export const checkResultMethods = {
     },
 
     renderTicketBalls(nums, winSet) {
-        return nums.map((n) => {
-            const hit = winSet.has(n) ? 'hit' : '';
-            return `<span class="ball ${UIManager.getBallColor(n)} sm ${hit}" role="img" aria-label="${n}번 번호">${n}</span>`;
-        }).join('');
+        return nums
+            .map((n) => {
+                const hit = winSet.has(n) ? 'hit' : '';
+                return `<span class="ball ${UIManager.getBallColor(n)} sm ${hit}" role="img" aria-label="${n}번 번호">${n}</span>`;
+            })
+            .join('');
     },
 
     run() {
@@ -77,9 +79,10 @@ export const checkResultMethods = {
 
     runLatest(ticket) {
         const preferredDrawNo = Number(ticket?.targetDrawNo || 0);
-        const latest = preferredDrawNo > 0
-            ? this.data.state.winningStats.find((item) => Number(item.draw_no) === preferredDrawNo)
-            : this.data.state.winningStats[0];
+        const latest =
+            preferredDrawNo > 0
+                ? this.data.state.winningStats.find((item) => Number(item.draw_no) === preferredDrawNo)
+                : this.data.state.winningStats[0];
         if (!latest) {
             if (preferredDrawNo > 0) {
                 this.renderMissingTargetDraw(ticket, preferredDrawNo);
@@ -152,7 +155,7 @@ export const checkResultMethods = {
             });
         }
 
-        results.sort((a, b) => (a.rank - b.rank) || (b.draw_no - a.draw_no));
+        results.sort((a, b) => a.rank - b.rank || b.draw_no - a.draw_no);
         const limited = results.slice(0, 50);
 
         const area = $('#checkResultArea');
@@ -180,16 +183,18 @@ export const checkResultMethods = {
             return;
         }
 
-        const note = results.length > 50
-            ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
-            : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
+        const note =
+            results.length > 50
+                ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
+                : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
         const quantity = this.data.getTicketQuantity(ticket);
 
-        const cards = limited.map((result) => {
-            const rankText = `${result.rank}등`;
-            const badgeCls = result.rank ? 'ok' : 'no';
-            const hitText = result.rank === 2 ? '5+보너스' : String(result.matchCount);
-            return `
+        const cards = limited
+            .map((result) => {
+                const rankText = `${result.rank}등`;
+                const badgeCls = result.rank ? 'ok' : 'no';
+                const hitText = result.rank === 2 ? '5+보너스' : String(result.matchCount);
+                return `
         <div class="check-card">
           <div class="check-head">
             <div class="title">${result.draw_no}회 (${result.date})</div>
@@ -209,7 +214,8 @@ export const checkResultMethods = {
           </div>
         </div>
       `;
-        }).join('');
+            })
+            .join('');
 
         area.innerHTML = `
       <div class="check-result">

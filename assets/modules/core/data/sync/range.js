@@ -117,10 +117,14 @@ export const dataSyncRangeMethods = {
             return { items: [], missing: new Set(), failedDraws: new Set() };
         }
         const chunks = this.buildRangeChunks(fromNo, toNo, this.RANGE_CHUNK_SIZE);
-        const chunkResults = await this.runWithConcurrency(chunks, this.RANGE_CHUNK_CONCURRENCY, async ([start, end]) => {
-            if (signal?.aborted) throw this.createAbortError('Sync aborted');
-            return this.fetchRangeFromProxy(start, end, proxyConfig, log, signal);
-        });
+        const chunkResults = await this.runWithConcurrency(
+            chunks,
+            this.RANGE_CHUNK_CONCURRENCY,
+            async ([start, end]) => {
+                if (signal?.aborted) throw this.createAbortError('Sync aborted');
+                return this.fetchRangeFromProxy(start, end, proxyConfig, log, signal);
+            }
+        );
 
         const items = [];
         const missing = new Set();

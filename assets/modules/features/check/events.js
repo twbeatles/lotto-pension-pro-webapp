@@ -35,7 +35,9 @@ export const checkEventMethods = {
         });
 
         $('#checkSearch')?.addEventListener('input', (event) => {
-            this.searchQuery = String(event.currentTarget.value || '').trim().toLowerCase();
+            this.searchQuery = String(event.currentTarget.value || '')
+                .trim()
+                .toLowerCase();
             this.selectedItemKey = '';
             this.renderList();
             this.resetResult();
@@ -101,7 +103,9 @@ export const checkEventMethods = {
         this.scanned = (Array.isArray(games) ? games : [])
             .map((entry) => {
                 const rawNumbers = Array.isArray(entry) ? entry : entry?.numbers;
-                const numbers = [...new Set((rawNumbers || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))].sort((a, b) => a - b);
+                const numbers = [
+                    ...new Set((rawNumbers || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 45))
+                ].sort((a, b) => a - b);
                 if (numbers.length !== 6) return null;
 
                 const drawNo = Array.isArray(entry) ? null : Number(entry?.targetDrawNo);

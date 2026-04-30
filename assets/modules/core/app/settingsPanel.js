@@ -47,12 +47,16 @@ export const appSettingsMethods = {
 
         const themeSummary = $('#settingsThemeSummary');
         if (themeSummary) {
-            themeSummary.textContent = theme === 'light'
-                ? '밝은 배경으로 앱을 보고 있습니다. 빠른 전환 버튼과 동일한 설정입니다.'
-                : '눈부심을 줄이는 다크 모드를 사용 중입니다. 빠른 전환 버튼과 동일한 설정입니다.';
+            themeSummary.textContent =
+                theme === 'light'
+                    ? '밝은 배경으로 앱을 보고 있습니다. 빠른 전환 버튼과 동일한 설정입니다.'
+                    : '눈부심을 줄이는 다크 모드를 사용 중입니다. 빠른 전환 버튼과 동일한 설정입니다.';
         }
 
-        [['#settingsThemeLight', 'light'], ['#settingsThemeDark', 'dark']].forEach(([selector, value]) => {
+        [
+            ['#settingsThemeLight', 'light'],
+            ['#settingsThemeDark', 'dark']
+        ].forEach(([selector, value]) => {
             const button = $(selector);
             if (!button) return;
             const active = theme === value;
@@ -75,11 +79,12 @@ export const appSettingsMethods = {
         }
         const permissionHelp = $('#systemNotificationHelp');
         if (permissionHelp) {
-            permissionHelp.textContent = permission.code === 'granted'
-                ? '브라우저 권한이 허용되어 있습니다.'
-                : permission.code === 'unsupported'
-                    ? '현재 환경에서는 시스템 알림을 지원하지 않습니다.'
-                    : '시스템 알림 토글을 켜면 권한을 요청합니다.';
+            permissionHelp.textContent =
+                permission.code === 'granted'
+                    ? '브라우저 권한이 허용되어 있습니다.'
+                    : permission.code === 'unsupported'
+                      ? '현재 환경에서는 시스템 알림을 지원하지 않습니다.'
+                      : '시스템 알림 토글을 켜면 권한을 요청합니다.';
         }
 
         const storageSummary = this.data.getStorageSummary();
@@ -105,7 +110,11 @@ export const appSettingsMethods = {
         if (storageNotice) storageNotice.textContent = this.getStorageHealthMessage(storageSummary);
 
         const proxyInput = $('#customProxyUrl');
-        if (proxyInput && document.activeElement !== proxyInput && proxyInput.value !== (this.data.state.customProxy || '')) {
+        if (
+            proxyInput &&
+            document.activeElement !== proxyInput &&
+            proxyInput.value !== (this.data.state.customProxy || '')
+        ) {
             proxyInput.value = this.data.state.customProxy || '';
         }
         const proxyHelp = $('#customProxyHelp');
@@ -116,8 +125,8 @@ export const appSettingsMethods = {
             proxyHelp.textContent = savedProxyValidation.empty
                 ? '비워두면 기본 자동 동기화를 사용합니다. 공식 지원 형식: https://<worker>.workers.dev/proxy/latest'
                 : savedProxyValidation.valid
-                    ? '공식 지원 형식의 사용자 프록시가 저장되어 있습니다.'
-                    : '지원되지 않는 프록시 형식은 무시되고 기본 자동 동기화로 내려갑니다.';
+                  ? '공식 지원 형식의 사용자 프록시가 저장되어 있습니다.'
+                  : '지원되지 않는 프록시 형식은 무시되고 기본 자동 동기화로 내려갑니다.';
         }
         if (proxyStatus) {
             let statusText = '';
@@ -135,9 +144,12 @@ export const appSettingsMethods = {
         const syncModeEl = $('#syncMetaMode');
         if (syncModeEl) syncModeEl.textContent = this.data.getSyncModeLabel(syncMeta.mode);
         const syncSourceEl = $('#syncMetaSource');
-        if (syncSourceEl) syncSourceEl.textContent = syncMeta.currentSource || this.data.getDataHealthSourceLabel(freshness.source) || '-';
+        if (syncSourceEl)
+            syncSourceEl.textContent =
+                syncMeta.currentSource || this.data.getDataHealthSourceLabel(freshness.source) || '-';
         const syncSuccessEl = $('#syncMetaLastSuccess');
-        if (syncSuccessEl) syncSuccessEl.textContent = syncMeta.lastSuccessAt ? this.formatDateTime(syncMeta.lastSuccessAt) : '-';
+        if (syncSuccessEl)
+            syncSuccessEl.textContent = syncMeta.lastSuccessAt ? this.formatDateTime(syncMeta.lastSuccessAt) : '-';
         const syncDrawEl = $('#syncMetaLastDraw');
         if (syncDrawEl) syncDrawEl.textContent = syncMeta.lastSuccessDrawNo ? `${syncMeta.lastSuccessDrawNo}회차` : '-';
         const syncFailureEl = $('#syncMetaLastFailure');
@@ -159,7 +171,8 @@ export const appSettingsMethods = {
             } else if (activeProxyConfig?.invalid) {
                 syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
             } else if (freshness.isUnavailable) {
-                syncWarningEl.textContent = freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
+                syncWarningEl.textContent =
+                    freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
             } else if (freshness.isPartial) {
                 syncWarningEl.textContent = freshness.dataHealthMessage
                     ? `${freshness.dataHealthMessage} 통계/AI/백테스트는 전체 데이터 복구 후 사용할 수 있습니다.`

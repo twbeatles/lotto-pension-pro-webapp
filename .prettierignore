@@ -1,0 +1,6 @@
+node_modules/
+.tmp_vendor/
+assets/vendor/
+assets/sw-precache-manifest.js
+data/winning_stats.json
+package-lock.json

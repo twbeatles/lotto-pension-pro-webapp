@@ -1,21 +1,46 @@
 import { CONFIG } from '../../../utils/config.js';
 
 export const recordNormalizeMethods = {
-    cloneSerializableValue(value) {
+    cloneSerializableValue(value, depth = 0, seen = new WeakSet()) {
         if (value === null || typeof value !== 'object') {
             return value;
         }
+        if (depth >= CONFIG.LIMITS.MAX_SERIALIZABLE_DEPTH || seen.has(value)) {
+            return null;
+        }
+        seen.add(value);
 
         if (Array.isArray(value)) {
-            return value.map((item) => this.cloneSerializableValue(item));
+            return value
+                .slice(0, CONFIG.LIMITS.MAX_SERIALIZABLE_ARRAY_ITEMS)
+                .map((item) => this.cloneSerializableValue(item, depth + 1, seen));
         }
 
         const cloned = {};
-        Object.keys(value).forEach((key) => {
-            const next = value[key];
-            if (next === undefined || typeof next === 'function' || typeof next === 'symbol') return;
-            cloned[key] = this.cloneSerializableValue(next);
-        });
+        Object.keys(value)
+            .slice(0, CONFIG.LIMITS.MAX_SERIALIZABLE_KEYS)
+            .forEach((key) => {
+                const next = value[key];
+                if (next === undefined || typeof next === 'function' || typeof next === 'symbol') return;
+                cloned[key] = this.cloneSerializableValue(next, depth + 1, seen);
+            });
+        return cloned;
+    },
+
+    getUtf8ByteLength(value = '') {
+        const text = String(value || '');
+        if (typeof TextEncoder !== 'undefined') {
+            return new TextEncoder().encode(text).length;
+        }
+        return unescape(encodeURIComponent(text)).length;
+    },
+
+    normalizeStrategyRequestSnapshot(value) {
+        if (!value || typeof value !== 'object') return null;
+        const cloned = this.cloneSerializableValue(value);
+        if (!cloned || typeof cloned !== 'object') return null;
+        const serialized = this.stableStringify(cloned) || '';
+        if (this.getUtf8ByteLength(serialized) > CONFIG.LIMITS.MAX_STRATEGY_REQUEST_BYTES) return null;
         return cloned;
     },
 
@@ -96,8 +121,7 @@ export const recordNormalizeMethods = {
             quantity: this.normalizeTicketQuantity(raw.quantity),
             campaignId:
                 typeof raw.campaignId === 'string' && raw.campaignId.trim() ? raw.campaignId.trim().slice(0, 120) : '',
-            strategyRequest:
-                raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
+            strategyRequest: this.normalizeStrategyRequestSnapshot(raw.strategyRequest),
             memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 200) : '',
             createdAt: raw.createdAt || new Date().toISOString(),
             checked:
@@ -132,8 +156,7 @@ export const recordNormalizeMethods = {
             startDrawNo: Math.max(1, Math.floor(startDrawNo)),
             weeks: normalizedWeeks,
             setsPerWeek: normalizedSetsPerWeek,
-            strategyRequest:
-                raw.strategyRequest && typeof raw.strategyRequest === 'object' ? raw.strategyRequest : null,
+            strategyRequest: this.normalizeStrategyRequestSnapshot(raw.strategyRequest),
             createdAt: raw.createdAt || new Date().toISOString()
         };
     },

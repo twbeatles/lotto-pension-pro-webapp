@@ -64,9 +64,8 @@ async function createStaticServer() {
 }
 
 async function launchBrowser() {
-    const launchCandidates = process.platform === 'win32'
-        ? [{ channel: 'msedge' }, { channel: 'chrome' }, {}]
-        : [{ channel: 'chrome' }, {}];
+    const launchCandidates =
+        process.platform === 'win32' ? [{ channel: 'msedge' }, { channel: 'chrome' }, {}] : [{ channel: 'chrome' }, {}];
     const errors = [];
 
     for (const candidate of launchCandidates) {
@@ -198,7 +197,7 @@ async function runOfflineGateScenario(browser, origin) {
             }
             return fetch(resource, options);
         };
-        await window.app.data.fetchWinningStats({ notifyTicketSettle: false });
+        await window.app.data.fetchWinningStats({ notifyTicketSettle: false, preserveExistingOnFailure: false });
         await window.app.refreshCurrentRoute();
     });
 
@@ -233,14 +232,20 @@ async function main() {
         await runMultiTabSyncScenario(browser, server.origin);
         await runOfflineCachedScenario(browser, server.origin);
         await runOfflineGateScenario(browser, server.origin);
-        console.log(JSON.stringify({
-            ok: true,
-            scenarios: [
-                'multi-tab ticket sync',
-                'offline cached lazy-route access',
-                'offline gated partial-data routes'
-            ]
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    ok: true,
+                    scenarios: [
+                        'multi-tab ticket sync',
+                        'offline cached lazy-route access',
+                        'offline gated partial-data routes'
+                    ]
+                },
+                null,
+                2
+            )
+        );
     } finally {
         await browser.close();
         await server.close();

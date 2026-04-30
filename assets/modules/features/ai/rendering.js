@@ -24,9 +24,12 @@ function formatTierLabel(tier = '') {
 function normalizeSimulation(result, { executionMode = 'worker', workerTimedOut = false } = {}) {
     if (!result?.simulation) return result;
     const current = result.simulation.diagnostics || {};
-    const fallbackMode = current.fallbackMode && current.fallbackMode !== 'none'
-        ? current.fallbackMode
-        : (workerTimedOut ? 'worker_timeout' : 'none');
+    const fallbackMode =
+        current.fallbackMode && current.fallbackMode !== 'none'
+            ? current.fallbackMode
+            : workerTimedOut
+              ? 'worker_timeout'
+              : 'none';
     result.simulation = {
         ...result.simulation,
         diagnostics: {
@@ -127,8 +130,16 @@ export const aiRenderingMethods = {
             }
 
             if (results.length < targetSetCount) {
-                this.appendLog(log, `> 분석 완료. 추천 조합 ${results.length}/${targetSetCount}개를 생성했습니다.`, 'var(--warning)');
-                UIManager.toast(`필터 조건으로 ${results.length}/${targetSetCount}개만 생성되었습니다.`, 'warning', 3500);
+                this.appendLog(
+                    log,
+                    `> 분석 완료. 추천 조합 ${results.length}/${targetSetCount}개를 생성했습니다.`,
+                    'var(--warning)'
+                );
+                UIManager.toast(
+                    `필터 조건으로 ${results.length}/${targetSetCount}개만 생성되었습니다.`,
+                    'warning',
+                    3500
+                );
             } else {
                 this.appendLog(log, `> 분석 완료. 추천 조합 ${results.length}개를 생성했습니다.`, 'var(--success)');
             }
@@ -140,9 +151,7 @@ export const aiRenderingMethods = {
             const fallbackMode = diagnostics.fallbackMode || 'none';
 
             if (executionMode === 'main_thread') {
-                const executionLabel = workerTimedOut
-                    ? '메인 스레드 (워커 타임아웃 후 대체)'
-                    : '메인 스레드';
+                const executionLabel = workerTimedOut ? '메인 스레드 (워커 타임아웃 후 대체)' : '메인 스레드';
                 this.appendLog(log, `> 실행 경로: ${executionLabel}`);
             } else {
                 this.appendLog(log, '> 실행 경로: 워커');
@@ -211,24 +220,23 @@ export const aiRenderingMethods = {
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:11px;">
                     복잡도: ${ac}
                 </span>
-                ${exp ? `
+                ${
+                    exp
+                        ? `
                 <span class="badge" style="background:rgba(255,255,255,0.1); color:var(--primary); font-size:11px;">
                     랭킹: ${Number(exp.summary.recommendationScore || 0).toFixed(3)}
-                </span>` : ''}
+                </span>`
+                        : ''
+                }
             `;
 
-            const ballsHtml = set.map((n) => {
-                const colorClass = n <= 10
-                    ? 'yellow'
-                    : n <= 20
-                        ? 'blue'
-                        : n <= 30
-                            ? 'red'
-                            : n <= 40
-                                ? 'gray'
-                                : 'green';
-                return `<span class="ball ${colorClass}">${n}</span>`;
-            }).join('');
+            const ballsHtml = set
+                .map((n) => {
+                    const colorClass =
+                        n <= 10 ? 'yellow' : n <= 20 ? 'blue' : n <= 30 ? 'red' : n <= 40 ? 'gray' : 'green';
+                    return `<span class="ball ${colorClass}">${n}</span>`;
+                })
+                .join('');
 
             row.innerHTML = `
                 <div class="ai-card-header" style="justify-content:space-between; display:flex; margin-bottom:8px;">
@@ -240,7 +248,9 @@ export const aiRenderingMethods = {
                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">생성 탭으로</button>
                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓 저장</button>
                 </div>
-                ${exp ? `
+                ${
+                    exp
+                        ? `
                 <details class="ai-explain" style="margin-top:10px;">
                     <summary style="cursor:pointer; color:var(--text-muted);">상세 보기</summary>
                     <div style="margin-top:8px; font-size:12px; color:var(--text-muted);">
@@ -252,7 +262,9 @@ export const aiRenderingMethods = {
                             ${exp.signals.map((s) => `<div>#${s.number} 가중치:${s.weight} / 빈도:${s.frequencyScore} / 최근성:${s.recencyScore} / 공백:${s.gapScore} / 페어:${s.pairScore} / 추세:${s.trendScore} / 회귀:${s.overdueRatio} / 베이즈:${s.bayesScore}</div>`).join('')}
                         </div>
                     </div>
-                </details>` : ''}
+                </details>`
+                        : ''
+                }
             `;
 
             out.appendChild(row);
@@ -287,18 +299,21 @@ export const aiRenderingMethods = {
                 <div class="guide-selected-body">
                     <h4>${selectedMeta.label}</h4>
                     <p class="guide-desc">${selectedMeta.description || selectedMeta.summary}</p>
-                    ${(selectedId === 'auto_recent_top' || selectedId === 'auto_ensemble_top3')
-                        ? '<div class="guide-warning"><i class="ph-bold ph-sparkle"></i> 최근 참조 회차 입력값이 자동 비교에 사용되며, 실제 비교 구간은 최대 30회입니다.</div>'
-                        : ''}
+                    ${
+                        selectedId === 'auto_recent_top' || selectedId === 'auto_ensemble_top3'
+                            ? '<div class="guide-warning"><i class="ph-bold ph-sparkle"></i> 최근 참조 회차 입력값이 자동 비교에 사용되며, 실제 비교 구간은 최대 30회입니다.</div>'
+                            : ''
+                    }
                     ${selectedMeta.experimental ? '<div class="guide-warning"><i class="ph-bold ph-warning"></i> 실험 단계 모델입니다. 사용 전에 시뮬레이션 검증을 권장합니다.</div>' : ''}
                     ${this._renderDefaultFilters(selectedMeta)}
                 </div>
             </div>
         `;
 
-        const gridItems = allStrategies.map((s) => {
-            const isActive = s.id === selectedId;
-            return `
+        const gridItems = allStrategies
+            .map((s) => {
+                const isActive = s.id === selectedId;
+                return `
                 <div class="guide-item ${isActive ? 'active' : ''}" data-strategy-id="${s.id}">
                     <div class="guide-item-head">
                         <span class="guide-item-tier" style="color: ${tierColors[s.tier]};">${tierIcons[s.tier]}</span>
@@ -308,7 +323,8 @@ export const aiRenderingMethods = {
                     <p>${s.summary}</p>
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
 
         container.innerHTML = `
             ${selectedCard}

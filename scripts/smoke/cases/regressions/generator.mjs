@@ -147,16 +147,36 @@ function runCampaignCascadeRegression() {
     assert.equal(single.removedCampaign, true, 'single campaign delete must remove campaign');
     assert.equal(single.removedTickets, 2, 'single campaign delete must cascade linked tickets');
     assert.equal(dm.state.campaigns.length, 1, 'single campaign delete must keep unrelated campaigns');
-    assert.equal(dm.state.ticketBook.some((ticket) => ticket.campaignId === 'camp_a'), false, 'linked camp_a tickets must be removed');
-    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'), true, 'orphan tickets must be preserved');
+    assert.equal(
+        dm.state.ticketBook.some((ticket) => ticket.campaignId === 'camp_a'),
+        false,
+        'linked camp_a tickets must be removed'
+    );
+    assert.equal(
+        dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'),
+        true,
+        'orphan tickets must be preserved'
+    );
 
     const cleared = dm.clearCampaigns({ cascadeTickets: true });
     assert.equal(cleared.removedCampaigns, 1, 'bulk campaign delete must report removed campaign count');
     assert.equal(cleared.removedTickets, 1, 'bulk campaign delete must remove remaining linked tickets');
     assert.equal(dm.state.campaigns.length, 0, 'all campaigns must be cleared');
-    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_b1'), false, 'linked camp_b tickets must be removed');
-    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'), true, 'orphan tickets must remain after bulk delete');
-    assert.equal(dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_manual'), true, 'manual tickets must remain after bulk delete');
+    assert.equal(
+        dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_b1'),
+        false,
+        'linked camp_b tickets must be removed'
+    );
+    assert.equal(
+        dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_orphan'),
+        true,
+        'orphan tickets must remain after bulk delete'
+    );
+    assert.equal(
+        dm.state.ticketBook.some((ticket) => ticket.id === 'ticket_manual'),
+        true,
+        'manual tickets must remain after bulk delete'
+    );
 }
 
 async function runRequestNumbersRegression() {
@@ -197,16 +217,18 @@ async function runRequestNumbersRegression() {
         assert.deepEqual(routeCalls, ['gen'], 'AI import must route to generator tab');
         assert.deepEqual(
             ctx.data.state.generated,
-            [{
-                numbers: [1, 2, 3, 4, 5, 6],
-                strategyRequest: {
-                    strategyId: 'auto_recent_top',
-                    params: { simulationCount: 1200 },
-                    filters: { sumRange: [100, 180] }
-                },
-                createdAt: '2026-04-14T00:00:00.000Z',
-                source: 'ai'
-            }],
+            [
+                {
+                    numbers: [1, 2, 3, 4, 5, 6],
+                    strategyRequest: {
+                        strategyId: 'auto_recent_top',
+                        params: { simulationCount: 1200 },
+                        filters: { sumRange: [100, 180] }
+                    },
+                    createdAt: '2026-04-14T00:00:00.000Z',
+                    source: 'ai'
+                }
+            ],
             'AI import must replace generated state with provenance-preserving entries'
         );
         assert.ok(!list.innerHTML.includes('old'), 'AI import must clear previous generator DOM rows');
@@ -240,14 +262,16 @@ function runTargetDrawAutofillRegression() {
         const ctx = {
             data: {
                 state: {
-                    winningStats: [{
-                        draw_no: 1209,
-                        date: '2026-03-07',
-                        numbers: [1, 2, 3, 4, 5, 6],
-                        bonus: 7,
-                        prize_amount: 0,
-                        winners_count: 0
-                    }]
+                    winningStats: [
+                        {
+                            draw_no: 1209,
+                            date: '2026-03-07',
+                            numbers: [1, 2, 3, 4, 5, 6],
+                            bonus: 7,
+                            prize_amount: 0,
+                            winners_count: 0
+                        }
+                    ]
                 }
             },
             targetDrawInputIds: ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'],
@@ -264,14 +288,16 @@ function runTargetDrawAutofillRegression() {
         assert.equal(campTarget.value, '1210', 'initial campaign target draw must auto-fill to next draw');
         assert.equal(aiTarget.value, '1210', 'initial AI target draw must auto-fill to next draw');
 
-        ctx.data.state.winningStats = [{
-            draw_no: 1210,
-            date: '2026-03-14',
-            numbers: [2, 4, 6, 8, 10, 12],
-            bonus: 14,
-            prize_amount: 0,
-            winners_count: 0
-        }];
+        ctx.data.state.winningStats = [
+            {
+                draw_no: 1210,
+                date: '2026-03-14',
+                numbers: [2, 4, 6, 8, 10, 12],
+                bonus: 14,
+                prize_amount: 0,
+                winners_count: 0
+            }
+        ];
         LottoApp.prototype.updateLatestWin.call(ctx);
         assert.equal(genTarget.value, '1211', 'auto-managed generator target draw must follow latest sync');
         assert.equal(campTarget.value, '1211', 'auto-managed campaign target draw must follow latest sync');
@@ -279,14 +305,16 @@ function runTargetDrawAutofillRegression() {
 
         genTarget.value = '1300';
         genTarget.dataset.userEdited = 'true';
-        ctx.data.state.winningStats = [{
-            draw_no: 1211,
-            date: '2026-03-21',
-            numbers: [3, 6, 9, 12, 15, 18],
-            bonus: 21,
-            prize_amount: 0,
-            winners_count: 0
-        }];
+        ctx.data.state.winningStats = [
+            {
+                draw_no: 1211,
+                date: '2026-03-21',
+                numbers: [3, 6, 9, 12, 15, 18],
+                bonus: 21,
+                prize_amount: 0,
+                winners_count: 0
+            }
+        ];
         LottoApp.prototype.updateLatestWin.call(ctx);
         assert.equal(genTarget.value, '1300', 'manually edited generator target draw must be preserved');
         assert.equal(campTarget.value, '1212', 'still auto-managed campaign target draw must continue updating');
@@ -321,7 +349,11 @@ function runStrategyPresetCrudRegression() {
     };
     const overwrite = dm.saveStrategyPreset('generator', '테스트 프리셋', overwrittenRequest);
     assert.equal(overwrite.replaced, true, 'preset overwrite must report replace');
-    assert.equal(dm.findStrategyPreset('generator', '테스트 프리셋').request.strategyId, 'cold_frequency', 'preset overwrite must update request');
+    assert.equal(
+        dm.findStrategyPreset('generator', '테스트 프리셋').request.strategyId,
+        'cold_frequency',
+        'preset overwrite must update request'
+    );
 
     const secondScope = dm.saveStrategyPreset('ai', 'AI 프리셋', baseRequest);
     assert.ok(secondScope?.preset, 'different scope preset must also save');
@@ -344,25 +376,29 @@ function runStrategyPresetCrudRegression() {
         '#genEndDigitUnique': createField(),
         '#genStrategySelect': createField({
             value: 'ensemble_weighted',
-            options: [
-                { value: 'ensemble_weighted' },
-                { value: 'cold_frequency' }
-            ]
+            options: [{ value: 'ensemble_weighted' }, { value: 'cold_frequency' }]
         })
     };
     globalThis.document = createDocumentStub(fields);
 
     try {
         let synced = 0;
-        GeneratorModule.prototype.applyStrategyRequest.call({
-            syncLegacyTogglesFromStrategy() {
-                synced++;
-            }
-        }, dm.findStrategyPreset('generator', '테스트 프리셋').request);
+        GeneratorModule.prototype.applyStrategyRequest.call(
+            {
+                syncLegacyTogglesFromStrategy() {
+                    synced++;
+                }
+            },
+            dm.findStrategyPreset('generator', '테스트 프리셋').request
+        );
 
         assert.equal(fields['#genStrategySelect'].value, 'cold_frequency', 'preset load must update strategy select');
         assert.equal(Number(fields['#genSimulationCount'].value), 9000, 'preset load must apply numeric params');
-        assert.equal(Number(fields['#genLookbackWindow'].value), baseRequest.params.lookbackWindow, 'preset load must apply lookback window');
+        assert.equal(
+            Number(fields['#genLookbackWindow'].value),
+            baseRequest.params.lookbackWindow,
+            'preset load must apply lookback window'
+        );
         assert.equal(synced, 1, 'preset load must resync legacy toggles');
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
@@ -483,12 +519,14 @@ async function runGeneratorStrategySelectionRegression() {
     try {
         const data = new DataManager();
         data.save = () => {};
-        data.state.winningStats = [{
-            draw_no: 1209,
-            date: '2026-04-12',
-            numbers: [1, 2, 3, 4, 5, 6],
-            bonus: 7
-        }];
+        data.state.winningStats = [
+            {
+                draw_no: 1209,
+                date: '2026-04-12',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7
+            }
+        ];
 
         const workerRequests = [];
         const ctx = {
@@ -548,9 +586,7 @@ async function runGeneratorStrategySelectionRegression() {
             'campaign generation must keep the selected strategy for every generated week'
         );
         assert.deepEqual(
-            data.state.ticketBook
-                .map((ticket) => ticket.strategyRequest?.params?.seed)
-                .sort((a, b) => a - b),
+            data.state.ticketBook.map((ticket) => ticket.strategyRequest?.params?.seed).sort((a, b) => a - b),
             [20260414, 20260415],
             'campaign tickets must preserve the per-week runtime strategy request'
         );
@@ -563,22 +599,26 @@ async function runGeneratorStrategySelectionRegression() {
 function runGeneratedTicketProvenanceRegression() {
     const data = new DataManager();
     data.save = () => {};
-    data.state.winningStats = [{
-        draw_no: 1209,
-        date: '2026-04-12',
-        numbers: [1, 2, 3, 4, 5, 6],
-        bonus: 7
-    }];
-    data.setGeneratedEntries([{
-        numbers: [7, 8, 9, 10, 11, 12],
-        strategyRequest: {
-            strategyId: 'auto_recent_top',
-            params: { simulationCount: 5500, lookbackWindow: 20 },
-            filters: { sumRange: [100, 170] }
-        },
-        createdAt: '2026-04-14T01:00:00.000Z',
-        source: 'ai'
-    }]);
+    data.state.winningStats = [
+        {
+            draw_no: 1209,
+            date: '2026-04-12',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        }
+    ];
+    data.setGeneratedEntries([
+        {
+            numbers: [7, 8, 9, 10, 11, 12],
+            strategyRequest: {
+                strategyId: 'auto_recent_top',
+                params: { simulationCount: 5500, lookbackWindow: 20 },
+                filters: { sumRange: [100, 170] }
+            },
+            createdAt: '2026-04-14T01:00:00.000Z',
+            source: 'ai'
+        }
+    ]);
 
     const ctx = {
         data,

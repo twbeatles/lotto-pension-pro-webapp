@@ -1,4 +1,4 @@
-const DEFAULT_OFFICIAL_API_URL = "https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=";
+const DEFAULT_OFFICIAL_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 const MAX_RANGE = 40;
 const RANGE_CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 4000;
@@ -8,22 +8,22 @@ const TTL_HISTORICAL_SECONDS = 6 * 60 * 60;
 const TTL_HISTORICAL_RANGE_SECONDS = 12 * 60 * 60;
 
 const CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toJsonResponse = (body, init = {}) => {
-    const payload = typeof body === "string" ? body : JSON.stringify(body);
+    const payload = typeof body === 'string' ? body : JSON.stringify(body);
     return new Response(payload, {
         ...init,
         headers: {
-            "content-type": "application/json; charset=utf-8",
+            'content-type': 'application/json; charset=utf-8',
             ...CORS,
-            ...(init.headers || {}),
-        },
+            ...(init.headers || {})
+        }
     });
 };
 
@@ -31,30 +31,30 @@ const withCacheMeta = (response, ttlSeconds, cacheState) => {
     const headers = new Headers(response.headers);
     Object.entries(CORS).forEach(([key, value]) => headers.set(key, value));
     if (Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
-        headers.set("Cache-Control", `public, max-age=${ttlSeconds}`);
+        headers.set('Cache-Control', `public, max-age=${ttlSeconds}`);
     }
-    if (cacheState) headers.set("X-Lotto-Cache", cacheState);
+    if (cacheState) headers.set('X-Lotto-Cache', cacheState);
     return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers,
+        headers
     });
 };
 
-const cacheKeyFromRequest = (request) => new Request(request.url, { method: "GET" });
+const cacheKeyFromRequest = (request) => new Request(request.url, { method: 'GET' });
 
 async function respondWithEdgeCache(request, ttlSeconds, producer) {
     const cache = caches.default;
     const cacheKey = cacheKeyFromRequest(request);
     const cached = await cache.match(cacheKey);
-    if (cached) return withCacheMeta(cached, ttlSeconds, "HIT");
+    if (cached) return withCacheMeta(cached, ttlSeconds, 'HIT');
 
     const fresh = await producer();
-    if (!fresh.ok) return withCacheMeta(fresh, 0, "BYPASS");
+    if (!fresh.ok) return withCacheMeta(fresh, 0, 'BYPASS');
 
-    const cacheReady = withCacheMeta(fresh.clone(), ttlSeconds, "MISS");
+    const cacheReady = withCacheMeta(fresh.clone(), ttlSeconds, 'MISS');
     await cache.put(cacheKey, cacheReady.clone());
-    return withCacheMeta(fresh, ttlSeconds, "MISS");
+    return withCacheMeta(fresh, ttlSeconds, 'MISS');
 }
 
 async function fetchWithTimeout(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -63,7 +63,7 @@ async function fetchWithTimeout(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
     try {
         return await fetch(url, {
             ...init,
-            signal: controller.signal,
+            signal: controller.signal
         });
     } finally {
         clearTimeout(timer);
@@ -88,42 +88,38 @@ async function fetchWithRetry(url, init = {}, retries = FETCH_RETRY_COUNT) {
             }
         }
     }
-    throw lastError || new Error("upstream fetch failed");
+    throw lastError || new Error('upstream fetch failed');
 }
 
 const fetchOfficialRaw = async (drawNo) => {
     const url = `${DEFAULT_OFFICIAL_API_URL}${drawNo}`;
     try {
         const res = await fetchWithRetry(url, {
-            method: "GET",
+            method: 'GET',
             headers: {
-                "User-Agent": "Mozilla/5.0",
-                "Referer": "https://www.dhlottery.co.kr/lt645/lotto645_more.do",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "X-Requested-With": "XMLHttpRequest",
-            },
+                'User-Agent': 'Mozilla/5.0',
+                Referer: 'https://www.dhlottery.co.kr/lt645/lotto645_more.do',
+                Accept: 'application/json, text/javascript, */*; q=0.01',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         });
 
         const text = await res.text();
         return { ok: res.ok, text };
     } catch (err) {
-        return { ok: false, text: "" };
+        return { ok: false, text: '' };
     }
 };
 
 const normalizeOfficialData = (raw) => {
     const drawNo = Number(raw?.ltEpsd);
-    if (!drawNo) return null;
+    if (!Number.isInteger(drawNo) || drawNo < 1) return null;
 
-    const dateRaw = String(raw?.ltRflYmd || "");
-    const date = dateRaw.length === 8
-        ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
-        : dateRaw;
+    const dateRaw = String(raw?.ltRflYmd || '');
+    const date =
+        dateRaw.length === 8 ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}` : dateRaw;
 
-    const numbers = [
-        raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo,
-        raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo
-    ].map(Number);
+    const numbers = [raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo, raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo].map(Number);
 
     if (numbers.some((n) => Number.isNaN(n))) return null;
 
@@ -139,7 +135,7 @@ const normalizeOfficialData = (raw) => {
 };
 
 const toLegacyDataRow = (row) => {
-    const date = String(row?.date || "").replaceAll("-", "");
+    const date = String(row?.date || '').replaceAll('-', '');
     const nums = Array.isArray(row?.numbers) ? row.numbers : [];
     return {
         ltEpsd: Number(row?.draw_no || 0),
@@ -153,7 +149,7 @@ const toLegacyDataRow = (row) => {
         bnsWnNo: Number(row?.bonus || 0),
         rnk1WnAmt: Number(row?.prize_amount || 0),
         rnk1WnNope: Number(row?.winners_count || 0),
-        rlvtEpsdSumNtslAmt: Number(row?.total_sales || 0),
+        rlvtEpsdSumNtslAmt: Number(row?.total_sales || 0)
     };
 };
 
@@ -185,10 +181,7 @@ async function getRange(from, to) {
         }
     };
 
-    const workers = Array.from(
-        { length: Math.max(1, Math.min(RANGE_CONCURRENCY, drawNos.length)) },
-        () => worker()
-    );
+    const workers = Array.from({ length: Math.max(1, Math.min(RANGE_CONCURRENCY, drawNos.length)) }, () => worker());
     await Promise.all(workers);
 
     const data = [];
@@ -202,25 +195,25 @@ async function getRange(from, to) {
 }
 
 const getKstParts = () => {
-    const dtf = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
+    const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
         hour12: false
     });
     const parts = dtf.formatToParts(new Date());
     const pick = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
     return {
-        y: pick("year"),
-        m: pick("month"),
-        d: pick("day"),
-        hh: pick("hour"),
-        mm: pick("minute"),
-        ss: pick("second")
+        y: pick('year'),
+        m: pick('month'),
+        d: pick('day'),
+        hh: pick('hour'),
+        mm: pick('minute'),
+        ss: pick('second')
     };
 };
 
@@ -256,87 +249,103 @@ export default {
     async fetch(request) {
         const url = new URL(request.url);
 
-        if (request.method === "OPTIONS") {
-            return toJsonResponse("{}", { headers: { ...CORS, "X-Lotto-Cache": "BYPASS" } });
+        if (request.method === 'OPTIONS') {
+            return toJsonResponse('{}', { headers: { ...CORS, 'X-Lotto-Cache': 'BYPASS' } });
         }
 
         // Support ?url= parameter (AllOrigins-style passthrough)
-        const targetUrlStr = url.searchParams.get("url");
+        const targetUrlStr = url.searchParams.get('url');
         if (targetUrlStr) {
             try {
                 const targetUrl = new URL(targetUrlStr);
-                if (targetUrl.hostname !== "www.dhlottery.co.kr") {
-                    return toJsonResponse({ error: "Forbidden domain" }, {
-                        status: 403,
-                        headers: { "X-Lotto-Cache": "BYPASS" }
-                    });
+                if (targetUrl.hostname !== 'www.dhlottery.co.kr') {
+                    return toJsonResponse(
+                        { error: 'Forbidden domain' },
+                        {
+                            status: 403,
+                            headers: { 'X-Lotto-Cache': 'BYPASS' }
+                        }
+                    );
                 }
 
                 const res = await fetchWithRetry(targetUrl.toString(), {
                     headers: {
-                        "User-Agent": "Mozilla/5.0",
-                        "Referer": "https://www.dhlottery.co.kr/",
-                        "X-Requested-With": "XMLHttpRequest"
+                        'User-Agent': 'Mozilla/5.0',
+                        Referer: 'https://www.dhlottery.co.kr/',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
 
                 const text = await res.text();
-                return toJsonResponse(text, { headers: { "X-Lotto-Cache": "BYPASS" } });
+                return toJsonResponse(text, { headers: { 'X-Lotto-Cache': 'BYPASS' } });
             } catch (e) {
-                return toJsonResponse({ error: "Invalid URL" }, {
-                    status: 400,
-                    headers: { "X-Lotto-Cache": "BYPASS" }
-                });
+                return toJsonResponse(
+                    { error: 'Invalid URL' },
+                    {
+                        status: 400,
+                        headers: { 'X-Lotto-Cache': 'BYPASS' }
+                    }
+                );
             }
         }
 
-        if (url.pathname === "/proxy/latest") {
-            const drawNo = Number(url.searchParams.get("draw_no") || 0);
-            if (!drawNo) {
-                return toJsonResponse({ error: "missing draw_no" }, {
-                    status: 400,
-                    headers: { "X-Lotto-Cache": "BYPASS" }
-                });
+        if (url.pathname === '/proxy/latest') {
+            const drawNoParam = url.searchParams.get('draw_no');
+            const drawNo = drawNoParam ? Number(drawNoParam) : estimateLatestDrawKST();
+            if (!Number.isInteger(drawNo) || drawNo < 1) {
+                return toJsonResponse(
+                    { error: 'invalid draw_no' },
+                    {
+                        status: 400,
+                        headers: { 'X-Lotto-Cache': 'BYPASS' }
+                    }
+                );
             }
-            const format = String(url.searchParams.get("format") || "hybrid").toLowerCase();
+            const format = String(url.searchParams.get('format') || 'hybrid').toLowerCase();
             const ttlSeconds = resolveLatestTtl(drawNo);
 
             return respondWithEdgeCache(request, ttlSeconds, async () => {
                 const row = await getOneDraw(drawNo);
-                if (!row) return toJsonResponse({ error: "upstream error" }, { status: 502 });
+                if (!row) return toJsonResponse({ error: 'upstream error' }, { status: 502 });
                 const legacy = { data: { list: [toLegacyDataRow(row)] } };
 
-                if (format === "legacy") return toJsonResponse(legacy);
-                if (format === "normalized") return toJsonResponse({ data: [row] });
+                if (format === 'legacy') return toJsonResponse(legacy);
+                if (format === 'normalized') return toJsonResponse({ data: [row] });
                 return toJsonResponse({
                     ...legacy,
                     normalized: [row],
-                    meta: { format: "hybrid" }
+                    meta: { format: 'hybrid' }
                 });
             });
         }
 
-        if (url.pathname === "/proxy/range") {
-            const from = Number(url.searchParams.get("from") || 0);
-            const to = Number(url.searchParams.get("to") || 0);
-            const format = String(url.searchParams.get("format") || "normalized").toLowerCase();
-            if (!from || !to || from > to) {
-                return toJsonResponse({ error: "invalid range" }, {
-                    status: 400,
-                    headers: { "X-Lotto-Cache": "BYPASS" }
-                });
+        if (url.pathname === '/proxy/range') {
+            const from = Number(url.searchParams.get('from') || 0);
+            const to = Number(url.searchParams.get('to') || 0);
+            const format = String(url.searchParams.get('format') || 'normalized').toLowerCase();
+            if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < 1 || from > to) {
+                return toJsonResponse(
+                    { error: 'invalid range' },
+                    {
+                        status: 400,
+                        headers: { 'X-Lotto-Cache': 'BYPASS' }
+                    }
+                );
             }
             if (to - from > MAX_RANGE) {
-                return toJsonResponse({ error: "range too large", maxRange: MAX_RANGE }, {
-                    status: 400,
-                    headers: { "X-Lotto-Cache": "BYPASS" }
-                });
+                return toJsonResponse(
+                    { error: 'range too large', maxRange: MAX_RANGE },
+                    {
+                        status: 400,
+                        headers: { 'X-Lotto-Cache': 'BYPASS' }
+                    }
+                );
             }
 
             const ttlSeconds = resolveRangeTtl(to);
             return respondWithEdgeCache(request, ttlSeconds, async () => {
                 const payload = await getRange(from, to);
-                if (format === "legacy") {
+                if (format === 'legacy') {
                     return toJsonResponse({
                         from: payload.from,
                         to: payload.to,
@@ -345,7 +354,7 @@ export default {
                         data: { list: payload.data.map(toLegacyDataRow) }
                     });
                 }
-                if (format === "hybrid") {
+                if (format === 'hybrid') {
                     return toJsonResponse({
                         ...payload,
                         legacy: { data: { list: payload.data.map(toLegacyDataRow) } }
@@ -355,9 +364,12 @@ export default {
             });
         }
 
-        return toJsonResponse({ error: "Not Found" }, {
-            status: 404,
-            headers: { "X-Lotto-Cache": "BYPASS" }
-        });
-    },
+        return toJsonResponse(
+            { error: 'Not Found' },
+            {
+                status: 404,
+                headers: { 'X-Lotto-Cache': 'BYPASS' }
+            }
+        );
+    }
 };

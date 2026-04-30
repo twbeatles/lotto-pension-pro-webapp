@@ -1,6 +1,6 @@
 export const $ = (selector) => document.querySelector(selector);
 export const $$ = (selector) => document.querySelectorAll(selector);
-export const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- Draw schedule (KST cutoff) ----
 export const _tzParts = (timeZone) => {
@@ -15,7 +15,7 @@ export const _tzParts = (timeZone) => {
         hour12: false
     });
     const parts = dtf.formatToParts(new Date());
-    const get = (type) => Number(parts.find(p => p.type === type)?.value || 0);
+    const get = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
     return {
         y: get('year'),
         m: get('month'),
@@ -41,7 +41,9 @@ export const estimateLatestDrawKST = (nowKstUtc = _nowKSTAsUtcDate()) => {
     let estimated = Math.floor(daysDiff / INTERVAL_DAYS) + BASE_DRAW_NO;
     estimated = Math.max(BASE_DRAW_NO, estimated);
 
-    const cutoffUtc = new Date(BASE_DATE_UTC + (estimated - BASE_DRAW_NO) * INTERVAL_DAYS * 86400000 + CUTOFF_HOUR * 3600000);
+    const cutoffUtc = new Date(
+        BASE_DATE_UTC + (estimated - BASE_DRAW_NO) * INTERVAL_DAYS * 86400000 + CUTOFF_HOUR * 3600000
+    );
     if (nowKstUtc.getTime() < cutoffUtc.getTime()) estimated -= 1;
 
     return Math.max(BASE_DRAW_NO, estimated);

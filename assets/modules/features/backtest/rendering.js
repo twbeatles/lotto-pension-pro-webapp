@@ -24,12 +24,24 @@ export const backtestRenderingMethods = {
             : null;
 
         const hitCount = summary?.counts
-            ? Number(summary.counts[1] || 0) + Number(summary.counts[2] || 0) + Number(summary.counts[3] || 0) + Number(summary.counts[4] || 0) + Number(summary.counts[5] || 0)
+            ? Number(summary.counts[1] || 0) +
+              Number(summary.counts[2] || 0) +
+              Number(summary.counts[3] || 0) +
+              Number(summary.counts[4] || 0) +
+              Number(summary.counts[5] || 0)
             : 0;
         const summaryHitRate = summary?.tickets ? (hitCount / Number(summary.tickets || 1)) * 100 : 0;
-        const prizeBase = comparisonSource ? Number(comparisonSource.totalPrize || 0) : Number(summary?.totalPrize || 0);
+        const prizeBase = comparisonSource
+            ? Number(comparisonSource.totalPrize || 0)
+            : Number(summary?.totalPrize || 0);
         const prizeMax = Math.max(prizeBase, ...(comparisons || []).map((row) => Number(row.totalPrize || 0)), 1);
-        const roiValue = comparisonSource ? Number(comparisonSource.roi || 0) : Number((((Number(summary?.totalPrize || 0) - Number(summary?.cost || 0)) / Math.max(1, Number(summary?.cost || 0))) * 100) || 0);
+        const roiValue = comparisonSource
+            ? Number(comparisonSource.roi || 0)
+            : Number(
+                  ((Number(summary?.totalPrize || 0) - Number(summary?.cost || 0)) /
+                      Math.max(1, Number(summary?.cost || 0))) *
+                      100 || 0
+              );
         const hitRateValue = comparisonSource ? Number(comparisonSource.hitRate || 0) : summaryHitRate;
         const prizeValue = prizeBase;
 
@@ -54,7 +66,9 @@ export const backtestRenderingMethods = {
             }
         ];
 
-        container.innerHTML = metrics.map((metric) => `
+        container.innerHTML = metrics
+            .map(
+                (metric) => `
             <div class="bt-mini-chart">
                 <div class="bt-mini-chart-head">
                     <span>${metric.label}</span>
@@ -64,7 +78,9 @@ export const backtestRenderingMethods = {
                     <span class="bt-mini-fill is-${metric.tone}" style="width:${metric.width}%"></span>
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
     },
 
     renderSummary(stats, { persist = true } = {}) {
@@ -76,15 +92,13 @@ export const backtestRenderingMethods = {
                 counts: { ...(stats.counts || {}) }
             };
         }
-        const pct = (n, d) => d ? ((n / d) * 100).toFixed(2) : '0.00';
-        const roi = stats.cost > 0 ? (((stats.totalPrize - stats.cost) / stats.cost) * 100) : 0;
+        const pct = (n, d) => (d ? ((n / d) * 100).toFixed(2) : '0.00');
+        const roi = stats.cost > 0 ? ((stats.totalPrize - stats.cost) / stats.cost) * 100 : 0;
         const payoutMode = stats.payoutMode || this.currentPayoutMode || 'hybrid_dynamic_first';
         const payoutLabel = this.getPayoutModeLabel(payoutMode);
         const notice = $('#btPayoutNotice');
         if (notice) {
-            notice.textContent = payoutMode === 'fast_fixed'
-                ? '고정 상금 모드'
-                : '하이브리드 동적 1등 모드';
+            notice.textContent = payoutMode === 'fast_fixed' ? '고정 상금 모드' : '하이브리드 동적 1등 모드';
         }
 
         el.innerHTML = `

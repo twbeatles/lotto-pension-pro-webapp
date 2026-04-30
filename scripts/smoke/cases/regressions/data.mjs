@@ -434,6 +434,62 @@ function runImportStoredListStrictNormalizationRegression() {
     assert.notEqual(normalized[1].date, 'not-a-date', 'invalid import dates must be replaced with a valid timestamp');
 }
 
+async function runImportSafetyLimitsRegression() {
+    const previousToast = UIManager.toast;
+    const toasts = [];
+    UIManager.toast = (message, type = 'info') => {
+        toasts.push(`${type}:${message}`);
+    };
+
+    try {
+        const ctx = Object.create(DataIOModule.prototype);
+        ctx.data = new DataManager();
+
+        await DataIOModule.prototype.importAll.call(ctx, {
+            currentTarget: {
+                files: [
+                    {
+                        size: CONFIG.LIMITS.MAX_IMPORT_BYTES + 1,
+                        async text() {
+                            return '{}';
+                        }
+                    }
+                ],
+                value: 'too-large.json'
+            }
+        });
+        assert.ok(
+            toasts.some((item) => item.includes('백업 파일은 최대')),
+            'import must reject files larger than the configured size limit'
+        );
+
+        const data = new DataManager();
+        const oversizedStrategyRequest = {
+            strategyId: 'ensemble_weighted',
+            params: {
+                note: 'x'.repeat(CONFIG.LIMITS.MAX_STRATEGY_REQUEST_BYTES + 100)
+            },
+            filters: {}
+        };
+        const ticket = data.normalizeTicketEntry({
+            id: 'ticket_big_strategy',
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1210,
+            source: 'import',
+            strategyRequest: oversizedStrategyRequest
+        });
+
+        assert.ok(ticket, 'oversized strategy snapshot must not drop an otherwise valid ticket');
+        assert.equal(
+            ticket.strategyRequest,
+            null,
+            'oversized strategy snapshots must be stripped during normalization'
+        );
+    } finally {
+        UIManager.toast = previousToast;
+    }
+}
+
 function runLoadOrphanCampaignMigrationRegression() {
     const previousDocument = globalThis.document;
     const previousStorage = globalThis.localStorage;
@@ -1106,7 +1162,7 @@ async function runPostImportRefreshRegression() {
     assert.deepEqual(
         calls,
         [
-            'fetchWinningStats:{"notifyTicketSettle":false}',
+            'fetchWinningStats:{"notifyTicketSettle":false,"preserveExistingOnFailure":false}',
             'markLocalRestoreSuccess:{"drawNo":1211}',
             'updateLatestWin',
             'refreshCurrentRoute',
@@ -1153,7 +1209,7 @@ async function runPostImportRefreshFailureRegression() {
     assert.deepEqual(
         calls,
         [
-            'fetchWinningStats:{"notifyTicketSettle":false}',
+            'fetchWinningStats:{"notifyTicketSettle":false,"preserveExistingOnFailure":false}',
             'markLocalRestoreFailure:백업 복원 후 당첨 데이터를 다시 구성하지 못했습니다.',
             'updateLatestWin',
             'refreshCurrentRoute',
@@ -1213,6 +1269,7 @@ export {
     runImportStoredListStrictNormalizationRegression,
     runImportAlertOptionRegression,
     runImportOrphanCampaignCleanupRegression,
+    runImportSafetyLimitsRegression,
     runLoadOrphanCampaignMigrationRegression,
     runLocalRestoreSyncMetaRegression,
     runLocalUpdatesFutureGuardRegression,

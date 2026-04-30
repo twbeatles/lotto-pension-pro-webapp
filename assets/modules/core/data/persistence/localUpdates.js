@@ -59,7 +59,9 @@ export const dataPersistenceLocalUpdateMethods = {
     },
 
     markSyncWarning(message) {
-        const text = String(message || '').trim().slice(0, 240);
+        const text = String(message || '')
+            .trim()
+            .slice(0, 240);
         if (!text) {
             return this.setSyncMeta({
                 lastWarningAt: '',
@@ -78,9 +80,12 @@ export const dataPersistenceLocalUpdateMethods = {
         if (currentLastSuccessDrawNo <= effectiveLatestDrawNo) {
             return this.state.syncMeta || this.getDefaultSyncMeta();
         }
-        return this.setSyncMeta({
-            lastSuccessDrawNo: effectiveLatestDrawNo
-        }, { immediate });
+        return this.setSyncMeta(
+            {
+                lastSuccessDrawNo: effectiveLatestDrawNo
+            },
+            { immediate }
+        );
     },
 
     sanitizeLocalUpdates(items = []) {
@@ -143,7 +148,8 @@ export const dataPersistenceLocalUpdateMethods = {
         if (warningMode !== 'silent') {
             const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
             if (warningMessage) this.markSyncWarning(warningMessage);
-            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) this.markSyncWarning('');
+            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage))
+                this.markSyncWarning('');
         }
         return this.localUpdatesCache;
     },
@@ -158,7 +164,8 @@ export const dataPersistenceLocalUpdateMethods = {
         if (warningMode !== 'silent') {
             const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
             if (warningMessage) this.markSyncWarning(warningMessage);
-            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage)) this.markSyncWarning('');
+            else if (this.isLocalUpdateWarningMessage(this.state.syncMeta?.lastWarningMessage))
+                this.markSyncWarning('');
         }
         this.app?.renderSettingsPanel?.();
         return sanitized;

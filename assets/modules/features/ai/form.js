@@ -137,7 +137,10 @@ export const aiFormMethods = {
         out.addEventListener('click', (e) => {
             const pickBtn = e.target.closest('.pick-btn');
             if (pickBtn) {
-                const nums = String(pickBtn.dataset.nums || '').split(',').map(Number).filter(Number.isFinite);
+                const nums = String(pickBtn.dataset.nums || '')
+                    .split(',')
+                    .map(Number)
+                    .filter(Number.isFinite);
                 if (nums.length === 6) {
                     this.app.requestNumbers(nums, {
                         strategyRequest: this.lastRequest || this.buildStrategyRequest(),
@@ -149,7 +152,10 @@ export const aiFormMethods = {
 
             const ticketBtn = e.target.closest('.ticket-btn');
             if (!ticketBtn) return;
-            const nums = String(ticketBtn.dataset.nums || '').split(',').map(Number).filter(Number.isFinite);
+            const nums = String(ticketBtn.dataset.nums || '')
+                .split(',')
+                .map(Number)
+                .filter(Number.isFinite);
             if (nums.length !== 6) return;
 
             const targetDrawNo = this.getAiTargetDrawNo();

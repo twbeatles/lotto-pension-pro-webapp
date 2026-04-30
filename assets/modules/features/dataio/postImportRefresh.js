@@ -1,6 +1,9 @@
 export async function runPostImportRefresh({ data, app } = {}) {
     if (!data || !app) return;
-    const loaded = await data.fetchWinningStats({ notifyTicketSettle: false });
+    const loaded = await data.fetchWinningStats({
+        notifyTicketSettle: false,
+        preserveExistingOnFailure: false
+    });
     const availability = String(data.dataHealth?.availability || 'none');
     if (loaded && availability !== 'none') {
         data.markLocalRestoreSuccess?.({

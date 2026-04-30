@@ -36,10 +36,7 @@ export const appDataListStateMethods = {
     _persistDataListState() {
         try {
             if (typeof sessionStorage !== 'undefined') {
-                sessionStorage.setItem(
-                    CONFIG.KEYS.SESSION_DATA_LIST_STATE,
-                    JSON.stringify(this.dataListState)
-                );
+                sessionStorage.setItem(CONFIG.KEYS.SESSION_DATA_LIST_STATE, JSON.stringify(this.dataListState));
             }
         } catch (_e) {
             // sessionStorage 저장 실패는 조용히 무시
@@ -47,9 +44,15 @@ export const appDataListStateMethods = {
     },
 
     matchesSearch(query, values = []) {
-        const normalizedQuery = String(query || '').trim().toLowerCase();
+        const normalizedQuery = String(query || '')
+            .trim()
+            .toLowerCase();
         if (!normalizedQuery) return true;
-        return values.some((value) => String(value || '').toLowerCase().includes(normalizedQuery));
+        return values.some((value) =>
+            String(value || '')
+                .toLowerCase()
+                .includes(normalizedQuery)
+        );
     },
 
     getTicketStatusMeta(item) {

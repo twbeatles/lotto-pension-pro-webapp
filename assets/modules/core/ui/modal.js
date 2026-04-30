@@ -133,7 +133,12 @@ export const uiModalMethods = {
 
         state?.onClose?.(reason);
 
-        if (restoreFocus && state?.previousFocus && typeof state.previousFocus.focus === 'function' && document.contains(state.previousFocus)) {
+        if (
+            restoreFocus &&
+            state?.previousFocus &&
+            typeof state.previousFocus.focus === 'function' &&
+            document.contains(state.previousFocus)
+        ) {
             state.previousFocus.focus();
         } else if (this._modalStack.length) {
             this._focusModalState(this._getTopModalState());

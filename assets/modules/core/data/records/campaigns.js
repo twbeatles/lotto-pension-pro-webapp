@@ -1,13 +1,12 @@
 export const recordCampaignMethods = {
     pruneOrphanCampaigns({ targetIds = null, save = true } = {}) {
-        const normalizedTargetIds = targetIds instanceof Set
-            ? new Set([...targetIds].map((item) => String(item || '').trim()).filter(Boolean))
-            : new Set((targetIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const normalizedTargetIds =
+            targetIds instanceof Set
+                ? new Set([...targetIds].map((item) => String(item || '').trim()).filter(Boolean))
+                : new Set((targetIds || []).map((item) => String(item || '').trim()).filter(Boolean));
         const limitToTargets = normalizedTargetIds.size > 0;
         const linkedCampaignIds = new Set(
-            (this.state.ticketBook || [])
-                .map((ticket) => String(ticket?.campaignId || '').trim())
-                .filter(Boolean)
+            (this.state.ticketBook || []).map((ticket) => String(ticket?.campaignId || '').trim()).filter(Boolean)
         );
 
         const kept = [];
@@ -30,7 +29,7 @@ export const recordCampaignMethods = {
         }
 
         return {
-            campaigns: removed.length ? kept : (this.state.campaigns || []),
+            campaigns: removed.length ? kept : this.state.campaigns || [],
             removed
         };
     },
@@ -108,7 +107,9 @@ export const recordCampaignMethods = {
         let removedTickets = 0;
         if (cascadeTickets) {
             const idSet = new Set(campaignIds.map((item) => String(item)));
-            this.state.ticketBook = this.state.ticketBook.filter((ticket) => !idSet.has(String(ticket?.campaignId || '')));
+            this.state.ticketBook = this.state.ticketBook.filter(
+                (ticket) => !idSet.has(String(ticket?.campaignId || ''))
+            );
             removedTickets = beforeTickets - this.getTotalTicketCount();
         }
 

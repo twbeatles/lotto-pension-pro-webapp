@@ -105,9 +105,9 @@ export class StatsModule {
 
         // Calculate total for percentages
         const total = data.reduce((sum, d) => sum + d.v, 0);
-        const max = Math.max(...data.map(d => d.v), 1);
+        const max = Math.max(...data.map((d) => d.v), 1);
         let html = '';
-        data.forEach(d => {
+        data.forEach((d) => {
             const pct = (d.v / max) * 100;
             const share = total > 0 ? ((d.v / total) * 100).toFixed(1) : 0;
             const colorClass = d.c ? `nd-fill ${d.c}` : 'bar-fill';
@@ -134,11 +134,15 @@ export class StatsModule {
         const mkCol = (title, items, cls) => {
             const div = document.createElement('div');
             div.className = `stat-col ${cls}`;
-            const rows = items.map(({ n, c }) => `
+            const rows = items
+                .map(
+                    ({ n, c }) => `
                     <div class="stat-row">
                         <span class="ball ${UIManager.getBallColor(n)} sm">${n}</span>
                         <span class="count">${c}회</span>
-                    </div>`).join('');
+                    </div>`
+                )
+                .join('');
             div.innerHTML = `<h4>${title}</h4>${rows}`;
             return div;
         };

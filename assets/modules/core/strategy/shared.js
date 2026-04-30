@@ -10,7 +10,7 @@ export function xorshift32(seed) {
         x ^= x << 13;
         x ^= x >>> 17;
         x ^= x << 5;
-        return ((x >>> 0) / 4294967296);
+        return (x >>> 0) / 4294967296;
     };
 }
 

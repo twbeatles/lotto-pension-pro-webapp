@@ -19,9 +19,4 @@ export class CheckModule {
     }
 }
 
-Object.assign(
-    CheckModule.prototype,
-    checkEventMethods,
-    checkListMethods,
-    checkResultMethods
-);
+Object.assign(CheckModule.prototype, checkEventMethods, checkListMethods, checkResultMethods);

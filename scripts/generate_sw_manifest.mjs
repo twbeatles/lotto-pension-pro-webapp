@@ -14,33 +14,13 @@ const APP_SHELL_ROOT_FILES = [
     'assets/strategy.worker.js'
 ];
 
-const APP_SHELL_DIRS = [
-    'assets/modules',
-    'assets/styles',
-    'assets/vendor',
-    'assets/icons'
-];
+const APP_SHELL_DIRS = ['assets/modules', 'assets/styles', 'assets/vendor', 'assets/icons'];
 
-const DATA_FILES = [
-    'data/winning_stats.json'
-];
+const DATA_FILES = ['data/winning_stats.json'];
 
-const EXCLUDE_FILES = new Set([
-    'assets/sw-precache-manifest.js',
-    'online-check.txt'
-]);
+const EXCLUDE_FILES = new Set(['assets/sw-precache-manifest.js', 'online-check.txt']);
 
-const INCLUDED_EXTENSIONS = new Set([
-    '.js',
-    '.css',
-    '.woff',
-    '.woff2',
-    '.ttf',
-    '.svg',
-    '.png',
-    '.json',
-    '.html'
-]);
+const INCLUDED_EXTENSIONS = new Set(['.js', '.css', '.woff', '.woff2', '.ttf', '.svg', '.png', '.json', '.html']);
 
 function toManifestPath(relativePath = '') {
     const normalized = String(relativePath || '').replace(/\\/g, '/');
@@ -55,7 +35,7 @@ async function walkDir(relativeDir) {
     for (const entry of entries) {
         const nextRelative = path.posix.join(relativeDir.replace(/\\/g, '/'), entry.name);
         if (entry.isDirectory()) {
-            files.push(...await walkDir(nextRelative));
+            files.push(...(await walkDir(nextRelative)));
             continue;
         }
 
@@ -80,9 +60,7 @@ async function buildPrecacheManifest() {
         files.forEach((file) => appShell.add(toManifestPath(file)));
     }
 
-    const data = DATA_FILES
-        .filter((file) => !EXCLUDE_FILES.has(file))
-        .map((file) => toManifestPath(file));
+    const data = DATA_FILES.filter((file) => !EXCLUDE_FILES.has(file)).map((file) => toManifestPath(file));
 
     return {
         appShell: [...appShell].sort(),
@@ -103,15 +81,17 @@ async function writeManifestFile() {
 
 if (process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === __filename.toLowerCase()) {
     const { outputPath, manifest } = await writeManifestFile();
-    console.log(JSON.stringify({
-        outputPath: path.relative(repoRoot, outputPath).replace(/\\/g, '/'),
-        appShellCount: manifest.appShell.length,
-        dataCount: manifest.data.length
-    }, null, 2));
+    console.log(
+        JSON.stringify(
+            {
+                outputPath: path.relative(repoRoot, outputPath).replace(/\\/g, '/'),
+                appShellCount: manifest.appShell.length,
+                dataCount: manifest.data.length
+            },
+            null,
+            2
+        )
+    );
 }
 
-export {
-    buildPrecacheManifest,
-    renderManifestSource,
-    writeManifestFile
-};
+export { buildPrecacheManifest, renderManifestSource, writeManifestFile };

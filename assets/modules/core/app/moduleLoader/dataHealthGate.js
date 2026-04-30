@@ -60,7 +60,8 @@ export const appModuleLoaderDataHealthMethods = {
     renderRouteDataGate(target) {
         const page = $(`#page-${target}`);
         if (!page) return false;
-        const hasLoadSignal = Boolean(this.data.lastWinningStatsLoad?.updatedAt) || Boolean(this.data.state.winningStats?.length);
+        const hasLoadSignal =
+            Boolean(this.data.lastWinningStatsLoad?.updatedAt) || Boolean(this.data.state.winningStats?.length);
         if (!hasLoadSignal) {
             this.clearRouteDataGate(target);
             return false;
@@ -101,7 +102,8 @@ export const appModuleLoaderDataHealthMethods = {
     syncRouteDataNotice(target) {
         const page = $(`#page-${target}`);
         if (!page) return;
-        const hasLoadSignal = Boolean(this.data.lastWinningStatsLoad?.updatedAt) || Boolean(this.data.state.winningStats?.length);
+        const hasLoadSignal =
+            Boolean(this.data.lastWinningStatsLoad?.updatedAt) || Boolean(this.data.state.winningStats?.length);
         if (!hasLoadSignal) {
             page.querySelector('.data-health-banner')?.remove();
             return;

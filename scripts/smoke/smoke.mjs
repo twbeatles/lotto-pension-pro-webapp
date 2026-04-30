@@ -51,7 +51,9 @@ async function main() {
 
     console.log(`[PASS] generate: ${generated.length} sets`);
     console.log(`[PASS] recommend: ${recommended.sets.length} sets`);
-    console.log(`[PASS] backtest-smoke: tickets=${backtest.tickets}, wins=${backtest.wins}, prize=${backtest.totalPrize}`);
+    console.log(
+        `[PASS] backtest-smoke: tickets=${backtest.tickets}, wins=${backtest.wins}, prize=${backtest.totalPrize}`
+    );
     console.log('[PASS] backup-v3 schema');
     regressionExecutionPlan.forEach(({ label }) => {
         console.log(`[PASS] ${label}`);

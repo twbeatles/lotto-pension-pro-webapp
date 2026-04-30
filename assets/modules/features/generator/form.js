@@ -31,31 +31,34 @@ export const generatorFormMethods = {
 
     bindEvents() {
         const btn = $('#generateBtn');
-        if (btn) btn.addEventListener('click', () => {
-            this.generate().catch((err) => {
-                console.error(err);
-                UIManager.toast('번호 생성 중 오류가 발생했습니다.', 'error');
+        if (btn)
+            btn.addEventListener('click', () => {
+                this.generate().catch((err) => {
+                    console.error(err);
+                    UIManager.toast('번호 생성 중 오류가 발생했습니다.', 'error');
+                });
             });
-        });
 
         const resetBtn = $('#resetOptions');
         if (resetBtn) resetBtn.addEventListener('click', () => this.resetOptions());
 
         const clearBtn = $('#clearResults');
-        if (clearBtn) clearBtn.addEventListener('click', () => {
-            $('#genResultList').innerHTML = '';
-            this.data.setGeneratedEntries([]);
-        });
+        if (clearBtn)
+            clearBtn.addEventListener('click', () => {
+                $('#genResultList').innerHTML = '';
+                this.data.setGeneratedEntries([]);
+            });
 
         const saveAllBtn = $('#saveAllBtn');
         if (saveAllBtn) saveAllBtn.addEventListener('click', () => this.saveAll());
         const genCampaignBtn = $('#generateCampaignBtn');
-        if (genCampaignBtn) genCampaignBtn.addEventListener('click', () => {
-            this.generateCampaign().catch((err) => {
-                console.error(err);
-                UIManager.toast('캠페인 생성 중 오류가 발생했습니다.', 'error');
+        if (genCampaignBtn)
+            genCampaignBtn.addEventListener('click', () => {
+                this.generateCampaign().catch((err) => {
+                    console.error(err);
+                    UIManager.toast('캠페인 생성 중 오류가 발생했습니다.', 'error');
+                });
             });
-        });
         const genCampaignResetBtn = $('#resetCampaignBtn');
         if (genCampaignResetBtn) genCampaignResetBtn.addEventListener('click', () => this.resetCampaignOptions());
 
@@ -94,9 +97,13 @@ export const generatorFormMethods = {
                 }
                 if (action === 'ticket') {
                     const request = this.getStrategyRequestFromUI();
-                    const targetDrawNo = this.readNumberInput('genTargetDrawNo', (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1);
-                    const result = this.saveGeneratedEntryToTicket(entry, targetDrawNo)
-                        || this.app.data.addTicket(nums, {
+                    const targetDrawNo = this.readNumberInput(
+                        'genTargetDrawNo',
+                        (this.app.data.state.winningStats?.[0]?.draw_no || 0) + 1
+                    );
+                    const result =
+                        this.saveGeneratedEntryToTicket(entry, targetDrawNo) ||
+                        this.app.data.addTicket(nums, {
                             source: 'generator',
                             targetDrawNo,
                             strategyRequest: request
@@ -334,6 +341,14 @@ export const generatorFormMethods = {
     },
 
     parseInput(val) {
-        return [...new Set(val.split(/[^0-9]+/).filter(Boolean).map(Number).filter(n => n >= 1 && n <= 45))];
+        return [
+            ...new Set(
+                val
+                    .split(/[^0-9]+/)
+                    .filter(Boolean)
+                    .map(Number)
+                    .filter((n) => n >= 1 && n <= 45)
+            )
+        ];
     }
 };

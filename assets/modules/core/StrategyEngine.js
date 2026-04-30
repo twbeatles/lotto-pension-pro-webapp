@@ -13,7 +13,8 @@ export class StrategyEngine {
     }
 }
 
-Object.assign(StrategyEngine.prototype,
+Object.assign(
+    StrategyEngine.prototype,
     strategyRequestMethods,
     strategyContextMethods,
     strategyWeightMethods,

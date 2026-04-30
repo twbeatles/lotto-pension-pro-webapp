@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { StrategyEngine } from '../../../../assets/modules/core/StrategyEngine.js';
+import { StrategyWorkerClient } from '../../../../assets/modules/core/StrategyWorkerClient.js';
 import { DataManager } from '../../../../assets/modules/core/DataManager.js';
 import { LottoApp } from '../../../../assets/modules/core/LottoApp.js';
 import { UIManager } from '../../../../assets/modules/core/UIManager.js';
@@ -15,12 +16,7 @@ import { CONFIG } from '../../../../assets/modules/utils/config.js';
 import { QrScannerModule } from '../../../../assets/modules/features/QrScanner.js';
 import { estimateLatestDrawKST } from '../../../../assets/modules/utils/utils.js';
 
-import {
-    assertTicketShape,
-    buildSmokeRequest,
-    createDocumentStub,
-    createField
-} from '../../helpers/common.mjs';
+import { assertTicketShape, buildSmokeRequest, createDocumentStub, createField } from '../../helpers/common.mjs';
 
 export {
     assert,
@@ -43,5 +39,6 @@ export {
     resolve,
     runPostImportRefresh,
     StrategyEngine,
+    StrategyWorkerClient,
     UIManager
 };

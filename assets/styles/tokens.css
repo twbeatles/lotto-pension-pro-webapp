@@ -1,111 +1,121 @@
 @font-face {
-  font-family: 'Pretendard';
-  src: url('../vendor/pretendard/PretendardVariable.woff2') format('woff2');
-  font-style: normal;
-  font-weight: 45 920;
-  font-display: swap;
+    font-family: 'Pretendard';
+    src: url('../vendor/pretendard/PretendardVariable.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 45 920;
+    font-display: swap;
 }
 
 :root {
-  /* --- Premium Cosmic Theme (Refined) --- */
+    /* --- Premium Cosmic Theme (Refined) --- */
 
-  /* Core Palette */
-  --primary: #8b5cf6;
-  --primary-hover: #7c3aed;
-  --primary-glow: rgba(139, 92, 246, 0.7);
-  --primary-gradient: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+    /* Core Palette */
+    --primary: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --primary-glow: rgba(139, 92, 246, 0.7);
+    --primary-gradient: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
 
-  --secondary: #0ea5e9;
-  --secondary-hover: #0284c7;
+    --secondary: #0ea5e9;
+    --secondary-hover: #0284c7;
 
-  --accent: #f43f5e;
-  --accent-glow: rgba(244, 63, 94, 0.7);
+    --accent: #f43f5e;
+    --accent-glow: rgba(244, 63, 94, 0.7);
 
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
 
-  /* Surface & Backgrounds */
-  --bg-deep: #03030f;
-  /* Deeper space */
-  --bg-surface: #0b0b1a;
-  /* Slight purple tint */
-  --bg-suface-light: #15152a;
-  --bg-gradient: radial-gradient(circle at 50% -20%, rgba(109, 40, 217, 0.25), rgba(3, 3, 15, 1) 70%);
+    /* Surface & Backgrounds */
+    --bg-deep: #03030f;
+    /* Deeper space */
+    --bg-surface: #0b0b1a;
+    /* Slight purple tint */
+    --bg-suface-light: #15152a;
+    --bg-gradient: radial-gradient(circle at 50% -20%, rgba(109, 40, 217, 0.25), rgba(3, 3, 15, 1) 70%);
 
-  /* Text */
-  --text-main: #f8fafc;
-  --text-muted: #cbd5e1;
-  --text-dim: #64748b;
+    /* Text */
+    --text-main: #f8fafc;
+    --text-muted: #cbd5e1;
+    --text-dim: #64748b;
 
-  /* Boarders & Glass */
-  --border: rgba(255, 255, 255, 0.1);
-  --border-light: rgba(255, 255, 255, 0.2);
-  --glass-bg: rgba(11, 11, 26, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --glass-shine: rgba(255, 255, 255, 0.1);
+    /* Boarders & Glass */
+    --border: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.2);
+    --glass-bg: rgba(11, 11, 26, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-shine: rgba(255, 255, 255, 0.1);
 
-  /* Shadows */
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.35);
+    /* Shadows */
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 30px rgba(139, 92, 246, 0.35);
 
-  /* Layout */
-  --nav-width: 280px;
-  --header-height: 70px;
-  --radius-sm: 12px;
-  --radius-md: 20px;
-  --radius-lg: 32px;
+    /* Layout */
+    --nav-width: 280px;
+    --header-height: 70px;
+    --radius-sm: 12px;
+    --radius-md: 20px;
+    --radius-lg: 32px;
 }
 
-[data-theme="light"] {
-  /* --- Ethereal Light Theme (Refined) --- */
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.4);
-  --primary-gradient: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+[data-theme='light'] {
+    /* --- Ethereal Light Theme (Refined) --- */
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-glow: rgba(99, 102, 241, 0.4);
+    --primary-gradient: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
 
-  --bg-deep: #f8fafc;
-  --bg-surface: #ffffff;
-  --bg-suface-light: #f1f5f9;
-  --bg-gradient: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15), rgba(248, 250, 252, 1) 70%);
+    --bg-deep: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-suface-light: #f1f5f9;
+    --bg-gradient: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15), rgba(248, 250, 252, 1) 70%);
 
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-dim: #94a3b8;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --text-dim: #94a3b8;
 
-  --border: rgba(0, 0, 0, 0.08);
-  --border-light: rgba(0, 0, 0, 0.15);
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.8);
-  --glass-shine: rgba(255, 255, 255, 0.9);
+    --border: rgba(0, 0, 0, 0.08);
+    --border-light: rgba(0, 0, 0, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.8);
+    --glass-shine: rgba(255, 255, 255, 0.9);
 
-  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 10px 30px -5px rgba(99, 102, 241, 0.25);
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 10px 30px -5px rgba(99, 102, 241, 0.25);
 }
 
 * {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-  outline-color: var(--primary);
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    outline-color: var(--primary);
 }
 
 body {
-  margin: 0;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: var(--bg-deep) var(--bg-gradient) no-repeat;
-  background-attachment: fixed;
-  color: var(--text-main);
-  transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s;
-  overflow: hidden;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    font-family:
+        'Pretendard',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        'Helvetica Neue',
+        Arial,
+        sans-serif;
+    background: var(--bg-deep) var(--bg-gradient) no-repeat;
+    background-attachment: fixed;
+    color: var(--text-main);
+    transition:
+        background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.5s;
+    overflow: hidden;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
-  display: flex;
-  height: 100vh;
-  height: 100dvh;
-  width: 100vw;
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
 }

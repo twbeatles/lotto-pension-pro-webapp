@@ -33,6 +33,7 @@ wrangler deploy proxy/worker.js
 - `?format=legacy`: 기존 형식 (`data.list[0]`)
 - `?format=normalized`: 정규화 형식 (`data: [{ draw_no, numbers, ... }]`)
 - 앱은 `draw_no`/`ltEpsd`를 정수 `>= 1`로만 수락하므로 프록시 응답도 소수/문자열 소수/0/음수 회차를 반환하지 않아야 합니다.
+- `draw_no`를 생략하면 Worker가 KST 기준 예상 최신 회차를 조회합니다.
 
 `/proxy/range` 응답 형식:
 
@@ -51,8 +52,8 @@ wrangler deploy proxy/worker.js
 - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용하고, 내장 fallback보다 먼저 시도합니다.
 - 비지원 프록시 형식은 설정 경고를 표시한 뒤 기본 자동 동기화로 내려갑니다.
 - 앱 UI 경로:
-  - 사이드바, 모바일 헤더, 또는 모바일 `더보기`의 `설정` 진입
-  - 설정 모달의 `사용자 프록시 주소 (선택)` 입력란
+    - 사이드바, 모바일 헤더, 또는 모바일 `더보기`의 `설정` 진입
+    - 설정 모달의 `사용자 프록시 주소 (선택)` 입력란
 
 권장 설정 예시:
 

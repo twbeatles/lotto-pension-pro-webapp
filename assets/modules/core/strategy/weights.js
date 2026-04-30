@@ -28,7 +28,7 @@ function normalizeRatio(value, max) {
 }
 
 function normalizeAround(value, center = 1, radius = 1.25) {
-    return clamp01(1 - (Math.abs(value - center) / radius));
+    return clamp01(1 - Math.abs(value - center) / radius);
 }
 
 function computeDeltaAffinity(number, lastDraw = [], avgDelta = 0) {
@@ -36,7 +36,7 @@ function computeDeltaAffinity(number, lastDraw = [], avgDelta = 0) {
     let best = 0;
     for (const base of lastDraw) {
         const diff = Math.abs(Math.abs(number - base) - avgDelta);
-        const score = clamp01(1 - (diff / Math.max(avgDelta * 1.25, 4)));
+        const score = clamp01(1 - diff / Math.max(avgDelta * 1.25, 4));
         if (score > best) best = score;
     }
     return best;
@@ -81,9 +81,15 @@ export const strategyWeightMethods = {
     },
 
     evaluateRecentStrategyPerformance(normalized, sourceData, strategyId, options = {}) {
-        const evaluationWindow = Math.min(Math.max(Number(options.evaluationWindow || normalized.params?.lookbackWindow || 20), 10), 30);
+        const evaluationWindow = Math.min(
+            Math.max(Number(options.evaluationWindow || normalized.params?.lookbackWindow || 20), 10),
+            30
+        );
         const evaluationSetCount = Math.min(Math.max(Number(options.evaluationSetCount || 5), 3), 5);
-        const simulationCount = Math.min(Math.max(Number(options.simulationCount || normalized.params?.simulationCount || 5000), 1200), 2400);
+        const simulationCount = Math.min(
+            Math.max(Number(options.simulationCount || normalized.params?.simulationCount || 5000), 1200),
+            2400
+        );
         const startIdx = Math.max(1, sourceData.length - evaluationWindow);
         let draws = 0;
         let totalSets = 0;
@@ -104,7 +110,7 @@ export const strategyWeightMethods = {
             evalRequest.params = {
                 ...evalRequest.params,
                 simulationCount,
-                seed: seedBase + (idx * 37) + (strategyId.length * 17)
+                seed: seedBase + idx * 37 + strategyId.length * 17
             };
 
             const result = engine.recommendFromSimulation(evalRequest, { setCount: evaluationSetCount });
@@ -135,12 +141,7 @@ export const strategyWeightMethods = {
         const avgHitPerSet = totalHitCount / Math.max(totalSets, 1);
         const drawRateBest4Plus = (best4PlusDraws / Math.max(draws, 1)) * 100;
         const drawRateBest3Plus = (best3PlusDraws / Math.max(draws, 1)) * 100;
-        const compositeScore = (
-            (avgBestHit * 100) +
-            (drawRateBest4Plus * 4.0) +
-            (drawRateBest3Plus * 1.5) +
-            (avgHitPerSet * 12)
-        );
+        const compositeScore = avgBestHit * 100 + drawRateBest4Plus * 4.0 + drawRateBest3Plus * 1.5 + avgHitPerSet * 12;
 
         return {
             strategyId,
@@ -162,9 +163,11 @@ export const strategyWeightMethods = {
 
         const evaluationWindow = Math.min(Math.max(Number(normalized.params?.lookbackWindow || 20), 10), 30);
         const ranking = this.getAdaptiveCandidateStrategies()
-            .map((strategyId) => this.evaluateRecentStrategyPerformance(normalized, sourceData, strategyId, {
-                evaluationWindow
-            }))
+            .map((strategyId) =>
+                this.evaluateRecentStrategyPerformance(normalized, sourceData, strategyId, {
+                    evaluationWindow
+                })
+            )
             .filter((row) => row.draws > 0)
             .sort((a, b) => {
                 const scoreDelta = Number(b.compositeScore || 0) - Number(a.compositeScore || 0);
@@ -175,9 +178,7 @@ export const strategyWeightMethods = {
             });
 
         const fallbackId = 'consensus_portfolio';
-        const selectedRows = normalized.strategyId === 'auto_recent_top'
-            ? ranking.slice(0, 1)
-            : ranking.slice(0, 3);
+        const selectedRows = normalized.strategyId === 'auto_recent_top' ? ranking.slice(0, 1) : ranking.slice(0, 3);
         if (!selectedRows.length) {
             selectedRows.push({
                 strategyId: fallbackId,
@@ -202,7 +203,9 @@ export const strategyWeightMethods = {
 
         let weights = selectedStrategies[0].weights;
         if (normalized.strategyId === 'auto_ensemble_top3') {
-            const strengths = selectedStrategies.map((item, index) => Math.max(Number(item.compositeScore || 0), 1 + (selectedStrategies.length - index)));
+            const strengths = selectedStrategies.map((item, index) =>
+                Math.max(Number(item.compositeScore || 0), 1 + (selectedStrategies.length - index))
+            );
             const strengthSum = strengths.reduce((acc, value) => acc + value, 0) || 1;
             const normalizedVectors = selectedStrategies.map((item) => normalizeWeights(item.weights));
             weights = Array(46).fill(0);
@@ -279,22 +282,21 @@ export const strategyWeightMethods = {
         const isWheel = normalized.strategyId === 'wheel_full' || normalized.strategyId === 'wheel_reduced_t3';
         const isAdjacency = normalized.strategyId === 'adjacency_bias';
         const isDeltaPattern = normalized.strategyId === 'delta_gap_pattern';
-        const lastDrawSet = isAdjacency || normalized.strategyId === 'carryover_repeat_control'
-            ? new Set(lastDraw)
-            : null;
+        const lastDrawSet =
+            isAdjacency || normalized.strategyId === 'carryover_repeat_control' ? new Set(lastDraw) : null;
 
         let avgDelta = 0;
         if (isDeltaPattern && lastDraw.length >= 2) {
             let deltaSum = 0;
             for (let i = 0; i < lastDraw.length - 1; i++) {
-                deltaSum += (lastDraw[i + 1] - lastDraw[i]);
+                deltaSum += lastDraw[i + 1] - lastDraw[i];
             }
             avgDelta = deltaSum / Math.max(lastDraw.length - 1, 1);
         }
 
         const bayesValues = Array(46).fill(0);
         for (let n = 1; n <= 45; n++) {
-            bayesValues[n] = (freq[n] + (recentFreq[n] * 1.5) + 1) / (totalWindow + (recentWindow * 1.5) + 2);
+            bayesValues[n] = (freq[n] + recentFreq[n] * 1.5 + 1) / (totalWindow + recentWindow * 1.5 + 2);
         }
         const bayesMax = Math.max(...bayesValues.slice(1), 0.0001);
 
@@ -308,15 +310,15 @@ export const strategyWeightMethods = {
             const gapBalance = normalizeAround(overdueRatio, 1.05, 1.45);
             const p = normalizeRatio(pairCounts[n], pairMax);
             const recentPair = normalizeRatio(recentPairCounts[n], recentPairMax);
-            const zoneIdx = n <= 15 ? 0 : (n <= 30 ? 1 : 2);
+            const zoneIdx = n <= 15 ? 0 : n <= 30 ? 1 : 2;
             const zoneBal = 1 - normalizeRatio(zoneRecent[zoneIdx], zoneMax);
             const endBal = 1 - normalizeRatio(endDigitRecent[n % 10], endMax);
             const longRate = freq[n] / totalWindow;
             const recentRate = recentFreq[n] / recentWindow;
-            const liftRaw = longRate > 0 ? (recentRate / longRate) : (recentRate > 0 ? 2 : 1);
+            const liftRaw = longRate > 0 ? recentRate / longRate : recentRate > 0 ? 2 : 1;
             const momentumNorm = clamp01((liftRaw - 0.5) / 1.5);
             const reverseMomentum = 1 - momentumNorm;
-            const stability = clamp01(1 - (Math.abs(recentRate - longRate) / Math.max(longRate, 1 / totalWindow)));
+            const stability = clamp01(1 - Math.abs(recentRate - longRate) / Math.max(longRate, 1 / totalWindow));
             const bayes = clamp01(bayesValues[n] / bayesMax);
 
             let adj = 0;
@@ -325,53 +327,60 @@ export const strategyWeightMethods = {
             if (lastDrawSet?.has(n + 1)) adj += 0.45;
 
             const deltaAffinity = computeDeltaAffinity(n, lastDraw, avgDelta);
-            const hotCore = (g * 0.35) + (r * 0.35) + (momentumNorm * 0.30);
-            const coldCore = (overdueNorm * 0.55) + ((1 - g) * 0.20) + (reverseMomentum * 0.25);
-            const balanceCore = (zoneBal * 0.45) + (endBal * 0.20) + (stability * 0.15) + (gapBalance * 0.20);
-            const pairCore = (recentPair * 0.55) + (p * 0.30) + (r * 0.15);
-            const consensusCore = (hotCore * 0.25) + (coldCore * 0.20) + (pairCore * 0.20) + (balanceCore * 0.15) + (bayes * 0.20);
+            const hotCore = g * 0.35 + r * 0.35 + momentumNorm * 0.3;
+            const coldCore = overdueNorm * 0.55 + (1 - g) * 0.2 + reverseMomentum * 0.25;
+            const balanceCore = zoneBal * 0.45 + endBal * 0.2 + stability * 0.15 + gapBalance * 0.2;
+            const pairCore = recentPair * 0.55 + p * 0.3 + r * 0.15;
+            const consensusCore = hotCore * 0.25 + coldCore * 0.2 + pairCore * 0.2 + balanceCore * 0.15 + bayes * 0.2;
 
             if (normalized.strategyId === 'random_baseline') {
                 weights[n] = 1;
             } else if (normalized.strategyId === 'ensemble_weighted') {
-                weights[n] = 0.6 + (bayes * 0.35) + (r * 0.35) + (overdueNorm * 0.20) + (gapBalance * 0.20) + (recentPair * 0.15) + (zoneBal * 0.10);
+                weights[n] =
+                    0.6 +
+                    bayes * 0.35 +
+                    r * 0.35 +
+                    overdueNorm * 0.2 +
+                    gapBalance * 0.2 +
+                    recentPair * 0.15 +
+                    zoneBal * 0.1;
             } else if (normalized.strategyId === 'consensus_portfolio') {
-                weights[n] = 0.65 + (consensusCore * 1.10) + (gapBalance * 0.15);
+                weights[n] = 0.65 + consensusCore * 1.1 + gapBalance * 0.15;
             } else if (normalized.strategyId === 'bayesian_smooth') {
-                weights[n] = 0.7 + (bayes * 0.80) + (stability * 0.25) + (r * 0.20) + (zoneBal * 0.15);
+                weights[n] = 0.7 + bayes * 0.8 + stability * 0.25 + r * 0.2 + zoneBal * 0.15;
             } else if (normalized.strategyId === 'momentum_recent') {
-                weights[n] = 0.65 + (hotCore * 0.95) + (recentPair * 0.20) + (bayes * 0.10);
+                weights[n] = 0.65 + hotCore * 0.95 + recentPair * 0.2 + bayes * 0.1;
             } else if (normalized.strategyId === 'mean_reversion_cycle') {
-                weights[n] = 0.65 + (coldCore * 1.00) + (gapBalance * 0.25) + (zoneBal * 0.10);
+                weights[n] = 0.65 + coldCore * 1.0 + gapBalance * 0.25 + zoneBal * 0.1;
             } else if (normalized.strategyId === 'hot_frequency') {
-                weights[n] = 0.7 + (hotCore * 0.95) + (bayes * 0.10);
+                weights[n] = 0.7 + hotCore * 0.95 + bayes * 0.1;
             } else if (normalized.strategyId === 'cold_frequency') {
-                weights[n] = 0.7 + (coldCore * 0.95) + (gapBalance * 0.25);
+                weights[n] = 0.7 + coldCore * 0.95 + gapBalance * 0.25;
             } else if (normalized.strategyId === 'recency_gap') {
-                weights[n] = 0.65 + (r * 0.35) + (overdueNorm * 0.65) + (gapBalance * 0.35) + (momentumNorm * 0.15);
+                weights[n] = 0.65 + r * 0.35 + overdueNorm * 0.65 + gapBalance * 0.35 + momentumNorm * 0.15;
             } else if (normalized.strategyId === 'balance_oe_hl') {
-                weights[n] = 0.75 + (balanceCore * 0.90) + (bayes * 0.15);
+                weights[n] = 0.75 + balanceCore * 0.9 + bayes * 0.15;
             } else if (normalized.strategyId === 'stat_ac_sum') {
-                weights[n] = 0.75 + (bayes * 0.35) + (pairCore * 0.25) + (gapBalance * 0.15) + (stability * 0.25);
+                weights[n] = 0.75 + bayes * 0.35 + pairCore * 0.25 + gapBalance * 0.15 + stability * 0.25;
             } else if (normalized.strategyId === 'pair_cooccurrence') {
-                weights[n] = 0.7 + (pairCore * 1.00) + (bayes * 0.10);
+                weights[n] = 0.7 + pairCore * 1.0 + bayes * 0.1;
             } else if (normalized.strategyId === 'adjacency_bias') {
-                weights[n] = 0.65 + (hotCore * 0.40) + (adj * 0.90) + (gapBalance * 0.10);
+                weights[n] = 0.65 + hotCore * 0.4 + adj * 0.9 + gapBalance * 0.1;
             } else if (normalized.strategyId === 'zone_split_3band') {
-                weights[n] = 0.7 + (zoneBal * 0.75) + (endBal * 0.25) + (r * 0.20) + (bayes * 0.15);
+                weights[n] = 0.7 + zoneBal * 0.75 + endBal * 0.25 + r * 0.2 + bayes * 0.15;
             } else if (normalized.strategyId === 'wheel_full' || normalized.strategyId === 'wheel_reduced_t3') {
-                weights[n] = 0.75 + (bayes * 0.30) + (hotCore * 0.35) + (pairCore * 0.25);
+                weights[n] = 0.75 + bayes * 0.3 + hotCore * 0.35 + pairCore * 0.25;
             } else if (normalized.strategyId === 'skip_hit_weighted') {
-                weights[n] = 0.65 + (overdueNorm * 0.80) + (gapBalance * 0.45) + (reverseMomentum * 0.15);
+                weights[n] = 0.65 + overdueNorm * 0.8 + gapBalance * 0.45 + reverseMomentum * 0.15;
             } else if (normalized.strategyId === 'last_digit_balance') {
-                weights[n] = 0.7 + (endBal * 0.85) + (balanceCore * 0.20) + (g * 0.15);
+                weights[n] = 0.7 + endBal * 0.85 + balanceCore * 0.2 + g * 0.15;
             } else if (normalized.strategyId === 'delta_gap_pattern') {
-                weights[n] = 0.65 + (deltaAffinity * 0.85) + (bayes * 0.20) + (r * 0.15);
+                weights[n] = 0.65 + deltaAffinity * 0.85 + bayes * 0.2 + r * 0.15;
             } else if (normalized.strategyId === 'carryover_repeat_control') {
                 const repeatPenalty = lastDrawSet?.has(n) ? 0.45 : 1.0;
-                weights[n] = (0.7 + (coldCore * 0.45) + (bayes * 0.15) + (gapBalance * 0.20)) * repeatPenalty;
+                weights[n] = (0.7 + coldCore * 0.45 + bayes * 0.15 + gapBalance * 0.2) * repeatPenalty;
             } else {
-                weights[n] = 0.7 + (consensusCore * 0.95);
+                weights[n] = 0.7 + consensusCore * 0.95;
             }
         }
 

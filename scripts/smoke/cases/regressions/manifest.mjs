@@ -42,6 +42,11 @@ const regressionExecutionPlan = [
         label: 'campaign derived-seed regression',
         argKey: 'stats180'
     },
+    {
+        name: 'runNoSeedRuntimeEntropyRegression',
+        label: 'no-seed runtime entropy regression',
+        argKey: 'stats180'
+    },
     { name: 'runQrValidationRegression', label: 'qr-validation regression' },
     { name: 'runTicketDedupeRegression', label: 'ticket-dedupe regression' },
     {
@@ -192,9 +197,18 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runImportPreviewAndOverwriteBackupRegression',
+        label: 'import preview and overwrite backup regression',
+        awaited: true
+    },
+    {
         name: 'runImportOrphanCampaignCleanupRegression',
         label: 'import orphan-campaign cleanup regression',
         awaited: true
+    },
+    {
+        name: 'runCleanupStoredRecordsRegression',
+        label: 'stored-record cleanup regression'
     },
     {
         name: 'runImportSafetyLimitsRegression',
@@ -270,6 +284,11 @@ const regressionExecutionPlan = [
     },
     { name: 'runDataListDomRegression', label: 'data-list DOM regression' },
     {
+        name: 'runLiveRegionAccessibilityRegression',
+        label: 'live-region accessibility regression',
+        awaited: true
+    },
+    {
         name: 'runCheckTargetCardAttributeEscapingRegression',
         label: 'check target-card attribute escaping regression'
     },
@@ -294,6 +313,16 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runWebManifestInstallabilityRegression',
+        label: 'web manifest installability regression',
+        awaited: true
+    },
+    {
+        name: 'runPwaUpdateSettingsUiRegression',
+        label: 'PWA update settings UI regression',
+        awaited: true
+    },
+    {
         name: 'runServiceWorkerManifestParityRegression',
         label: 'service-worker manifest parity regression',
         awaited: true
@@ -311,6 +340,11 @@ const regressionExecutionPlan = [
     {
         name: 'runLocalFontPathRegression',
         label: 'local font path regression',
+        awaited: true
+    },
+    {
+        name: 'runInnerHtmlAllowlistRegression',
+        label: 'innerHTML allowlist regression',
         awaited: true
     },
     {

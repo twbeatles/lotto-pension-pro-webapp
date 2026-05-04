@@ -26,7 +26,7 @@ export const appModuleLoaderDataHealthMethods = {
         const freshness = this.data.getDataFreshness();
         const featureLabels = {
             stats: '당첨 통계',
-            ai: '통계 추천',
+            ai: '번호 추천',
             bt: '시뮬레이션',
             gen: '번호 생성',
             check: '번호 확인'

@@ -5,11 +5,11 @@
 This is the current handoff note for Claude-family agents working in `lotto---webapp`.
 Use it to restore context quickly and avoid missing the current structure.
 
-- Date: `2026-04-30`
+- Date: `2026-05-04`
 - Static data latest draw: `1221`
 - Static data rows: `1220`
 - Missing draw: `146` → `CONFIG.LIMITS.MISSING_DRAWS = [146]` 상수로 명시됨
-- Current functional review artifact: `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-30.md`
+- Current functional review artifact: `FUNCTIONAL_GAP_AND_COPY_REVIEW_2026-05-04.md`
 
 ## Current State
 
@@ -43,7 +43,7 @@ Use it to restore context quickly and avoid missing the current structure.
 - Additional facade/barrel safety regressions were added:
     - `runFacadeExportParityRegression()`
     - `runRegressionBarrelExportParityRegression()`
-- Service worker cache version is `v18`.
+- Service worker cache version is `v20`.
 - Service worker precache is generated from `scripts/generate_sw_manifest.mjs` into `assets/sw-precache-manifest.js`.
 - Recent functional consistency fixes:
     - proxy setting changes now abort any in-flight sync before queuing the replacement/default sync path
@@ -79,6 +79,13 @@ Use it to restore context quickly and avoid missing the current structure.
     - history is now an actual log and preserves duplicate generated/imported entries by timestamp
     - past-draw tickets still settle immediately after save
     - generator campaign reset still restores target-draw auto-follow metadata
+    - Android PWA no-seed generation/recommendation now uses runtime entropy so repeated taps do not reuse a fixed worker result
+    - user-facing recommendation copy is `번호 추천`; `내 번호 보관함`, `데이터 연결 주소(고급)`, `같은 번호 다시 만들기 코드`, and `분석 강도` are the current beginner-facing terms
+    - settings/latest draw UI now shows `내 데이터 / 예상 최신 / 차이`
+    - backup import now has a preview confirm; overwrite mode downloads `lotto_before_replace_*.json` before applying
+    - `cleanupStoredRecords({ keepHistory: 200, removeSettledLosses: true })` backs the `백업하고 정리하기` flow
+    - `window.lottoPwaUpdate` exposes `check()`, `apply()`, and `getState()` plus `lotto:pwa-update-state`
+    - `npm run check:data-freshness` and `npm run test:pwa-mobile` are part of the current verification surface
 - AI strategy stack now includes:
     - richer weighting inputs from `core/strategy/context.js`
     - candidate reranking + diversity selection in `core/strategy/generation.js`
@@ -91,7 +98,7 @@ Use it to restore context quickly and avoid missing the current structure.
 - The global settings modal owns:
     - theme
     - in-app/system alerts
-    - custom proxy URL
+    - data connection URL (advanced custom proxy URL)
     - sync metadata
     - app storage summary
 - On mobile, the settings modal is forced into a single-column layout.
@@ -154,7 +161,7 @@ Use it to restore context quickly and avoid missing the current structure.
 - `syncMeta.lastSuccessDrawNo` is clamped to the latest effective draw after `winningStats` rebuild so settings never display an impossible applied draw.
 - Ticket delete / clear flows also prune orphan campaigns and append cleanup counts to success toasts.
 - History entries are now stored as actual save/import logs instead of number-unique snapshots.
-- Merge/overwrite import still prunes orphan campaigns and now preserves duplicate history entries in date-desc order.
+- Merge/overwrite (`합치기/바꾸기`) import still prunes orphan campaigns and now preserves duplicate history entries in date-desc order.
 - QR scanner cleanup is stricter.
     - Clicking the scan modal backdrop closes it.
     - Leaving the `check` route stops the active scanner.

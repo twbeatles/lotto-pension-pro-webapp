@@ -23,6 +23,6 @@ export const appModuleLoaderRequestBridgeMethods = {
             list.innerHTML = '';
             this.generator?.renderResultItem(nums, 0, list);
         }
-        UIManager.toast('통계 추천 번호로 생성 결과를 교체했습니다.', 'success');
+        UIManager.toast('번호 추천 결과로 생성 결과를 교체했습니다.', 'success');
     }
 };

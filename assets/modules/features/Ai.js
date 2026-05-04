@@ -2,6 +2,7 @@ import { $ } from '../utils/utils.js';
 import { StrategyEngine } from '../core/StrategyEngine.js';
 import { StrategyWorkerClient } from '../core/StrategyWorkerClient.js';
 import { StrategyPresetController } from '../utils/strategyPresets.js';
+import { applyAnalysisPresetToFields, syncAnalysisPresetSelect } from '../utils/analysisPresets.js';
 import { aiFormMethods } from './ai/form.js';
 import { aiRenderingMethods } from './ai/rendering.js';
 
@@ -22,6 +23,13 @@ export class AiModule {
             this.renderModelGuide();
         });
         $('#aiModelSelect')?.addEventListener('change', () => this.renderModelGuide());
+        $('#aiAnalysisPreset')?.addEventListener('change', (e) => {
+            if (e.currentTarget.value === 'custom') return;
+            applyAnalysisPresetToFields('ai', e.currentTarget.value);
+        });
+        ['#aiSimulationCount', '#aiLookbackWindow'].forEach((selector) => {
+            $(selector)?.addEventListener('input', () => syncAnalysisPresetSelect('ai'));
+        });
 
         this.populateStrategySelect();
         this.applySavedStrategyPrefs();

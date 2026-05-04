@@ -516,10 +516,11 @@ async function runRecommendationCopyRegression() {
         readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8')
     ]);
 
-    assert.match(indexSource, /통계 추천/, 'UI must expose the new recommendation naming');
+    assert.match(indexSource, /번호 추천/, 'UI must expose the new recommendation naming');
+    assert.doesNotMatch(indexSource, /통계 추천|AI 추천|난수 시드|Merge|Overwrite|사용자 프록시|프록시 설정 적용/, 'legacy beginner-facing copy must stay out of index.html');
     assert.match(indexSource, /추천 시작/, 'recommendation CTA must use 추천 wording');
     assert.doesNotMatch(indexSource, /인공지능 예측/, 'legacy AI prediction wording must be removed from index');
-    assert.match(readmeSource, /통계 추천:/, 'README must document the recommendation feature with the new wording');
+    assert.match(readmeSource, /번호 추천:/, 'README must document the recommendation feature with the new wording');
     assert.doesNotMatch(readmeSource, /인공지능 예측:/, 'README must drop the legacy AI prediction section title');
     assert.doesNotMatch(catalogSource, /표준 인공지능/, 'strategy catalog must not claim a standard AI model');
     assert.doesNotMatch(
@@ -544,6 +545,14 @@ async function runRecommendationCopyRegression() {
     );
 }
 
+async function runLiveRegionAccessibilityRegression() {
+    const indexSource = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
+    ['genResultList', 'aiOutput', 'checkResultArea', 'syncLog'].forEach((id) => {
+        const pattern = new RegExp(`id="${id}"[\\s\\S]*?aria-live="polite"[\\s\\S]*?aria-busy="false"`);
+        assert.match(indexSource, pattern, `${id} must expose live and busy attributes`);
+    });
+}
+
 function runFacadeExportParityRegression() {
     const lottoAppMethods = [
         'init',
@@ -563,7 +572,8 @@ function runFacadeExportParityRegression() {
         'fetchWinningStats',
         'fetchLatestFromAPI',
         'addTicket',
-        'clearTicketBook'
+        'clearTicketBook',
+        'cleanupStoredRecords'
     ];
     dataManagerMethods.forEach((name) => {
         assert.equal(typeof DataManager.prototype[name], 'function', `DataManager prototype must expose ${name}()`);
@@ -595,6 +605,7 @@ export {
     runFacadeExportParityRegression,
     runLatestWinDateEscapingRegression,
     runLatestWinPlaceholderRegression,
+    runLiveRegionAccessibilityRegression,
     runNotificationPermissionRegression,
     runQrRouteCleanupRegression,
     runQrScanReentryGuardRegression,

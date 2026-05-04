@@ -2,6 +2,7 @@ import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 import { listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { syncAnalysisPresetSelect } from '../../utils/analysisPresets.js';
 
 export const backtestStrategyFormMethods = {
     readPayoutMode() {
@@ -127,6 +128,7 @@ export const backtestStrategyFormMethods = {
         assign('btSimulationCount', saved.params?.simulationCount);
         assign('btLookbackWindow', saved.params?.lookbackWindow);
         assign('btSeed', saved.params?.seed ?? '');
+        syncAnalysisPresetSelect('bt');
         assign('btPayoutMode', saved.params?.payoutMode || 'hybrid_dynamic_first');
         this.currentPayoutMode = this.readPayoutMode();
 

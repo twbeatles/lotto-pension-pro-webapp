@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+import { escapeHtml } from '../../utils/dom.js';
 
 export const checkResultMethods = {
     resetResult() {
@@ -8,6 +9,7 @@ export const checkResultMethods = {
         if (!area) return;
         this.currentTicket = null;
         this.currentDrawNo = null;
+        area.setAttribute('aria-busy', 'false');
         area.classList.add('check-result-placeholder');
         area.innerHTML = `
       <i class="ph ph-magnifying-glass" style="font-size: 48px; color: var(--muted);"></i>
@@ -37,8 +39,14 @@ export const checkResultMethods = {
         const ticket = selected.item;
         if (!ticket) return UIManager.toast('선택 항목을 찾을 수 없습니다.', 'error');
 
-        if (this.mode === 'all') return this.runAll(ticket);
-        return this.runLatest(ticket);
+        const area = $('#checkResultArea');
+        area?.setAttribute('aria-busy', 'true');
+        try {
+            if (this.mode === 'all') return this.runAll(ticket);
+            return this.runLatest(ticket);
+        } finally {
+            area?.setAttribute('aria-busy', 'false');
+        }
     },
 
     _rank(matchCount, bonusHit) {
@@ -109,7 +117,7 @@ export const checkResultMethods = {
         area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
-          <div class="title">${latest.draw_no}회 (${latest.date})</div>
+          <div class="title">${latest.draw_no}회 (${escapeHtml(latest.date)})</div>
           <div class="badge ${rank ? 'ok' : 'no'}">${rankText}</div>
         </div>
         <div class="check-actions">
@@ -197,7 +205,7 @@ export const checkResultMethods = {
                 return `
         <div class="check-card">
           <div class="check-head">
-            <div class="title">${result.draw_no}회 (${result.date})</div>
+            <div class="title">${result.draw_no}회 (${escapeHtml(result.date)})</div>
             <div class="badge ${badgeCls}">${rankText}</div>
           </div>
           <div class="check-section">

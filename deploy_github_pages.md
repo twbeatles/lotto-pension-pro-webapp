@@ -4,7 +4,7 @@
 
 현재 저장소는 루트(`.`) 정적 파일을 GitHub Pages에 배포하는 구조입니다.
 
-- 별도 번들 산출물(`dist/`)을 만드는 프로젝트가 아니며, 정적 배포 검증은 `npm run build`(=`lint + smoke`)로 수행합니다.
+- 별도 번들 산출물(`dist/`)을 만드는 프로젝트가 아니며, 정적 배포 검증은 `npm run build`(=`lint + check:data-freshness + smoke`)로 수행합니다.
 
 - 배포 대상: `index.html`, `assets/`, `data/`, `manifest.json`, `sw.js`, `.nojekyll`, `THIRD_PARTY_NOTICES.md`
 - 저장소: `https://github.com/twbeatles/lotto---webapp`
@@ -16,6 +16,7 @@
 - Pages 배포 시 CDN 링크가 아니라 저장소에 커밋된 vendor 자산이 그대로 서빙되어야 합니다.
 - 현재 앱 셸은 분할된 내부 모듈과 `assets/styles/*.css`까지 함께 배포되는 구조입니다.
 - 서비스워커 등록/업데이트 UX는 `index.html` inline script가 아니라 `assets/modules/bootstrap/pwa.js`에서 시작됩니다.
+- 설정 모달의 `앱 업데이트 확인` 버튼은 `window.lottoPwaUpdate` 상태를 사용하며, 준비된 업데이트는 사용자가 적용할 때만 화면을 한 번 새로고침합니다.
 - 설치 프롬프트가 가능한 환경에서는 데스크톱 사이드바, 설정 모달, 모바일 `더보기` 시트에 설치 버튼이 동기화됩니다.
 
 ## 2) 데이터 운영
@@ -35,12 +36,15 @@
 - Import 후에는 백업에 저장되지 않은 `syncMeta` 를 `local_restore` 모드로 다시 구성함
 - 미래 회차 `localUpdates` 는 `estimateLatestDrawKST() + 2` 상한을 넘으면 저장하지 않고 제외함
 - `syncMeta.lastSuccessDrawNo` 는 실제 유효 최신 회차보다 높게 남지 않도록 clamp 됨
-- 정적 JSON 이 실패하면 `localUpdates` 만으로 recent draw 를 복원해 `partial recovery` 상태가 될 수 있음
+- 정적 JSON 이 실패하면 `localUpdates` 만으로 recent draw 를 복원해 `일부 데이터만 사용 중(partial recovery)` 상태가 될 수 있음
 - `localUpdates` 가 있으면 정적 JSON 단독이 아니라 merged 데이터 구조를 기준으로 health 를 판단하며, 중간 회차가 비면 `static_local`도 `partial`이 될 수 있음
 - partial 상태에서는 `gen/check/data` 는 유지되지만 `stats/ai/bt` 는 gate UI 로 제한됨
-- Merge/Overwrite Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됨
-- 마지막 연결 티켓이 삭제되거나 티켓북 전체 정리 후에도 orphan campaign 은 자동 정리됨
-- 티켓북 동일 조합은 grouped row + `quantity` 로 저장되며, 삭제/요약/캠페인 카운트는 실제 티켓 수량 기준으로 계산됨
+- `합치기/바꾸기` Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리됨
+- 마지막 연결 티켓이 삭제되거나 내 번호 보관함 전체 정리 후에도 orphan campaign 은 자동 정리됨
+- 내 번호 보관함 동일 조합은 grouped row + `quantity` 로 저장되며, 삭제/요약/캠페인 카운트는 실제 티켓 수량 기준으로 계산됨
+- Import 전에는 추가/중복/건너뜀/정리/적용 설정/미래 회차 제외/예상 번호 수를 미리 확인하며, `바꾸기`는 `lotto_before_replace_*.json` 자동 백업 후 진행됨
+- 데이터 관리의 `백업하고 정리하기`는 현재 데이터를 먼저 내보낸 뒤 최근 200개 초과 히스토리와 정산 끝난 미당첨 번호만 정리함
+- `npm run check:data-freshness`는 정적 데이터가 예상 최신 회차보다 1회차 초과 뒤처지면 실패함
 - 티켓 ID, 저장 번호 목록, 동기화 payload 회차는 Import/Sync 시점에 중앙 정규화되며, 비정상 번호/회차는 더 엄격하게 거부됨
 - 동기화 payload 날짜는 유효한 `YYYY-MM-DD` 또는 공식 `YYYYMMDD`만 수락함
 - Import는 백업 파일 크기, 티켓 총량, 전략 스냅샷 크기 상한을 적용함
@@ -49,12 +53,12 @@
 - 동기화 실행 정책:
     - in-flight 단일 실행(중복 클릭 시 기존 실행에 합류)
     - 수동 동기화(`syncDataBtn`)는 `cancelSyncBtn`으로 취소 가능
-    - 사용자 프록시가 없으면 내장 fallback 경로로 최신 회차를 확인
-    - 사용자 프록시가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
+    - 고급 데이터 연결 주소가 없으면 내장 fallback 경로로 최신 회차를 확인
+    - 고급 데이터 연결 주소가 있어도 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용
     - 비지원 프록시 형식은 설정 경고를 띄우고 기본 자동 동기화로 전환
     - JSON 구조가 예상과 다르면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그와 설정 경고를 남김
     - fallback 단건 요청은 최근 120회차로 제한
-    - 프록시 설정을 바꾸면 기존 in-flight sync를 먼저 취소하고 새 설정 또는 기본 자동 경로로 다시 확인
+    - 데이터 연결 주소(고급) 설정을 바꾸면 기존 in-flight sync를 먼저 취소하고 새 설정 또는 기본 자동 경로로 다시 확인
 
 메모:
 
@@ -62,12 +66,12 @@
 - 데이터 관리 화면에서 로컬 업데이트 개수를 확인하고 정리할 수 있습니다.
 - Import 완료 toast 에는 orphan campaign cleanup 수치가 함께 표시됩니다.
 - 정적 기준 최신 회차는 `winning_stats.json` 내용 기준으로 판단합니다.
-- 자동 동기화 경로가 모두 실패하면 정적 JSON + 로컬 업데이트 상태를 그대로 유지합니다.
+- 자동 동기화 경로가 모두 실패하면 기본 포함 데이터 + 내 기기 보정 상태를 그대로 유지합니다.
 - 앱 소유 storage key 변경은 `BroadcastChannel('lotto-data-sync')` 또는 `storage` fallback으로 다른 탭에 전파됩니다.
 
-## 3) 프록시 모드 (선택)
+## 3) 데이터 연결 주소(고급) 모드
 
-정적 JSON 외 외부 API 동기화를 강화하려면 프록시를 사용할 수 있습니다.
+기본 포함 데이터 외 외부 API 동기화를 강화하려면 고급 데이터 연결 주소를 사용할 수 있습니다.
 
 예시:
 `https://twbeatles.github.io/lotto---webapp/?proxyUrl=https%3A%2F%2F<worker>.workers.dev%2Fproxy%2Flatest`
@@ -82,16 +86,16 @@
 메모:
 
 - `?proxyUrl=`에 넣는 값은 `https://<worker>.workers.dev/proxy/latest`처럼 최신 단건 엔드포인트를 권장합니다.
-- 브라우저 주소창에 직접 넣을 때는 프록시 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
+- 브라우저 주소창에 직접 넣을 때는 데이터 연결 주소 전체를 URL 인코딩해야 쿼리 문자열이 깨지지 않습니다.
 - 앱의 공식 지원 커스텀 프록시는 `https://<worker>.workers.dev/proxy/latest` 형식입니다.
 - `?url=`, `{draw_no}`, `{url}` 형태는 저장돼 있어도 런타임에서 사용하지 않고 기본 자동 동기화로 전환합니다.
-- 설정 모달에는 비지원 프록시 형식에 대한 경고와 fallback 상태가 함께 표시됩니다.
-- 내장 fallback보다 안정적인 운영이 필요하면 사용자 프록시를 권장합니다.
+- 설정 모달에는 비지원 연결 주소 형식에 대한 경고와 fallback 상태가 함께 표시됩니다.
+- 내장 fallback보다 안정적인 운영이 필요하면 고급 데이터 연결 주소 사용을 권장합니다.
 - 프록시 Worker의 `/proxy/latest`는 `draw_no`를 생략하면 KST 기준 예상 최신 회차를 조회합니다.
 
 ## 4) 서비스워커/캐시 운영
 
-- 현재 `sw.js` 캐시 버전: `v18`
+- 현재 `sw.js` 캐시 버전: `v20`
 - 핵심 자산 변경(특히 JS 모듈, 워커, CSS) 시 캐시 갱신이 필요하면 `CACHE_VERSION`을 올립니다.
 - precache 자산 목록은 수동 배열이 아니라 `scripts/generate_sw_manifest.mjs`가 생성하는 `assets/sw-precache-manifest.js`를 기준으로 관리합니다.
 - `data/winning_stats.json`은 install 시 data cache에 precache됩니다.
@@ -151,12 +155,16 @@ python -m http.server 5173
 npm install
 npm run sync:sw-manifest
 npm run lint
+npm run check:data-freshness
 npm run build
 node scripts/smoke/smoke.mjs
 node scripts/perf/bench.mjs
 npm run bench:ai
 npm run test:happy
+npm run test:offline
+npm run test:pwa-mobile
 npm run test:sync-live
+git diff --check
 ```
 
 선택:
@@ -165,10 +173,10 @@ npm run test:sync-live
 npm run lint:fix
 npm run format:check
 npm run bench:ai:full
-npm run test:offline
 ```
 
 - `test:offline` 는 시스템 `Chrome`/`Edge` 또는 설치된 Playwright Chromium이 필요합니다.
+- `test:pwa-mobile` 은 Android-like viewport/user agent에서 서비스워커/PWA 흐름과 무시드 생성/번호 추천 결과가 고정되지 않는지 확인합니다.
 - 시스템 브라우저가 없으면 `npx playwright install chromium` 후 다시 실행합니다.
 
 `smoke`에는 아래 회귀 항목이 포함됩니다.

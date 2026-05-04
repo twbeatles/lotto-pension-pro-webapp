@@ -2,6 +2,7 @@ import { CONFIG } from '../../utils/config.js';
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { StrategyEngine } from '../../core/StrategyEngine.js';
+import { createRuntimeRng, withRuntimeSeed } from '../../core/strategy/runtimeEntropy.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 
@@ -65,6 +66,7 @@ export const generatorActionMethods = {
             this.data.save();
 
             const listEl = $('#genResultList');
+            listEl?.setAttribute('aria-busy', 'true');
             listEl.innerHTML = '';
             this.data.setGeneratedEntries([]);
             this.engine = new StrategyEngine(this.data.state.winningStats);
@@ -72,16 +74,17 @@ export const generatorActionMethods = {
             let sets = [];
             let fallback = false;
             const createdAt = new Date().toISOString();
+            const workerPayload = withRuntimeSeed({
+                statsData: this.data.state.winningStats,
+                count: requested,
+                request,
+                fixed,
+                exclude,
+                maxAttempts: 300
+            });
             startMark('generator.worker');
             try {
-                const result = await this.workerClient.generate({
-                    statsData: this.data.state.winningStats,
-                    count: requested,
-                    request,
-                    fixed,
-                    exclude,
-                    maxAttempts: 300
-                });
+                const result = await this.workerClient.generate(workerPayload);
                 sets = Array.isArray(result?.sets) ? result.sets : [];
             } catch (err) {
                 fallback = true;
@@ -89,7 +92,13 @@ export const generatorActionMethods = {
                     UIManager.toast(uiStrings.workerFallback, 'warning');
                 }
                 console.warn('전략 워커 사용 실패, 메인 스레드로 대체합니다.', err);
-                sets = this.engine.generateMultipleSets(requested, request, { fixed, exclude, maxAttempts: 300 });
+                const runtimeRng = createRuntimeRng(request, workerPayload.runtimeSeed);
+                sets = this.engine.generateMultipleSets(requested, request, {
+                    fixed,
+                    exclude,
+                    maxAttempts: 300,
+                    ...(runtimeRng ? { rng: runtimeRng } : {})
+                });
             } finally {
                 endMark('generator.worker', { count: sets.length, requested, fallback });
             }
@@ -115,6 +124,7 @@ export const generatorActionMethods = {
                 );
             }
         } finally {
+            $('#genResultList')?.setAttribute('aria-busy', 'false');
             if (localToken === this.generationToken) {
                 this.isGenerating = false;
                 this.syncBusyButtons?.();
@@ -184,16 +194,17 @@ export const generatorActionMethods = {
                 const runtimeRequest = deriveCampaignRuntimeRequest(request, i);
                 let sets = [];
                 let fallback = false;
+                const workerPayload = withRuntimeSeed({
+                    statsData: this.data.state.winningStats,
+                    count: setsPerWeek,
+                    request: runtimeRequest,
+                    fixed,
+                    exclude,
+                    maxAttempts: Math.max(240, setsPerWeek * 120)
+                });
                 startMark('generator.worker');
                 try {
-                    const result = await this.workerClient.generate({
-                        statsData: this.data.state.winningStats,
-                        count: setsPerWeek,
-                        request: runtimeRequest,
-                        fixed,
-                        exclude,
-                        maxAttempts: Math.max(240, setsPerWeek * 120)
-                    });
+                    const result = await this.workerClient.generate(workerPayload);
                     sets = Array.isArray(result?.sets) ? result.sets : [];
                 } catch (err) {
                     fallback = true;
@@ -202,10 +213,12 @@ export const generatorActionMethods = {
                         UIManager.toast(uiStrings.workerFallbackCampaign, 'warning');
                     }
                     console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
+                    const runtimeRng = createRuntimeRng(runtimeRequest, workerPayload.runtimeSeed);
                     sets = this.engine.generateMultipleSets(setsPerWeek, runtimeRequest, {
                         fixed,
                         exclude,
-                        maxAttempts: Math.max(240, setsPerWeek * 120)
+                        maxAttempts: Math.max(240, setsPerWeek * 120),
+                        ...(runtimeRng ? { rng: runtimeRng } : {})
                     });
                 } finally {
                     endMark('generator.worker', {
@@ -280,7 +293,7 @@ export const generatorActionMethods = {
             <div class="result-actions">
                 <button class="icon-btn" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
                 <button class="icon-btn" data-action="qr" aria-label="큐알 코드 보기" title="큐알"><i class="ph ph-qr-code"></i></button>
-                <button class="icon-btn" data-action="ticket" aria-label="티켓북 추가" title="티켓북"><i class="ph ph-ticket"></i></button>
+                <button class="icon-btn" data-action="ticket" aria-label="내 번호 보관함 추가" title="내 번호 보관함"><i class="ph ph-ticket"></i></button>
                 <button class="icon-btn" data-action="share" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
                 <button class="icon-btn" data-action="fav" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
             </div>

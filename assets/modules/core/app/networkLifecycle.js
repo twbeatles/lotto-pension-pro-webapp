@@ -69,7 +69,7 @@ export const appNetworkLifecycleMethods = {
             try {
                 const proxyUrl = new URL(proxyConfig.url);
                 proxyUrl.searchParams.set('_network_probe', String(Date.now()));
-                push(proxyConfig.source || '사용자 프록시', proxyUrl.toString());
+                push(proxyConfig.source || '고급 연결 주소', proxyUrl.toString());
             } catch (_e) {
                 // ignore malformed runtime value
             }

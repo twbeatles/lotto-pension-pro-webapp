@@ -123,23 +123,26 @@ export const appSettingsMethods = {
         const activeProxyConfig = this.data.resolveProxyConfig();
         if (proxyHelp) {
             proxyHelp.textContent = savedProxyValidation.empty
-                ? '비워두면 기본 자동 동기화를 사용합니다. 공식 지원 형식: https://<worker>.workers.dev/proxy/latest'
+                ? '비워두면 기본 자동 동기화를 사용합니다. 고급 연결 형식: https://<worker>.workers.dev/proxy/latest'
                 : savedProxyValidation.valid
-                  ? '공식 지원 형식의 사용자 프록시가 저장되어 있습니다.'
-                  : '지원되지 않는 프록시 형식은 무시되고 기본 자동 동기화로 내려갑니다.';
+                  ? '사용 가능한 데이터 연결 주소가 저장되어 있습니다.'
+                  : '지원되지 않는 연결 주소는 무시되고 기본 자동 동기화를 사용합니다.';
         }
         if (proxyStatus) {
             let statusText = '';
             if (!savedProxyValidation.empty && !savedProxyValidation.valid) {
-                statusText = `저장된 프록시 주소를 사용하지 않습니다. ${savedProxyValidation.reason}`;
+                statusText = `저장된 데이터 연결 주소를 사용하지 않습니다. ${savedProxyValidation.reason}`;
             } else if (activeProxyConfig?.invalid) {
-                statusText = `${activeProxyConfig.source}의 프록시 형식이 지원되지 않아 기본 자동 동기화를 사용 중입니다.`;
+                statusText = `${activeProxyConfig.source} 연결 형식이 지원되지 않아 기본 자동 동기화를 사용 중입니다.`;
             }
             proxyStatus.textContent = statusText;
             proxyStatus.style.display = statusText ? 'block' : 'none';
         }
 
         const freshness = this.data.getDataFreshness();
+        const freshnessSummary = this.data.getDataFreshnessSummary?.(freshness) || '';
+        const freshnessSummaryEl = $('#syncDataFreshnessSummary');
+        if (freshnessSummaryEl) freshnessSummaryEl.textContent = freshnessSummary;
         const syncMeta = this.data.state.syncMeta || this.data.getDefaultSyncMeta?.() || {};
         const syncModeEl = $('#syncMetaMode');
         if (syncModeEl) syncModeEl.textContent = this.data.getSyncModeLabel(syncMeta.mode);
@@ -169,20 +172,20 @@ export const appSettingsMethods = {
             if (syncMeta.mode === 'local_restore_failed' && syncMeta.lastFailureMessage) {
                 syncWarningEl.textContent = `백업 복원은 완료됐지만 당첨 데이터 재구성에 실패했습니다. ${syncMeta.lastFailureMessage}`;
             } else if (activeProxyConfig?.invalid) {
-                syncWarningEl.textContent = `${activeProxyConfig.source} 프록시 형식이 지원되지 않아 기본 자동 동기화로 전환되어 있습니다.`;
+                syncWarningEl.textContent = `${activeProxyConfig.source} 연결 형식이 지원되지 않아 기본 자동 동기화를 사용 중입니다.`;
             } else if (freshness.isUnavailable) {
                 syncWarningEl.textContent =
                     freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
             } else if (freshness.isPartial) {
                 syncWarningEl.textContent = freshness.dataHealthMessage
-                    ? `${freshness.dataHealthMessage} 통계/AI/백테스트는 전체 데이터 복구 후 사용할 수 있습니다.`
-                    : '부분 복구 상태입니다. 최신 일부 회차만 사용할 수 있어 통계 기반 기능이 제한됩니다.';
+                    ? `${freshness.dataHealthMessage} 통계/번호 추천/시뮬레이션은 전체 데이터 복구 후 사용할 수 있습니다.`
+                    : '일부 데이터만 사용 중입니다. 최신 일부 회차만 사용할 수 있어 통계 기반 기능이 제한됩니다.';
             } else if (freshness.isStale) {
                 syncWarningEl.textContent = freshness.canAutoSync
                     ? `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
                     : `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다.`;
             } else if (freshness.staticBehindBy > 0) {
-                syncWarningEl.textContent = `정적 JSON은 예상 최신 회차 기준으로 ${freshness.staticBehindBy}회차 뒤처져 있지만 로컬 업데이트가 보완하고 있습니다.`;
+                syncWarningEl.textContent = `기본 포함 데이터는 예상 최신 회차 기준으로 ${freshness.staticBehindBy}회차 뒤처져 있지만 내 기기 보정 데이터가 보완하고 있습니다.`;
             } else {
                 syncWarningEl.textContent = '현재 데이터는 예상 최신 회차 기준으로 최신 상태입니다.';
             }
@@ -196,17 +199,19 @@ export const appSettingsMethods = {
             } else if (freshness.isUnavailable) {
                 syncState = { label: '데이터 없음', code: 'danger' };
             } else if (freshness.isPartial) {
-                syncState = { label: '부분 복구', code: 'danger' };
+                syncState = { label: '일부 데이터', code: 'danger' };
             } else if (freshness.isStale) {
                 syncState = freshness.canAutoSync
                     ? { label: `${freshness.behindBy}회차 차이`, code: 'warning' }
                     : { label: '업데이트 필요', code: 'danger' };
             } else if (freshness.staticBehindBy > 0) {
-                syncState = { label: '로컬 업데이트 보완', code: 'warning' };
+                syncState = { label: '내 기기 보완', code: 'warning' };
             }
             syncStateBadge.textContent = syncState.label;
             syncStateBadge.className = `badge ${this.getStatusBadgeClass(syncState.code)}`;
         }
+
+        this.renderPwaUpdateState?.();
     },
 
     formatBytes(bytes = 0) {
@@ -236,11 +241,11 @@ export const appSettingsMethods = {
 
     getStorageHealthMessage(summary) {
         if (summary.status === 'danger') {
-            return '저장량이 커졌습니다. 백업 후 오래된 티켓/히스토리를 수동으로 정리하는 것을 권장합니다.';
+            return '저장량이 커졌습니다. 백업 후 오래된 히스토리와 정산 끝난 미당첨 번호를 정리하는 것을 권장합니다.';
         }
         if (summary.status === 'warning') {
             if (summary.warnings.length) {
-                return `권장 관리 기준 초과: ${summary.warnings.join(', ')}. 자동 삭제는 하지 않으며 직접 정리할 수 있습니다.`;
+                return `권장 관리 기준 초과: ${summary.warnings.join(', ')}. 백업하고 정리하기로 안전하게 줄일 수 있습니다.`;
             }
             return '저장량이 늘어나는 중입니다. 자동 삭제 없이 경고만 표시합니다.';
         }

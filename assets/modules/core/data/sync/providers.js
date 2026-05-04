@@ -28,7 +28,7 @@ export const dataSyncProviderMethods = {
         if (!customProxy) return [];
 
         const urls = [];
-        const label = proxyConfig?.source || '사용자 프록시';
+        const label = proxyConfig?.source || '고급 연결 주소';
 
         if (customProxy.includes('{draw_no}')) {
             urls.push({ label, url: customProxy.replace('{draw_no}', String(drawNo)) });

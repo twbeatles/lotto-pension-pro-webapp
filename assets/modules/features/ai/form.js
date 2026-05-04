@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { syncAnalysisPresetSelect } from '../../utils/analysisPresets.js';
 export const aiFormMethods = {
     getAiTargetDrawNo() {
         const latest = Number(this.app.data.state.winningStats?.[0]?.draw_no || 0);
@@ -99,6 +100,7 @@ export const aiFormMethods = {
         assign('aiSimulationCount', saved.params?.simulationCount);
         assign('aiLookbackWindow', saved.params?.lookbackWindow);
         assign('aiSeed', saved.params?.seed ?? '');
+        syncAnalysisPresetSelect('ai');
 
         const pair = (minId, maxId, values) => {
             const minEl = $(`#${minId}`);
@@ -164,12 +166,12 @@ export const aiFormMethods = {
                 targetDrawNo,
                 strategyRequest: this.lastRequest || this.buildStrategyRequest()
             });
-            if (!result?.ticket) UIManager.toast('티켓북 추가에 실패했습니다.', 'error');
+            if (!result?.ticket) UIManager.toast('내 번호 보관함 추가에 실패했습니다.', 'error');
             else {
                 UIManager.toast(
                     result.incremented
                         ? `${targetDrawNo}회차 동일 티켓 수량을 x${result.quantity}로 늘렸습니다.`
-                        : `${targetDrawNo}회차 티켓을 티켓북에 추가했습니다.`,
+                        : `${targetDrawNo}회차 내 번호 보관함에 추가했습니다.`,
                     'success'
                 );
                 if (this.app.renderDataLists) this.app.renderDataLists();

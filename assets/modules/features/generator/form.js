@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { applyAnalysisPresetToFields, syncAnalysisPresetSelect } from '../../utils/analysisPresets.js';
 export const generatorFormMethods = {
     syncBusyButtons() {
         const anyBusy = this.isGenerating || this.isGeneratingCampaign;
@@ -64,6 +65,13 @@ export const generatorFormMethods = {
 
         $('#genShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
         $('#genStrategySelect')?.addEventListener('change', () => this.syncLegacyTogglesFromStrategy());
+        $('#genAnalysisPreset')?.addEventListener('change', (e) => {
+            if (e.currentTarget.value === 'custom') return;
+            applyAnalysisPresetToFields('gen', e.currentTarget.value);
+        });
+        ['#genSimulationCount', '#genLookbackWindow'].forEach((selector) => {
+            $(selector)?.addEventListener('input', () => syncAnalysisPresetSelect('gen'));
+        });
         ['smartMode', 'preferHot', 'balanceMode'].forEach((id) => {
             $(`#${id}`)?.addEventListener('change', () => this.syncStrategyFromLegacyToggles());
         });
@@ -109,12 +117,12 @@ export const generatorFormMethods = {
                             strategyRequest: request
                         });
                     if (!result?.ticket) {
-                        UIManager.toast('티켓북 추가에 실패했습니다.', 'error');
+                        UIManager.toast('내 번호 보관함 추가에 실패했습니다.', 'error');
                     } else {
                         UIManager.toast(
                             result.incremented
                                 ? `${targetDrawNo}회차 동일 티켓 수량을 x${result.quantity}로 늘렸습니다.`
-                                : `${targetDrawNo}회차 티켓북에 추가했습니다.`,
+                                : `${targetDrawNo}회차 내 번호 보관함에 추가했습니다.`,
                             'success'
                         );
                         if (this.app.renderDataLists) this.app.renderDataLists();
@@ -197,6 +205,7 @@ export const generatorFormMethods = {
             const el = $(`#${id}`);
             if (el) el.value = v;
         });
+        syncAnalysisPresetSelect('gen');
         if ($('#genStrategySelect')) $('#genStrategySelect').value = 'ensemble_weighted';
         this.syncLegacyTogglesFromStrategy();
         this.data.setStrategyPrefs('generator', this.getStrategyRequestFromUI());
@@ -311,6 +320,7 @@ export const generatorFormMethods = {
         assign('genSimulationCount', saved.params?.simulationCount);
         assign('genLookbackWindow', saved.params?.lookbackWindow);
         assign('genSeed', saved.params?.seed ?? '');
+        syncAnalysisPresetSelect('gen');
 
         const setPair = (minId, maxId, pair) => {
             const minEl = $(`#${minId}`);

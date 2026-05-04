@@ -1,4 +1,5 @@
 import { StrategyEngine } from './modules/core/StrategyEngine.js';
+import { createRuntimeRng } from './modules/core/strategy/runtimeEntropy.js';
 
 function toArray(value, fallback = []) {
     return Array.isArray(value) ? value : fallback;
@@ -39,11 +40,13 @@ self.onmessage = async (event) => {
             const fixed = toArray(payload?.fixed, []);
             const exclude = toArray(payload?.exclude, []);
             const maxAttempts = Number(payload?.maxAttempts || 300);
+            const runtimeRng = createRuntimeRng(request, payload?.runtimeSeed);
 
             const sets = engine.generateMultipleSets(count, request, {
                 fixed,
                 exclude,
-                maxAttempts
+                maxAttempts,
+                ...(runtimeRng ? { rng: runtimeRng } : {})
             });
 
             self.postMessage({
@@ -59,7 +62,11 @@ self.onmessage = async (event) => {
 
         const request = payload?.request || {};
         const setCount = Number(payload?.setCount || 5);
-        const result = engine.recommendFromSimulation(request, { setCount });
+        const runtimeRng = createRuntimeRng(request, payload?.runtimeSeed);
+        const result = engine.recommendFromSimulation(request, {
+            setCount,
+            ...(runtimeRng ? { rng: runtimeRng } : {})
+        });
         const sets = toArray(result?.sets, []);
         const explanations = sets.map((set) => engine.explainSet(set, request));
         const diagnostics = result?.simulation?.diagnostics

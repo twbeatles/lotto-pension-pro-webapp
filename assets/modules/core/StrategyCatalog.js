@@ -57,7 +57,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         experimental: false,
         summary: '강한 신호의 교집합을 다시 선별',
         description:
-            '빈도, 최근성, 공백, 페어 시너지, 구간 분산 신호를 각각 독립적으로 본 뒤, 여러 관점에서 동시에 점수가 높은 후보만 다시 랭킹하는 <strong>다중 합의형 전략</strong>입니다. 단일 기준에 치우치지 않아 통계 추천의 기본형으로 쓰기 좋습니다.',
+            '빈도, 최근성, 공백, 페어 시너지, 구간 분산 신호를 각각 독립적으로 본 뒤, 여러 관점에서 동시에 점수가 높은 후보만 다시 랭킹하는 <strong>다중 합의형 전략</strong>입니다. 단일 기준에 치우치지 않아 번호 추천의 기본형으로 쓰기 좋습니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6500 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -171,9 +171,9 @@ export const STRATEGY_CATALOG = Object.freeze({
         label: '정밀 통계(복잡도/합계)',
         tier: 'B',
         experimental: false,
-        summary: '복잡도 지수와 합계 구간 기반 필터',
+        summary: '번호 섞임 정도와 합계 구간 기반 필터',
         description:
-            '역대 당첨 비율이 가장 높은 <strong>산술적 복잡도 지수(7~10)</strong>와 <strong>총합(100~175)</strong> 구간만을 엄격하게 필터링합니다. 번호 간 산포도를 최적화하여 뭉침을 배제합니다.',
+            '역대 당첨 비율이 가장 높은 <strong>번호 섞임 정도(7~10)</strong>와 <strong>총합(100~175)</strong> 구간만을 엄격하게 필터링합니다. 번호 간 산포도를 최적화하여 뭉침을 배제합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 8000 },
         defaultFilters: {
             ...EMPTY_FILTERS,

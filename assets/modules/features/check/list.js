@@ -1,15 +1,7 @@
 import { $, $$ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
-
-function escapeHtml(value = '') {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from '../../utils/dom.js';
 
 export const checkListMethods = {
     getList() {

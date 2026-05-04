@@ -1,10 +1,12 @@
 import { isAutoStrategyId } from './StrategyCatalog.js';
+import { withRuntimeSeed } from './strategy/runtimeEntropy.js';
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
+const STRATEGY_WORKER_ASSET_VERSION = 'v19';
 
 /** 저속 네트워크(2G/slow-2G) 감지 시 타임아웃을 배수로 확장 */
 function getNetworkSlowFactor() {
@@ -40,6 +42,7 @@ export class StrategyWorkerClient {
         }
 
         const url = new URL('../../strategy.worker.js', import.meta.url);
+        url.searchParams.set('v', STRATEGY_WORKER_ASSET_VERSION);
         this.worker = new Worker(url, { type: 'module' });
         this.worker.onmessage = (event) => this.handleMessage(event.data || {});
         this.worker.onerror = (err) => {
@@ -166,10 +169,10 @@ export class StrategyWorkerClient {
     }
 
     async generate(payload) {
-        return this.post('GENERATE', payload);
+        return this.post('GENERATE', withRuntimeSeed(payload));
     }
 
     async recommend(payload) {
-        return this.post('RECOMMEND', payload);
+        return this.post('RECOMMEND', withRuntimeSeed(payload));
     }
 }

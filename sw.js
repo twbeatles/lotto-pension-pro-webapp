@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v18';
+const CACHE_VERSION = 'v20';
 const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
@@ -56,10 +56,23 @@ self.addEventListener('install', (event) => {
 async function putIfOk(cacheName, request, response) {
     if (!response || (!response.ok && response.type !== 'opaque')) return;
     const cache = await caches.open(cacheName);
-    cache.put(request, response.clone());
+    await cache.put(request, response.clone());
 }
 
-async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500) {
+async function matchCachedResponse(cache, request, options = {}) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    if (options.ignoreSearch) {
+        const url = new URL(request.url);
+        if (url.search) {
+            return cache.match(request, { ignoreSearch: true });
+        }
+    }
+    return null;
+}
+
+async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500, options = {}) {
     const cache = await caches.open(cacheName);
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('network-timeout')), timeoutMs);
@@ -67,10 +80,14 @@ async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500) {
 
     try {
         const networkRes = await Promise.race([fetch(request), timeoutPromise]);
-        await putIfOk(cacheName, request, networkRes);
+        try {
+            await putIfOk(cacheName, request, networkRes);
+        } catch (_e) {
+            // A cache write failure should not hide a successful network response.
+        }
         return networkRes;
     } catch (e) {
-        const cached = await cache.match(request);
+        const cached = await matchCachedResponse(cache, request, options);
         if (cached) return cached;
         if (request.mode === 'navigate') {
             return cache.match('./index.html');
@@ -84,7 +101,7 @@ async function staleWhileRevalidate(request, cacheName) {
     const cached = await cache.match(request);
     const networkPromise = fetch(request)
         .then((res) => {
-            putIfOk(cacheName, request, res);
+            putIfOk(cacheName, request, res).catch(() => null);
             return res;
         })
         .catch(() => null);
@@ -99,7 +116,7 @@ async function staleWhileRevalidate(request, cacheName) {
         const shell = await caches.open(CACHE_APP_SHELL);
         return shell.match('./index.html');
     }
-    return new Response('오프라인', { status: 503, statusText: '오프라인' });
+    return new Response('오프라인', { status: 503, statusText: 'Offline' });
 }
 
 function isAppShellCodeRequest(request, url) {
@@ -108,14 +125,17 @@ function isAppShellCodeRequest(request, url) {
     return /\.(?:js|css|woff2?|ttf)$/i.test(url.pathname);
 }
 
+function isDataAssetRequest(url) {
+    return /\/data\/[^/]+\.json$/i.test(url.pathname);
+}
+
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
     if (url.pathname.endsWith(ONLINE_CHECK_PATH_SUFFIX)) return;
 
-    const isDataRequest = url.pathname.endsWith('.json') || url.pathname.startsWith('/data/');
-    if (isDataRequest) {
+    if (isDataAssetRequest(url)) {
         event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 5000));
         return;
     }
@@ -127,7 +147,7 @@ self.addEventListener('fetch', (event) => {
 
     // JS/CSS/font assets must prefer the network so deployed fixes do not get stuck behind stale app-shell cache.
     if (isAppShellCodeRequest(event.request, url)) {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_APP_SHELL, 3500, { ignoreSearch: true }));
         return;
     }
 

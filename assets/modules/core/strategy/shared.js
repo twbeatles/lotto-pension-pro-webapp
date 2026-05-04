@@ -6,6 +6,7 @@ export function clamp(n, min, max, fallback) {
 
 export function xorshift32(seed) {
     let x = seed >>> 0;
+    if (x === 0) x = 0x9e3779b9;
     return () => {
         x ^= x << 13;
         x ^= x >>> 17;

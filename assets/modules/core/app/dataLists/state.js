@@ -1,13 +1,9 @@
 import { CONFIG } from '../../../utils/config.js';
+import { escapeHtml } from '../../../utils/dom.js';
 
 export const appDataListStateMethods = {
     escapeHtml(value = '') {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        return escapeHtml(value);
     },
 
     getDataListState(scope) {

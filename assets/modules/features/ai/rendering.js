@@ -3,6 +3,7 @@ import { UIManager } from '../../core/UIManager.js';
 import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { AdvancedMonteCarlo } from '../../core/MonteCarlo.js';
 import { getStrategyMeta, isAutoStrategyId, STRATEGY_CATALOG, resolveStrategyId } from '../../core/StrategyCatalog.js';
+import { createRuntimeRng, withRuntimeSeed } from '../../core/strategy/runtimeEntropy.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 
@@ -58,6 +59,7 @@ export const aiRenderingMethods = {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
         out.innerHTML = '';
+        out.setAttribute('aria-busy', 'true');
         log.innerHTML = '';
         aiContainer?.classList.add('fx-active');
 
@@ -83,13 +85,14 @@ export const aiRenderingMethods = {
             let fallback = false;
             let workerTimedOut = false;
             startMark('ai.worker');
+            const workerPayload = withRuntimeSeed({
+                statsData: this.app.data.state.winningStats,
+                request,
+                setCount: targetSetCount
+            });
 
             try {
-                result = await this.workerClient.recommend({
-                    statsData: this.app.data.state.winningStats,
-                    request,
-                    setCount: targetSetCount
-                });
+                result = await this.workerClient.recommend(workerPayload);
                 result = normalizeSimulation(result, { executionMode: 'worker' });
                 results = Array.isArray(result?.sets) ? result.sets : [];
                 explanations = Array.isArray(result?.explanations) ? result.explanations : [];
@@ -108,9 +111,13 @@ export const aiRenderingMethods = {
                 if (workerTimedOut) {
                     UIManager.toast(UI_STRINGS.ai.workerFallback, 'warning');
                 }
-                console.warn('AI 추천 워커 실패, 메인 스레드로 대체합니다.', err);
+                console.warn('번호 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
-                result = this.engine.recommendFromSimulation(request, { setCount: targetSetCount });
+                const runtimeRng = createRuntimeRng(request, workerPayload.runtimeSeed);
+                result = this.engine.recommendFromSimulation(request, {
+                    setCount: targetSetCount,
+                    ...(runtimeRng ? { rng: runtimeRng } : {})
+                });
                 result = normalizeSimulation(result, {
                     executionMode: 'main_thread',
                     workerTimedOut
@@ -192,6 +199,7 @@ export const aiRenderingMethods = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 추천';
+            out?.setAttribute('aria-busy', 'false');
             aiContainer?.classList.remove('fx-active');
             endMark('ai.run', { strategyId: request.strategyId });
         }
@@ -248,6 +256,7 @@ export const aiRenderingMethods = {
                     <button class="btn ghost sm pick-btn" data-nums="${set.join(',')}">생성 탭으로</button>
                     <button class="btn ghost sm ticket-btn" data-nums="${set.join(',')}">티켓 저장</button>
                 </div>
+                <p class="result-disclaimer" style="margin-top:8px;">재미와 참고용이며 당첨을 보장하지 않습니다.</p>
                 ${
                     exp
                         ? `

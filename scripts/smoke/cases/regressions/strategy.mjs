@@ -7,8 +7,11 @@ import {
     passesFilters,
     readFile,
     resolve,
+    createRuntimeRng,
     StrategyEngine,
-    StrategyWorkerClient
+    StrategyWorkerClient,
+    withRuntimeSeed,
+    xorshift32
 } from './support.mjs';
 
 function runBacktestSmoke(stats) {
@@ -195,6 +198,57 @@ function runCampaignDerivedSeedRegression(stats) {
     assert.deepEqual(week1A, week1B, 'campaign week 1 output must stay reproducible');
 }
 
+function runNoSeedRuntimeEntropyRegression(stats) {
+    const engine = new StrategyEngine(stats);
+    const request = {
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 1200,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: null,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    };
+
+    const payload = withRuntimeSeed({ request });
+    assert.equal(payload.request.params.seed, null, 'runtime entropy must not persist into the strategy seed');
+    assert.ok(Number.isFinite(Number(payload.runtimeSeed)), 'no-seed requests must receive runtime entropy');
+
+    const first = engine.recommendFromSimulation(request, {
+        setCount: 3,
+        rng: createRuntimeRng(request, 111)
+    });
+    const second = engine.recommendFromSimulation(request, {
+        setCount: 3,
+        rng: createRuntimeRng(request, 222)
+    });
+    assert.notDeepEqual(first.sets, second.sets, 'different runtime seeds must diversify no-seed recommendations');
+
+    const seededRequest = {
+        ...request,
+        params: {
+            ...request.params,
+            seed: 777
+        }
+    };
+    assert.equal(createRuntimeRng(seededRequest, 111), null, 'explicit seeds must ignore runtime entropy');
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(withRuntimeSeed({ request: seededRequest }), 'runtimeSeed'),
+        false,
+        'explicit seeded requests must not receive runtime entropy'
+    );
+
+    const seededA = engine.recommendFromSimulation(seededRequest, { setCount: 3 });
+    const seededB = engine.recommendFromSimulation(seededRequest, { setCount: 3 });
+    assert.deepEqual(seededA.sets, seededB.sets, 'explicit seeds must remain reproducible');
+
+    const zeroSeedRng = xorshift32(0);
+    assert.notEqual(zeroSeedRng(), 0, 'zero seed must not degenerate into a constant-zero RNG');
+}
+
 async function runRecommendationRuntimePolicyRegression() {
     const [aiRenderingSource, workerSource, workerClientSource] = await Promise.all([
         readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8'),
@@ -290,6 +344,7 @@ export {
     runBacktestSmoke,
     runBackupSmoke,
     runCampaignDerivedSeedRegression,
+    runNoSeedRuntimeEntropyRegression,
     runRecommendationRuntimePolicyRegression,
     runStrategyWorkerFinalTimeoutTerminatesRegression,
     runStrictFilterRegression,

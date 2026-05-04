@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window, document, Worker */
 
 import fs from 'node:fs/promises';
 import http from 'node:http';
@@ -135,6 +135,32 @@ async function expectNoGate(page, routeId) {
     }, routeId);
 }
 
+async function expectVersionedWorkerAvailableOffline(page) {
+    await page.evaluate(async () => {
+        const workerUrl = new URL('assets/strategy.worker.js', window.location.href);
+        workerUrl.searchParams.set('v', 'offline-probe');
+        const worker = new Worker(workerUrl, { type: 'module' });
+
+        try {
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error('versioned worker offline probe timed out')), 5000);
+                worker.onerror = (event) => {
+                    clearTimeout(timer);
+                    reject(new Error(event.message || 'versioned worker failed while offline'));
+                };
+                worker.onmessage = (event) => {
+                    if (event.data?.type !== 'READY') return;
+                    clearTimeout(timer);
+                    resolve();
+                };
+                worker.postMessage({ type: 'WARMUP', requestId: 'offline_worker_probe', payload: {} });
+            });
+        } finally {
+            worker.terminate();
+        }
+    });
+}
+
 async function runMultiTabSyncScenario(browser, origin) {
     const context = await browser.newContext();
     const pageA = await createReadyPage(context, origin);
@@ -171,6 +197,7 @@ async function runOfflineCachedScenario(browser, origin) {
     await expectNoGate(page, 'bt');
     await routeTo(page, 'data');
     await expectNoGate(page, 'data');
+    await expectVersionedWorkerAvailableOffline(page);
 
     await context.close();
 }
@@ -239,6 +266,7 @@ async function main() {
                     scenarios: [
                         'multi-tab ticket sync',
                         'offline cached lazy-route access',
+                        'offline versioned worker cache access',
                         'offline gated partial-data routes'
                     ]
                 },

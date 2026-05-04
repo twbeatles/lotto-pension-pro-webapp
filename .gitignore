@@ -4,6 +4,11 @@
 # - cladue.md (compat alias)
 /backup
 
+# Browser/exported local app backups
+/lotto_backup_v*.json
+/lotto_before_replace_*.json
+/lotto_before_cleanup_*.json
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

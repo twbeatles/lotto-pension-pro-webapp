@@ -10,6 +10,7 @@ import {
     estimateLatestDrawKST,
     GeneratorModule,
     LottoApp,
+    normalizeBackupPayload,
     runPostImportRefresh,
     UIManager
 } from './support.mjs';
@@ -748,7 +749,7 @@ async function runHistoryActualLogRegression() {
             'merge import must sort combined history logs by newest date first'
         );
         assert.ok(
-            toasts.some((item) => item.includes('히스토리 저장 완료') || item.includes('병합 가져오기 완료')),
+            toasts.some((item) => item.includes('히스토리 저장 완료') || item.includes('합치기 가져오기')),
             'history regression should still emit save/import success feedback'
         );
     } finally {
@@ -1126,6 +1127,173 @@ async function runImportOrphanCampaignCleanupRegression() {
     }
 }
 
+async function runImportPreviewAndOverwriteBackupRegression() {
+    const previousDocument = globalThis.document;
+    const importMode = createField({ value: 'merge' });
+    const importApplyTheme = createField();
+    const importApplyProxy = createField();
+    const importApplyStrategyPrefs = createField();
+    const importApplyAlerts = createField();
+
+    globalThis.document = createDocumentStub({
+        '#importMode': importMode,
+        '#importApplyTheme': importApplyTheme,
+        '#importApplyProxy': importApplyProxy,
+        '#importApplyStrategyPrefs': importApplyStrategyPrefs,
+        '#importApplyAlerts': importApplyAlerts
+    });
+
+    try {
+        const data = new DataManager();
+        data.save = () => {};
+        data.state.favorites = [{ numbers: [1, 2, 3, 4, 5, 6], date: '2026-04-01T00:00:00.000Z' }];
+        data.state.ticketBook = [];
+        data.localUpdatesCache = [];
+        const ctx = Object.create(DataIOModule.prototype);
+        ctx.data = data;
+        ctx.app = { applyTheme() {}, renderSettingsPanel() {} };
+        ctx.syncProxyInput = () => {};
+        ctx.refreshPresetSelectors = () => {};
+        ctx.runPostImportRefresh = async () => {};
+
+        const payload = normalizeBackupPayload({
+            version: 3,
+            favorites: [
+                { numbers: [1, 2, 3, 4, 5, 6], date: '2026-04-02T00:00:00.000Z' },
+                { numbers: [2, 3, 4, 5, 6, 7], date: '2026-04-03T00:00:00.000Z' }
+            ],
+            history: [{ numbers: [8, 9, 10, 11, 12, 13], date: '2026-04-04T00:00:00.000Z' }],
+            ticketBook: [
+                {
+                    id: 'ticket_import_preview',
+                    numbers: [3, 4, 5, 6, 7, 8],
+                    targetDrawNo: 1300,
+                    source: 'import',
+                    createdAt: '2026-04-01T00:00:00.000Z',
+                    quantity: 2
+                }
+            ],
+            campaigns: [{ id: 'camp_orphan_import', name: 'orphan', startDrawNo: 1300, weeks: 1, setsPerWeek: 1 }],
+            alertPrefs: {},
+            settings: { theme: 'light', customProxy: 'https://example.com/proxy/latest' },
+            localUpdates: [
+                {
+                    draw_no: estimateLatestDrawKST() + 3,
+                    date: '2099-01-01',
+                    numbers: [1, 2, 3, 4, 5, 6],
+                    bonus: 7
+                }
+            ],
+            strategyPresets: []
+        });
+        const incoming = DataIOModule.prototype.normalizeImportPayload.call(ctx, payload);
+        const prepared = DataIOModule.prototype.buildImportPreview.call(ctx, incoming, {
+            mode: 'merge',
+            applyTheme: false,
+            applyProxy: false,
+            applyStrategyPrefs: false,
+            applyAlerts: false
+        });
+
+        assert.equal(prepared.preview.cleaned, 1, 'import preview must count orphan campaign cleanup');
+        assert.equal(prepared.preview.futureDropped, 1, 'import preview must count future local updates');
+        assert.equal(prepared.preview.projectedTicketTotal, 2, 'import preview must estimate ticket quantity');
+        assert.ok(prepared.preview.added >= 4, 'import preview must count new favorites/history/tickets');
+        assert.ok(prepared.preview.duplicate >= 1, 'import preview must count duplicate incoming records');
+
+        importMode.value = 'overwrite';
+        DataIOModule.prototype.applyImportModeDefaults.call(ctx, 'overwrite');
+        let backupPrefix = '';
+        ctx.exportAll = (options = {}) => {
+            backupPrefix = options.prefix || '';
+            return { downloaded: true, filename: 'test.json' };
+        };
+        ctx.confirmPreparedImport = async () => true;
+        const file = {
+            size: 1,
+            async text() {
+                return JSON.stringify({
+                    version: 3,
+                    favorites: [],
+                    history: [],
+                    ticketBook: [],
+                    campaigns: [],
+                    alertPrefs: {},
+                    settings: {},
+                    localUpdates: [],
+                    strategyPresets: []
+                });
+            }
+        };
+
+        await DataIOModule.prototype.importAll.call(ctx, {
+            currentTarget: {
+                files: [file],
+                value: 'overwrite.json'
+            }
+        });
+        assert.equal(backupPrefix, 'lotto_before_replace', 'overwrite import must create a pre-replace backup');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
+function runCleanupStoredRecordsRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+    dm.state.history = Array.from({ length: 205 }, (_, index) => ({
+        numbers: [1, 2, 3, 4, 5, 6],
+        date: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString()
+    }));
+    dm.state.ticketBook = [
+        dm.normalizeTicketEntry({
+            id: 'pending_ticket',
+            numbers: [1, 2, 3, 4, 5, 6],
+            targetDrawNo: 1300,
+            source: 'import'
+        }),
+        dm.normalizeTicketEntry({
+            id: 'winning_ticket',
+            numbers: [7, 8, 9, 10, 11, 12],
+            targetDrawNo: 1200,
+            source: 'import',
+            campaignId: 'camp_keep',
+            checked: { drawNo: 1200, rank: 5, checkedAt: '2026-04-01T00:00:00.000Z' }
+        }),
+        dm.normalizeTicketEntry({
+            id: 'loss_ticket',
+            numbers: [13, 14, 15, 16, 17, 18],
+            targetDrawNo: 1200,
+            source: 'import',
+            campaignId: 'camp_drop',
+            quantity: 3,
+            checked: { drawNo: 1200, rank: 0, checkedAt: '2026-04-01T00:00:00.000Z' }
+        })
+    ].filter(Boolean);
+    dm.state.campaigns = [
+        dm.normalizeCampaignEntry({ id: 'camp_keep', name: 'keep', startDrawNo: 1200, weeks: 1, setsPerWeek: 1 }),
+        dm.normalizeCampaignEntry({ id: 'camp_drop', name: 'drop', startDrawNo: 1200, weeks: 1, setsPerWeek: 1 })
+    ].filter(Boolean);
+
+    const result = dm.cleanupStoredRecords({ keepHistory: 200, removeSettledLosses: true });
+
+    assert.equal(result.historyTrimmed, 5, 'cleanup must trim history beyond the configured keep count');
+    assert.equal(result.removedTickets, 3, 'cleanup must remove only settled losing ticket quantities');
+    assert.equal(result.removedCampaigns, 1, 'cleanup must prune campaigns orphaned by losing-ticket cleanup');
+    assert.equal(dm.state.history.length, 200, 'cleanup must leave exactly the requested history count');
+    assert.deepEqual(
+        dm.state.ticketBook.map((ticket) => ticket.id),
+        ['pending_ticket', 'winning_ticket'],
+        'cleanup must preserve pending and winning tickets'
+    );
+    assert.deepEqual(
+        dm.state.campaigns.map((campaign) => campaign.id),
+        ['camp_keep'],
+        'cleanup must preserve campaigns with remaining tickets'
+    );
+}
+
 async function runPostImportRefreshRegression() {
     const calls = [];
     const data = {
@@ -1263,12 +1431,14 @@ function runPersistenceFlushRegression() {
 
 export {
     runCheckTargetDrawRegression,
+    runCleanupStoredRecordsRegression,
     runClearLocalUpdatesReconcileRegression,
     runHistoryActualLogRegression,
     runImmediateTicketSettlementRegression,
     runImportStoredListStrictNormalizationRegression,
     runImportAlertOptionRegression,
     runImportOrphanCampaignCleanupRegression,
+    runImportPreviewAndOverwriteBackupRegression,
     runImportSafetyLimitsRegression,
     runLoadOrphanCampaignMigrationRegression,
     runLocalRestoreSyncMetaRegression,

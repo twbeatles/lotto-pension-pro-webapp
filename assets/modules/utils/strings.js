@@ -22,8 +22,8 @@ export const UI_STRINGS = {
         workerFallbackCampaign: '캠페인 생성 워커가 지연되어 메인 스레드로 전환합니다.'
     },
     ai: {
-        workerFallback: '워커 응답이 지연되어 메인 스레드 통계 추천으로 전환합니다.',
-        workerTimeoutAuto: '자동 비교 전략 계산이 지연되었습니다. 시뮬레이션 수를 낮춰 다시 시도하세요.',
+        workerFallback: '워커 응답이 지연되어 메인 스레드 번호 추천으로 전환합니다.',
+        workerTimeoutAuto: '자동 비교 전략 계산이 지연되었습니다. 분석 강도를 낮춰 다시 시도하세요.',
         uniformFallback: '채택 샘플이 부족해 균등 가중치로 추천했습니다.'
     },
     backtest: {
@@ -42,14 +42,14 @@ export const UI_STRINGS = {
             const cleanupSuffix = cleaned > 0 ? `, 정리 ${cleaned}개 캠페인` : '';
             const futureSuffix = futureDropped > 0 ? `, 미래 회차 제외 ${futureDropped}건` : '';
             const suffix = applied.length ? `, 적용: ${applied.join('/')}` : '';
-            return `병합 가져오기를 완료했습니다. 추가 ${added}건, 중복 ${duplicate}건, 건너뜀 ${skipped}건${cleanupSuffix}${futureSuffix}${suffix}`;
+            return `합치기 가져오기를 완료했습니다. 추가 ${added}건, 중복 ${duplicate}건, 건너뜀 ${skipped}건${cleanupSuffix}${futureSuffix}${suffix}`;
         },
         overwriteComplete({ added = 0, skipped = 0, applied = [], cleaned = 0, futureDropped = 0 } = {}) {
             const skippedSuffix = skipped > 0 ? `, 건너뜀 ${skipped}건` : '';
             const cleanupSuffix = cleaned > 0 ? `, 정리 ${cleaned}개 캠페인` : '';
             const futureSuffix = futureDropped > 0 ? `, 미래 회차 제외 ${futureDropped}건` : '';
             const suffix = applied.length ? `, 적용: ${applied.join('/')}` : '';
-            return `덮어쓰기 가져오기를 완료했습니다. 반영 ${added}건${skippedSuffix}${cleanupSuffix}${futureSuffix}${suffix}`;
+            return `바꾸기 가져오기를 완료했습니다. 반영 ${added}건${skippedSuffix}${cleanupSuffix}${futureSuffix}${suffix}`;
         }
     },
     sync: {
@@ -99,7 +99,7 @@ export const UI_STRINGS = {
         sourceLabels: {
             favorites: '즐겨찾기',
             history: '히스토리',
-            tickets: '티켓',
+            tickets: '내 번호',
             scanned: '스캔 결과'
         },
         ticketStatus: {

@@ -34,10 +34,23 @@ export const dataAnalyticsMethods = {
         };
     },
 
+    getDataFreshnessSummary(freshness = this.getDataFreshness()) {
+        const latest = Math.max(0, Math.floor(Number(freshness.latestDrawNo || 0)));
+        const estimated = Math.max(0, Math.floor(Number(freshness.estimatedLatestDrawNo || 0)));
+        const behindBy =
+            latest > 0 && estimated > 0
+                ? Math.max(0, Math.floor(Number(freshness.behindBy ?? estimated - latest)))
+                : 0;
+        const latestLabel = latest > 0 ? `${latest}회` : '없음';
+        const estimatedLabel = estimated > 0 ? `${estimated}회` : '계산 중';
+        const gapLabel = latest > 0 && estimated > 0 ? `${behindBy}회` : '-';
+        return `내 데이터: ${latestLabel} / 예상 최신: ${estimatedLabel} / 차이 ${gapLabel}`;
+    },
+
     getStaleDataMessage(featureLabel = '기능') {
         const freshness = this.getDataFreshness();
         if (freshness.isPartial) {
-            return `${featureLabel}은 사용할 수 있지만 현재 데이터는 부분 복구 상태입니다. 최신 회차 일부만 반영되어 결과가 제한될 수 있습니다.`;
+            return `${featureLabel}은 사용할 수 있지만 현재 데이터는 일부만 사용 중입니다. 최신 회차 일부만 반영되어 결과가 제한될 수 있습니다.`;
         }
         if (freshness.isUnavailable) {
             return `${featureLabel}에 필요한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.`;

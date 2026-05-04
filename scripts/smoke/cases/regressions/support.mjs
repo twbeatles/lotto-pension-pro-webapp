@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 import { StrategyEngine } from '../../../../assets/modules/core/StrategyEngine.js';
 import { StrategyWorkerClient } from '../../../../assets/modules/core/StrategyWorkerClient.js';
+import { createRuntimeRng, withRuntimeSeed } from '../../../../assets/modules/core/strategy/runtimeEntropy.js';
+import { xorshift32 } from '../../../../assets/modules/core/strategy/shared.js';
 import { DataManager } from '../../../../assets/modules/core/DataManager.js';
 import { LottoApp } from '../../../../assets/modules/core/LottoApp.js';
 import { UIManager } from '../../../../assets/modules/core/UIManager.js';
@@ -27,6 +29,7 @@ export {
     CONFIG,
     createDocumentStub,
     createField,
+    createRuntimeRng,
     DataIOModule,
     DataManager,
     estimateLatestDrawKST,
@@ -40,5 +43,7 @@ export {
     runPostImportRefresh,
     StrategyEngine,
     StrategyWorkerClient,
+    withRuntimeSeed,
+    xorshift32,
     UIManager
 };

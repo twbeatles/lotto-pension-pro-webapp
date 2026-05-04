@@ -1,6 +1,7 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+import { applyAnalysisPresetToFields, syncAnalysisPresetSelect } from '../../utils/analysisPresets.js';
 
 export const backtestEventMethods = {
     bindEvents() {
@@ -9,6 +10,13 @@ export const backtestEventMethods = {
         $('#btShowExperimental')?.addEventListener('change', () => this.populateStrategySelect());
         $('#btExportCsv')?.addEventListener('click', () => this.exportComparisonCsv());
         $('#btCompareMode')?.addEventListener('change', () => this.toggleCompareMode());
+        $('#btAnalysisPreset')?.addEventListener('change', (e) => {
+            if (e.currentTarget.value === 'custom') return;
+            applyAnalysisPresetToFields('bt', e.currentTarget.value);
+        });
+        ['#btSimulationCount', '#btLookbackWindow'].forEach((selector) => {
+            $(selector)?.addEventListener('input', () => syncAnalysisPresetSelect('bt'));
+        });
     },
 
     onEnter() {

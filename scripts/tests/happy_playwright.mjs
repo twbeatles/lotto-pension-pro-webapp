@@ -102,30 +102,36 @@ async function routeTo(page, target) {
     }, target);
 }
 
-async function runGenerateTicketCheckFlow(page) {
-    await routeTo(page, 'gen');
-    const latestDrawNo = await page.evaluate(() => Number(window.app.data.state.winningStats[0]?.draw_no || 0));
-    await page.evaluate((drawNo) => {
-        const setCount = document.querySelector('#setCount');
+async function setGeneratorTargetToCurrentLatest(page) {
+    return page.evaluate(() => {
+        const latestDrawNo = Number(window.app.data.state.winningStats[0]?.draw_no || 0);
         const targetDraw = document.querySelector('#genTargetDrawNo');
-        const seed = document.querySelector('#genSeed');
-        if (setCount) setCount.value = '1';
-        if (targetDraw) {
-            targetDraw.value = String(drawNo);
+        if (targetDraw && latestDrawNo > 0) {
+            targetDraw.value = String(latestDrawNo);
             targetDraw.dispatchEvent(new Event('input', { bubbles: true }));
         }
+        return latestDrawNo;
+    });
+}
+
+async function runGenerateTicketCheckFlow(page) {
+    await routeTo(page, 'gen');
+    await page.evaluate(() => {
+        const setCount = document.querySelector('#setCount');
+        const seed = document.querySelector('#genSeed');
+        if (setCount) setCount.value = '1';
         if (seed) seed.value = '20260430';
-    }, latestDrawNo);
+    });
+    await setGeneratorTargetToCurrentLatest(page);
 
     await page.click('#generateBtn');
     await page.waitForSelector('#genResultList .result-item button[data-action="ticket"]', { timeout: 20000 });
+    const ticketTargetDrawNo = await setGeneratorTargetToCurrentLatest(page);
     await page.click('#genResultList .result-item button[data-action="ticket"]');
-    await page.waitForFunction(() => {
+    await page.waitForFunction((expectedDrawNo) => {
         const ticket = window.app.data.state.ticketBook[0];
-        return Boolean(
-            ticket?.checked && Number(ticket.targetDrawNo) === Number(window.app.data.state.winningStats[0]?.draw_no)
-        );
-    });
+        return Boolean(ticket?.checked && Number(ticket.targetDrawNo) === Number(expectedDrawNo));
+    }, ticketTargetDrawNo);
 
     await routeTo(page, 'check');
     await page.click('#page-check [data-source="tickets"]');
@@ -171,6 +177,8 @@ async function runImportFlow(page) {
         mimeType: 'application/json',
         buffer: Buffer.from(JSON.stringify(payload), 'utf8')
     });
+    await page.waitForSelector('#dialogModal.active #dialogConfirmBtn', { timeout: 5000 });
+    await page.click('#dialogConfirmBtn');
     await page.waitForFunction(() => {
         return window.app.data.state.favorites.some((item) => (item.numbers || []).join(',') === '1,2,3,4,5,6');
     });

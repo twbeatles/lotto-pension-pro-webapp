@@ -14,24 +14,43 @@ export const dataIoSupportMethods = {
         this.applyImportModeDefaults(String($('#importMode')?.value || 'merge'));
     },
 
-    exportAll() {
+    exportAll(options = {}) {
         const payload = buildBackupPayload(this.data.state, {
             localUpdates: this.data.getLocalUpdates(),
             strategyPresets: this.data.state.strategyPresets || []
         });
 
         const json = JSON.stringify(payload, null, 2);
+        if (
+            typeof document === 'undefined' ||
+            typeof document.createElement !== 'function' ||
+            typeof Blob === 'undefined' ||
+            typeof URL === 'undefined' ||
+            typeof URL.createObjectURL !== 'function'
+        ) {
+            return {
+                filename: '',
+                payload,
+                downloaded: false
+            };
+        }
         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        a.download = `lotto_backup_v3_${ts}.json`;
+        const prefix = String(options.prefix || 'lotto_backup_v3').replace(/[^a-zA-Z0-9_-]/g, '_');
+        a.download = `${prefix}_${ts}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
+        if (!options.silent) UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
+        return {
+            filename: a.download,
+            payload,
+            downloaded: true
+        };
     },
 
     normalizeItems(items) {
@@ -169,7 +188,7 @@ export const dataIoSupportMethods = {
     describeAppliedSettings(importOptions = {}) {
         const labels = [];
         if (importOptions.applyTheme) labels.push('테마');
-        if (importOptions.applyProxy) labels.push('프록시');
+        if (importOptions.applyProxy) labels.push('데이터 연결 주소');
         if (importOptions.applyStrategyPrefs) labels.push('전략 설정');
         if (importOptions.applyAlerts) labels.push('알림 설정');
         return labels;

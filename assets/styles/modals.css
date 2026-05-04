@@ -529,6 +529,57 @@
     margin-top: 12px;
 }
 
+.analysis-preset-row {
+    margin-top: 12px;
+}
+
+.analysis-preset-row .input-group {
+    max-width: 420px;
+}
+
+.field-help,
+.result-disclaimer {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.result-disclaimer {
+    margin-top: 10px;
+}
+
+.advanced-settings {
+    margin-top: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.advanced-settings summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.advanced-settings[open] summary {
+    margin-bottom: 4px;
+    color: var(--text-main);
+}
+
+.latest-data-summary {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+#dialogMessage {
+    white-space: pre-line;
+}
+
 .compare-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

@@ -32,7 +32,7 @@ export const appDataListEventMethods = {
             });
             const visibleCount = this.data.getTotalTicketCount(visibleTickets);
             const confirmed = await UIManager.confirm({
-                title: `티켓북에서 '${filterLabel}' 항목을 삭제할까요?`,
+                title: `내 번호 보관함에서 '${filterLabel}' 항목을 삭제할까요?`,
                 message: `${visibleCount}개 티켓이 삭제됩니다.`
             });
             if (!confirmed) return;
@@ -91,6 +91,33 @@ export const appDataListEventMethods = {
             this.renderDataLists();
             UIManager.toast(`로컬 업데이트 ${updateCount}개를 정리했습니다.`, 'success');
         });
+
+        const runBackupAndCleanup = async () => {
+            const summary = this.data.getStorageSummary?.() || { counts: {} };
+            const confirmed = await UIManager.confirm({
+                title: '백업하고 오래된 데이터를 정리할까요?',
+                message:
+                    `먼저 현재 데이터를 백업 파일로 저장합니다.\n` +
+                    `그 다음 생성 히스토리는 최근 200개만 남기고, 정산 끝난 미당첨 번호만 정리합니다.\n` +
+                    `예정 번호, 당첨 번호, 내 기기 최신 회차 보정 데이터는 삭제하지 않습니다.\n\n` +
+                    `현재 저장: 히스토리 ${summary.counts?.history || 0}개 / 번호 ${summary.counts?.tickets || 0}개`
+            });
+            if (!confirmed) return;
+
+            const dataIo = await this.ensureModule?.('dataIO');
+            dataIo?.exportAll?.({ silent: true, prefix: 'lotto_before_cleanup' });
+            const result = this.data.cleanupStoredRecords({ keepHistory: 200, removeSettledLosses: true });
+            this.renderDataLists();
+            this.renderSettingsPanel?.();
+            UIManager.toast(
+                `정리 완료: 히스토리 ${result.historyTrimmed}개, 미당첨 번호 ${result.removedTickets}개, 캠페인 ${result.removedCampaigns}개`,
+                result.historyTrimmed || result.removedTickets || result.removedCampaigns ? 'success' : 'info',
+                4500
+            );
+        };
+
+        $('#backupAndCleanupBtn')?.addEventListener('click', runBackupAndCleanup);
+        $('#settingsBackupAndCleanupBtn')?.addEventListener('click', runBackupAndCleanup);
 
         $('#ticketFilter')?.addEventListener('change', () => {
             this.setDataListPage('ticket', 1);

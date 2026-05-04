@@ -78,9 +78,9 @@ export const dataDefaultsMethods = {
     },
 
     getDataHealthSourceLabel(source = this.dataHealth?.source) {
-        if (source === 'static') return '정적 JSON';
-        if (source === 'static_local') return '정적 JSON + 로컬 업데이트';
-        if (source === 'local_only') return '로컬 업데이트만';
+        if (source === 'static') return '기본 포함 데이터';
+        if (source === 'static_local') return '기본 포함 데이터 + 내 기기 보정';
+        if (source === 'local_only') return '내 기기 보정 데이터만';
         return '데이터 없음';
     },
 
@@ -120,13 +120,13 @@ export const dataDefaultsMethods = {
     getSyncModeLabel(mode = this.state.syncMeta?.mode) {
         if (mode === 'local_restore') return '로컬 복원';
         if (mode === 'local_restore_failed') return '로컬 복원 실패';
-        if (mode === 'custom_proxy' || mode === 'proxy_opt_in') return '사용자 프록시';
+        if (mode === 'custom_proxy' || mode === 'proxy_opt_in') return '고급 연결 주소';
         if (mode === 'automatic_fallback') return '기본 자동 동기화';
-        return '정적 JSON 전용';
+        return '기본 포함 데이터 전용';
     },
 
     getSyncSourceLabel(proxyConfig = this.resolveProxyConfig()) {
-        if (proxyConfig?.url) return proxyConfig.source || '사용자 프록시';
+        if (proxyConfig?.url) return proxyConfig.source || '고급 연결 주소';
         return '기본 자동 동기화';
     },
 

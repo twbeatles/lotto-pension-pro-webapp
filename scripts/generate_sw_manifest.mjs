@@ -21,6 +21,18 @@ const DATA_FILES = ['data/pension720_stats.json', 'data/winning_stats.json'];
 const EXCLUDE_FILES = new Set(['assets/sw-precache-manifest.js', 'online-check.txt']);
 
 const INCLUDED_EXTENSIONS = new Set(['.js', '.css', '.woff', '.woff2', '.ttf', '.svg', '.png', '.json', '.html']);
+const LEGACY_FONT_FALLBACK_EXTENSIONS = new Set(['.woff', '.ttf', '.svg']);
+
+function shouldIncludeFile(relativePath) {
+    const normalized = relativePath.replace(/\\/g, '/');
+    const ext = path.extname(normalized).toLowerCase();
+    if (!INCLUDED_EXTENSIONS.has(ext)) return false;
+    if (EXCLUDE_FILES.has(normalized)) return false;
+    if (normalized.startsWith('assets/vendor/phosphor/') && LEGACY_FONT_FALLBACK_EXTENSIONS.has(ext)) {
+        return false;
+    }
+    return true;
+}
 
 function toManifestPath(relativePath = '') {
     const normalized = String(relativePath || '').replace(/\\/g, '/');
@@ -39,9 +51,7 @@ async function walkDir(relativeDir) {
             continue;
         }
 
-        const ext = path.extname(entry.name).toLowerCase();
-        if (!INCLUDED_EXTENSIONS.has(ext)) continue;
-        if (EXCLUDE_FILES.has(nextRelative)) continue;
+        if (!shouldIncludeFile(nextRelative)) continue;
         files.push(nextRelative);
     }
 

@@ -143,6 +143,7 @@ async function runBacktest({
     const { allStats, drawMap, drawIndex } = prepareStatsIndex(statsData);
     const requests = getStrategyRequests({ strategyRequest, strategy, strategyRequests });
     const normalizationEngine = new StrategyEngine(allStats);
+    const executionEngine = new StrategyEngine(allStats);
     const strategyDrawTotal = Math.max(0, end - start + 1);
     const totalDraws = strategyDrawTotal * requests.length;
     const ticketQty = Math.max(1, Math.floor(Number(qty) || 1));
@@ -199,9 +200,9 @@ async function runBacktest({
                 continue;
             }
 
-            const engine = new StrategyEngine(historyData);
-            let tickets = engine.generateMultipleSets(ticketQty, req, {
+            let tickets = executionEngine.generateMultipleSets(ticketQty, req, {
                 sourceData: historyData,
+                sourceDataSorted: true,
                 normalizedRequest,
                 filterEvaluator,
                 maxAttempts: ticketQty * 120
@@ -214,7 +215,7 @@ async function runBacktest({
             const bonusNumber = Number(actualResult.bonus);
 
             for (const ticket of tickets) {
-                const { rank, prize } = engine.evaluateTicketSet(ticket, actualResult, { payoutMode: mode });
+                const { rank, prize } = executionEngine.evaluateTicketSet(ticket, actualResult, { payoutMode: mode });
                 report.tickets++;
                 report.cost += 1000;
                 report.totalPrize += prize;

@@ -7,7 +7,19 @@
         <meta name="theme-color" content="#0f172a" />
         <title>로또·연금복권 프로</title>
         <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
-        <link rel="stylesheet" href="assets/app.css" />
+        <link
+            rel="preload"
+            href="assets/vendor/pretendard/PretendardVariable.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+        />
+        <link rel="stylesheet" href="assets/styles/tokens.css" />
+        <link rel="stylesheet" href="assets/styles/layout.css" />
+        <link rel="stylesheet" href="assets/styles/components.css" />
+        <link rel="stylesheet" href="assets/styles/pages.css" />
+        <link rel="stylesheet" href="assets/styles/modals.css" />
+        <link rel="stylesheet" href="assets/styles/responsive.css" />
         <link rel="manifest" href="manifest.json" />
         <link rel="stylesheet" href="./assets/vendor/phosphor/src/regular/style.css" />
         <link rel="stylesheet" href="./assets/vendor/phosphor/src/bold/style.css" />
@@ -117,10 +129,15 @@
                         <h2>번호 생성</h2>
                         <p class="subtitle">나만의 행운 번호를 조합해보세요.</p>
                     </header>
+                    <div class="feature-overview" aria-label="번호 생성 작업 구조">
+                        <span class="feature-chip is-active"><i class="ph ph-sliders-horizontal"></i> 기본 설정</span>
+                        <span class="feature-chip"><i class="ph ph-sparkle"></i> 번호 생성</span>
+                        <span class="feature-chip"><i class="ph ph-ticket"></i> 저장</span>
+                    </div>
 
-                    <div class="dashboard-grid">
+                    <div class="dashboard-grid workflow-grid">
                         <!-- Generator Card -->
-                        <div class="card glass">
+                        <div class="card glass task-card task-card-primary">
                             <div class="card-header">
                                 <h3>옵션 설정</h3>
                                 <button id="resetOptions" class="text-btn">초기화</button>
@@ -474,7 +491,7 @@
                         </div>
 
                         <!-- Latest Win -->
-                        <div class="card glass highlight-card">
+                        <div class="card glass context-card latest-win-card">
                             <div class="card-header">
                                 <h3>최신 당첨결과</h3>
                                 <div class="row-center">
@@ -499,7 +516,7 @@
                         </div>
                     </div>
 
-                    <div class="results-section">
+                    <div class="results-section card glass result-workbench">
                         <div class="section-header">
                             <h3>생성 결과</h3>
                             <div class="actions">
@@ -520,8 +537,13 @@
                         <h2>당첨 통계</h2>
                         <p class="subtitle">역대 데이터를 분석하여 인사이트를 얻으세요.</p>
                     </header>
-                    <div class="dashboard-grid">
-                        <div class="card glass full-width">
+                    <div class="feature-overview" aria-label="당첨 통계 화면 구성">
+                        <span class="feature-chip is-active"><i class="ph ph-chart-bar"></i> 분포</span>
+                        <span class="feature-chip"><i class="ph ph-fire"></i> 최근 흐름</span>
+                        <span class="feature-chip"><i class="ph ph-link-simple-horizontal"></i> 동시 출현</span>
+                    </div>
+                    <div class="dashboard-grid analytics-grid">
+                        <div class="card glass full-width metric-card metric-card-wide">
                             <h3>번호별 출현 빈도 (1~45)</h3>
                             <div
                                 id="chartNumDist"
@@ -529,21 +551,21 @@
                                 style="height: 200px; overflow-x: auto"
                             ></div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass metric-card">
                             <h3>구간별 분포</h3>
                             <div id="chartRange" class="chart-container"></div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass metric-card">
                             <h3>홀짝 비율</h3>
                             <div id="chartOddEven" class="chart-container"></div>
                         </div>
-                        <div class="card glass full-width">
+                        <div class="card glass full-width metric-card metric-card-wide">
                             <h3>자주/드물게 나온 번호</h3>
                             <div id="hotColdContainer" class="hot-cold-grid">
                                 <!-- Injected JS -->
                             </div>
                         </div>
-                        <div class="card glass full-width">
+                        <div class="card glass full-width metric-card metric-card-wide">
                             <h3>동시 출현 상위 번호쌍</h3>
                             <div id="pairContainer" class="pairs-grid">
                                 <!-- Injected JS -->
@@ -558,19 +580,14 @@
                         <h2>번호 추천</h2>
                         <p class="subtitle">과거 당첨 데이터를 참고해 살펴볼 만한 번호를 추천합니다.</p>
                     </header>
-
-                    <div class="card glass full-width" style="margin-bottom: 24px; text-align: left">
-                        <h3 style="font-size: 16px; margin-bottom: 8px">
-                            <i class="ph-fill ph-info"></i> 추천 방식 안내
-                        </h3>
-                        <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6">
-                            최근 당첨 번호의 패턴, 빈도, 오래 나오지 않은 번호 등을 참고해 조합을 만듭니다. 재미와
-                            참고용이며 당첨을 보장하지 않습니다.
-                        </p>
+                    <div class="feature-overview" aria-label="번호 추천 작업 구조">
+                        <span class="feature-chip is-active"><i class="ph ph-brain"></i> 추천 방식</span>
+                        <span class="feature-chip"><i class="ph ph-gauge"></i> 분석 강도</span>
+                        <span class="feature-chip"><i class="ph ph-list-checks"></i> 결과</span>
                     </div>
 
-                    <div class="ai-container">
-                        <div class="ai-orb">
+                    <div class="ai-container recommendation-workbench">
+                        <div class="ai-orb card glass task-card task-card-primary">
                             <div class="orb-visual"></div>
 
                             <div class="model-selector" style="margin-bottom: 20px; width: min(680px, 100%)">
@@ -813,9 +830,14 @@
                         <h2>연금복권720+</h2>
                         <p class="subtitle">동행복권 연금복권720+ 데이터를 참고해 번호 흐름과 추천을 확인합니다.</p>
                     </header>
+                    <div class="feature-overview" aria-label="연금복권 작업 구조">
+                        <span class="feature-chip is-active"><i class="ph ph-database"></i> 최신 데이터</span>
+                        <span class="feature-chip"><i class="ph ph-ticket"></i> 추천</span>
+                        <span class="feature-chip"><i class="ph ph-check-circle"></i> 저장/확인</span>
+                    </div>
 
-                    <div class="dashboard-grid p720-grid">
-                        <div class="card glass full-width p720-status-card">
+                    <div class="dashboard-grid p720-grid workflow-grid">
+                        <div class="card glass full-width p720-status-card context-card">
                             <div class="card-header">
                                 <div>
                                     <h3>데이터 상태</h3>
@@ -843,20 +865,20 @@
                             </div>
                         </div>
 
-                        <div class="card glass">
+                        <div class="card glass metric-card">
                             <h3>조별 출현 흐름</h3>
                             <div id="pension720GroupStats" class="p720-stat-list"></div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass metric-card">
                             <h3>자리별 강세 숫자</h3>
                             <div id="pension720DigitStats" class="p720-digit-grid"></div>
                         </div>
-                        <div class="card glass full-width">
+                        <div class="card glass full-width metric-card metric-card-wide">
                             <h3>최근 당첨 흐름</h3>
                             <div id="pension720RecentSummary" class="p720-recent-grid"></div>
                         </div>
 
-                        <div class="card glass full-width">
+                        <div class="card glass full-width task-card task-card-primary">
                             <div class="card-header">
                                 <h3>연금복권 추천</h3>
                                 <span class="badge status-badge is-warn">참고용</span>
@@ -925,13 +947,9 @@
                             <div class="card-header">
                                 <div>
                                     <h3>최신 회차 당첨 확인</h3>
-                                    <p class="subtitle">
-                                        저장 번호를 최신 연금복권720+ 결과와 비교합니다.
-                                    </p>
+                                    <p class="subtitle">저장 번호를 최신 연금복권720+ 결과와 비교합니다.</p>
                                 </div>
-                                <button id="pension720CheckLatestBtn" class="btn ghost sm" type="button">
-                                    확인
-                                </button>
+                                <button id="pension720CheckLatestBtn" class="btn ghost sm" type="button">확인</button>
                             </div>
                             <div id="pension720CheckOutput" class="p720-check-list">
                                 <p class="empty-state">저장 번호가 있으면 최신 회차 기준으로 확인할 수 있습니다.</p>
@@ -947,8 +965,13 @@
                         <h2>전략 시뮬레이션</h2>
                         <p class="subtitle">내 전략이 과거에 얼마나 효과적이었는지 검증해보세요.</p>
                     </header>
-                    <div class="dashboard-grid">
-                        <div class="card glass">
+                    <div class="feature-overview" aria-label="전략 시뮬레이션 화면 구성">
+                        <span class="feature-chip is-active"><i class="ph ph-calendar-dots"></i> 기간</span>
+                        <span class="feature-chip"><i class="ph ph-flask"></i> 전략</span>
+                        <span class="feature-chip"><i class="ph ph-table"></i> 결과</span>
+                    </div>
+                    <div class="dashboard-grid workflow-grid">
+                        <div class="card glass task-card task-card-primary">
                             <h3>시뮬레이션 설정</h3>
                             <div class="options-grid">
                                 <div class="input-group">
@@ -1172,7 +1195,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass context-card">
                             <div class="card-header">
                                 <h3>결과 요약</h3>
                                 <span id="btWinnerBadge" class="badge">-</span>
@@ -1232,8 +1255,13 @@
                         <h2>당첨 확인</h2>
                         <p class="subtitle">저장된 번호나 히스토리를 최신 결과와 비교합니다.</p>
                     </header>
-                    <div class="dashboard-grid">
-                        <div class="card glass">
+                    <div class="feature-overview" aria-label="당첨 확인 작업 구조">
+                        <span class="feature-chip is-active"><i class="ph ph-list-magnifying-glass"></i> 목록</span>
+                        <span class="feature-chip"><i class="ph ph-calendar-check"></i> 회차</span>
+                        <span class="feature-chip"><i class="ph ph-medal"></i> 결과</span>
+                    </div>
+                    <div class="dashboard-grid workflow-grid">
+                        <div class="card glass task-card task-card-primary">
                             <h3>비교 대상 선택</h3>
                             <div class="segment-control">
                                 <button class="seg-btn active" data-source="favorites">즐겨찾기</button>
@@ -1281,7 +1309,7 @@
                             ></div>
                             <button id="doCheckBtn" class="btn primary full-width mt-4">확인하기</button>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass context-card">
                             <h3>확인 결과</h3>
                             <div
                                 id="checkResultArea"
@@ -1302,8 +1330,13 @@
                         <h2>데이터 관리</h2>
                         <p class="subtitle">즐겨찾기, 내 번호 보관함, 캠페인과 백업 파일을 관리합니다.</p>
                     </header>
-                    <div class="dashboard-grid">
-                        <div class="card glass">
+                    <div class="feature-overview" aria-label="데이터 관리 화면 구성">
+                        <span class="feature-chip is-active"><i class="ph ph-archive"></i> 보관함</span>
+                        <span class="feature-chip"><i class="ph ph-shield-check"></i> 백업</span>
+                        <span class="feature-chip"><i class="ph ph-pulse"></i> 상태</span>
+                    </div>
+                    <div class="dashboard-grid data-hub-grid">
+                        <div class="card glass data-card">
                             <div class="card-header">
                                 <h3>⭐ 즐겨찾기</h3>
                                 <button id="clearFavorites" class="btn text-danger">전체 삭제</button>
@@ -1317,7 +1350,7 @@
                             <div id="favList" class="data-list"></div>
                             <div id="favPagination" class="list-pagination"></div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass data-card">
                             <div class="card-header">
                                 <h3>📜 생성 히스토리</h3>
                                 <button id="clearHistory" class="btn text-danger">전체 삭제</button>
@@ -1333,8 +1366,8 @@
                         </div>
                     </div>
 
-                    <div class="dashboard-grid mt-4">
-                        <div class="card glass">
+                    <div class="dashboard-grid data-hub-grid mt-4">
+                        <div class="card glass data-card">
                             <div class="card-header">
                                 <h3>내 번호 보관함</h3>
                                 <div style="display: flex; gap: 8px; align-items: center">
@@ -1356,7 +1389,7 @@
                             <div id="ticketList" class="data-list"></div>
                             <div id="ticketPagination" class="list-pagination"></div>
                         </div>
-                        <div class="card glass">
+                        <div class="card glass data-card">
                             <div class="card-header">
                                 <h3>🗓️ 캠페인</h3>
                                 <button id="clearCampaigns" class="btn text-danger">전체 삭제</button>
@@ -1372,7 +1405,7 @@
                         </div>
                     </div>
 
-                    <div class="card glass mt-4">
+                    <div class="card glass mt-4 data-card data-backup-card">
                         <h3>데이터 백업/복원</h3>
                         <div id="dataStatusSummary" class="data-status-summary" aria-live="polite"></div>
                         <div class="strategy-panel" style="margin-bottom: 12px">

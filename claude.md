@@ -8,7 +8,7 @@ Current handoff note for Claude-family agents working on `lotto-pension-pro-weba
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v23`
+- Service worker cache version: `v25`
 
 ## Current Data Baseline
 
@@ -53,7 +53,22 @@ Current handoff note for Claude-family agents working on `lotto-pension-pro-weba
     - `당첨 확인`
     - `데이터 관리`
 - Avoid reviving legacy user-facing names such as older AI-prediction wording.
-- The dated review files from 2026-05-04 may be absent in the worktree. Do not restore them unless explicitly requested.
+- Dated one-off review/audit files may be absent or deleted in the worktree. Do not restore them unless explicitly requested; fold durable conclusions into this handoff, `README.md`, `gemini.md`, or `deploy_github_pages.md`.
+
+## Current Refactor Status
+
+- Performance:
+    - CSS is loaded as split app style files with the Pretendard font preloaded from `assets/vendor/`.
+    - Strategy workers cache repeated candidate statistics and throttle progress updates to reduce repeated work and main-thread churn.
+    - Backtest and AI rendering paths have been tightened to reduce unnecessary recalculation or DOM churn.
+- UI/UX:
+    - Major feature routes use beginner-friendly three-step overview chips.
+    - Task, context, metric, and data cards separate setup, reference state, and results.
+    - Mobile layouts are expected to collapse to one column without horizontal overflow.
+- PWA:
+    - App shell/style changes are represented by `CACHE_VERSION = 'v25'` and regenerated precache manifest output.
+- Local artifacts:
+    - Browser screenshots and visual verification output should stay out of git via `.gitignore` (`output/`, Playwright reports, test results).
 
 ## Sync and Data Health
 

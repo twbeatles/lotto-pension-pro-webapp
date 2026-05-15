@@ -135,15 +135,27 @@ export const strategyEvaluationMethods = {
     explainSet(numbers, request, options = {}) {
         const candidate = sortCandidate(numbers);
         if (!candidate) return null;
-        const normalized = this.normalizeRequest(request);
-        const sourceData = options.sourceData || this.data;
-        const {
-            weights,
-            context: ctx,
-            adaptive
-        } = this.computeWeightsFromNormalized(normalized, sourceData, {
-            context: options.context
-        });
+        const normalized =
+            options.normalizedRequest || options.execution?.normalizedRequest || this.normalizeRequest(request);
+        const sourceData = options.sourceData || options.execution?.sourceData || this.data;
+        const computed = options.execution
+            ? {
+                  weights: options.weights || options.execution.weights,
+                  context: options.context || options.execution.context,
+                  adaptive: options.execution.adaptive || null
+              }
+            : this.computeWeightsFromNormalized(normalized, sourceData, {
+                  context: options.context,
+                  sourceDataSorted: options.sourceDataSorted
+              });
+        const weights = options.weights || computed.weights || Array(46).fill(1);
+        const ctx =
+            options.context ||
+            computed.context ||
+            this.buildContext(sourceData, normalized.params.lookbackWindow, {
+                sourceDataSorted: options.sourceDataSorted
+            });
+        const adaptive = computed.adaptive || null;
         const totalDraws = Math.max(ctx.totalDraws, 1);
         const freqMax = Math.max(...ctx.freq.slice(1), 1);
         const recentMax = Math.max(...ctx.recentFreq.slice(1), 1);
@@ -151,6 +163,7 @@ export const strategyEvaluationMethods = {
         const recentWindow = Math.max(ctx.recentDrawCount || 0, 1);
         const longWindow = Math.max(ctx.totalDraws || 0, 1);
         const ranking = this.scoreSetCandidate(candidate, normalized, {
+            execution: options.execution,
             normalizedRequest: normalized,
             sourceData,
             context: ctx,

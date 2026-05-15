@@ -6,7 +6,20 @@ const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
-const STRATEGY_WORKER_ASSET_VERSION = 'v19';
+const STRATEGY_WORKER_ASSET_VERSION = 'v20';
+
+function createStatsFingerprint(statsData = []) {
+    if (!Array.isArray(statsData) || !statsData.length) return '';
+    const first = statsData[0] || {};
+    const last = statsData[statsData.length - 1] || {};
+    const signature = (row) =>
+        [
+            Number(row?.draw_no || 0),
+            ...(Array.isArray(row?.numbers) ? row.numbers : []).map(Number),
+            Number(row?.bonus || 0)
+        ].join('.');
+    return `${statsData.length}:${signature(first)}:${signature(last)}`;
+}
 
 /** 저속 네트워크(2G/slow-2G) 감지 시 타임아웃을 배수로 확장 */
 function getNetworkSlowFactor() {
@@ -33,6 +46,7 @@ export class StrategyWorkerClient {
         this.worker = null;
         this.pending = new Map();
         this.warmupPromise = null;
+        this.workerStatsFingerprint = '';
     }
 
     ensureWorker() {
@@ -83,12 +97,14 @@ export class StrategyWorkerClient {
             this.worker = null;
         }
         this.warmupPromise = null;
+        this.workerStatsFingerprint = '';
     }
 
     resetWorker() {
         if (!this.worker) return;
         this.worker.terminate();
         this.worker = null;
+        this.workerStatsFingerprint = '';
     }
 
     resolveTimeoutMs(type, payload) {
@@ -117,9 +133,34 @@ export class StrategyWorkerClient {
         return err;
     }
 
+    preparePayloadForWorker(type, payload) {
+        if (!['GENERATE', 'RECOMMEND'].includes(type) || !Array.isArray(payload?.statsData)) {
+            return payload;
+        }
+
+        const statsKey = createStatsFingerprint(payload.statsData);
+        if (!statsKey) return payload;
+
+        if (this.workerStatsFingerprint === statsKey) {
+            const rest = { ...payload };
+            delete rest.statsData;
+            return {
+                ...rest,
+                statsKey
+            };
+        }
+
+        this.workerStatsFingerprint = statsKey;
+        return {
+            ...payload,
+            statsKey
+        };
+    }
+
     postOnce(type, payload, timeoutMs) {
         const worker = this.ensureWorker();
         const requestId = createRequestId(type.toLowerCase());
+        const workerPayload = this.preparePayloadForWorker(type, payload);
 
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -128,7 +169,7 @@ export class StrategyWorkerClient {
             }, timeoutMs);
 
             this.pending.set(requestId, { resolve, reject, timer });
-            worker.postMessage({ type, requestId, payload });
+            worker.postMessage({ type, requestId, payload: workerPayload });
         });
     }
 

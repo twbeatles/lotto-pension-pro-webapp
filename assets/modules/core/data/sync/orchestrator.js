@@ -28,7 +28,7 @@ export const dataSyncOrchestratorMethods = {
             let staticError = null;
 
             try {
-                const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'no-cache' });
+                const res = await this.fetchWithTimeout('data/winning_stats.json', { cache: 'default' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = await res.json();
                 const staticData = json.data || json || [];

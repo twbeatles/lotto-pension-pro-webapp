@@ -1,8 +1,26 @@
-const CACHE_VERSION = 'v23';
+const CACHE_VERSION = 'v25';
 const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
-    appShell: ['./', './index.html', './manifest.json', './assets/app.css'],
+    appShell: [
+        './',
+        './index.html',
+        './manifest.json',
+        './assets/app.css',
+        './assets/styles/tokens.css',
+        './assets/styles/layout.css',
+        './assets/styles/components.css',
+        './assets/styles/pages.css',
+        './assets/styles/modals.css',
+        './assets/styles/responsive.css',
+        './assets/vendor/pretendard/PretendardVariable.woff2',
+        './assets/vendor/phosphor/src/regular/style.css',
+        './assets/vendor/phosphor/src/regular/Phosphor.woff2',
+        './assets/vendor/phosphor/src/bold/style.css',
+        './assets/vendor/phosphor/src/bold/Phosphor-Bold.woff2',
+        './assets/vendor/phosphor/src/fill/style.css',
+        './assets/vendor/phosphor/src/fill/Phosphor-Fill.woff2'
+    ],
     data: ['./data/pension720_stats.json', './data/winning_stats.json']
 };
 
@@ -136,7 +154,7 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname.endsWith(ONLINE_CHECK_PATH_SUFFIX)) return;
 
     if (isDataAssetRequest(url)) {
-        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 5000));
+        event.respondWith(staleWhileRevalidate(event.request, CACHE_DATA));
         return;
     }
 

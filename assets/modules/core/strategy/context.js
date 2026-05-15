@@ -35,8 +35,11 @@ function summarizeSeries(series = []) {
 }
 
 export const strategyContextMethods = {
-    buildContext(sourceData, lookbackWindow = 20) {
-        const data = [...(sourceData || [])].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
+    buildContext(sourceData, lookbackWindow = 20, options = {}) {
+        const inputData = Array.isArray(sourceData) ? sourceData : [];
+        const data = options.sourceDataSorted
+            ? inputData
+            : [...inputData].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
         const totalDraws = data.length;
         const normalizedLookback = Math.max(1, Math.floor(Number(lookbackWindow) || 20));
         const recent = data.slice(-normalizedLookback);

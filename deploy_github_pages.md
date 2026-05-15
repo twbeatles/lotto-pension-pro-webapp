@@ -23,6 +23,14 @@ git diff --check
 
 `npm run build`는 별도 번들을 만들지 않고 `lint -> check:data-freshness -> check:pension720 -> check:pension720:freshness -> smoke`를 실행합니다. 연금복권720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 장애 시 실패할 수 있습니다.
 
+배포 브랜치에 포함하지 않을 로컬 산출물:
+
+- 브라우저 캡처/시각 검증 결과: `output/`
+- Playwright HTML report: `playwright-report/`
+- Playwright test output: `test-results/`, `.playwright/`
+- benchmark/report output: `bench-results/`, `perf-results/`, `reports/`
+- 브라우저에서 내려받은 앱 백업/CSV 파일
+
 ## 데이터 운영
 
 - 로또 6/45:
@@ -77,20 +85,21 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 
 ## PWA와 캐시
 
-- 현재 `sw.js` cache version: `v23`
+- 현재 `sw.js` cache version: `v25`
 - cache names:
-    - `lotto-pension-pro-app-shell-v23`
-    - `lotto-pension-pro-data-v23`
+    - `lotto-pension-pro-app-shell-v25`
+    - `lotto-pension-pro-data-v25`
 - precache manifest는 `scripts/generate_sw_manifest.mjs`가 `assets/sw-precache-manifest.js`로 생성합니다.
 - install precache에는 앱 셸과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - `online-check.txt`는 같은 출처 reachability probe이며 서비스워커 캐시 대상에서 제외됩니다.
+- 2026-05-15 성능/UI 리팩토링은 앱 셸 변경에 해당하므로 `v25` 캐시와 precache manifest를 함께 배포합니다.
 
 배포 후 확인:
 
 1. Pages URL 접속
 2. 강력 새로고침
 3. DevTools > Application > Manifest에서 앱명 `로또·연금복권 프로` 확인
-4. DevTools > Application > Service Workers에서 `v23` 활성화 확인
+4. DevTools > Application > Service Workers에서 `v25` 활성화 확인
 5. 로또 6/45 번호 생성과 연금복권 탭 진입 확인
 
 ## Repository Rename Checklist

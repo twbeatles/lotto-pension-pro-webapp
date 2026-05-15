@@ -230,7 +230,7 @@ export const dataPension720Methods = {
         let errorMessage = '';
 
         try {
-            const res = await this.fetchWithTimeout('data/pension720_stats.json', { cache: 'no-cache' }, 5000);
+            const res = await this.fetchWithTimeout('data/pension720_stats.json', { cache: 'default' }, 5000);
             if (!res.ok) throw new Error(`static HTTP ${res.status}`);
             bestItems = this.normalizePension720Stats(await res.json());
             if (bestItems.length) source = 'static';

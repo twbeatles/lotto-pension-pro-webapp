@@ -60,24 +60,41 @@ export const appModuleLoaderRegistryMethods = {
     },
 
     preloadLikelyModules() {
-        runWhenIdle(() => {
-            import('../../../features/Ai.js')
-                .then((mod) => {
-                    this.moduleConstructors.ai = mod.AiModule;
-                })
-                .catch(() => null);
-            import('../../../features/Backtest.js')
-                .then((mod) => {
-                    this.moduleConstructors.backtest = mod.BacktestModule;
-                })
-                .catch(() => null);
+        const connection =
+            typeof navigator !== 'undefined'
+                ? navigator.connection || navigator.mozConnection || navigator.webkitConnection
+                : null;
+        const constrainedNetwork =
+            Boolean(connection?.saveData) || ['2g', 'slow-2g'].includes(String(connection?.effectiveType || ''));
+        if (constrainedNetwork) return;
+
+        const schedule = (task, delayMs) => {
+            setTimeout(() => runWhenIdle(task, 1200), Math.max(0, Number(delayMs) || 0));
+        };
+        schedule(() => {
             import('../../../features/Pension720.js')
                 .then((mod) => {
                     this.moduleConstructors.pension720 = mod.Pension720Module;
                 })
                 .catch(() => null);
-
+        }, 1000);
+        schedule(() => {
+            import('../../../features/Ai.js')
+                .then((mod) => {
+                    this.moduleConstructors.ai = mod.AiModule;
+                })
+                .catch(() => null);
+        }, 1800);
+        schedule(() => {
+            import('../../../features/Backtest.js')
+                .then((mod) => {
+                    this.moduleConstructors.backtest = mod.BacktestModule;
+                })
+                .catch(() => null);
+        }, 2600);
+        schedule(() => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
             this.strategyWorker?.warmup?.().catch(() => null);
-        });
+        }, 3200);
     }
 };

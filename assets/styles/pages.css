@@ -1,4 +1,148 @@
-/* AI Page & Results */
+/* Feature workspace */
+.feature-overview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: -10px 0 24px;
+}
+
+.feature-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.feature-chip i {
+    color: var(--secondary);
+    font-size: 16px;
+}
+
+.feature-chip.is-active {
+    color: var(--text-main);
+    border-color: rgba(14, 165, 233, 0.35);
+    background: rgba(14, 165, 233, 0.1);
+}
+
+[data-theme='light'] .feature-chip {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: #dbe2ea;
+}
+
+.workflow-grid {
+    grid-template-columns: minmax(420px, 1.15fr) minmax(300px, 0.85fr);
+    align-items: start;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.task-card,
+.context-card,
+.metric-card,
+.data-card,
+.result-workbench {
+    border-radius: 8px;
+}
+
+.task-card-primary {
+    border-color: rgba(14, 165, 233, 0.24);
+}
+
+.context-card {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(16, 185, 129, 0.055));
+}
+
+.metric-card {
+    min-height: 190px;
+}
+
+.metric-card-wide {
+    min-height: 220px;
+}
+
+.data-hub-grid {
+    align-items: start;
+}
+
+.data-card .card-header {
+    gap: 12px;
+}
+
+.data-backup-card .button-group {
+    flex-wrap: wrap;
+}
+
+.data-backup-card .button-group .btn {
+    flex: 1 1 220px;
+    min-width: min(100%, 220px);
+    white-space: normal;
+}
+
+.result-workbench {
+    margin-top: 24px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.section-header .actions,
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.card,
+.card.glass {
+    border-radius: 8px;
+}
+
+.card:hover,
+.card.glass:hover {
+    transform: none;
+    border-color: var(--border-light);
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.22),
+        inset 0 0 0 1px var(--glass-shine);
+}
+
+[data-theme='light'] .card:hover,
+[data-theme='light'] .card.glass:hover {
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.card.glass {
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+
+#openQrScannerBtn {
+    position: static !important;
+    margin: 0 0 14px;
+}
+
 /* AI Page & Results */
 .ai-container {
     display: flex;
@@ -7,6 +151,12 @@
     gap: 40px;
     text-align: center;
     padding-bottom: 40px;
+}
+
+.recommendation-workbench {
+    align-items: stretch;
+    gap: 24px;
+    text-align: left;
 }
 
 .ai-orb {
@@ -18,20 +168,25 @@
     margin-bottom: 20px;
 }
 
+.recommendation-workbench .ai-orb {
+    width: min(760px, 100%);
+    margin: 0 auto;
+    padding: 24px;
+    align-items: stretch;
+}
+
+.recommendation-workbench #aiPredictBtn {
+    align-self: flex-start;
+}
+
+.recommendation-workbench #aiOutput,
+.recommendation-workbench .console-log,
+.recommendation-workbench .model-guide-section {
+    width: 100%;
+}
+
 .orb-visual {
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, var(--accent), var(--primary));
-    filter: blur(20px);
-    opacity: 0.9;
-    animation: orb-pulse 4s infinite ease-in-out;
-    margin-bottom: -80px;
-    z-index: 0;
-    box-shadow:
-        0 0 60px var(--primary-glow),
-        inset 0 0 20px rgba(255, 255, 255, 0.5);
-    position: relative;
+    display: none;
 }
 
 .orb-visual::after {

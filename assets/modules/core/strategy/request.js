@@ -57,7 +57,8 @@ export const strategyRequestMethods = {
         const sourceData = options.sourceData || this.data;
         const rng = options.rng || this.getRandomFn(normalizedRequest.params.seed);
         const { weights, context, adaptive } = this.computeWeightsFromNormalized(normalizedRequest, sourceData, {
-            context: options.context
+            context: options.context,
+            sourceDataSorted: options.sourceDataSorted
         });
         const isWheel =
             normalizedRequest.strategyId === 'wheel_full' || normalizedRequest.strategyId === 'wheel_reduced_t3';

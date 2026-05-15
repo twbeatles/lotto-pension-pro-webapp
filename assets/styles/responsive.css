@@ -998,6 +998,75 @@
     }
 }
 
+@media (max-width: 768px) {
+    .feature-overview {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin: -6px -16px 18px;
+        padding: 0 16px 4px;
+        scrollbar-width: none;
+    }
+
+    .feature-overview::-webkit-scrollbar {
+        display: none;
+    }
+
+    .feature-chip {
+        flex: 0 0 auto;
+        min-height: 36px;
+        font-size: 12px;
+    }
+
+    .workflow-grid,
+    .analytics-grid,
+    .data-hub-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .section-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .section-header .actions {
+        justify-content: stretch;
+    }
+
+    .section-header .actions .btn {
+        flex: 1;
+    }
+
+    .recommendation-workbench .ai-orb {
+        width: 100%;
+        padding: 20px;
+    }
+
+    .recommendation-workbench #aiPredictBtn {
+        width: 100%;
+        align-self: stretch;
+    }
+
+    .metric-card,
+    .metric-card-wide {
+        min-height: 0;
+    }
+
+    .data-card .card-header,
+    .p720-status-card .card-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .data-backup-card .button-group .btn {
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    #openQrScannerBtn {
+        width: 100%;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

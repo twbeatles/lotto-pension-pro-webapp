@@ -8,7 +8,7 @@ Current fast-start context for Gemini-family agents working on `lotto-pension-pr
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App shell: no-build static SPA
 - Entry: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- PWA cache version: `v23`
+- PWA cache version: `v25`
 
 ## Current Snapshot
 
@@ -46,8 +46,16 @@ Current fast-start context for Gemini-family agents working on `lotto-pension-pr
 - Backup export version is v4 and includes `pension720Tickets`; default export prefix is `lotto_pension_pro_backup_v4`.
 - Import overwrite backup prefix is `lotto_pension_pro_before_replace`; data cleanup backup prefix is `lotto_pension_pro_before_cleanup`.
 - Pension720+ saved-ticket CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
-- Dated 2026-05-04 audit docs may be deleted locally; do not restore them unless the user asks.
+- Dated one-off review/audit docs may be deleted locally; do not restore them unless the user asks. Keep durable decisions in the maintained docs.
 - Recommended copy must keep “번호 추천” wording and avoid legacy AI-prediction phrasing.
+
+## Refactor Snapshot
+
+- Performance changes split critical CSS loading, preload the local app font, and reduce repeated strategy/backtest/AI rendering work.
+- UI/UX changes add three-step feature overview chips and clearer task/context/result card hierarchy across the main routes.
+- Mobile checks should cover `번호 생성`, `번호 추천`, `당첨 확인`, and `데이터 관리` for overflow and button wrapping.
+- PWA cache and docs currently align on `v25`; rerun `npm run sync:sw-manifest` when app shell assets change.
+- `.gitignore` should exclude local browser/test artifacts such as `output/`, Playwright reports, test results, and app backup downloads.
 
 ## Sync and Persistence
 

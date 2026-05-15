@@ -106,6 +106,7 @@ function runBacktestLikeBench(stats) {
     const sorted = [...stats].sort((a, b) => Number(a.draw_no) - Number(b.draw_no));
     const drawIndex = new Map();
     sorted.forEach((draw, idx) => drawIndex.set(Number(draw.draw_no), idx));
+    const engine = new StrategyEngine(sorted);
 
     const startDraw = 1160;
     const endDraw = 1209;
@@ -117,8 +118,11 @@ function runBacktestLikeBench(stats) {
                 const idx = drawIndex.get(drawNo);
                 if (!Number.isFinite(idx) || idx <= 0) continue;
                 const history = sorted.slice(0, idx);
-                const engine = new StrategyEngine(history);
-                const sets = engine.generateMultipleSets(qty, req, { sourceData: history, maxAttempts: qty * 120 });
+                const sets = engine.generateMultipleSets(qty, req, {
+                    sourceData: history,
+                    sourceDataSorted: true,
+                    maxAttempts: qty * 120
+                });
                 tickets += sets.length;
             }
         }

@@ -68,7 +68,7 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v23';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v25';/, 'service worker cache version must be bumped');
     assert.match(
         swSource,
         /lotto-pension-pro-app-shell-/,
@@ -131,8 +131,8 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
     );
     assert.match(
         swSource,
-        /networkFirstWithTimeout\(event\.request, CACHE_DATA, 5000\)/,
-        'data cache must allow a longer mobile timeout before offline fallback'
+        /staleWhileRevalidate\(event\.request, CACHE_DATA\)/,
+        'data cache must answer from cached snapshots immediately while refreshing in the background'
     );
     assert.match(
         swSource,

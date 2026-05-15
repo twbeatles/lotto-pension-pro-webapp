@@ -114,8 +114,12 @@ export const aiRenderingMethods = {
                 console.warn('번호 추천 워커 실패, 메인 스레드로 대체합니다.', err);
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
                 const runtimeRng = createRuntimeRng(request, workerPayload.runtimeSeed);
+                const execution = this.engine.prepareExecution(request, {
+                    ...(runtimeRng ? { rng: runtimeRng } : {})
+                });
                 result = this.engine.recommendFromSimulation(request, {
                     setCount: targetSetCount,
+                    execution,
                     ...(runtimeRng ? { rng: runtimeRng } : {})
                 });
                 result = normalizeSimulation(result, {
@@ -123,7 +127,15 @@ export const aiRenderingMethods = {
                     workerTimedOut
                 });
                 results = Array.isArray(result?.sets) ? result.sets : [];
-                explanations = results.map((set) => this.engine.explainSet(set, request));
+                explanations = results.map((set) =>
+                    this.engine.explainSet(set, request, {
+                        execution,
+                        normalizedRequest: execution.normalizedRequest,
+                        sourceData: execution.sourceData,
+                        context: execution.context,
+                        weights: result?.simulation?.weights || execution.weights
+                    })
+                );
             } finally {
                 endMark('ai.worker', { requested: targetSetCount, count: results.length, fallback });
             }
@@ -133,7 +145,16 @@ export const aiRenderingMethods = {
             }
             if (!explanations.length) {
                 this.engine = new StrategyEngine(this.app.data.state.winningStats);
-                explanations = results.map((set) => this.engine.explainSet(set, request));
+                const execution = this.engine.prepareExecution(request);
+                explanations = results.map((set) =>
+                    this.engine.explainSet(set, request, {
+                        execution,
+                        normalizedRequest: execution.normalizedRequest,
+                        sourceData: execution.sourceData,
+                        context: execution.context,
+                        weights: result?.simulation?.weights || execution.weights
+                    })
+                );
             }
 
             if (results.length < targetSetCount) {

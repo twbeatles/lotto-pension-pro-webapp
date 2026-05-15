@@ -245,7 +245,11 @@ export const strategyWeightMethods = {
     },
 
     computeWeightsFromNormalized(normalized, sourceData, options = {}) {
-        const ctx = options.context || this.buildContext(sourceData, normalized.params.lookbackWindow);
+        const ctx =
+            options.context ||
+            this.buildContext(sourceData, normalized.params.lookbackWindow, {
+                sourceDataSorted: options.sourceDataSorted
+            });
         if (AUTO_STRATEGY_IDS.has(normalized.strategyId)) {
             const adaptive = this.resolveAdaptiveWeights(normalized, sourceData, ctx);
             return {

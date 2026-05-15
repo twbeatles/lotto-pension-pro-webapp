@@ -9,6 +9,20 @@
 
 모든 추천은 재미와 참고용이며 당첨을 보장하지 않습니다.
 
+## 2026-05-15 현행 상태
+
+- 성능 최적화:
+    - 앱 셸 CSS를 기능별 스타일 파일로 분리 로드하고 Pretendard 폰트를 preload합니다.
+    - 전략 평가 worker는 후보 통계 캐시와 진행 메시지 throttle을 사용해 반복 계산과 UI main thread 부담을 줄입니다.
+    - backtest worker와 AI 렌더링 경로는 불필요한 렌더/계산을 줄이는 방향으로 정리되어 있습니다.
+- UI/UX 정리:
+    - 주요 탭은 초보자가 흐름을 따라가기 쉽도록 3단계 작업 칩과 작업/결과/참고 카드 구조를 사용합니다.
+    - `번호 생성`, `번호 추천`, `연금복권`, `시뮬레이션`, `당첨 확인`, `데이터 관리` 화면은 모바일 1열 흐름과 버튼 줄바꿈을 기준으로 검증합니다.
+    - 장식성 orb/과한 hover 효과는 줄이고, 데이터 입력과 결과 확인 영역을 더 명확하게 분리했습니다.
+- 문서 상태:
+    - 일회성 리스크 리뷰 문서 `FUNCTIONAL_IMPLEMENTATION_RISK_REVIEW_2026-05-15.md`는 삭제 상태가 정본입니다.
+    - 유지해야 하는 운영 정보는 `README.md`, `claude.md`, `gemini.md`, `deploy_github_pages.md`에 반영합니다.
+
 ## 3분 사용법
 
 1. **번호 생성:** `번호 생성하기`로 로또 6/45 조합을 만들고, 필요하면 고정수/제외수/연속수 제한을 조정합니다.
@@ -72,7 +86,7 @@
 
 - GitHub Pages 저장소/URL은 `lotto-pension-pro-webapp` 기준입니다.
 - 배포 대상은 루트 정적 파일입니다. 별도 번들 산출물은 만들지 않습니다.
-- service worker cache version: `v23`
+- service worker cache version: `v25`
 - install precache에는 앱 셸과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - precache manifest가 바뀌면 아래 명령으로 생성 파일을 갱신합니다.
 
@@ -149,7 +163,7 @@ lotto-pension-pro-webapp/
 ## 운영 메모
 
 - 실제 GitHub repository rename은 코드 변경과 별도 운영 작업입니다. rename 후 GitHub Pages source와 custom settings를 확인해야 합니다.
-- `FUNCTIONAL_GAP_AND_COPY_REVIEW_2026-05-04.md`, `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-30.md`는 현재 작업트리에서 삭제 상태이며, 현행 문서 계약으로 취급하지 않습니다.
+- 삭제된 일회성 리뷰/감사 문서는 현행 문서 계약으로 취급하지 않습니다. 필요한 결론은 현재 문서 세트에 요약 반영합니다.
 - 프록시 고급 연결 주소는 절대 URL이며 path에 `/proxy/latest`가 포함된 형식만 지원합니다.
 - `?url=`, `{url}`, `{draw_no}` 스타일 프록시는 저장돼 있어도 런타임에서 기본 자동 동기화로 내려갑니다.
 - 정적 JSON을 불러오지 못해도 기존 메모리 데이터 또는 로컬 업데이트 기반 부분 복구 상태를 유지할 수 있습니다.

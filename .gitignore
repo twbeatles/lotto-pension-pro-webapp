@@ -36,6 +36,7 @@ build/
 playwright-report/
 test-results/
 .playwright/
+output/
 reports/
 bench-results/
 perf-results/

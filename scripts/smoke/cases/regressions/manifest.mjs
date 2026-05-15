@@ -192,6 +192,54 @@ const regressionExecutionPlan = [
         label: 'built-in sync provider regression'
     },
     {
+        name: 'runPension720NormalizationRegression',
+        label: 'pension720 normalization regression'
+    },
+    {
+        name: 'runPension720RecommendationRegression',
+        label: 'pension720 recommendation regression'
+    },
+    {
+        name: 'runPension720TicketDedupeRegression',
+        label: 'pension720 ticket dedupe regression'
+    },
+    {
+        name: 'runPension720TicketCapRegression',
+        label: 'pension720 ticket cap regression'
+    },
+    {
+        name: 'runPension720BackupV4Regression',
+        label: 'pension720 backup-v4 regression'
+    },
+    {
+        name: 'runPension720BackupFixtureRegression',
+        label: 'pension720 backup-v4 fixture regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720FreshnessComparisonRegression',
+        label: 'pension720 online freshness comparison regression'
+    },
+    {
+        name: 'runPension720LatestCheckRegression',
+        label: 'pension720 latest-check regression'
+    },
+    {
+        name: 'runPension720UiContractRegression',
+        label: 'pension720 expanded UI contract regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720StaticDataRegression',
+        label: 'pension720 static data regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720PrecacheRegression',
+        label: 'pension720 precache regression',
+        awaited: true
+    },
+    {
         name: 'runImportAlertOptionRegression',
         label: 'import-alert-options regression',
         awaited: true

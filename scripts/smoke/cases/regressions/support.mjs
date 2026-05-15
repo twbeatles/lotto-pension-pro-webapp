@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { StrategyEngine } from '../../../../assets/modules/core/StrategyEngine.js';
+import { Pension720Engine } from '../../../../assets/modules/core/Pension720Engine.js';
 import { StrategyWorkerClient } from '../../../../assets/modules/core/StrategyWorkerClient.js';
 import { createRuntimeRng, withRuntimeSeed } from '../../../../assets/modules/core/strategy/runtimeEntropy.js';
 import { xorshift32 } from '../../../../assets/modules/core/strategy/shared.js';
@@ -37,6 +38,7 @@ export {
     LottoApp,
     normalizeBackupPayload,
     passesFilters,
+    Pension720Engine,
     QrScannerModule,
     readFile,
     resolve,

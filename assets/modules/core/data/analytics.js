@@ -38,9 +38,7 @@ export const dataAnalyticsMethods = {
         const latest = Math.max(0, Math.floor(Number(freshness.latestDrawNo || 0)));
         const estimated = Math.max(0, Math.floor(Number(freshness.estimatedLatestDrawNo || 0)));
         const behindBy =
-            latest > 0 && estimated > 0
-                ? Math.max(0, Math.floor(Number(freshness.behindBy ?? estimated - latest)))
-                : 0;
+            latest > 0 && estimated > 0 ? Math.max(0, Math.floor(Number(freshness.behindBy ?? estimated - latest))) : 0;
         const latestLabel = latest > 0 ? `${latest}회` : '없음';
         const estimatedLabel = estimated > 0 ? `${estimated}회` : '계산 중';
         const gapLabel = latest > 0 && estimated > 0 ? `${behindBy}회` : '-';
@@ -110,7 +108,10 @@ export const dataAnalyticsMethods = {
     },
 
     sendTestSystemNotification() {
-        return this.sendSystemNotification('로또 프로 테스트 알림', '시스템 알림 권한과 연결 상태가 정상입니다.');
+        return this.sendSystemNotification(
+            '로또·연금복권 프로 테스트 알림',
+            '시스템 알림 권한과 연결 상태가 정상입니다.'
+        );
     },
 
     rankTicket(myNums, winNums, bonus) {
@@ -148,7 +149,7 @@ export const dataAnalyticsMethods = {
         }
 
         if (requestSystemNotification && prefs.enableSystemNotification) {
-            this.sendSystemNotification('로또 프로 티켓 정산', message);
+            this.sendSystemNotification('로또·연금복권 프로 티켓 정산', message);
         }
     },
 

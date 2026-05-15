@@ -65,6 +65,11 @@ export const dataPersistenceLoadSaveMethods = {
                 [],
                 CONFIG.KEYS.STRATEGY_PRESETS
             );
+            const rawPension720Tickets = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.PENSION720_TICKETS) || '[]',
+                [],
+                CONFIG.KEYS.PENSION720_TICKETS
+            );
             const rawSyncMeta = this.safeJsonParse(
                 localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}',
                 {},
@@ -77,6 +82,7 @@ export const dataPersistenceLoadSaveMethods = {
                 : [];
             const normalizedAlertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
             const normalizedStrategyPresets = this.mergeStrategyPresets(rawStrategyPresets);
+            const normalizedPension720Tickets = this.mergePension720Tickets([], rawPension720Tickets);
             const normalizedSyncMeta = this.mergeSyncMeta(rawSyncMeta);
 
             if (Array.isArray(rawTickets)) {
@@ -89,12 +95,18 @@ export const dataPersistenceLoadSaveMethods = {
             if (JSON.stringify(normalizedAlertPrefs) !== JSON.stringify(rawAlertPrefs || {})) needsPersist = true;
             if (Array.isArray(rawStrategyPresets) && normalizedStrategyPresets.length !== rawStrategyPresets.length)
                 needsPersist = true;
+            if (
+                Array.isArray(rawPension720Tickets) &&
+                JSON.stringify(normalizedPension720Tickets) !== JSON.stringify(rawPension720Tickets)
+            )
+                needsPersist = true;
             if (JSON.stringify(normalizedSyncMeta) !== JSON.stringify(rawSyncMeta || {})) needsPersist = true;
 
             this.state.ticketBook = normalizedTickets;
             this.state.campaigns = normalizedCampaigns;
             this.state.alertPrefs = normalizedAlertPrefs;
             this.state.strategyPresets = normalizedStrategyPresets;
+            this.state.pension720Tickets = normalizedPension720Tickets;
             this.state.syncMeta = normalizedSyncMeta;
             this.localUpdatesCache = normalizedLocalUpdates.items;
 
@@ -128,6 +140,7 @@ export const dataPersistenceLoadSaveMethods = {
                 this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
                 this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
                 this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
+                this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets));
                 this.persistSettings();
                 this.persistExtendedData();
                 this.persistSyncMeta();
@@ -178,6 +191,10 @@ export const dataPersistenceLoadSaveMethods = {
             if (this._dirtyKeys.presets) {
                 this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
                 this._dirtyKeys.presets = false;
+            }
+            if (this._dirtyKeys.pension720Tickets) {
+                this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || []));
+                this._dirtyKeys.pension720Tickets = false;
             }
             if (this._dirtyKeys.syncMeta) {
                 this.persistSyncMeta();

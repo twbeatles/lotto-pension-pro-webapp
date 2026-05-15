@@ -53,11 +53,7 @@ async function runServiceWorkerReloadPolicyRegression() {
         /window\.lottoPwaUpdate\.check\(\)\.catch\(\(\) => \{\}\);/,
         'registration flow must proactively check for a newer SW script'
     );
-    assert.match(
-        pwaSource,
-        /window\.lottoPwaUpdate = \{/,
-        'PWA lifecycle must expose update controls for settings UI'
-    );
+    assert.match(pwaSource, /window\.lottoPwaUpdate = \{/, 'PWA lifecycle must expose update controls for settings UI');
     assert.match(
         pwaSource,
         /new CustomEvent\('lotto:pwa-update-state'/,
@@ -72,7 +68,12 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v20';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v23';/, 'service worker cache version must be bumped');
+    assert.match(
+        swSource,
+        /lotto-pension-pro-app-shell-/,
+        'service worker app-shell cache must use the rebranded slug'
+    );
     assert.match(
         swSource,
         /await cache\.put\(request, response\.clone\(\)\);/,
@@ -120,6 +121,11 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
     );
     assert.match(
         swSource,
+        /\.\/data\/pension720_stats\.json/,
+        'pension720_stats.json must stay in the precache manifest fallback'
+    );
+    assert.match(
+        swSource,
         /const dataCache = await caches\.open\(CACHE_DATA\);/,
         'data cache must be opened during install precache'
     );
@@ -158,8 +164,8 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
 async function runWebManifestInstallabilityRegression() {
     const manifest = JSON.parse(await readFile(resolve(process.cwd(), 'manifest.json'), 'utf8'));
 
-    assert.equal(manifest.name, '로또 6/45 프로', 'web manifest name must be readable Korean text');
-    assert.equal(manifest.short_name, '로또 프로', 'web manifest short_name must be readable Korean text');
+    assert.equal(manifest.name, '로또·연금복권 프로', 'web manifest name must be readable Korean text');
+    assert.equal(manifest.short_name, '복권 프로', 'web manifest short_name must be readable Korean text');
     assert.equal(manifest.id, './index.html', 'web manifest id must pin Android app identity');
     assert.equal(manifest.scope, './', 'web manifest scope must cover the GitHub Pages subpath app shell');
     assert.equal(manifest.lang, 'ko-KR', 'web manifest must declare its Korean locale');

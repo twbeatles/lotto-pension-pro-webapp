@@ -8,8 +8,24 @@ function safeClone(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
-function countStoredItems({ favorites = [], history = [], ticketTotal = 0, campaigns = [], localUpdates = [], presets = [] }) {
-    return favorites.length + history.length + ticketTotal + campaigns.length + localUpdates.length + presets.length;
+function countStoredItems({
+    favorites = [],
+    history = [],
+    ticketTotal = 0,
+    campaigns = [],
+    pension720Tickets = [],
+    localUpdates = [],
+    presets = []
+}) {
+    return (
+        favorites.length +
+        history.length +
+        ticketTotal +
+        campaigns.length +
+        pension720Tickets.length +
+        localUpdates.length +
+        presets.length
+    );
 }
 
 export const dataIoImportMethods = {
@@ -23,6 +39,7 @@ export const dataIoImportMethods = {
             strategyPrefs: normalized.settings?.strategyPrefs || null,
             tickets: this.normalizeTicketItems(normalized.ticketBook),
             campaigns: this.normalizeCampaignItems(normalized.campaigns),
+            pension720Tickets: this.normalizePension720TicketItems(normalized.pension720Tickets),
             alertPrefs: this.data.mergeAlertPrefs(normalized.alertPrefs || {}),
             localUpdates: incomingLocalUpdateResult.items,
             futureDropped: incomingLocalUpdateResult.droppedFuture,
@@ -40,6 +57,7 @@ export const dataIoImportMethods = {
             history: current.history?.length || 0,
             ticketTotal: this.data.getTotalTicketCount(),
             campaigns: current.campaigns?.length || 0,
+            pension720Tickets: current.pension720Tickets?.length || 0,
             localUpdates: this.data.getLocalUpdates().length,
             presets: current.strategyPresets?.length || 0
         };
@@ -48,6 +66,7 @@ export const dataIoImportMethods = {
             history: incoming.history,
             ticketTotal: incomingTicketTotal,
             campaigns: incoming.campaigns,
+            pension720Tickets: incoming.pension720Tickets,
             localUpdates: incoming.localUpdates,
             presets: incoming.strategyPresets
         });
@@ -59,11 +78,18 @@ export const dataIoImportMethods = {
             const incomingCampaignIds = new Set(
                 incoming.campaigns.map((item) => String(item?.id || '').trim()).filter(Boolean)
             );
-            const nextFavorites = this.mergeByNumbers(safeClone(current.favorites || []), safeClone(incoming.favorites));
+            const nextFavorites = this.mergeByNumbers(
+                safeClone(current.favorites || []),
+                safeClone(incoming.favorites)
+            );
             const nextHistory = this.mergeHistoryEntries(safeClone(current.history || []), safeClone(incoming.history));
             const nextTickets = this.mergeTickets(safeClone(current.ticketBook || []), safeClone(incoming.tickets));
             const rawCampaigns = this.mergeCampaigns(safeClone(current.campaigns || []), safeClone(incoming.campaigns));
             const campaignCleanup = this.pruneCampaignsWithoutTickets(rawCampaigns, nextTickets, incomingCampaignIds);
+            const nextPension720Tickets = this.mergePension720Tickets(
+                safeClone(current.pension720Tickets || []),
+                safeClone(incoming.pension720Tickets)
+            );
             const mergedLocalUpdates = this.mergeLocalUpdates(
                 safeClone(this.data.getLocalUpdates({ warningMode: 'manual' })),
                 safeClone(incoming.localUpdates)
@@ -83,6 +109,7 @@ export const dataIoImportMethods = {
                 (nextHistory.length - before.history) +
                 (this.data.getTotalTicketCount(nextTickets) - before.ticketTotal) +
                 newCampaigns +
+                (nextPension720Tickets.length - before.pension720Tickets) +
                 (localUpdateResult.items.length - before.localUpdates) +
                 (nextPresets.length - before.presets);
             const cleaned = campaignCleanup.removed.length;
@@ -107,6 +134,7 @@ export const dataIoImportMethods = {
                     history: nextHistory,
                     tickets: nextTickets,
                     campaigns: campaignCleanup.campaigns,
+                    pension720Tickets: nextPension720Tickets,
                     localUpdates: localUpdateResult.items,
                     strategyPresets: nextPresets,
                     alertPrefs: importOptions.applyAlerts
@@ -137,6 +165,7 @@ export const dataIoImportMethods = {
             history: incoming.history,
             ticketTotal: incomingTicketTotal,
             campaigns: campaignCleanup.campaigns,
+            pension720Tickets: incoming.pension720Tickets,
             localUpdates: incoming.localUpdates,
             presets: incoming.strategyPresets
         });
@@ -160,6 +189,7 @@ export const dataIoImportMethods = {
                 history: incoming.history,
                 tickets: incoming.tickets,
                 campaigns: campaignCleanup.campaigns,
+                pension720Tickets: incoming.pension720Tickets,
                 localUpdates: incoming.localUpdates,
                 strategyPresets: incoming.strategyPresets,
                 alertPrefs: importOptions.applyAlerts ? incoming.alertPrefs : current.alertPrefs,
@@ -175,9 +205,7 @@ export const dataIoImportMethods = {
 
     buildImportPreviewMessage(prepared) {
         const modeLabel = prepared.mode === 'overwrite' ? '바꾸기' : '합치기';
-        const applied = prepared.preview.appliedSettings.length
-            ? prepared.preview.appliedSettings.join(', ')
-            : '없음';
+        const applied = prepared.preview.appliedSettings.length ? prepared.preview.appliedSettings.join(', ') : '없음';
         return [
             `${modeLabel} 가져오기를 진행할까요?`,
             '',
@@ -185,6 +213,7 @@ export const dataIoImportMethods = {
             `중복: ${prepared.preview.duplicate}건`,
             `건너뜀: ${prepared.preview.skipped}건`,
             `정리될 캠페인: ${prepared.preview.cleaned}개`,
+            `예상 연금복권 저장 수: ${prepared.next.pension720Tickets?.length || 0}개`,
             `적용될 설정: ${applied}`,
             `미래 회차 제외: ${prepared.preview.futureDropped}건`,
             `예상 내 번호 수: ${prepared.preview.projectedTicketTotal}개`,
@@ -209,6 +238,7 @@ export const dataIoImportMethods = {
         this.data.state.history = next.history;
         this.data.state.ticketBook = next.tickets;
         this.data.state.campaigns = next.campaigns;
+        this.data.state.pension720Tickets = next.pension720Tickets;
         this.data.state.strategyPresets = next.strategyPresets;
         this.data.state.alertPrefs = next.alertPrefs;
         this.data.state.theme = next.theme;
@@ -254,6 +284,14 @@ export const dataIoImportMethods = {
                 );
                 return;
             }
+            if ((prepared.next.pension720Tickets?.length || 0) > CONFIG.LIMITS.MAX_PENSION720_TICKETS) {
+                UIManager.toast(
+                    `연금복권 저장 목록은 최대 ${CONFIG.LIMITS.MAX_PENSION720_TICKETS}개까지 가져올 수 있습니다.`,
+                    'error',
+                    3500
+                );
+                return;
+            }
 
             const confirmed = await this.confirmPreparedImport(prepared);
             if (!confirmed) {
@@ -262,7 +300,7 @@ export const dataIoImportMethods = {
             }
 
             if (prepared.mode === 'overwrite') {
-                this.exportAll({ silent: true, prefix: 'lotto_before_replace' });
+                this.exportAll({ silent: true, prefix: 'lotto_pension_pro_before_replace' });
             }
             this.applyPreparedImport(prepared);
 

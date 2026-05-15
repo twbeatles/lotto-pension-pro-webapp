@@ -514,7 +514,8 @@ function runLoadOrphanCampaignMigrationRegression() {
         [CONFIG.KEYS.ALERT_PREFS, '{}'],
         [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
         [CONFIG.KEYS.SYNC_META, '{}'],
-        [CONFIG.KEYS.LOCAL_UPDATES, '[]']
+        [CONFIG.KEYS.LOCAL_UPDATES, '[]'],
+        [CONFIG.KEYS.PENSION720_TICKETS, '[]']
     ]);
 
     globalThis.document = {
@@ -595,7 +596,8 @@ function runStorageSummaryByteAccountingRegression() {
         [CONFIG.KEYS.ALERT_PREFS, '{}'],
         [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
         [CONFIG.KEYS.SYNC_META, '{}'],
-        [CONFIG.KEYS.LOCAL_UPDATES, '[]']
+        [CONFIG.KEYS.LOCAL_UPDATES, '[]'],
+        [CONFIG.KEYS.PENSION720_TICKETS, '[]']
     ]);
 
     globalThis.localStorage = {
@@ -1232,7 +1234,11 @@ async function runImportPreviewAndOverwriteBackupRegression() {
                 value: 'overwrite.json'
             }
         });
-        assert.equal(backupPrefix, 'lotto_before_replace', 'overwrite import must create a pre-replace backup');
+        assert.equal(
+            backupPrefix,
+            'lotto_pension_pro_before_replace',
+            'overwrite import must create a rebranded pre-replace backup'
+        );
     } finally {
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;

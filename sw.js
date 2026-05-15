@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'v20';
-const CACHE_APP_SHELL = `lotto-app-shell-${CACHE_VERSION}`;
-const CACHE_DATA = `lotto-data-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v23';
+const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
+const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
     appShell: ['./', './index.html', './manifest.json', './assets/app.css'],
-    data: ['./data/winning_stats.json']
+    data: ['./data/pension720_stats.json', './data/winning_stats.json']
 };
 
 try {

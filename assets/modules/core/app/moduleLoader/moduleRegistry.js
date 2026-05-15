@@ -36,6 +36,9 @@ export const appModuleLoaderRegistryMethods = {
                 } else if (name === 'backtest') {
                     const mod = await import('../../../features/Backtest.js');
                     this.moduleConstructors[name] = mod.BacktestModule;
+                } else if (name === 'pension720') {
+                    const mod = await import('../../../features/Pension720.js');
+                    this.moduleConstructors[name] = mod.Pension720Module;
                 } else if (name === 'qr') {
                     const mod = await import('../../../features/QrScanner.js');
                     this.moduleConstructors[name] = mod.QrScannerModule;
@@ -66,6 +69,11 @@ export const appModuleLoaderRegistryMethods = {
             import('../../../features/Backtest.js')
                 .then((mod) => {
                     this.moduleConstructors.backtest = mod.BacktestModule;
+                })
+                .catch(() => null);
+            import('../../../features/Pension720.js')
+                .then((mod) => {
+                    this.moduleConstructors.pension720 = mod.Pension720Module;
                 })
                 .catch(() => null);
 

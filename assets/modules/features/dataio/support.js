@@ -12,6 +12,77 @@ export const dataIoSupportMethods = {
             this.applyImportModeDefaults(String(e.target.value || 'merge'))
         );
         this.applyImportModeDefaults(String($('#importMode')?.value || 'merge'));
+        this.renderDataStatusSummary();
+    },
+
+    renderDataStatusSummary() {
+        const container = $('#dataStatusSummary');
+        if (!container) return;
+        container.replaceChildren();
+
+        const freshness = this.data.getDataFreshness?.() || {};
+        const pensionHealth = this.data.mergePension720DataHealth?.(
+            this.data.pension720DataHealth || this.data.getDefaultPension720DataHealth?.()
+        );
+        const pensionLatest = this.data.state.pension720Stats?.[0] || null;
+        const syncMeta = this.data.state.syncMeta || this.data.getDefaultSyncMeta?.() || {};
+        const localUpdates = this.data.getLocalUpdates?.() || [];
+        const storageSummary = this.data.getStorageSummary?.() || { counts: {} };
+
+        const makeCard = (title, rows = [], status = '') => {
+            const card = document.createElement('div');
+            card.className = 'data-status-card';
+            const head = document.createElement('div');
+            head.className = 'data-status-head';
+            const titleEl = document.createElement('strong');
+            titleEl.textContent = title;
+            head.appendChild(titleEl);
+            if (status) {
+                const badge = document.createElement('span');
+                badge.className = 'badge status-badge';
+                badge.textContent = status;
+                head.appendChild(badge);
+            }
+            card.appendChild(head);
+            rows.forEach(([label, value]) => {
+                const row = document.createElement('div');
+                row.className = 'data-status-row';
+                const labelEl = document.createElement('span');
+                labelEl.textContent = label;
+                const valueEl = document.createElement('b');
+                valueEl.textContent = value || '-';
+                row.append(labelEl, valueEl);
+                card.appendChild(row);
+            });
+            return card;
+        };
+
+        container.append(
+            makeCard(
+                '로또 6/45',
+                [
+                    ['source', this.data.getDataHealthSourceLabel?.(freshness.source) || freshness.source || '-'],
+                    ['최신 회차', freshness.latestDrawNo ? `${freshness.latestDrawNo}회` : '-'],
+                    ['예상 최신', freshness.estimatedLatestDrawNo ? `${freshness.estimatedLatestDrawNo}회` : '-'],
+                    ['local update', `${localUpdates.length}건`],
+                    ['마지막 성공', syncMeta.lastSuccessAt ? this.app.formatDateTime(syncMeta.lastSuccessAt) : '-'],
+                    ['메시지', freshness.dataHealthMessage || syncMeta.lastFailureMessage || '-']
+                ],
+                freshness.availability === 'full' ? '정상' : '확인 필요'
+            ),
+            makeCard(
+                '연금복권720+',
+                [
+                    ['source', pensionHealth?.source || '-'],
+                    ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
+                    ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
+                    ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
+                    ['마지막 확인', pensionHealth?.updatedAt ? this.app.formatDateTime(pensionHealth.updatedAt) : '-'],
+                    ['메시지', pensionHealth?.message || '-']
+                ],
+                pensionHealth?.availability === 'full' ? '정상' : '확인 필요'
+            )
+        );
     },
 
     exportAll(options = {}) {
@@ -39,7 +110,7 @@ export const dataIoSupportMethods = {
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        const prefix = String(options.prefix || 'lotto_backup_v3').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const prefix = String(options.prefix || 'lotto_pension_pro_backup_v4').replace(/[^a-zA-Z0-9_-]/g, '_');
         a.download = `${prefix}_${ts}.json`;
         document.body.appendChild(a);
         a.click();
@@ -73,6 +144,10 @@ export const dataIoSupportMethods = {
     normalizeCampaignItems(items) {
         if (!Array.isArray(items)) return [];
         return items.map((x) => this.data.normalizeCampaignEntry(x)).filter(Boolean);
+    },
+
+    normalizePension720TicketItems(items) {
+        return this.data.mergePension720Tickets([], Array.isArray(items) ? items : []);
     },
 
     normalizeLocalUpdates(items) {
@@ -120,6 +195,10 @@ export const dataIoSupportMethods = {
 
     mergeCampaigns(existing, incoming) {
         return [...incoming, ...existing].filter((x, idx, arr) => arr.findIndex((y) => y.id === x.id) === idx);
+    },
+
+    mergePension720Tickets(existing, incoming) {
+        return this.data.mergePension720Tickets(existing, incoming);
     },
 
     pruneCampaignsWithoutTickets(campaigns = [], tickets = [], targetCampaignIds = null) {

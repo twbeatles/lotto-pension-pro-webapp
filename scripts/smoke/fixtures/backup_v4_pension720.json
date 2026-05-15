@@ -1,0 +1,33 @@
+{
+  "version": 4,
+  "favorites": [],
+  "history": [],
+  "ticketBook": [],
+  "campaigns": [],
+  "pension720Tickets": [
+    {
+      "id": "p720_fixture_1",
+      "group": 2,
+      "number": "060727",
+      "source": "recommendation",
+      "score": 42.5,
+      "createdAt": "2026-05-15T00:00:00.000Z"
+    },
+    {
+      "id": "p720_fixture_2",
+      "group": 5,
+      "number": "537530",
+      "source": "recommendation",
+      "score": 41.2,
+      "createdAt": "2026-05-14T00:00:00.000Z"
+    }
+  ],
+  "alertPrefs": {},
+  "settings": {
+    "theme": "dark",
+    "customProxy": "",
+    "strategyPrefs": {}
+  },
+  "localUpdates": [],
+  "strategyPresets": []
+}

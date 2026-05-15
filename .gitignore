@@ -8,6 +8,10 @@
 /lotto_backup_v*.json
 /lotto_before_replace_*.json
 /lotto_before_cleanup_*.json
+/lotto_pension_pro_backup_v*.json
+/lotto_pension_pro_before_replace_*.json
+/lotto_pension_pro_before_cleanup_*.json
+/lotto_pension_pro_pension720_tickets_*.csv
 
 # OS / editor noise
 .DS_Store

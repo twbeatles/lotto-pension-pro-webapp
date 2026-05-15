@@ -10,6 +10,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/DataManager.js",
         "./assets/modules/core/LottoApp.js",
         "./assets/modules/core/MonteCarlo.js",
+        "./assets/modules/core/Pension720Engine.js",
         "./assets/modules/core/StrategyCatalog.js",
         "./assets/modules/core/StrategyEngine.js",
         "./assets/modules/core/StrategyFilters.js",
@@ -34,6 +35,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/app/theme.js",
         "./assets/modules/core/data/analytics.js",
         "./assets/modules/core/data/defaults.js",
+        "./assets/modules/core/data/pension720.js",
         "./assets/modules/core/data/persistence.js",
         "./assets/modules/core/data/persistence/loadSave.js",
         "./assets/modules/core/data/persistence/localUpdates.js",
@@ -69,6 +71,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/features/Check.js",
         "./assets/modules/features/DataIO.js",
         "./assets/modules/features/Generator.js",
+        "./assets/modules/features/Pension720.js",
         "./assets/modules/features/QrScanner.js",
         "./assets/modules/features/Stats.js",
         "./assets/modules/features/ai/form.js",
@@ -142,6 +145,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./manifest.json"
     ],
     "data": [
+        "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ]
 });

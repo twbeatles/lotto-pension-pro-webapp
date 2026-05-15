@@ -31,6 +31,11 @@ export const appMobileMoreSheetMethods = {
                     await this.route('bt');
                     return;
                 }
+                if (action === 'pension720') {
+                    this.closeMobileMoreSheet({ restoreFocus: false });
+                    await this.route('pension720');
+                    return;
+                }
                 if (action === 'settings') {
                     this.closeMobileMoreSheet({ restoreFocus: false });
                     this.openSettingsModal();
@@ -59,6 +64,6 @@ export const appMobileMoreSheetMethods = {
     syncMobileMoreButtonState(target = this.currentRoute) {
         const moreBtn = document.getElementById('mobileMoreBtn');
         if (!moreBtn) return;
-        moreBtn.classList.toggle('active', target === 'bt');
+        moreBtn.classList.toggle('active', ['bt', 'pension720'].includes(target));
     }
 };

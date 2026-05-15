@@ -1,640 +1,155 @@
-﻿# 로또 6/45 프로 웹앱
+# 로또·연금복권 프로
 
-이 프로젝트는 동행복권 당첨 정보를 조회, 분석하고 번호를 생성하는 웹앱입니다.
-기존 파이썬 데스크톱 앱을 단일 페이지 웹앱으로 전환한 버전입니다.
+동행복권 로또 6/45와 연금복권720+ 데이터를 한 곳에서 확인하고, 통계 기반 번호 추천과 저장 관리를 제공하는 설치형 웹앱입니다.
 
-## 배포 주소
+- 배포 주소: https://twbeatles.github.io/lotto-pension-pro-webapp/
+- 패키지명: `lotto-pension-pro-webapp`
+- 앱명: `로또·연금복권 프로`
+- 기술 구성: 정적 SPA, ES modules, service worker, localStorage
 
-- GitHub Pages: https://twbeatles.github.io/lotto---webapp/
+모든 추천은 재미와 참고용이며 당첨을 보장하지 않습니다.
 
-## 처음 쓰는 분을 위한 3분 사용법
+## 3분 사용법
 
-1. **번호 생성:** `번호 생성하기`를 누르면 새 조합이 만들어집니다. `같은 번호 다시 만들기 코드`를 비워두면 누를 때마다 새 번호가 나옵니다.
-2. **번호 추천:** `번호 추천` 탭에서 추천 방식을 고르고 `추천 시작`을 누릅니다. 추천은 통계 참고용이며 당첨을 보장하지 않습니다.
-3. **내 번호 보관함:** 마음에 드는 번호는 `내 번호 보관함`에 저장한 뒤 `당첨 확인`에서 최신 결과와 비교합니다.
-4. **데이터 상태:** 설정의 `최신 회차 확인`에서 `내 데이터 / 예상 최신 / 차이`를 확인할 수 있습니다.
-5. **백업:** 데이터 관리의 `전체 데이터 내보내기`로 백업하고, 저장량이 커지면 `백업하고 정리하기`를 사용합니다.
-
-처음에는 `분석 강도`를 `기본`으로 두는 것을 권장합니다. `고급 설정`은 같은 번호를 다시 만들거나 분석 샘플 수를 직접 조정할 때만 열어도 됩니다.
-
-## PWA·문구·데이터 안전성 종합 개선 반영 (2026-05-04)
-
-- Android PWA에서 무시드 번호 생성/번호 추천이 같은 결과로 고정될 수 있던 문제를 런타임 난수 시드와 캐시 버전 갱신으로 보강했습니다.
-- 사용자 화면 명칭을 `번호 추천`, `내 번호 보관함`, `데이터 연결 주소(고급)`, `같은 번호 다시 만들기 코드`, `분석 강도` 중심으로 정리했습니다.
-- `빠름/기본/정밀` 분석 강도 프리셋을 추가하고, 세부 수치 입력은 `고급 설정` 안으로 이동했습니다.
-- 설정과 최신 당첨 카드에서 `내 데이터: N회 / 예상 최신: M회 / 차이 K회` 상태를 표시합니다.
-- `npm run check:data-freshness`를 추가했고, `npm run build`는 `lint -> check:data-freshness -> smoke` 순서로 검증합니다.
-- 설정 모달에 `앱 업데이트 확인`과 `준비된 업데이트 적용` 흐름을 추가했습니다.
-- 백업 가져오기 전 미리보기 확인을 띄우고, `바꾸기` 모드는 `lotto_before_replace_*.json` 자동 백업 후 진행합니다.
-- `백업하고 정리하기`는 백업을 먼저 만들고, 최근 200개 초과 히스토리와 정산 끝난 미당첨 번호만 정리합니다.
-- 새 브라우저 검증 스크립트: `npm run test:pwa-mobile`
-
-## 기능 구현 점검 후속 개선 반영 (2026-04-30)
-
-- **동기화 경계 보강**
-    - 데이터 연결 주소(고급) 변경 시 기존 in-flight sync를 먼저 취소하고, 새 설정 또는 기본 자동 동기화 경로를 다시 큐잉합니다.
-    - 정적 JSON 일시 실패 시 기존에 로드된 `winningStats`가 있으면 기본적으로 메모리 데이터를 유지합니다.
-    - Import 후 복원이나 로컬 업데이트 정리처럼 새 데이터 재구성이 명확해야 하는 경로는 기존 데이터 보존을 끕니다.
-- **외부 데이터 정규화/렌더링 안전성 보강**
-    - 동기화 payload 날짜는 유효한 `YYYY-MM-DD` 또는 공식 `YYYYMMDD`만 허용합니다.
-    - 최신 당첨 카드의 날짜/placeholder 텍스트는 HTML escape 후 렌더링합니다.
-- **워커/Import 운영 안정성 보강**
-    - 전략 워커 최종 타임아웃 시 busy worker를 terminate 후 fallback 흐름으로 넘어갑니다.
-    - Import는 백업 파일 크기, 예상 티켓 총량, 전략 스냅샷 크기 상한을 적용합니다.
-- **검증/문서 보강**
-    - happy path 브라우저 검증(`npm run test:happy`)과 실조회 동기화 점검(`npm run test:sync-live`)을 추가했습니다.
-    - Prettier 기준선을 `.prettierrc.json` / `.prettierignore`로 명시했습니다.
-    - 현재 기능 점검 문서는 `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-30.md`입니다.
-    - `claude.md`, `gemini.md`, `deploy_github_pages.md`, `proxy/README.md`의 현재 코드/명령/프록시 정책 설명을 맞췄습니다.
-    - `.gitignore`는 Pages 배포에 필요한 정적 자산은 추적하고, 로컬 캐시/브라우저 테스트/성능 리포트 산출물은 제외하도록 정리했습니다.
-
-## 기능 구현 정합성 4차 보강 반영 (2026-04-27)
-
-- **정적 당첨 데이터 최신화**
-    - `data/winning_stats.json`을 1221회(`2026-04-25`)까지 갱신했습니다.
-    - 현재 정적 데이터는 `1220`개 row이며, 회차 범위는 `1..1221`, 허용 누락은 `146`회차뿐입니다.
-- **merged 데이터 health 판정 강화** (`assets/modules/core/data/sync/health.js`)
-    - `localUpdates`가 있으면 정적 데이터 단독이 아니라 merged 데이터 구조를 기준으로 `full | partial | none`을 판단합니다.
-    - 정적 데이터 이후 로컬 최신 회차만 있고 중간 회차가 비는 경우 `static_local`이어도 `partial`로 분류됩니다.
-- **Import/동기화 정규화 강화** (`records/normalize.js`, `dataio/support.js`, `sync/payload.js`)
-    - 즐겨찾기/히스토리 Import는 중앙 번호 정규화 경로를 사용합니다.
-    - 소수, 중복, 범위 외 번호는 Import 시점에 제거됩니다.
-    - 동기화 payload의 `draw_no`/`ltEpsd`는 정수 `>= 1`만 허용합니다.
-    - 외부 입력 티켓 ID는 길이 제한과 안전 문자 정책을 적용합니다.
-- **확인 탭 렌더링 안전성 보강** (`features/check/list.js`)
-    - 카드의 `data-item-key`와 메타/상태 텍스트를 attribute-safe escape 후 렌더링합니다.
-- **운영 진단 보강**
-    - 저장소 사용량 계산은 문자열 길이가 아니라 UTF-8 byte 기준으로 계산합니다.
-    - `package.json`에 `"type": "module"`을 추가해 Node ESM typeless package 경고를 제거했습니다.
-    - smoke에 정적 데이터 최신성 예산, service-worker precache reachability, 저장소 byte accounting 회귀를 추가했습니다.
-
-## 구조 분할 리팩토링 반영 (2026-04-14)
-
-- 이번 패스는 **동작 변경 없이 책임 분리 중심의 구조 정리**를 목표로 했습니다.
-- 기존 public entry path 는 유지했습니다.
-    - `assets/modules/core/LottoApp.js`
-    - `assets/modules/core/DataManager.js`
-    - `assets/modules/core/UIManager.js`
-    - `assets/modules/features/Check.js`
-    - `scripts/smoke/cases/regressions.mjs`
-- 내부 구현은 facade + barrel 패턴으로 분리했습니다.
-    - `assets/modules/core/data/records/`
-    - `assets/modules/core/data/persistence/`
-    - `assets/modules/core/data/sync/`
-    - `assets/modules/core/app/moduleLoader/`
-    - `assets/modules/core/app/dataLists/`
-    - `assets/modules/core/ui/`
-    - `assets/modules/features/check/`
-    - `assets/modules/features/backtest/`
-    - `scripts/smoke/cases/regressions/`
-- 스모크 테스트는 도메인별 barrel 구조로 재배치했고, `manifest.mjs` 실행 계획 + `support.mjs` 공통 의존성 모듈을 추가했습니다.
-- `facade export parity` / `regression barrel export parity` 회귀를 추가해 분할 중 export 누락을 방지했습니다.
-
-## 오프라인·데이터 정합성·멀티탭 안정화 반영 (2026-04-16)
-
-- **서비스워커 precache 생성 스크립트 도입** (`scripts/generate_sw_manifest.mjs`, `assets/sw-precache-manifest.js`, `sw.js`)
-    - 수동 `APP_SHELL_ASSETS` 배열을 제거하고, 저장소 기준 자산 목록을 생성 스크립트로 관리합니다.
-    - `assets/modules/**`, `assets/styles/**`, workers, vendor, icons, `manifest.json`, `index.html`, `data/winning_stats.json`이 precache manifest에 반영됩니다.
-    - same-origin reachability probe용 `online-check.txt`는 별도 정적 자산으로 추가했으며 precache 대상에서는 제외합니다.
-- **오프라인 판별 보정** (`networkLifecycle.js`, `sw.js`)
-    - `manifest.json` 대신 `/online-check.txt?__online_check=` 경로를 사용하도록 probe를 교체했습니다.
-    - 서비스워커 fetch 핸들러는 이 probe 경로를 캐시/가로채기에서 제외해 false online 판정을 줄입니다.
-- **정적 데이터 health 판정 강화** (`sync/health.js`)
-    - `getWinningStatsDataHealth()`는 단순 파일 존재 여부가 아니라 회차 연속성/구조 완전성 기준으로 `full | partial | none`을 판단합니다.
-    - `CONFIG.LIMITS.MISSING_DRAWS = [146]`는 허용 누락 회차로 실제 health 판정과 회귀 테스트에 연결됩니다.
-- **Import 후 복원 메타 보강** (`postImportRefresh.js`, `defaults.js`, `settingsPanel.js`)
-    - Import 후 `fetchWinningStats()`가 실제로 유효 데이터를 복원한 경우에만 `syncMeta.mode = local_restore`를 기록합니다.
-    - 복원 실패 시 `syncMeta.mode = local_restore_failed`와 실패 원인을 남기고, 설정 패널에도 별도 경고 상태로 노출합니다.
-- **멀티탭 저장소 동기화 추가** (`persistence/storage.js`, `networkLifecycle.js`, `LottoApp.js`)
-    - 앱 소유 storage key 변경 시 `BroadcastChannel('lotto-data-sync')`로 변경 사항을 전파합니다.
-    - 미지원 환경에서는 `storage` 이벤트를 fallback으로 사용합니다.
-    - 다른 탭은 persisted state를 다시 읽고 현재 라우트/설정/최신 회차/데이터 리스트를 재수화합니다.
-- **cold start orphan campaign 정리 확대** (`persistence/loadSave.js`)
-    - 앱 시작 시 `load()` 마지막 단계에서 orphan campaign을 자동 정리하고, 실제 변경이 있으면 즉시 저장합니다.
-- **검증 루틴 확장** (`scripts/smoke/`, `scripts/tests/offline_playwright.mjs`, `scripts/perf/ai_eval.mjs`)
-    - smoke에 `unexpected static hole`, `expected missing draw`, `post-import restore failure`, `orphan campaign migration`, `service-worker manifest parity` 회귀를 추가했습니다.
-    - Playwright 기반 `npm run test:offline` 시나리오를 추가해 오프라인 lazy route 진입, 데이터 게이트, 멀티탭 자동 재수화를 실브라우저에서 확인합니다.
-    - `npm run bench:ai`는 빠른 회귀 확인용 quick preset으로 축소했고, 기존 범위는 `npm run bench:ai:full`로 분리했습니다.
-
-## 기능 구현 정합성 3차 보강 반영 (2026-04-07)
-
-- **내 번호 보관함(기존 티켓북) `quantity` 모델 도입** (`records.js`, `dataLists.js`, `Check.js`, `generator/*`, `ai/form.js`)
-    - 동일한 `targetDrawNo + source + campaignId + numbers + strategyRequest` 조합은 중복 row 대신 `quantity` 로 누적됩니다.
-    - 티켓/캠페인 삭제 카운트, 저장소 요약, 확인 탭 표시는 이제 grouped row 수가 아니라 실제 물리 티켓 수량 기준으로 동작합니다.
-    - 티켓 목록과 확인 탭에는 `xN` 배지가 표시됩니다.
-- **Import 후 `syncMeta` 재구성 + 부분 복구 상태 도입** (`sync.js`, `persistence.js`, `defaults.js`, `postImportRefresh.js`)
-    - `syncMeta.mode = local_restore` 를 추가했고, Import 후에는 백업에 저장되지 않은 `syncMeta` 를 현재 유효 `winningStats` 기준으로 다시 구성합니다.
-    - 복원 자체가 실패하면 `syncMeta.mode = local_restore_failed` 로 남기고 실패 원인을 유지합니다.
-    - 비영속 `dataHealth` 상태(`full | partial | none`)를 도입해 정적 JSON 실패 시 `local_only` 기반 부분 복구 여부를 구분합니다.
-    - cold start 에서 정적 JSON 이 실패하면 최근 `24`회 window 기준 일부 데이터만 사용 중(partial recovery) 복구를 시도합니다.
-- **부분 복구 모드 UX/게이트 추가** (`moduleLoader.js`, `settingsPanel.js`, `latestDraw.js`, `pages.css`)
-    - `stats`, `ai`, `bt` 는 전체 데이터가 없으면 공통 게이트 패널을 렌더링합니다.
-    - `gen`, `check`, 최신 회차 카드, 데이터 관리 화면은 partial 상태에서도 유지되며 경고 배너만 표시합니다.
-    - 설정 모달에서는 stale 과 partial 을 분리해 노출합니다.
-- **PWA 멀티탭 업데이트 순서 수정** (`pwa.js`)
-    - BroadcastChannel 전파는 업데이트 버튼 클릭 시점이 아니라 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 발생합니다.
-    - 다른 탭은 activation-complete 신호를 받은 뒤에만 reload 되어 조기 reload 를 피합니다.
-- **회귀 테스트 추가** (`scripts/smoke/`)
-    - `ticket-quantity grouping`
-    - `partial winning-stats recovery`
-    - `local-restore sync-meta`
-    - `route data-gate`
-
-## 기능 구현 정합성 2차 보강 반영 (2026-04-05)
-
-- **티켓 정산 재정합성 추가** (`analytics.js`, `sync.js`, `dataio/postImportRefresh.js`)
-    - `reconcileTicketChecks()` 를 추가해 현재 `winningStats` 기준으로 전체 티켓의 `checked` 상태를 다시 계산합니다.
-    - 결과가 없는 회차이거나 최신 당첨 데이터가 아직 해당 티켓 회차에 도달하지 않았으면 `checked` 를 제거하고 `pending` 으로 되돌립니다.
-    - 이 재정합성은 앱 초기 로드, 최신 회차 동기화 직후, Import 후 post-refresh, 로컬 업데이트 정리 후 재적재 경로에서 공통 적용됩니다.
-- **로컬 업데이트 방어 및 sync 메타 clamp** (`persistence.js`, `sync.js`)
-    - `sanitizeLocalUpdates()` 로 로컬 업데이트 정규화, 회차 중복 제거, 정렬, 미래 회차 방어를 중앙화했습니다.
-    - 허용 상한은 `estimateLatestDrawKST() + 2` 이며, 이를 넘는 미래 회차 항목은 저장하지 않고 제외합니다.
-    - `syncMeta.lastSuccessDrawNo` 는 실제 유효 최신 회차보다 높게 남지 않도록 `winningStats` 재구성 직후 clamp 됩니다.
-- **캠페인 orphan 자동 정리 확대** (`records.js`, `dataLists.js`, `dataio/importExport.js`)
-    - `pruneOrphanCampaigns()` 공용 로직을 도입해 합치기/바꾸기 Import 뿐 아니라 개별 티켓 삭제와 전체 티켓 정리 후에도 orphan campaign 이 자동 삭제됩니다.
-    - 삭제/정리 완료 toast 에는 자동 정리된 캠페인 수가 함께 표시됩니다.
-- **히스토리 정책을 actual-log 기준으로 변경** (`records.js`, `generator/actions.js`, `dataio/importExport.js`)
-    - `favorites` 는 기존대로 번호 조합 unique 정책을 유지합니다.
-    - `history` 는 이제 같은 번호라도 생성/저장된 횟수만큼 모두 남기며, Import merge 도 날짜 내림차순 actual-log 기준으로 합칩니다.
-- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
-    - `ticket-reconcile`
-    - `future local-updates guard`
-    - `clear-local-updates reconcile`
-    - `orphan-campaign auto-cleanup`
-    - `history actual-log`
-
-## UI/UX 1차 개선 반영 (2026-03-27)
-
-- **공통 UX 인프라 정리** (`UIManager.js`, `settingsPanel.js`, `index.html`, `strings.js`)
-    - 공용 `confirm/prompt` 모달을 추가하고 삭제/덮어쓰기 흐름을 네이티브 `confirm()`/`prompt()` 대신 일관된 UI로 통합했습니다.
-    - 모달 최초 포커스, `Tab`/`Shift+Tab` 포커스 트랩, `Escape` 닫기, 호출 버튼 포커스 복귀를 공통 처리합니다.
-    - 사용자 노출 문구를 `assets/modules/utils/strings.js`로 분리해 토스트/상태/버튼 라벨의 한글 일관성을 높였습니다.
-    - 번호 공 렌더링과 주요 스테퍼 버튼에 `aria-label`을 추가했고, viewport 줌 제한을 제거했습니다.
-- **생성/캠페인/시뮬레이션 안정성 보강** (`features/generator/*`, `features/backtest/*`)
-    - 생성/캠페인 실행 중 버튼 비활성화와 스피너 상태를 추가하고, 요청 토큰으로 늦게 끝난 응답이 최신 결과를 덮지 않도록 막았습니다.
-    - 시뮬레이션 결과는 탭 재진입 후에도 유지되며, 요약 카드에 ROI/적중률/총상금 미니 차트를 추가했습니다.
-- **당첨 확인 탭 재설계** (`Check.js`, `index.html`, `assets/styles/*`)
-    - 네이티브 `select size="10"`을 카드형 리스트로 교체했습니다.
-    - 검색, 소스 탭, 티켓 상태 필터, 키보드 탐색, 스캔 결과 고정 노출, 모바일 단일 컬럼 흐름을 지원합니다.
-- **모바일 내비/설치 CTA 정리** (`LottoApp.js`, `index.html`, `assets/styles/responsive.css`)
-- 모바일 하단 내비를 `생성/통계/추천/확인/데이터 + 더보기` 구조로 단순화했습니다.
-    - `더보기` 바텀시트에서 `시뮬레이션`, `설정`, `앱 설치`에 접근할 수 있습니다.
-    - PWA 설치 버튼은 데스크톱 사이드바뿐 아니라 설정 모달과 모바일 `더보기`에도 동기화됩니다.
-
-## 기능 정합성 후속 보강 반영 (2026-03-25)
-
-- **티켓 저장 직후 정합성 보강** (`records.js`)
-    - 과거 회차 티켓은 저장 직후 현재 보유한 당첨 데이터 기준으로 즉시 정산됩니다.
-    - 미래 회차 티켓만 `pending` 상태를 유지합니다.
-- **생성 탭 목표 회차 자동추적 복구** (`generator/form.js`, `LottoApp.js`)
-    - 생성 탭의 캠페인 초기화가 단순 값 리셋이 아니라 자동 추적 메타데이터까지 복구합니다.
-    - 초기화 후 최신 회차가 바뀌면 `genTargetDrawNo`, `campStartDraw` 가 다시 다음 회차를 따라갑니다.
-- **Import 후 orphan campaign 정리** (`dataio/support.js`, `dataio/importExport.js`)
-    - 합치기/바꾸기 Import 후 연결 티켓이 없는 캠페인은 자동 정리됩니다.
-    - Import 결과 toast 에 cleanup 수치가 함께 표시됩니다.
-- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
-    - `immediate ticket settlement`
-    - `campaign reset autofill recovery`
-    - `import orphan-campaign cleanup`
-
-## 번호 추천 다양화·자동선택 반영 (2026-03-21)
-
-- **전략 다양화** (`StrategyCatalog.js`, `core/strategy/*`)
-    - 신규 전략 `consensus_portfolio`, `bayesian_smooth`, `momentum_recent`, `mean_reversion_cycle` 를 추가했습니다.
-    - 추천 탭 전용 자동 전략 `auto_recent_top`, `auto_ensemble_top3` 를 추가했습니다.
-- **자동 추천 로직 강화** (`weights.js`, `generation.js`, `evaluation.js`)
-    - 최근 `N회` 성능을 다시 측정해 상위 전략 1개를 자동 선택하거나, 상위 3개 전략의 현재 가중치를 혼합하는 방식이 동작합니다.
-    - `aiLookbackWindow` 입력값이 자동 전략 비교에 반영되며, 실제 자동 평가 구간은 최대 30회로 제한됩니다.
-    - 추천 단계는 단순 샘플링만 하지 않고, 후보풀을 만든 뒤 세트 점수 기반으로 리랭킹하고 유사 조합을 분산합니다.
-- **설명 가능성 강화** (`features/ai/rendering.js`)
-    - 추천 로그에 `리랭킹 후보풀`, `최고 내부 랭킹 점수`, `실제 자동 평가 회차 수`, `자동 선택 결과`를 표시합니다.
-    - 추천 카드 상세에 `내부 랭킹 점수`, `페어 시너지`, `프로파일 적합도`, `공백 균형`, 번호별 `추세/회귀/베이즈` 신호를 표시합니다.
-- **추천 평가 스크립트 추가** (`scripts/perf/ai_eval.mjs`, `package.json`)
-    - `npm run bench:ai` 는 빠른 회귀 확인용 quick preset 입니다.
-    - 전체 범위 평가는 `npm run bench:ai:full` 로 분리했습니다.
-    - 최근 20회 단기 검증 기준으로 `auto_ensemble_top3` 가 `4개 이상 적중 draw 비율`에서 경쟁력 있는 결과를 보였습니다.
-
-## 기능 정합성·운영 진단 강화 반영 (2026-03-19)
-
-- **목표 회차 기본값 자동 관리** (`LottoApp.js`, `latestDraw.js`, `index.html`)
-    - `genTargetDrawNo`, `campStartDraw`, `aiTargetDrawNo`는 사용자가 직접 수정하지 않은 경우 최신 회차 기준 다음 회차로 자동 갱신됩니다.
-    - 각 입력에는 `다음 회차로 재설정` 버튼을 추가했습니다.
-- **비동기 라우트 stale guard 보강** (`moduleLoader.js`)
-    - `refreshCurrentRoute()` 에 현재 라우트 토큰 체크를 추가해 동기화 직후 빠른 탭 전환 시 이전 탭 렌더가 뒤늦게 섞이는 문제를 막았습니다.
-- **단건 동기화 payload 진단 강화** (`sync.js`, `settingsPanel.js`, `index.html`)
-    - `fetchOneDraw()` 가 예상 외 JSON 구조를 받으면 `SYNC_FETCH_ONE_INVALID_PAYLOAD` 로그를 남깁니다.
-    - 설정 모달에 최근 응답 구조 경고(`syncMeta.lastWarningMessage`)를 표시합니다.
-- **로컬 업데이트 관리 보강** (`config.js`, `persistence.js`, `dataLists.js`, `index.html`)
-    - `lotto_pro_updates_v2` 키를 `CONFIG.KEYS.LOCAL_UPDATES` 로 중앙화했습니다.
-    - 손상된 `localUpdates` 데이터도 key 라벨과 함께 로그에 표시합니다.
-    - 데이터 관리 화면에 로컬 최신 회차 업데이트 요약과 정리 버튼을 추가했습니다.
-- **QR 스캐너 정리 흐름 보강** (`QrScanner.js`, `moduleLoader.js`)
-    - 스캔 모달 바깥 클릭으로 닫을 수 있습니다.
-    - `check` 탭을 벗어날 때 활성 스캐너를 정리합니다.
-- **예상 최신 회차 문구 정비** (`settingsPanel.js`, `index.html`)
-    - stale 경고와 sync 안내 문구를 `예상 최신 회차 기준`으로 통일했습니다.
-- **스모크 테스트 회귀 추가** (`scripts/smoke/`)
-    - `target-draw autofill`
-    - `refreshCurrentRoute stale`
-    - `sync invalid payload`
-    - `qr route cleanup`
-
-## 안정성·접근성 강화 반영 (2026-03-17)
-
-- **스토리지 안전성 강화** (`persistence.js`)
-    - 모든 `localStorage.setItem()` 호출을 `_safeSetItem()` 헬퍼로 통일, `QuotaExceededError` 시 사용자에게 toast 경고를 표시합니다.
-    - 저장 공간 임계치(`STORAGE_WARNING_BYTES` / `STORAGE_DANGER_BYTES`) 초과 시 세션 당 한 번 경고 toast를 자동으로 표시합니다.
-    - `safeJsonParse()` 에 key 라벨 파라미터를 추가해 손상된 데이터 감지 시 어떤 키인지 콘솔에 명시합니다.
-- **네트워크 응답 검증** (`sync.js`)
-    - `fetchRangeFromProxy()` 에 Content-Type 검증을 추가했습니다. HTML 에러 페이지를 JSON으로 파싱하는 시도를 조기 차단합니다.
-    - 동기화 중 데이터 연결 주소(고급)가 변경되면 기존 in-flight 요청을 취소하고 새 설정으로 재시작합니다 (proxy fingerprint 가드).
-- **데이터 리스트 상태 유지** (`dataLists.js`, `LottoApp.js`)
-    - 검색어·페이지 번호가 `sessionStorage`에 저장되며, 새로고침 후에도 복원됩니다.
-    - `CONFIG.KEYS.SESSION_DATA_LIST_STATE` (`lotto_pro_datalist_state`) 키를 사용합니다.
-- **오프라인 배너** (`index.html`, `LottoApp.js`)
-    - 네트워크가 끊기면 상단 고정 배너가 즉시 표시되고, 재연결 시 자동으로 숨겨집니다.
-    - `online` / `offline` window 이벤트와 toast를 함께 표시합니다.
-- **PWA 설치 유도** (`LottoApp.js`, `index.html`)
-    - `beforeinstallprompt` 이벤트를 캡처해 데스크톱 사이드바, 설정 모달, 모바일 `더보기` 시트에 설치 버튼을 동기화합니다.
-    - 설치 완료 후 버튼을 자동으로 숨기고 toast로 안내합니다.
-- **SW 업데이트 멀티탭 전파** (`pwa.js`)
-    - `BroadcastChannel('lotto-sw-update')` 를 도입했습니다.
-    - 현재는 새 서비스워커가 실제 활성화된 뒤(`controllerchange`)에만 activation-complete 신호를 전파하도록 조정되어, 다른 탭의 조기 reload 를 막습니다.
-- **접근성 개선** (`UIManager.js`, `index.html`)
-    - `#toast-live-region` (`aria-live="polite"`) 영역을 추가해 스크린 리더가 toast 알림을 읽을 수 있습니다.
-    - toast 요소에 `role="status"` 를 추가했습니다.
-    - LRU 볼 렌더링 캐시가 전체 초기화 대신 200개 단위로 점진적으로 제거됩니다.
-- **설정 모달 포커스 폴백** (`settingsPanel.js`)
-    - `#closeSettingsBtn` 이 없을 경우 첫 번째 포커스 가능 요소 또는 모달 자체로 포커스가 이동합니다.
-- **워커 타임아웃 모바일 적응** (`StrategyWorkerClient.js`)
-    - `navigator.connection.effectiveType` 을 감지해 2G 환경에서 ×2.5, 3G 환경에서 ×1.5 배로 타임아웃을 자동 확장합니다.
-- **config 상수 정비** (`config.js`)
-    - `CONFIG.LIMITS.MISSING_DRAWS = [146]`: 정적 JSON에 없는 회차를 명시적으로 관리합니다.
-    - `CONFIG.KEYS.SESSION_DATA_LIST_STATE`: sessionStorage 키를 중앙화했습니다.
-- **최신 회차 카드 안전성** (`latestDraw.js`)
-    - `winningStats` 배열 자체가 null/undefined인 경우를 `Array.isArray()` 로 추가 방어합니다.
-- **개발 도구 ESM 정합화** (`package.json`)
-    - `package.json`은 `"type": "module"`을 선언합니다.
-    - smoke/perf 스크립트와 `proxy/worker.js`는 ESM 기준으로 동작합니다.
-
-## 최근 안정화/정합성 반영 (2026-03-16)
-
-- 데이터 관리 화면의 검색/페이지네이션과 즐겨찾기/히스토리 액션 위임을 실제 렌더러 기준으로 복구했습니다.
-- 설정 모달 모바일 레이아웃을 단일 열 중심으로 다시 정리했습니다.
-    - 가로 스크롤 제거
-    - 패널/배지/버튼 폭 정리
-    - 좁은 화면에서 설정 내용을 실제로 확인할 수 있도록 개선
-- `추천`, `실험`, `확인` 탭의 lazy import 경로를 수정해 탭 전환 오류를 복구했습니다.
-- 최신 회차 동기화 정책은 현재 `기본 자동 동기화 + 고급 데이터 연결 주소 우선`입니다.
-    - 고급 데이터 연결 주소가 없으면 내장 fallback 경로로 최신 회차를 조회합니다.
-    - 고급 데이터 연결 주소는 공식 지원 형식(`/proxy/latest`)일 때만 우선 사용합니다.
-    - 동기화 결과는 `localUpdates`에 누적되어 정적 JSON보다 최신 회차를 로컬에서 보완할 수 있습니다.
-- 비지원 프록시 형식(`?url=`, `{url}`, `{draw_no}` 등)은 설정에서 경고를 표시하고 기본 자동 동기화로 내려갑니다.
-- 설정 모달 안내 문구와 동기화 상태 표기를 현재 정책 기준으로 정리했습니다.
-- Pretendard 폰트 경로를 `assets/styles/` 기준 상대 경로(`../vendor/pretendard/PretendardVariable.woff2`)로 유지해 GitHub Pages 서브패스 배포에서도 404가 나지 않도록 했습니다.
-- 서비스워커 install precache에 `data/winning_stats.json`을 추가했습니다.
-- 수동 검증 기준으로 데이터 관리 화면의 검색, 페이지 이동, 복사, QR, 삭제 동작을 다시 확인했습니다.
-
-## 최근 기능/오프라인 자산 통합 반영 (2026-03-13)
-
-- 당시 모바일 하단 탐색을 `gen/stats/ai/bt/check/data` 6탭으로 통일했습니다.
-    - 현재는 2026-03-27 기준 `gen/stats/ai/check/data + 더보기(bt/settings/install)` 구조로 다시 정리되어 있습니다.
-- 생성/추천/백테스트 화면에 전략 프리셋 CRUD를 추가했습니다.
-    - 현재값 저장/불러오기/삭제
-    - scope별 저장소 분리(`generator`, `ai`, `backtest`)
-- 추천 탭의 `생성 탭으로` 동작은 기존 생성 결과를 교체하는 정책으로 고정했습니다.
-- 캠페인 삭제/전체삭제는 연결된 `campaignId` 티켓을 함께 삭제합니다.
-- 최신 당첨결과 카드는 오프라인/데이터 없음 상태를 명시적으로 표시하며, 동기화 직후 현재 탭과 무관하게 즉시 갱신됩니다.
-- 백업 Import 옵션에 `alertPrefs` 적용 체크를 추가했습니다.
-    - 기본 정책: `합치기=theme/customProxy/strategyPrefs/alerts 미적용`, `바꾸기=전부 적용`
-- 런타임 외부 자산을 `assets/vendor/`로 로컬화했습니다.
-    - 대상: `Pretendard`, `Phosphor Icons`, `qrcode`, `html2canvas`, `html5-qrcode`
-    - 제3자 고지: `THIRD_PARTY_NOTICES.md`
-- 서비스워커 캐시 버전을 `v10`으로 상향했습니다.
-- 스모크 테스트에 회귀를 추가했습니다.
-    - `campaign-cascade`, `requestNumbers replace`, `latest-win-placeholder`
-    - `sync-latest-win refresh`, `import-alert-options`, `strategy-preset-crud`
-    - `runtime-asset-localization`
-
-## 최근 기능 개선 반영 (2026-03-14)
-
-- 최신 회차 동기화 메타와 설정 모달 통합 UI를 도입했습니다.
-    - 현재 기준 동기화 정책은 `기본 자동 동기화 + 고급 데이터 연결 주소 우선`입니다.
-    - 고급 데이터 연결 주소가 없으면 내장 fallback 경로를 사용하고, 실패 시 기본 포함 데이터 + 내 기기 보정 상태를 유지합니다.
-- 설정 모달에 동기화 메타를 통합했습니다.
-    - 현재 모드/소스, 마지막 성공 시각, 마지막 반영 회차, 마지막 실패 원인, 최신성 경고
-- 데이터 관리 화면 리스트에 검색 + 페이지네이션을 추가했습니다.
-    - 대상: 즐겨찾기, 히스토리, 티켓, 캠페인
-    - 기본 페이지 크기: `20`
-- 설정 모달에 저장 상태 요약과 권장 정리 경고를 추가했습니다.
-    - 자동 삭제는 하지 않고, 백업/수동 정리를 유도합니다.
-- 시스템 알림 UX를 정리했습니다.
-    - 토글 on 시 즉시 권한 요청
-    - 권한 배지/테스트 알림 버튼 추가
-    - 정산 시점에는 권한 재요청 없이 허용 상태에서만 발송
-- `pagehide`, `visibilitychange(hidden)`에서 즉시 저장 flush를 수행합니다.
-- 서비스워커 업데이트는 사용자가 `업데이트`를 눌러 `skipWaiting`을 수락한 경우에만 reload합니다.
-
-## 최근 구조/UX 리팩토링 반영 (2026-03-14)
-
-- 생성 화면에서 저장 상태와 `localStorage` 관련 직접 노출을 제거하고, 전역 설정 모달로 이동했습니다.
-- 설정 모달에서 아래 항목을 한곳에서 관리합니다.
-    - 테마
-    - 인앱/시스템 알림
-    - 데이터 연결 주소(고급)와 동기화 메타
-    - 앱 저장 공간 사용량/정리 권장 상태
-- 데이터 관리 화면은 백업/복원과 즐겨찾기/히스토리/티켓/캠페인 목록 중심으로 단순화했습니다.
-- 핵심 JS는 퍼사드 + 내부 전용 모듈 구조로 분리했습니다.
-    - `assets/modules/core/app`
-    - `assets/modules/core/data`
-    - `assets/modules/core/strategy`
-    - `assets/modules/features/{ai,backtest,dataio,generator}`
-- PWA 부트스트랩을 `assets/modules/bootstrap/pwa.js`로 분리했습니다.
-- 스타일은 `assets/styles/*.css`로 분리하고 `assets/app.css`는 집계 엔트리로 유지했습니다.
-- 스모크 테스트는 `scripts/smoke/helpers`, `scripts/smoke/cases` 구조로 분리했습니다.
-- 서비스워커 캐시 버전을 `v11`로 상향했습니다.
-
-## 최근 통합 개선 반영 (2026-03-05)
-
-- 리포트 `1~9 + A~E` 권고사항을 한 번에 반영했습니다.
-- 제한 상수를 `CONFIG.LIMITS`로 중앙화했습니다.
-    - `MAX_BACKTEST_SPAN=300`
-    - `MAX_CAMPAIGN_WEEKS=52`
-    - `MAX_CAMPAIGN_SETS_PER_WEEK=20`
-    - `MAX_CAMPAIGN_TOTAL_TICKETS=500`
-    - `MAX_SYNC_FALLBACK_DRAWS=120`
-- 백테스트 검증을 UI/메인 스레드/워커 3단계로 강화하고, `WINS` payload에 `matchedCount`, `bonusHit`, `hitText`를 추가했습니다.
-- 백테스트 CSV를 `strategy_id`, `strategy_label` 분리 포맷으로 수정했습니다.
-- 동기화를 단일 실행(single-flight)으로 고정하고, 수동 동기화에 한해 취소 버튼(`cancelSyncBtn`)을 지원합니다.
-- QR 파서에 공식 host 화이트리스트와 중복 번호 거부 검증을 추가했습니다.
-- 데이터 Import에 옵션 패널을 추가했습니다.
-    - 모드: `merge` / `overwrite`
-    - 설정 적용: `theme`, `proxy`, `strategyPrefs`
-    - 기본 정책: `합치기=설정 미적용`, `바꾸기=설정 적용`
-- 서비스워커 캐시 버전을 `v9`로 상향했습니다.
-- 스모크 테스트에 회귀 4건을 추가했습니다.
-    - `campaign-limit`, `qr-validation`, `ticket-dedupe`, `sync-guard`
-
-## 개발 도구 정합화 반영 (2026-03-11)
-
-- `package.json`, `package-lock.json`, `eslint.config.mjs`를 추가해 로컬 정적 검증 루틴을 명시했습니다.
-- ESLint flat config를 도입했습니다.
-    - 대상: `assets/**/*.js`, `proxy/**/*.js`, `scripts/**/*.mjs`, `sw.js`, `index.html`
-    - `index.html`은 HTML 구조와 module 진입점 참조를 함께 검증합니다.
-- Prettier를 개발 의존성으로 추가하고 VS Code 저장 시 ESLint auto-fix 설정(`.vscode/settings.json`)을 정리했습니다.
-- 현재 기준 `npm run lint`가 통과합니다.
-
-## 최근 안정화 반영 (2026-03-01)
-
-- 모듈 파싱 오류(`SyntaxError: Invalid or unexpected token`)로 앱 초기화가 중단되던 문제를 복구했습니다.
-- 복구 대상: `DataManager`, `Ai`, `Backtest`, `Generator`의 깨진 문자열 리터럴.
-- 서비스워커 캐시 버전을 `v8`로 상향해 배포 후 구버전 캐시 잔존 가능성을 낮췄습니다.
-- 배포 직후 이상 동작 시 강력 새로고침(`Ctrl+F5`) 또는 사이트 데이터 삭제 후 재확인하세요.
-
-### 인코딩 정리 2차 (2026-03-01)
-
-- 메인 상태 텍스트(`최신`, `업데이트 가능`, `오프라인`) 깨짐 현상을 복구했습니다.
-- 생성/시뮬레이션/추천 탭의 토스트, 버튼 라벨, 로그 메시지, 접근성 라벨(`aria-label`)의 깨진 문구를 정리했습니다.
-- 사용자 화면에서 보이는 한글 문구 기준으로 전역 점검을 수행했습니다.
-
-### 기능 품질 강화 3차 (2026-03-01)
-
-- 전략 엔진을 `엄격 필터 모드`로 고정했습니다. 필터를 만족하지 못하면 무필터 랜덤 조합으로 채우지 않습니다.
-- 백테스트 워커의 무필터 랜덤 대체를 제거하고, 요약에 `requestedTickets/generatedTickets/fillRate`를 추가했습니다.
-- 데이터 Import 완료 후 즉시 `fetchWinningStats -> updateLatestWin -> refreshCurrentRoute -> renderDataLists` 순서로 화면을 갱신합니다.
-- 회차 정규화에서 `중복 번호`, `보너스 번호 중복`을 차단했습니다(`DataManager`, `backup` 공통).
-- 캠페인 렌더링을 `textContent` 기반 DOM 조립으로 변경해 Import 경유 XSS 위험을 낮췄습니다.
-- 서비스워커 precache에 `assets/modules/utils/backup.js`를 추가했습니다(`CACHE_VERSION: v8`).
-- 스모크 테스트에 회귀 3건(엄격 필터, draw 정규화, post-import refresh 순서)을 추가했습니다.
-- 코드베이스 텍스트 파일 UTF-8 디코드 점검 결과, 인코딩 오류 파일은 발견되지 않았습니다.
+1. **번호 생성:** `번호 생성하기`로 로또 6/45 조합을 만들고, 필요하면 고정수/제외수/연속수 제한을 조정합니다.
+2. **번호 추천:** `번호 추천` 탭에서 추천 방식을 고르고 `추천 시작`을 누릅니다. 분석 강도는 처음이면 `기본`을 권장합니다.
+3. **연금복권:** `연금복권` 탭에서 조별·자리별 흐름을 확인하고 연금복권720+ 추천 번호를 만듭니다.
+4. **저장:** 로또 6/45는 `내 번호 보관함`, 연금복권720+는 `저장한 연금복권 번호` 목록에 저장합니다.
+5. **당첨 확인:** 저장한 로또 6/45 번호는 `당첨 확인`, 저장한 연금복권720+ 번호는 `연금복권` 탭에서 최신 결과와 비교합니다.
+6. **백업:** `데이터 관리`의 `전체 데이터 내보내기`로 저장 데이터를 백업합니다.
 
 ## 주요 기능
 
-- 번호 생성: 스마트 추천, 연속수 제한, 고정수/제외수 설정, QR 생성
-    - 목표 회차 입력은 다음 회차를 자동 추적하며, 필요 시 즉시 재설정 가능
-- 내 번호 보관함/캠페인:
-    - 생성 결과와 추천 결과를 회차 기준으로 내 번호 보관함에 저장
-    - 동일한 티켓 조합은 중복 row 대신 `quantity` 로 묶입니다.
-    - 과거 회차 티켓은 저장 즉시 정산되어 상태가 바로 반영됩니다.
-    - `N주 x 주당 M세트` 캠페인 생성으로 일괄 등록
-    - 안전 상한 적용: `최대 52주`, `주당 최대 20세트`, `총 500티켓`
-    - 캠페인 삭제 시 연결 티켓 cascade 삭제
-    - 동기화 시 미정산 티켓 자동 정산
+- 번호 생성:
+    - 로또 6/45 스마트 생성, 고정수/제외수, 연속수 제한, QR 생성
+    - 목표 회차 자동 추적과 캠페인 생성
+    - 생성 결과를 즐겨찾기, 히스토리, 내 번호 보관함에 저장
 - 번호 추천:
-    - 다중 전략(앙상블, 균형, 고빈도/저빈도, 컨센서스, 베이지안, 모멘텀, 평균회귀 등) 지원
-    - 최근 `N회` 기준 상위 전략 자동 선택(`auto_recent_top`)
-    - 최근 상위 3개 전략 혼합 자동 앙상블(`auto_ensemble_top3`)
-    - 분석 강도 프리셋(`빠름/기본/정밀`)과 몬테카를로 기반 샘플 분석
-    - 추천 후보풀 리랭킹 + 유사 조합 분산
-    - 추천 조합별 근거 신호(빈도/최근성/공백/페어/추세/회귀/베이즈/필터) 표시
-    - 결과를 생성 탭으로 교체 가져오기 지원
-- 전략 프리셋:
-    - 생성/추천/백테스트별 저장·불러오기·삭제
-    - 백업 v3의 `strategyPresets`와 같은 저장소 사용
-- 전략 시뮬레이션:
-    - 단일/다중 전략 비교(최대 5개)
-    - 백테스트 범위 상한: 최대 300회차
-    - 탭 재진입 후에도 마지막 요약/비교/당첨 상세 결과 유지
-    - 요약 카드에 ROI/적중률/총상금 미니 차트 제공
-    - 수익률, 당첨률, 총비용, 총상금, 5등 이상 비교
-    - 비교 결과 CSV 내보내기
+    - 다중 전략, 자동 전략 선택, 후보풀 리랭킹, 유사 조합 분산
+    - 추천 근거 신호 표시: 빈도, 최근성, 공백, 페어, 추세, 회귀, 베이즈, 필터
+    - 같은 번호 다시 만들기 코드와 분석 강도 프리셋 지원
+- 연금복권720+:
+    - 공식 연금복권720+ 결과 JSON과 정적 데이터 스냅샷 사용
+    - 조별 빈도, 위치별 숫자 빈도, 최근 흐름 요약
+    - 조 빈도/최근성/공백, 자리별 숫자 빈도, 보너스 번호 보조 신호 기반 추천
+    - 같은 6자리의 확장 조 제안, 개별 저장, 확장 조 일괄 저장
+    - 저장 번호 복사, CSV 내보내기, 최신 회차 기준 간단 당첨 확인
 - 당첨 확인:
-    - 즐겨찾기/히스토리/티켓/스캔 결과를 카드형 리스트로 탐색
-    - 검색, 티켓 상태 필터, 키보드 선택 이동, 모바일 단일 컬럼 레이아웃 지원
-    - grouped ticket 은 `xN` 수량 배지와 실제 보유 수량 메타를 함께 표시
-- 통계 분석: 번호 구간 분포, 홀짝/고저 비율, 자주/드물게 나온 번호, 상위 동시출현 번호쌍
-- 모바일 최적화 화면:
-    - 세이프 영역 대응, 반응형 레이아웃
-    - 하단 고정 `5탭 + 더보기` 탐색 구조
-- 모바일 설정 모달: 단일 열 중심 레이아웃과 가로 오버플로우 방지
-- 설정 모달:
-    - 테마, 알림, 데이터 연결 주소(고급), 동기화 상태, 저장 공간 요약을 한곳에서 관리
-    - 최근 응답 구조 경고와 예상 최신 회차 기준 최신성 경고를 함께 표시
-    - 앱 업데이트 확인 및 준비된 업데이트 적용 버튼 제공
-    - 공용 모달 포커스 트랩/포커스 복귀 규칙과 동일한 접근성 동작을 사용
-    - 설치 프롬프트가 가능한 환경에서는 상단 액션에 앱 설치 버튼 노출
-    - 좁은 화면에서 단일 열로 읽기 쉽게 배치
-- 알림 관리: 인앱 알림과 시스템 알림 설정
-    - 시스템 알림 권한 배지 및 테스트 알림 지원
-- 오프라인 앱 지원:
-    - 네트워크가 없을 때도 기본 기능 사용 가능
-    - 앱 실행 중 백그라운드 최신 데이터 동기화(기본 자동 동기화, 고급 데이터 연결 주소 우선)
-    - same-origin probe는 precache 자산이 아닌 `/online-check.txt`를 사용하며, 서비스워커는 해당 probe를 캐시 경로에서 제외합니다.
-    - 정적 JSON 실패 시 최근 일부 회차만으로 `일부 데이터만 사용 중(partial recovery)` 상태를 구성할 수 있음
-    - 일부 데이터만 사용 중 상태에서는 생성/확인은 유지되지만 통계/추천/시뮬레이션은 게이트 처리됨
-    - 데스크톱 사이드바, 설정 모달, 모바일 `더보기`를 통한 홈 화면 설치 지원
-    - same-origin vendor 자산 기반으로 CDN 없이 런타임 동작
-    - install precache 목록은 `assets/sw-precache-manifest.js` 생성 파일로 관리되며, `winning_stats.json`도 포함됩니다.
-- 데이터 백업/복원: 백업 v1/v2/v3 가져오기, v3(`localUpdates`, `strategyPresets`) 내보내기
-    - 가져오기 옵션: `합치기/바꾸기` + `theme/customProxy/strategyPrefs/alerts` 적용 체크박스
-    - 가져오기 전 추가/중복/건너뜀/정리/적용 설정/미래 회차 제외/예상 번호 수를 미리 확인합니다.
-    - `바꾸기` 모드는 현재 데이터를 `lotto_before_replace_*.json`으로 자동 백업한 뒤 진행합니다.
-    - `syncMeta` 는 백업에 포함하지 않으며, Import 후 유효 데이터가 재구성되면 `local_restore`, 실패하면 `local_restore_failed` 메타를 기록합니다.
-    - Import 후 연결 티켓이 없는 orphan campaign 은 자동 정리되며, 완료 toast 에 cleanup 수치가 표시됩니다.
+    - 저장된 로또 6/45 번호를 최신 당첨 데이터와 비교
+    - 검색, 상태 필터, 키보드 이동, QR 스캔 흐름 지원
 - 데이터 관리:
-    - 즐겨찾기/히스토리/내 번호 보관함/캠페인 검색 + 페이지네이션
-    - 백업 후 오래된 히스토리와 정산 끝난 미당첨 번호를 정리하는 `백업하고 정리하기`
-    - 내 기기 최신 회차 보정 데이터 개수 확인 및 수동 정리
-- 최신 회차 동기화/데이터 연결 주소(고급) 지원: `dhlottery.co.kr` 우회 및 고급 연결 주소 설정
-    - 우선순위: `?proxyUrl/?proxy` -> `lotto_webapp_settings_v1.proxyLatestUrl` -> `lotto_pro_settings_v2.customProxy`
-    - 고급 연결 주소 미설정 시 앱은 기본 자동 동기화 fallback을 사용하고, 실패 시 기본 포함 데이터 + 내 기기 보정 상태를 유지
-    - 권장 입력 예시: `https://<worker>.workers.dev/proxy/latest`
-    - 공식 지원 형식은 절대 URL + `/proxy/latest` 엔드포인트입니다. `?url=`, `{url}`, `{draw_no}` 형식은 저장돼 있어도 런타임에서 무시하고 기본 자동 동기화로 내려갑니다.
-    - 앱 URL에 `?proxyUrl=`로 직접 넣을 때는 데이터 연결 주소 전체를 URL 인코딩하는 편이 안전합니다.
+    - 즐겨찾기, 히스토리, 내 번호 보관함, 캠페인, 연금복권 저장 번호 관리
+    - 백업 v4 내보내기/가져오기, import 미리보기, 중복 병합
+    - 로또 6/45와 연금복권720+ 데이터 source, 최신 회차, 마지막 확인 시각 요약
+    - `백업하고 정리하기`로 오래된 히스토리와 정산 끝난 미당첨 번호 정리
+- PWA:
+    - 홈 화면 설치, 오프라인 기본 자산 캐시, 업데이트 확인/적용
+    - 멀티탭 저장소 동기화와 부분 복구 상태 표시
 
-## 구성 개요
+## 데이터와 저장
 
-```mermaid
-graph LR
-    U[웹 사용자] -->|정적 배포| G[GitHub Pages]
-    U -->|데이터 동기화| D[정적 JSON 데이터]
-    U -->|브라우저 저장소| L[localStorage]
-```
+- 로또 6/45 정적 데이터: `data/winning_stats.json`
+    - 최신 회차: `1223`
+    - row 수: `1222`
+    - 허용 누락 회차: `[146]`
+- 연금복권720+ 정적 데이터: `data/pension720_stats.json`
+    - 최신 회차: `315`
+    - 최신 날짜: `2026-05-14`
+    - 최신 1등: `2조 537530`
+    - 최신 보너스: `358127`
+- 런타임 동기화:
+    - 로또 6/45는 공식 API와 fallback provider를 사용합니다.
+    - 연금복권720+는 `selectPstPt720WnList.do` 공식 JSON을 우선 확인하고 실패 시 포함 데이터로 유지합니다.
+- 저장소:
+    - 앱 데이터는 localStorage에 저장됩니다.
+    - 기존 `lotto_pro_*` 저장소 키는 사용자 데이터 호환을 위해 유지합니다.
+    - 백업 v4에는 즐겨찾기, 히스토리, 로또 티켓, 캠페인, 전략 프리셋, 로컬 업데이트, 연금복권 저장 번호가 포함됩니다.
+    - 기본 백업 파일명 prefix는 `lotto_pension_pro_backup_v4`입니다.
+    - 가져오기 overwrite 전 자동 백업 prefix는 `lotto_pension_pro_before_replace`, 데이터 정리 전 자동 백업 prefix는 `lotto_pension_pro_before_cleanup`입니다.
+    - 연금복권720+ 저장 번호 CSV 파일명은 `lotto_pension_pro_pension720_tickets_<timestamp>.csv` 형식입니다.
 
-- 화면/로직: 바닐라 자바스크립트(ES 모듈) + CSS 변수 (빌드 단계 없음)
-- 개발 도구: `npm` 스크립트 기반 ESLint/Prettier (배포 번들링 없음)
-- 배포: 정적 호스팅(GitHub Pages 호환)
-- 데이터: 정적 JSON(`data/winning_stats.json`) + 로컬 저장소
-    - 현재 정적 JSON 기준 최신 회차: `1221`, row 수: `1220`, 허용 누락: `[146]`
-- 서비스워커: 생성된 precache manifest 기반 같은 출처 리소스 캐시 전략 + 핵심 데이터 precache (`CACHE_VERSION: v20`)
+## 배포와 PWA
 
-## 프로젝트 구조
-
-```text
-lotto---webapp/
-├── assets/                  # 정적 리소스(CSS, JS, 이미지)
-│   ├── modules/             # 자바스크립트 모듈
-│   │   ├── bootstrap/       # PWA/앱 부트스트랩
-│   │   ├── core/            # 퍼사드 + 내부 core 모듈
-│   │   │   ├── app/         # 앱 라우팅/설정/데이터 리스트/최신 회차
-│   │   │   ├── data/        # 저장/동기화/레코드/분석
-│   │   │   └── strategy/    # 요청/컨텍스트/가중치/평가/생성
-│   │   ├── features/        # 기능 퍼사드 + 내부 분리 모듈
-│   │   │   ├── ai/
-│   │   │   ├── backtest/
-│   │   │   ├── dataio/
-│   │   │   └── generator/
-│   │   └── utils/           # 공통 유틸리티(UI 문자열 카탈로그 포함)
-│   ├── icons/               # 앱 아이콘
-│   ├── styles/              # 분리된 스타일 조각
-│   ├── vendor/              # 로컬 런타임 vendor 자산(font/icon/QR/캡처)
-│   ├── app.css              # 스타일 집계 엔트리
-│   ├── backtest.worker.js   # 시뮬레이션 워커
-│   ├── strategy.worker.js   # 생성/추천 워커
-│   └── sw-precache-manifest.js # 생성된 서비스워커 precache manifest
-├── data/                    # 정적 데이터
-│   └── winning_stats.json   # 로또 당첨 이력
-├── proxy/                   # 프록시 워커 예시
-├── scripts/                 # 로컬 점검 스크립트(perf/smoke)
-│   └── smoke/               # helpers + cases + 엔트리
-├── .vscode/settings.json    # VS Code 저장 시 ESLint auto-fix 설정
-├── eslint.config.mjs        # ESLint flat config
-├── index.html               # 앱 진입점
-├── manifest.json            # 웹앱 설치 설정
-├── online-check.txt         # same-origin 네트워크 reachability probe
-├── package.json             # 개발 스크립트/의존성
-├── package-lock.json        # npm lockfile
-├── THIRD_PARTY_NOTICES.md   # 로컬 vendor 자산 고지
-└── sw.js                    # 서비스워커
-```
-
-## AI 핸드오프 기준 파일명
-
-- 표준 문서: `claude.md`
-- 호환 별칭: `cladue.md` (오탈자 호환용)
-- 보조 문서: `gemini.md`
-
-## 로컬 스모크 테스트
-
-먼저 개발 의존성을 설치합니다.
-
-```bash
-npm install
-```
-
-정적 검증:
-
-```bash
-npm run lint
-npm run check:data-freshness
-```
-
-정적 배포 검증(`build`는 별도 번들 생성 없이 린트 + 데이터 최신성 + 스모크 검증을 묶은 명령입니다):
-
-```bash
-npm run build
-```
-
-서비스워커 precache manifest를 수동 동기화해야 할 때:
+- GitHub Pages 저장소/URL은 `lotto-pension-pro-webapp` 기준입니다.
+- 배포 대상은 루트 정적 파일입니다. 별도 번들 산출물은 만들지 않습니다.
+- service worker cache version: `v23`
+- install precache에는 앱 셸과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
+- precache manifest가 바뀌면 아래 명령으로 생성 파일을 갱신합니다.
 
 ```bash
 npm run sync:sw-manifest
 ```
 
-필요 시 자동 수정:
+## 개발 명령
 
 ```bash
-npm run lint:fix
-npm run format:check
-```
-
-```bash
+npm install
+npm run lint
+npm run check:data-freshness
+npm run check:pension720
+npm run check:pension720:freshness
 node scripts/smoke/smoke.mjs
+npm run build
 ```
 
-현재 `smoke`에는 아래 회귀 항목이 포함됩니다.
+`check:pension720`는 checked-in 정적 JSON을 검증하고, `check:pension720:freshness`는 공식 endpoint 최신 회차와 정적 JSON을 비교합니다. 현재 `npm run build`는 두 검증을 모두 포함하므로 네트워크나 공식 endpoint 장애 시 실패할 수 있습니다.
 
-- `strict-filter`, `wheel-fixed`, `draw-normalization`
-- `campaign-limit`, `campaign-cascade`, `campaign-empty-save`, `campaign reset autofill recovery`
-- `qr-validation`, `qr-reentry-guard`, `qr route cleanup`
-- `ticket-dedupe`, `ticket-quantity grouping`, `immediate ticket settlement`, `ticket-reconcile`, `requestNumbers replace`
-- `sync-guard`, `sync-latest-win refresh`, `sync invalid payload`, `auto-sync fallback`, `partial winning-stats recovery`, `local-restore sync-meta`
-- `sync payload draw integer guard`, `merged local-updates gap classification`, `static data freshness budget`
-- `malformed draw date rejection`, `winning-stats transient failure preserve`, `proxy input change abort`
-- `target-draw autofill`, `refreshCurrentRoute stale`, `future local-updates guard`, `clear-local-updates reconcile`
-- `persistence-flush`, `storage summary byte accounting`, `notification-permission`, `data-list pagination`
-- `data-list DOM`, `check target-card attribute escaping`, `proxy-policy`, `import-alert-options`, `import stored-list strict normalization`, `import orphan-campaign cleanup`, `orphan-campaign auto-cleanup`, `post-import-refresh`, `route data-gate`
-- `import safety limits`, `strategy worker final-timeout termination`, `latest win date escaping`
-- `post-import-refresh failure`, `cold-start orphan migration`
-- `strategy-preset-crud`, `runtime-asset-localization`
-- `local-font-path`, `service-worker reload policy`, `service-worker core data precache`, `service-worker manifest parity`, `service-worker precache reachability`, `history actual-log`
-- `unexpected static hole classification`, `expected missing draw allowance`
-
-성능 회귀를 함께 확인하려면:
+연금복권720+ 정적 데이터를 공식 JSON에서 다시 동기화할 때:
 
 ```bash
-node scripts/perf/bench.mjs
-npm run bench:ai
-npm run bench:ai:full
+npm run sync:pension720
 ```
 
-실브라우저 오프라인/멀티탭 검증은 opt-in 입니다:
+브라우저 검증:
 
 ```bash
-npm run test:offline
-```
-
-- `test:offline` 는 시스템 `Chrome`/`Edge` 채널 또는 설치된 Playwright Chromium 중 하나를 사용합니다.
-- 시스템 브라우저가 없으면 `npx playwright install chromium` 후 다시 실행합니다.
-
-실사용 happy path 브라우저 검증은 opt-in 입니다:
-
-```bash
+python -m http.server 5173
 npm run test:happy
-```
-
-Android-like PWA 모바일 검증도 opt-in 입니다:
-
-```bash
+npm run test:offline
 npm run test:pwa-mobile
 ```
 
-외부 공식 동기화 payload 실조회도 opt-in 입니다:
+선택 검증:
 
 ```bash
 npm run test:sync-live
+npm run bench:ai
+npm run bench:ai:full
+npm run format:check
 ```
 
-## 라이선스
+현재 `format:check`는 저장소 기존 포맷 기준선의 영향을 받을 수 있으므로, 코드 변경 검증은 `npm run build`와 변경 파일 범위 Prettier 확인을 우선합니다.
 
-- 현재 저장소에는 `LICENSE` 파일이 없습니다.
+## 프로젝트 구조
+
+```text
+lotto-pension-pro-webapp/
+├── assets/
+│   ├── modules/
+│   │   ├── core/
+│   │   ├── features/
+│   │   └── utils/
+│   ├── styles/
+│   ├── vendor/
+│   └── sw-precache-manifest.js
+├── data/
+│   ├── pension720_stats.json
+│   └── winning_stats.json
+├── proxy/
+├── scripts/
+│   ├── fetch_pension720_stats.mjs
+│   ├── generate_sw_manifest.mjs
+│   ├── smoke/
+│   └── tests/
+├── index.html
+├── manifest.json
+└── sw.js
+```
+
+## 운영 메모
+
+- 실제 GitHub repository rename은 코드 변경과 별도 운영 작업입니다. rename 후 GitHub Pages source와 custom settings를 확인해야 합니다.
+- `FUNCTIONAL_GAP_AND_COPY_REVIEW_2026-05-04.md`, `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-04-30.md`는 현재 작업트리에서 삭제 상태이며, 현행 문서 계약으로 취급하지 않습니다.
+- 프록시 고급 연결 주소는 절대 URL이며 path에 `/proxy/latest`가 포함된 형식만 지원합니다.
+- `?url=`, `{url}`, `{draw_no}` 스타일 프록시는 저장돼 있어도 런타임에서 기본 자동 동기화로 내려갑니다.
+- 정적 JSON을 불러오지 못해도 기존 메모리 데이터 또는 로컬 업데이트 기반 부분 복구 상태를 유지할 수 있습니다.

@@ -63,6 +63,7 @@ export const appModuleLoaderRoutingMethods = {
                 await this.ensureModule('dataIO');
                 if (isStale()) return;
                 this.renderDataLists();
+                this.dataIO?.renderDataStatusSummary?.();
             }
             if (target === 'check') {
                 await this.ensureModule('qr');
@@ -75,6 +76,11 @@ export const appModuleLoaderRoutingMethods = {
                 await this.ensureModule('backtest');
                 if (isStale()) return;
                 this.backtest?.onEnter();
+            }
+            if (target === 'pension720') {
+                await this.ensureModule('pension720');
+                if (isStale()) return;
+                await this.pension720?.onEnter();
             }
         } finally {
             endMark(perfLabel, { changedRoute });
@@ -100,8 +106,10 @@ export const appModuleLoaderRoutingMethods = {
             if (isStale()) return;
         }
         if (t === 'data') {
+            await this.ensureModule('dataIO');
             if (isStale()) return;
             this.renderDataLists();
+            this.dataIO?.renderDataStatusSummary?.();
         }
         if (t === 'check') {
             await this.ensureModule('check');
@@ -112,6 +120,11 @@ export const appModuleLoaderRoutingMethods = {
             await this.ensureModule('backtest');
             if (isStale()) return;
             this.backtest?.onEnter();
+        }
+        if (t === 'pension720') {
+            await this.ensureModule('pension720');
+            if (isStale()) return;
+            await this.pension720?.onEnter();
         }
     }
 };

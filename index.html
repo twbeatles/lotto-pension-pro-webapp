@@ -3,9 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-        <meta name="description" content="로또 6/45 번호 생성, 번호 추천, 당첨 확인을 지원하는 웹앱" />
+        <meta name="description" content="로또 6/45와 연금복권720+ 통계 기반 번호 추천을 지원하는 웹앱" />
         <meta name="theme-color" content="#0f172a" />
-        <title>로또 6/45 프로</title>
+        <title>로또·연금복권 프로</title>
         <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
         <link rel="stylesheet" href="assets/app.css" />
         <link rel="manifest" href="manifest.json" />
@@ -20,8 +20,8 @@
 
         <!-- SEO & Social Tags -->
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="로또 6/45 프로" />
-        <meta property="og:description" content="참고용 로또 번호 생성 및 추천, 당첨 확인 (앱 설치 지원)" />
+        <meta property="og:title" content="로또·연금복권 프로" />
+        <meta property="og:description" content="참고용 로또 6/45·연금복권720+ 번호 추천과 저장 관리" />
         <meta property="og:image" content="assets/icons/icon-512.png" />
     </head>
 
@@ -31,7 +31,7 @@
             <nav class="sidebar">
                 <div class="brand">
                     <i class="ph-fill ph-clover"></i>
-                    <h1>로또 프로</h1>
+                    <h1>로또·연금복권 프로</h1>
                 </div>
 
                 <div class="nav-menu">
@@ -46,6 +46,10 @@
                     <button class="nav-item" data-target="ai">
                         <i class="ph ph-brain"></i>
                         <span>번호 추천</span>
+                    </button>
+                    <button class="nav-item" data-target="pension720">
+                        <i class="ph ph-ticket"></i>
+                        <span>연금복권</span>
                     </button>
                     <button class="nav-item" data-target="bt">
                         <i class="ph ph-flask"></i>
@@ -94,7 +98,7 @@
                 <header class="mobile-header">
                     <div class="brand">
                         <i class="ph-fill ph-clover"></i>
-                        <span>로또 프로</span>
+                        <span>복권 프로</span>
                     </div>
                     <div class="header-actions">
                         <button id="mobileThemeToggle" class="icon-btn" aria-label="테마 전환" type="button">
@@ -560,8 +564,8 @@
                             <i class="ph-fill ph-info"></i> 추천 방식 안내
                         </h3>
                         <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6">
-                            최근 당첨 번호의 패턴, 빈도, 오래 나오지 않은 번호 등을 참고해 조합을 만듭니다.
-                            재미와 참고용이며 당첨을 보장하지 않습니다.
+                            최근 당첨 번호의 패턴, 빈도, 오래 나오지 않은 번호 등을 참고해 조합을 만듭니다. 재미와
+                            참고용이며 당첨을 보장하지 않습니다.
                         </p>
                     </div>
 
@@ -803,6 +807,140 @@
                     </div>
                 </section>
 
+                <!-- 4. 연금복권720+ -->
+                <section id="page-pension720" class="page">
+                    <header class="page-header">
+                        <h2>연금복권720+</h2>
+                        <p class="subtitle">동행복권 연금복권720+ 데이터를 참고해 번호 흐름과 추천을 확인합니다.</p>
+                    </header>
+
+                    <div class="dashboard-grid p720-grid">
+                        <div class="card glass full-width p720-status-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>데이터 상태</h3>
+                                    <p id="pension720DataStatus" class="badge status-badge is-bad">
+                                        연금복권 데이터를 불러와야 합니다.
+                                    </p>
+                                </div>
+                                <button id="pension720RefreshBtn" class="btn ghost sm" type="button">
+                                    최신 데이터 확인
+                                </button>
+                            </div>
+                            <div class="p720-latest-grid">
+                                <div class="data-summary-item">
+                                    <span class="data-summary-label">최신 회차</span>
+                                    <strong id="pension720LatestDraw">-</strong>
+                                </div>
+                                <div class="data-summary-item">
+                                    <span class="data-summary-label">1등 번호</span>
+                                    <div id="pension720LatestNumber" class="p720-inline-number">-</div>
+                                </div>
+                                <div class="data-summary-item">
+                                    <span class="data-summary-label">보너스 번호</span>
+                                    <div id="pension720LatestBonus" class="p720-inline-number">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card glass">
+                            <h3>조별 출현 흐름</h3>
+                            <div id="pension720GroupStats" class="p720-stat-list"></div>
+                        </div>
+                        <div class="card glass">
+                            <h3>자리별 강세 숫자</h3>
+                            <div id="pension720DigitStats" class="p720-digit-grid"></div>
+                        </div>
+                        <div class="card glass full-width">
+                            <h3>최근 당첨 흐름</h3>
+                            <div id="pension720RecentSummary" class="p720-recent-grid"></div>
+                        </div>
+
+                        <div class="card glass full-width">
+                            <div class="card-header">
+                                <h3>연금복권 추천</h3>
+                                <span class="badge status-badge is-warn">참고용</span>
+                            </div>
+                            <div class="options-grid p720-options">
+                                <div class="input-group">
+                                    <label for="pension720RecommendCount">추천 개수</label>
+                                    <input
+                                        type="number"
+                                        id="pension720RecommendCount"
+                                        class="input-field"
+                                        min="1"
+                                        max="20"
+                                        value="5"
+                                    />
+                                </div>
+                                <div class="input-group">
+                                    <label for="pension720AnalysisPreset">분석 강도</label>
+                                    <select id="pension720AnalysisPreset" class="input-field">
+                                        <option value="fast">빠름 · 최근 흐름 중심</option>
+                                        <option value="basic" selected>기본 · 빈도와 최근성 균형</option>
+                                        <option value="precise">정밀 · 후보풀 확대</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="pension720Seed">같은 번호 다시 만들기 코드 (선택)</label>
+                                    <input
+                                        type="number"
+                                        id="pension720Seed"
+                                        class="input-field"
+                                        placeholder="비우면 매번 새 추천"
+                                        autocomplete="off"
+                                        inputmode="numeric"
+                                    />
+                                </div>
+                            </div>
+                            <button id="pension720RecommendBtn" class="btn primary lg" type="button">추천 시작</button>
+                            <div id="pension720Output" class="p720-output" aria-live="polite" aria-busy="false">
+                                <p class="empty-state">추천 시작을 누르면 연금복권 번호가 표시됩니다.</p>
+                            </div>
+                            <p class="result-disclaimer">재미와 참고용이며 당첨을 보장하지 않습니다.</p>
+                        </div>
+
+                        <div class="card glass full-width">
+                            <div class="card-header">
+                                <div>
+                                    <h3>저장한 연금복권 번호</h3>
+                                    <p id="pension720SavedSummary" class="subtitle">0개 저장됨</p>
+                                </div>
+                                <div class="row-actions">
+                                    <button id="pension720CopyAllBtn" class="btn ghost sm" type="button">
+                                        목록 복사
+                                    </button>
+                                    <button id="pension720ExportCsvBtn" class="btn ghost sm" type="button">
+                                        CSV 내보내기
+                                    </button>
+                                    <button id="pension720ClearTicketsBtn" class="btn text-danger" type="button">
+                                        전체 정리
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="pension720SavedList" class="p720-saved-list"></div>
+                        </div>
+
+                        <div class="card glass full-width">
+                            <div class="card-header">
+                                <div>
+                                    <h3>최신 회차 당첨 확인</h3>
+                                    <p class="subtitle">
+                                        저장 번호를 최신 연금복권720+ 결과와 비교합니다.
+                                    </p>
+                                </div>
+                                <button id="pension720CheckLatestBtn" class="btn ghost sm" type="button">
+                                    확인
+                                </button>
+                            </div>
+                            <div id="pension720CheckOutput" class="p720-check-list">
+                                <p class="empty-state">저장 번호가 있으면 최신 회차 기준으로 확인할 수 있습니다.</p>
+                            </div>
+                            <p class="result-disclaimer">저장 번호 기준 참고 확인이며 실물/공식 확인이 필요합니다.</p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 4. 시뮬레이션 -->
                 <section id="page-bt" class="page">
                     <header class="page-header">
@@ -1005,11 +1143,23 @@
                                     </div>
                                     <div class="input-group">
                                         <label for="btMaxConsecutive">최대 연속쌍</label>
-                                        <input type="number" id="btMaxConsecutive" class="input-field" min="0" max="5" />
+                                        <input
+                                            type="number"
+                                            id="btMaxConsecutive"
+                                            class="input-field"
+                                            min="0"
+                                            max="5"
+                                        />
                                     </div>
                                     <div class="input-group">
                                         <label for="btEndDigitUnique">최소 끝수 종류</label>
-                                        <input type="number" id="btEndDigitUnique" class="input-field" min="1" max="6" />
+                                        <input
+                                            type="number"
+                                            id="btEndDigitUnique"
+                                            class="input-field"
+                                            min="1"
+                                            max="6"
+                                        />
                                     </div>
                                 </div>
                             </details>
@@ -1224,6 +1374,7 @@
 
                     <div class="card glass mt-4">
                         <h3>데이터 백업/복원</h3>
+                        <div id="dataStatusSummary" class="data-status-summary" aria-live="polite"></div>
                         <div class="strategy-panel" style="margin-bottom: 12px">
                             <div class="input-group">
                                 <label for="importMode">가져오기 모드</label>
@@ -1628,6 +1779,10 @@
                     </button>
                 </div>
                 <div class="more-sheet-actions">
+                    <button class="more-sheet-action" type="button" data-more-action="pension720">
+                        <i class="ph ph-ticket"></i>
+                        <span>연금복권</span>
+                    </button>
                     <button class="more-sheet-action" type="button" data-more-action="bt">
                         <i class="ph ph-flask"></i>
                         <span>시뮬레이션</span>

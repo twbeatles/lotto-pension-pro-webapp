@@ -101,6 +101,7 @@ export const appSettingsMethods = {
                 `즐겨찾기 ${storageSummary.counts.favorites}`,
                 `기록 ${storageSummary.counts.history}`,
                 `티켓 ${storageSummary.counts.tickets}`,
+                `연금복권 ${storageSummary.counts.pension720Tickets || 0}`,
                 `캠페인 ${storageSummary.counts.campaigns}`,
                 `프리셋 ${storageSummary.counts.presets}`,
                 `로컬업데이트 ${storageSummary.counts.localUpdates}`

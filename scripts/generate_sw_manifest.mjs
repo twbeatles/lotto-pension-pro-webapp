@@ -16,7 +16,7 @@ const APP_SHELL_ROOT_FILES = [
 
 const APP_SHELL_DIRS = ['assets/modules', 'assets/styles', 'assets/vendor', 'assets/icons'];
 
-const DATA_FILES = ['data/winning_stats.json'];
+const DATA_FILES = ['data/pension720_stats.json', 'data/winning_stats.json'];
 
 const EXCLUDE_FILES = new Set(['assets/sw-precache-manifest.js', 'online-check.txt']);
 

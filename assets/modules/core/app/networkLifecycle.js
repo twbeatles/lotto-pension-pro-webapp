@@ -25,6 +25,7 @@ export const appNetworkLifecycleMethods = {
         this.ai?.renderModelGuide?.();
         this.backtest?.applySavedStrategyPrefs?.();
         this.backtest?.presetController?.render?.();
+        this.pension720?.render?.();
     },
 
     async _rehydrateAfterRemotePersistenceSync(_keys = []) {

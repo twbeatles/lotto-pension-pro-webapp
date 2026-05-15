@@ -906,7 +906,7 @@ async function runOfflineProbeRecoveryRegression() {
     });
     globalThis.window = {
         location: {
-            href: 'https://twbeatles.github.io/lotto---webapp/index.html'
+            href: 'https://twbeatles.github.io/lotto-pension-pro-webapp/index.html'
         }
     };
 

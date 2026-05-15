@@ -1,8 +1,8 @@
 {
   "id": "./index.html",
-  "name": "로또 6/45 프로",
-  "short_name": "로또 프로",
-  "description": "로또 6/45 번호 생성, 통계 추천, 당첨 확인을 지원하는 설치형 웹앱",
+  "name": "로또·연금복권 프로",
+  "short_name": "복권 프로",
+  "description": "로또 6/45와 연금복권720+ 통계 기반 번호 추천을 지원하는 설치형 웹앱",
   "lang": "ko-KR",
   "dir": "ltr",
   "start_url": "./index.html",

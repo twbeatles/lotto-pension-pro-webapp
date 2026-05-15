@@ -39,25 +39,45 @@ export const uiBallMethods = {
         return list.map((n) => String(n).padStart(2, '0')).join(' ');
     },
 
-    async copyNumbers(nums) {
-        const text = this.formatNumbers(nums);
+    async copyText(text) {
+        const value = String(text ?? '');
         try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(text);
-            } else {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(value);
+                } catch (clipboardError) {
+                    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+                        throw clipboardError;
+                    }
+                    const ta = document.createElement('textarea');
+                    ta.value = value;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                }
+            } else if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
                 const ta = document.createElement('textarea');
-                ta.value = text;
+                ta.value = value;
                 ta.style.position = 'fixed';
                 ta.style.left = '-9999px';
                 document.body.appendChild(ta);
                 ta.select();
                 document.execCommand('copy');
                 ta.remove();
+            } else {
+                throw new Error('clipboard unavailable');
             }
             this.toast('복사 완료', 'success');
         } catch (e) {
             console.warn('복사 실패', e);
             this.toast('복사 실패', 'error');
         }
+    },
+
+    async copyNumbers(nums) {
+        await this.copyText(this.formatNumbers(nums));
     }
 };

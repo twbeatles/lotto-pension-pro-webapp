@@ -35,7 +35,7 @@ export const UI_STRINGS = {
         exported: '비교 CSV 파일을 내보냈습니다.'
     },
     dataio: {
-        backupExported: '백업 파일(v3)을 내보냈습니다.',
+        backupExported: '백업 파일(v4)을 내보냈습니다.',
         importUnsupported: '지원되지 않는 백업 형식입니다.',
         importInvalid: '백업 파일을 읽지 못했습니다.',
         mergeComplete({ added = 0, duplicate = 0, skipped = 0, applied = [], cleaned = 0, futureDropped = 0 } = {}) {

@@ -105,7 +105,7 @@ export const appDataListEventMethods = {
             if (!confirmed) return;
 
             const dataIo = await this.ensureModule?.('dataIO');
-            dataIo?.exportAll?.({ silent: true, prefix: 'lotto_before_cleanup' });
+            dataIo?.exportAll?.({ silent: true, prefix: 'lotto_pension_pro_before_cleanup' });
             const result = this.data.cleanupStoredRecords({ keepHistory: 200, removeSettledLosses: true });
             this.renderDataLists();
             this.renderSettingsPanel?.();

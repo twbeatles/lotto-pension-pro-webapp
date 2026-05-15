@@ -509,19 +509,61 @@ function runCheckTargetCardAttributeEscapingRegression() {
 }
 
 async function runRecommendationCopyRegression() {
-    const [indexSource, readmeSource, catalogSource, aiRenderingSource] = await Promise.all([
+    const [
+        indexSource,
+        readmeSource,
+        packageSource,
+        manifestSource,
+        deploySource,
+        claudeSource,
+        geminiSource,
+        fetchPensionSource,
+        catalogSource,
+        aiRenderingSource
+    ] = await Promise.all([
         readFile(resolve(process.cwd(), 'index.html'), 'utf8'),
         readFile(resolve(process.cwd(), 'README.md'), 'utf8'),
+        readFile(resolve(process.cwd(), 'package.json'), 'utf8'),
+        readFile(resolve(process.cwd(), 'manifest.json'), 'utf8'),
+        readFile(resolve(process.cwd(), 'deploy_github_pages.md'), 'utf8'),
+        readFile(resolve(process.cwd(), 'claude.md'), 'utf8'),
+        readFile(resolve(process.cwd(), 'gemini.md'), 'utf8'),
+        readFile(resolve(process.cwd(), 'scripts/fetch_pension720_stats.mjs'), 'utf8'),
         readFile(resolve(process.cwd(), 'assets/modules/core/StrategyCatalog.js'), 'utf8'),
         readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8')
     ]);
+    const packageJson = JSON.parse(packageSource);
+    const manifestJson = JSON.parse(manifestSource);
+    const legacyBrandPattern = new RegExp(
+        [`로또 6/45 ${'프로'}`, `lotto-${'webapp'}`, `lotto${'---'}webapp`].join('|')
+    );
 
     assert.match(indexSource, /번호 추천/, 'UI must expose the new recommendation naming');
-    assert.doesNotMatch(indexSource, /통계 추천|AI 추천|난수 시드|Merge|Overwrite|사용자 프록시|프록시 설정 적용/, 'legacy beginner-facing copy must stay out of index.html');
+    assert.doesNotMatch(
+        indexSource,
+        /통계 추천|AI 추천|난수 시드|Merge|Overwrite|사용자 프록시|프록시 설정 적용/,
+        'legacy beginner-facing copy must stay out of index.html'
+    );
     assert.match(indexSource, /추천 시작/, 'recommendation CTA must use 추천 wording');
     assert.doesNotMatch(indexSource, /인공지능 예측/, 'legacy AI prediction wording must be removed from index');
     assert.match(readmeSource, /번호 추천:/, 'README must document the recommendation feature with the new wording');
     assert.doesNotMatch(readmeSource, /인공지능 예측:/, 'README must drop the legacy AI prediction section title');
+    assert.equal(packageJson.name, 'lotto-pension-pro-webapp', 'package name must use the rebranded slug');
+    assert.equal(manifestJson.name, '로또·연금복권 프로', 'manifest name must use the rebranded app name');
+    assert.match(indexSource, /<title>로또·연금복권 프로<\/title>/, 'index title must use the rebranded app name');
+    assert.match(indexSource, /dataStatusSummary/, 'data page must expose lottery data status summary panel');
+    assert.match(deploySource, /lotto-pension-pro-webapp/, 'deploy guide must use the rebranded Pages slug');
+    assert.match(deploySource, /기존 설치형 PWA/, 'deploy guide must document installed PWA migration');
+    assert.match(readmeSource, /lotto_pension_pro_backup_v4/, 'README must document the rebranded backup filename prefix');
+    [indexSource, readmeSource, packageSource, manifestSource, claudeSource, geminiSource, fetchPensionSource].forEach(
+        (source) => {
+            assert.doesNotMatch(
+                source,
+                legacyBrandPattern,
+                'legacy app/package names must not remain in active docs or metadata'
+            );
+        }
+    );
     assert.doesNotMatch(catalogSource, /표준 인공지능/, 'strategy catalog must not claim a standard AI model');
     assert.doesNotMatch(
         catalogSource,
@@ -579,7 +621,7 @@ function runFacadeExportParityRegression() {
         assert.equal(typeof DataManager.prototype[name], 'function', `DataManager prototype must expose ${name}()`);
     });
 
-    const uiManagerMethods = ['init', 'openModal', 'closeModal', 'toast', 'renderBalls', 'copyNumbers', 'showQR'];
+    const uiManagerMethods = ['init', 'openModal', 'closeModal', 'toast', 'renderBalls', 'copyText', 'copyNumbers', 'showQR'];
     uiManagerMethods.forEach((name) => {
         assert.equal(typeof UIManager[name], 'function', `UIManager must expose static ${name}()`);
     });

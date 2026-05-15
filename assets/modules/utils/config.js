@@ -9,6 +9,7 @@ export const CONFIG = {
         STRATEGY_PRESETS: 'lotto_pro_strategy_presets_v1',
         SYNC_META: 'lotto_pro_sync_meta_v1',
         LOCAL_UPDATES: 'lotto_pro_updates_v2',
+        PENSION720_TICKETS: 'lotto_pro_pension720_tickets_v1',
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
         LEGACY_SETTINGS: 'lotto_webapp_settings_v1',
         SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state'
@@ -24,6 +25,7 @@ export const CONFIG = {
         MAX_CAMPAIGN_TOTAL_TICKETS: 500,
         MAX_IMPORT_BYTES: 2 * 1024 * 1024,
         MAX_IMPORT_TICKETS: 2000,
+        MAX_PENSION720_TICKETS: 1000,
         MAX_STRATEGY_REQUEST_BYTES: 8000,
         MAX_SERIALIZABLE_DEPTH: 8,
         MAX_SERIALIZABLE_KEYS: 80,

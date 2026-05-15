@@ -24,6 +24,7 @@ export class LottoApp {
         this.check = null;
         this.dataIO = null;
         this.backtest = null;
+        this.pension720 = null;
         this.qr = null;
         this.currentRoute = 'gen';
         this.moduleConstructors = {};
@@ -136,6 +137,14 @@ export class LottoApp {
             console.error('당첨 데이터 로드 실패:', error);
         }
         this.updateLatestWin({ offline: !latestLoaded && Boolean(this.data.lastWinningStatsLoad?.offline) });
+        void this.data
+            .fetchPension720Stats({ remote: true, preserveExistingOnFailure: true })
+            .then(() => {
+                if (this.currentRoute === 'pension720') this.pension720?.render?.();
+            })
+            .catch((error) => {
+                console.warn('연금복권 데이터 초기 로드 실패', error);
+            });
 
         const hasCustomProxy = Boolean(this.data.resolveProxyConfig()?.url);
         if (!latestLoaded || hasCustomProxy || this.data.getDataFreshness().availability !== 'full') {

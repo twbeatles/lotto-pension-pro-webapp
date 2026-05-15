@@ -1,4 +1,4 @@
-const BACKUP_VERSION = 3;
+const BACKUP_VERSION = 4;
 
 function toObject(value, fallback = {}) {
     return value && typeof value === 'object' ? value : fallback;
@@ -83,6 +83,37 @@ function dedupePresets(items = []) {
     return Array.from(byId.values());
 }
 
+function normalizePension720Ticket(raw, index = 0) {
+    const src = toObject(raw, null);
+    if (!src) return null;
+    const group = Number(src.group);
+    const number = String(src.number ?? '').trim();
+    if (!Number.isInteger(group) || group < 1 || group > 5) return null;
+    if (!/^\d{6}$/.test(number)) return null;
+
+    return {
+        id: typeof src.id === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(src.id) ? src.id : `p720_import_${index}`,
+        group,
+        number,
+        digits: number.split('').map(Number),
+        source: ['recommendation', 'import'].includes(src.source) ? src.source : 'import',
+        score: Number.isFinite(Number(src.score)) ? Number(src.score) : 0,
+        memo: typeof src.memo === 'string' ? src.memo.slice(0, 200) : '',
+        createdAt: typeof src.createdAt === 'string' ? src.createdAt : new Date().toISOString()
+    };
+}
+
+function dedupePension720Tickets(items = []) {
+    const map = new Map();
+    items.forEach((item, index) => {
+        const normalized = normalizePension720Ticket(item, index);
+        if (!normalized) return;
+        const key = `${normalized.group}|${normalized.number}`;
+        if (!map.has(key)) map.set(key, normalized);
+    });
+    return Array.from(map.values()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
 export function buildBackupPayload(state = {}, extras = {}) {
     const safeState = toObject(state, {});
     const settings = {
@@ -98,6 +129,7 @@ export function buildBackupPayload(state = {}, extras = {}) {
         history: toArray(safeState.history),
         ticketBook: toArray(safeState.ticketBook),
         campaigns: toArray(safeState.campaigns),
+        pension720Tickets: dedupePension720Tickets(toArray(safeState.pension720Tickets)),
         alertPrefs: toObject(safeState.alertPrefs, {}),
         settings,
         localUpdates: dedupeDrawUpdates(toArray(extras.localUpdates)),
@@ -110,7 +142,7 @@ export function normalizeBackupPayload(raw) {
     if (!source) return null;
 
     const version = Number(source.version || 1);
-    if (![1, 2, 3].includes(version)) return null;
+    if (![1, 2, 3, 4].includes(version)) return null;
 
     const settings = toObject(source.settings, {});
     return {
@@ -119,6 +151,7 @@ export function normalizeBackupPayload(raw) {
         history: toArray(source.history),
         ticketBook: version >= 2 ? toArray(source.ticketBook) : [],
         campaigns: version >= 2 ? toArray(source.campaigns) : [],
+        pension720Tickets: version >= 4 ? dedupePension720Tickets(toArray(source.pension720Tickets)) : [],
         alertPrefs: version >= 2 ? toObject(source.alertPrefs, {}) : {},
         settings: {
             theme: settings.theme,

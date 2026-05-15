@@ -3,6 +3,7 @@ import { dataPersistenceMethods } from './data/persistence.js';
 import { dataRecordMethods } from './data/records.js';
 import { dataAnalyticsMethods } from './data/analytics.js';
 import { dataSyncMethods } from './data/sync.js';
+import { dataPension720Methods } from './data/pension720.js';
 
 export class DataManager {
     constructor() {
@@ -14,6 +15,9 @@ export class DataManager {
             history: [],
             winningStats: [],
             staticLatestDrawNo: 0,
+            pension720Stats: [],
+            pension720Tickets: [],
+            pension720Results: [],
             generated: [],
             customProxy: '',
             aiResults: [],
@@ -35,8 +39,10 @@ export class DataManager {
             campaigns: false,
             alerts: false,
             presets: false,
-            syncMeta: false
+            syncMeta: false,
+            pension720Tickets: false
         };
+        this.pension720DataHealth = this.getDefaultPension720DataHealth();
         this.localUpdatesCache = null;
         this.RANGE_CHUNK_SIZE = 40;
         this.RANGE_CHUNK_CONCURRENCY = 2;
@@ -70,5 +76,6 @@ Object.assign(
     dataPersistenceMethods,
     dataRecordMethods,
     dataAnalyticsMethods,
-    dataSyncMethods
+    dataSyncMethods,
+    dataPension720Methods
 );

@@ -41,6 +41,7 @@ export const recordGeneratedMethods = {
         this.state.generated = (Array.isArray(entries) ? entries : [])
             .map((entry) => this.normalizeGeneratedEntry(entry, defaults))
             .filter(Boolean);
+        this.persistTemporaryResultsToSession?.();
         return this.state.generated;
     }
 };

@@ -7,6 +7,7 @@ export const dataPersistenceLoadSaveMethods = {
             if (typeof localStorage === 'undefined') return;
             this.dataHealth = this.getDefaultDataHealth();
             let needsPersist = false;
+            let loadPersistFailed = false;
             const rawFavorites = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.FAV) || '[]', [], CONFIG.KEYS.FAV);
             const rawHistory = this.safeJsonParse(localStorage.getItem(CONFIG.KEYS.HIST) || '[]', [], CONFIG.KEYS.HIST);
             const rawLocalUpdates = this.safeJsonParse(
@@ -137,18 +138,25 @@ export const dataPersistenceLoadSaveMethods = {
             }
 
             if (needsPersist) {
-                this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
-                this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
-                this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
-                this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets));
-                this.persistSettings();
-                this.persistExtendedData();
-                this.persistSyncMeta();
+                const persistResults = [
+                    this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites)),
+                    this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history)),
+                    this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache)),
+                    this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets)),
+                    this.persistSettings(),
+                    this.persistExtendedData(),
+                    this.persistSyncMeta()
+                ];
+                loadPersistFailed = persistResults.some((result) => result === false);
             }
 
             Object.keys(this._dirtyKeys).forEach((key) => {
                 this._dirtyKeys[key] = false;
             });
+            if (loadPersistFailed) {
+                this.markAllDirty?.();
+            }
+            this.loadTemporaryResultsFromSession?.();
         } catch (e) {
             console.error('데이터 불러오기 실패', e);
             UIManager.toast('데이터 로드 실패', 'error');
@@ -164,41 +172,25 @@ export const dataPersistenceLoadSaveMethods = {
         const executeSave = () => {
             if (typeof localStorage === 'undefined') return;
 
-            if (this._dirtyKeys.fav) {
-                this._safeSetItem(CONFIG.KEYS.FAV, JSON.stringify(this.state.favorites));
-                this._dirtyKeys.fav = false;
-            }
-            if (this._dirtyKeys.hist) {
-                this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history));
-                this._dirtyKeys.hist = false;
-            }
-            if (this._dirtyKeys.settings) {
-                this._safeSetItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
-                this._dirtyKeys.settings = false;
-            }
-            if (this._dirtyKeys.ticketBook) {
-                this._safeSetItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
-                this._dirtyKeys.ticketBook = false;
-            }
-            if (this._dirtyKeys.campaigns) {
-                this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
-                this._dirtyKeys.campaigns = false;
-            }
-            if (this._dirtyKeys.alerts) {
-                this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
-                this._dirtyKeys.alerts = false;
-            }
-            if (this._dirtyKeys.presets) {
-                this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
-                this._dirtyKeys.presets = false;
-            }
-            if (this._dirtyKeys.pension720Tickets) {
-                this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || []));
-                this._dirtyKeys.pension720Tickets = false;
-            }
+            const writeDirty = (dirtyKey, storageKey, value) => {
+                if (!this._dirtyKeys[dirtyKey]) return;
+                if (this._safeSetItem(storageKey, JSON.stringify(value))) {
+                    this._dirtyKeys[dirtyKey] = false;
+                }
+            };
+
+            writeDirty('fav', CONFIG.KEYS.FAV, this.state.favorites);
+            writeDirty('hist', CONFIG.KEYS.HIST, this.state.history);
+            writeDirty('settings', CONFIG.KEYS.SETTINGS, this.getSettingsPayload());
+            writeDirty('ticketBook', CONFIG.KEYS.TICKET_BOOK, this.state.ticketBook);
+            writeDirty('campaigns', CONFIG.KEYS.CAMPAIGNS, this.state.campaigns);
+            writeDirty('alerts', CONFIG.KEYS.ALERT_PREFS, this.state.alertPrefs);
+            writeDirty('presets', CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets || []);
+            writeDirty('pension720Tickets', CONFIG.KEYS.PENSION720_TICKETS, this.state.pension720Tickets || []);
             if (this._dirtyKeys.syncMeta) {
-                this.persistSyncMeta();
-                this._dirtyKeys.syncMeta = false;
+                if (this.persistSyncMeta()) {
+                    this._dirtyKeys.syncMeta = false;
+                }
             }
 
             this._checkStorageQuotaWarning();

@@ -39,6 +39,23 @@ export const generatorActionMethods = {
         return deriveCampaignRuntimeRequest(baseRequest, weekIndex);
     },
 
+    renderStoredGeneratedEntries() {
+        const listEl = $('#genResultList');
+        if (!listEl) return;
+        const generatedEntries = this.data.getGeneratedEntries();
+        listEl.replaceChildren();
+        generatedEntries.forEach((entry, index) => {
+            this.renderResultItem(entry.numbers, index, listEl);
+        });
+        this.renderTemporaryResultNotice?.();
+    },
+
+    renderTemporaryResultNotice() {
+        const notice = $('#genResultTempNotice');
+        if (!notice) return;
+        notice.hidden = !this.data.getGeneratedEntries().length;
+    },
+
     async generate() {
         if (this.isGenerating || this.isGeneratingCampaign) return false;
         startMark('generator.generate');
@@ -115,6 +132,7 @@ export const generatorActionMethods = {
             generatedEntries.forEach((entry, i) => {
                 this.renderResultItem(entry.numbers, i, listEl);
             });
+            this.renderTemporaryResultNotice?.();
             produced = sets.length;
             if (produced < requested) {
                 UIManager.toast(

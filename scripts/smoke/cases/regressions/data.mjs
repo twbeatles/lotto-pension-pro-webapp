@@ -1003,6 +1003,7 @@ async function runImportAlertOptionRegression() {
         overwriteData.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
         overwriteData.getLocalUpdates = () => [];
         const overwriteCtx = createImportContext(overwriteData);
+        overwriteCtx.exportAll = () => ({ downloaded: true, filename: 'before-overwrite.json' });
 
         DataIOModule.prototype.applyImportModeDefaults.call(overwriteCtx, 'overwrite');
         assert.equal(importApplyTheme.checked, true, 'overwrite default must apply theme');

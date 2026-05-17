@@ -48,6 +48,7 @@ export const generatorFormMethods = {
             clearBtn.addEventListener('click', () => {
                 $('#genResultList').innerHTML = '';
                 this.data.setGeneratedEntries([]);
+                this.renderTemporaryResultNotice?.();
             });
 
         const saveAllBtn = $('#saveAllBtn');

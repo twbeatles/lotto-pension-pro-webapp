@@ -9,10 +9,12 @@ export const CONFIG = {
         STRATEGY_PRESETS: 'lotto_pro_strategy_presets_v1',
         SYNC_META: 'lotto_pro_sync_meta_v1',
         LOCAL_UPDATES: 'lotto_pro_updates_v2',
+        PENSION720_STATS_CACHE: 'lotto_pro_pension720_stats_cache_v1',
         PENSION720_TICKETS: 'lotto_pro_pension720_tickets_v1',
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
         LEGACY_SETTINGS: 'lotto_webapp_settings_v1',
-        SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state'
+        SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state',
+        SESSION_RESULTS_STATE: 'lotto_pro_temp_results_state'
     },
     LIMITS: {
         MAX_SET: 20,

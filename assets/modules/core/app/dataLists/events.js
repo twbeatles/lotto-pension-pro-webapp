@@ -105,7 +105,11 @@ export const appDataListEventMethods = {
             if (!confirmed) return;
 
             const dataIo = await this.ensureModule?.('dataIO');
-            dataIo?.exportAll?.({ silent: true, prefix: 'lotto_pension_pro_before_cleanup' });
+            const backup = dataIo?.ensureBackupBeforeDestructive?.({
+                prefix: 'lotto_pension_pro_before_cleanup',
+                errorMessage: '백업 파일 다운로드를 확인할 수 없어 데이터 정리를 중단했습니다.'
+            });
+            if (!backup) return;
             const result = this.data.cleanupStoredRecords({ keepHistory: 200, removeSettledLosses: true });
             this.renderDataLists();
             this.renderSettingsPanel?.();

@@ -15,7 +15,16 @@ export const dataAnalyticsMethods = {
             staticLatestDrawNo > 0 && estimatedLatestDrawNo > 0
                 ? Math.max(0, estimatedLatestDrawNo - staticLatestDrawNo)
                 : 0;
-        const hasCustomProxy = Boolean(this.resolveProxyConfig()?.url);
+        const proxyConfig = this.resolveProxyConfig();
+        const hasCustomProxy = Boolean(proxyConfig?.url);
+        const syncMeta = this.mergeSyncMeta?.(this.state.syncMeta || this.getDefaultSyncMeta?.()) || {};
+        const lastFailureMs = Date.parse(syncMeta.lastFailureAt || '');
+        const lastSuccessMs = Date.parse(syncMeta.lastSuccessAt || '');
+        const failureAfterSuccess =
+            Number.isFinite(lastFailureMs) && (!Number.isFinite(lastSuccessMs) || lastFailureMs > lastSuccessMs);
+        const recentFailure =
+            failureAfterSuccess && Date.now() - lastFailureMs < 10 * 60 * 1000 && Boolean(syncMeta.lastFailureMessage);
+        const canAutoSync = !recentFailure || hasCustomProxy;
         return {
             availability: dataHealth.availability,
             source: dataHealth.source,
@@ -27,7 +36,10 @@ export const dataAnalyticsMethods = {
             staticBehindBy,
             hasProxy: hasCustomProxy,
             hasCustomProxy,
-            canAutoSync: true,
+            canAutoSync,
+            autoSyncBlockedReason: canAutoSync
+                ? ''
+                : syncMeta.lastFailureMessage || 'recent sync failure',
             isPartial: dataHealth.availability === 'partial',
             isUnavailable: dataHealth.availability === 'none' || latestDrawNo <= 0,
             isStale: dataHealth.availability === 'full' && behindBy > 0

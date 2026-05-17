@@ -68,7 +68,7 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v25';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v26';/, 'service worker cache version must be bumped');
     assert.match(
         swSource,
         /lotto-pension-pro-app-shell-/,
@@ -189,6 +189,8 @@ async function runPwaUpdateSettingsUiRegression() {
 
     assert.match(indexSource, /id="pwaUpdateCheckBtn"/, 'settings modal must include a PWA update button');
     assert.match(indexSource, /id="pwaUpdateBadge"/, 'settings modal must include a PWA update status badge');
+    assert.match(indexSource, /id="pwaCacheBadge"/, 'settings modal must include a PWA cache health badge');
+    assert.match(indexSource, /id="pwaCacheNote"/, 'settings modal must include a PWA cache health note');
     assert.match(
         pwaInstallSource,
         /window\.addEventListener\('lotto:pwa-update-state'/,

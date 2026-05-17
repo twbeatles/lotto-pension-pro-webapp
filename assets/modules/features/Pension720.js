@@ -57,7 +57,9 @@ export class Pension720Module {
     constructor(app) {
         this.app = app;
         this.data = app.data;
-        this.lastRecommendations = [];
+        this.lastRecommendations = Array.isArray(app.data.state.pension720Results)
+            ? app.data.state.pension720Results
+            : [];
         this.lastRecommendationOptions = null;
         this.bound = false;
         this.bindEvents();
@@ -258,10 +260,14 @@ export class Pension720Module {
         }
         output?.setAttribute('aria-busy', 'true');
         try {
+            this.lastRecommendations = [];
+            this.data.state.pension720Results = [];
+            this.data.persistTemporaryResultsToSession?.();
             const engine = new Pension720Engine(this.data.state.pension720Stats);
             this.lastRecommendationOptions = options;
             this.lastRecommendations = engine.recommend(options);
             this.data.state.pension720Results = this.lastRecommendations;
+            this.data.persistTemporaryResultsToSession?.();
             this.renderRecommendations(this.lastRecommendations);
             UIManager.toast(`연금복권 추천 ${this.lastRecommendations.length}개를 만들었습니다.`, 'success');
         } finally {
@@ -277,6 +283,8 @@ export class Pension720Module {
         const out = $('#pension720Output');
         clearElement(out);
         if (!out) return;
+        const notice = $('#pension720ResultTempNotice');
+        if (notice) notice.hidden = !recommendations.length;
 
         if (!recommendations.length) {
             out.appendChild(makeEl('p', 'empty-state', '추천 시작을 누르면 연금복권 번호가 표시됩니다.'));

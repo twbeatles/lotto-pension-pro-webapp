@@ -192,7 +192,9 @@ export const dataPension720Methods = {
         const input = raw && typeof raw === 'object' ? raw : {};
         return {
             availability: ['full', 'none'].includes(input.availability) ? input.availability : defaults.availability,
-            source: ['static', 'official', 'none'].includes(input.source) ? input.source : defaults.source,
+            source: ['static', 'official', 'official_cache', 'none'].includes(input.source)
+                ? input.source
+                : defaults.source,
             latestDrawNo: Math.max(0, Math.floor(Number(input.latestDrawNo || 0))),
             message: typeof input.message === 'string' ? input.message.slice(0, 240) : defaults.message,
             updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : defaults.updatedAt
@@ -207,6 +209,13 @@ export const dataPension720Methods = {
         return this.pension720DataHealth;
     },
 
+    getPension720DataHealthSourceLabel(source = this.pension720DataHealth?.source) {
+        if (source === 'official') return 'official';
+        if (source === 'official_cache') return 'official cache';
+        if (source === 'static') return 'static';
+        return 'none';
+    },
+
     normalizePension720DrawItem(raw) {
         return normalizePension720Draw(raw);
     },
@@ -219,6 +228,35 @@ export const dataPension720Methods = {
             map.set(normalized.draw_no, normalized);
         });
         return Array.from(map.values()).sort((a, b) => b.draw_no - a.draw_no);
+    },
+
+    readPension720StatsCache() {
+        if (typeof localStorage === 'undefined') return [];
+        try {
+            const raw = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.PENSION720_STATS_CACHE) || '{}',
+                {},
+                CONFIG.KEYS.PENSION720_STATS_CACHE
+            );
+            if (Number(raw?.version || 0) !== 1) return [];
+            return this.normalizePension720Stats(raw.items || []);
+        } catch (_e) {
+            return [];
+        }
+    },
+
+    writePension720StatsCache(items = []) {
+        if (typeof localStorage === 'undefined') return false;
+        const normalized = this.normalizePension720Stats(items);
+        if (!normalized.length) return false;
+        return this._safeSetItem(
+            CONFIG.KEYS.PENSION720_STATS_CACHE,
+            JSON.stringify({
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                items: normalized
+            })
+        );
     },
 
     async fetchPension720Stats(options = {}) {
@@ -239,6 +277,12 @@ export const dataPension720Methods = {
             console.warn('연금복권 정적 데이터 조회 실패', error);
         }
 
+        const cachedItems = this.readPension720StatsCache();
+        if (cachedItems.length && (!bestItems.length || cachedItems[0].draw_no >= bestItems[0].draw_no)) {
+            bestItems = cachedItems;
+            source = 'official_cache';
+        }
+
         if (useRemote) {
             try {
                 const res = await this.fetchWithTimeout(
@@ -256,6 +300,9 @@ export const dataPension720Methods = {
                 if (remoteItems.length && (!bestItems.length || remoteItems[0].draw_no >= bestItems[0].draw_no)) {
                     bestItems = remoteItems;
                     source = 'official';
+                }
+                if (remoteItems.length && (!cachedItems.length || remoteItems[0].draw_no >= cachedItems[0].draw_no)) {
+                    this.writePension720StatsCache(remoteItems);
                 }
             } catch (error) {
                 errorMessage = String(error?.message || errorMessage || '');

@@ -527,6 +527,9 @@
                         <div id="genResultList" class="result-list" aria-live="polite" aria-busy="false">
                             <!-- Results injected here -->
                         </div>
+                        <p id="genResultTempNotice" class="result-disclaimer" hidden>
+                            Temporary result restored for this browser session. Save it to keep it permanently.
+                        </p>
                         <p class="result-disclaimer">재미와 참고용이며 당첨을 보장하지 않습니다.</p>
                     </div>
                 </section>
@@ -811,6 +814,9 @@
                         <div id="aiOutput" class="ai-output" aria-live="polite" aria-busy="false">
                             <!-- 번호 추천 카드 -->
                         </div>
+                        <p id="aiResultTempNotice" class="result-disclaimer" hidden>
+                            Temporary result restored for this browser session. Save it to keep it permanently.
+                        </p>
                         <p class="result-disclaimer">재미와 참고용이며 당첨을 보장하지 않습니다.</p>
                         <div class="card glass console-log">
                             <h3>분석 로그</h3>
@@ -919,6 +925,9 @@
                             <div id="pension720Output" class="p720-output" aria-live="polite" aria-busy="false">
                                 <p class="empty-state">추천 시작을 누르면 연금복권 번호가 표시됩니다.</p>
                             </div>
+                            <p id="pension720ResultTempNotice" class="result-disclaimer" hidden>
+                                Temporary result restored for this browser session. Save it to keep it permanently.
+                            </p>
                             <p class="result-disclaimer">재미와 참고용이며 당첨을 보장하지 않습니다.</p>
                         </div>
 
@@ -1762,6 +1771,8 @@
                                 </button>
                             </div>
                             <p id="pwaUpdateNote" class="settings-note">필요할 때만 화면이 새로고침됩니다.</p>
+                            <p class="settings-note">cache: <span id="pwaCacheBadge" class="badge status-badge">pending</span></p>
+                            <p id="pwaCacheNote" class="settings-note">Cache health will be checked after install.</p>
                         </section>
                     </div>
                 </div>

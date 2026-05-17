@@ -12,6 +12,7 @@ const APP_OWNED_STORAGE_KEYS = new Set([
     CONFIG.KEYS.STRATEGY_PRESETS,
     CONFIG.KEYS.SYNC_META,
     CONFIG.KEYS.LOCAL_UPDATES,
+    CONFIG.KEYS.PENSION720_STATS_CACHE,
     CONFIG.KEYS.PENSION720_TICKETS
 ]);
 
@@ -117,13 +118,18 @@ export const dataPersistenceStorageMethods = {
     _safeSetItem(key, value, options = {}) {
         try {
             const previousValue = localStorage.getItem(key);
-            if (previousValue === value) return true;
+            if (previousValue === value) {
+                this._recordStorageWriteSuccess?.(key);
+                return true;
+            }
             localStorage.setItem(key, value);
+            this._recordStorageWriteSuccess?.(key);
             if (!options?.suppressBroadcast && this.isAppOwnedStorageKey(key)) {
                 this.notifyCrossTabStateChange({ keys: [key] });
             }
             return true;
         } catch (e) {
+            this._recordStorageWriteFailure?.(key, e);
             if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
                 console.error(`[persistence] localStorage 저장 공간 초과 (${key})`, e);
                 UIManager.toast('저장 공간이 가득 찼습니다. 데이터를 정리해 주세요.', 'error');
@@ -134,23 +140,125 @@ export const dataPersistenceStorageMethods = {
         }
     },
 
+    _recordStorageWriteSuccess(key) {
+        if (!this._lastStorageWriteFailures) this._lastStorageWriteFailures = new Map();
+        this._lastStorageWriteFailures.delete(String(key || ''));
+    },
+
+    _recordStorageWriteFailure(key, error) {
+        if (!this._lastStorageWriteFailures) this._lastStorageWriteFailures = new Map();
+        const storageKey = String(key || '');
+        this._lastStorageWriteFailures.set(storageKey, {
+            key: storageKey,
+            name: String(error?.name || 'StorageError'),
+            message: String(error?.message || error || '').slice(0, 240),
+            failedAt: new Date().toISOString()
+        });
+    },
+
+    getStorageWriteFailures() {
+        if (!this._lastStorageWriteFailures) return [];
+        return [...this._lastStorageWriteFailures.values()].sort((a, b) =>
+            String(b.failedAt || '').localeCompare(String(a.failedAt || ''))
+        );
+    },
+
+    normalizeAiResultSet(raw) {
+        const numbers = this.normalizeNumbers(raw || []);
+        return numbers.length === 6 ? numbers : null;
+    },
+
+    normalizePension720Result(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const group = Math.floor(Number(raw.group || 0));
+        const number = String(raw.number || '').trim();
+        if (!Number.isInteger(group) || group < 1 || group > 5 || !/^\d{6}$/.test(number)) return null;
+        return {
+            group,
+            number,
+            score: Number.isFinite(Number(raw.score)) ? Number(raw.score) : 0,
+            reasons: Array.isArray(raw.reasons) ? raw.reasons.map((item) => String(item).slice(0, 80)).slice(0, 8) : [],
+            expansionGroups: Array.isArray(raw.expansionGroups)
+                ? raw.expansionGroups
+                      .map((item) => Math.floor(Number(item)))
+                      .filter((item) => item >= 1 && item <= 5)
+                      .slice(0, 4)
+                : []
+        };
+    },
+
+    getTemporaryResultsPayload() {
+        return {
+            version: 1,
+            updatedAt: new Date().toISOString(),
+            generated: this.getGeneratedEntries?.() || [],
+            aiResults: (Array.isArray(this.state.aiResults) ? this.state.aiResults : [])
+                .map((item) => this.normalizeAiResultSet(item))
+                .filter(Boolean)
+                .slice(0, 20),
+            pension720Results: (Array.isArray(this.state.pension720Results) ? this.state.pension720Results : [])
+                .map((item) => this.normalizePension720Result(item))
+                .filter(Boolean)
+                .slice(0, 20)
+        };
+    },
+
+    loadTemporaryResultsFromSession() {
+        if (typeof sessionStorage === 'undefined') return false;
+        try {
+            const raw = sessionStorage.getItem(CONFIG.KEYS.SESSION_RESULTS_STATE);
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            if (Number(parsed?.version || 0) !== 1) return false;
+            this.state.generated = (Array.isArray(parsed.generated) ? parsed.generated : [])
+                .map((entry) => this.normalizeGeneratedEntry(entry))
+                .filter(Boolean)
+                .slice(0, 20);
+            this.state.aiResults = (Array.isArray(parsed.aiResults) ? parsed.aiResults : [])
+                .map((item) => this.normalizeAiResultSet(item))
+                .filter(Boolean)
+                .slice(0, 20);
+            this.state.pension720Results = (Array.isArray(parsed.pension720Results) ? parsed.pension720Results : [])
+                .map((item) => this.normalizePension720Result(item))
+                .filter(Boolean)
+                .slice(0, 20);
+            return true;
+        } catch (_e) {
+            return false;
+        }
+    },
+
+    persistTemporaryResultsToSession() {
+        if (typeof sessionStorage === 'undefined') return false;
+        try {
+            const payload = this.getTemporaryResultsPayload();
+            sessionStorage.setItem(CONFIG.KEYS.SESSION_RESULTS_STATE, JSON.stringify(payload));
+            return true;
+        } catch (_e) {
+            return false;
+        }
+    },
+
     persistSettings() {
-        if (typeof localStorage === 'undefined') return;
-        this._safeSetItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
+        if (typeof localStorage === 'undefined') return true;
+        return this._safeSetItem(CONFIG.KEYS.SETTINGS, JSON.stringify(this.getSettingsPayload()));
     },
 
     persistExtendedData() {
-        if (typeof localStorage === 'undefined') return;
-        this._safeSetItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook));
-        this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns));
-        this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs));
-        this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || []));
-        this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || []));
+        if (typeof localStorage === 'undefined') return true;
+        const results = [
+            this._safeSetItem(CONFIG.KEYS.TICKET_BOOK, JSON.stringify(this.state.ticketBook)),
+            this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns)),
+            this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs)),
+            this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || [])),
+            this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || []))
+        ];
+        return results.every(Boolean);
     },
 
     persistSyncMeta() {
-        if (typeof localStorage === 'undefined') return;
-        this._safeSetItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
+        if (typeof localStorage === 'undefined') return true;
+        return this._safeSetItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
     },
 
     getSettingsPayload() {
@@ -175,7 +283,8 @@ export const dataPersistenceStorageMethods = {
                     pension720Tickets: this.state.pension720Tickets?.length || 0,
                     localUpdates: Array.isArray(this.localUpdatesCache) ? this.localUpdatesCache.length : 0
                 },
-                warnings: []
+                warnings: [],
+                storageFailures: this.getStorageWriteFailures?.() || []
             };
         }
         const entries = [
@@ -210,15 +319,19 @@ export const dataPersistenceStorageMethods = {
         };
 
         const warnings = [];
+        const storageFailures = this.getStorageWriteFailures?.() || [];
         if (counts.history > 300) warnings.push(`히스토리 ${counts.history}개`);
         if (counts.tickets > 200) warnings.push(`티켓 ${counts.tickets}개`);
         if (counts.pension720Tickets > 200) warnings.push(`연금복권 저장 ${counts.pension720Tickets}개`);
         if (counts.campaigns > 60) warnings.push(`캠페인 ${counts.campaigns}개`);
         if (counts.localUpdates > 60) warnings.push(`로컬 업데이트 ${counts.localUpdates}개`);
 
+        if (storageFailures.length) warnings.push(`storage write failed ${storageFailures.length}`);
+
         let status = 'normal';
         if (
             bytes >= this.STORAGE_DANGER_BYTES ||
+            storageFailures.length ||
             counts.tickets > 400 ||
             counts.history > 450 ||
             counts.campaigns > 120
@@ -232,7 +345,8 @@ export const dataPersistenceStorageMethods = {
             bytes,
             status,
             counts,
-            warnings
+            warnings,
+            storageFailures
         };
     },
 

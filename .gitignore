@@ -40,6 +40,12 @@ output/
 reports/
 bench-results/
 perf-results/
+downloads/
+screenshots/
+*.pid
+*.trace
+*.har
+*.webm
 
 # Package manager / tool logs
 npm-debug.log*
@@ -58,7 +64,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 
-# Environment / secrets (precautionary — no .env currently used)
+# Environment / secrets (precautionary; no .env currently used)
 .env
 .env.*
 !.env.example

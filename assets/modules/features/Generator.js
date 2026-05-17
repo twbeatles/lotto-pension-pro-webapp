@@ -33,6 +33,7 @@ export class GeneratorModule {
             applyRequest: (request) => this.applyStrategyRequest(request)
         });
         this.resetCampaignOptions(false);
+        this.renderStoredGeneratedEntries?.();
     }
 }
 

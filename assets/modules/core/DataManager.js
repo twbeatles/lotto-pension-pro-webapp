@@ -42,6 +42,7 @@ export class DataManager {
             syncMeta: false,
             pension720Tickets: false
         };
+        this._lastStorageWriteFailures = new Map();
         this.pension720DataHealth = this.getDefaultPension720DataHealth();
         this.localUpdatesCache = null;
         this.RANGE_CHUNK_SIZE = 40;

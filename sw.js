@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v25';
+const CACHE_VERSION = 'v26';
 const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
@@ -38,6 +38,13 @@ const DATA_CORE_ASSETS = Array.isArray(PRECACHE_MANIFEST.data)
     ? PRECACHE_MANIFEST.data
     : FALLBACK_PRECACHE_MANIFEST.data;
 const ONLINE_CHECK_PATH_SUFFIX = '/online-check.txt';
+const CACHE_HEALTH_PATH_SUFFIX = '/__cache-health.json';
+let lastPrecacheHealth = {
+    ok: true,
+    cacheVersion: CACHE_VERSION,
+    checkedAt: '',
+    failures: []
+};
 
 self.addEventListener('message', (event) => {
     if (event.data?.action === 'skipWaiting') {
@@ -48,23 +55,43 @@ self.addEventListener('message', (event) => {
 async function safePrecache() {
     const appShellCache = await caches.open(CACHE_APP_SHELL);
     const dataCache = await caches.open(CACHE_DATA);
+    const failures = [];
     const jobs = [
         ...APP_SHELL_ASSETS.map(async (url) => {
             try {
                 await appShellCache.add(url);
             } catch (e) {
-                // Ignore individual failures to avoid install rejection
+                failures.push({ cache: 'appShell', url, message: String(e?.message || e || '') });
             }
         }),
         ...DATA_CORE_ASSETS.map(async (url) => {
             try {
                 await dataCache.add(url);
             } catch (e) {
-                // Ignore individual failures to avoid install rejection
+                failures.push({ cache: 'data', url, message: String(e?.message || e || '') });
             }
         })
     ];
     await Promise.allSettled(jobs);
+    lastPrecacheHealth = {
+        ok: failures.length === 0,
+        cacheVersion: CACHE_VERSION,
+        checkedAt: new Date().toISOString(),
+        failures
+    };
+    try {
+        await appShellCache.put(
+            './__cache-health.json',
+            new Response(JSON.stringify(lastPrecacheHealth), {
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Cache-Control': 'no-store'
+                }
+            })
+        );
+    } catch (_e) {
+        // Cache health reporting must not turn a tolerant install into a failed install.
+    }
 }
 
 self.addEventListener('install', (event) => {
@@ -152,6 +179,24 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
     if (url.pathname.endsWith(ONLINE_CHECK_PATH_SUFFIX)) return;
+    if (url.pathname.endsWith(CACHE_HEALTH_PATH_SUFFIX)) {
+        event.respondWith(
+            caches
+                .open(CACHE_APP_SHELL)
+                .then((cache) => cache.match('./__cache-health.json'))
+                .then(
+                    (cached) =>
+                        cached ||
+                        new Response(JSON.stringify(lastPrecacheHealth), {
+                            headers: {
+                                'Content-Type': 'application/json; charset=utf-8',
+                                'Cache-Control': 'no-store'
+                            }
+                        })
+                )
+        );
+        return;
+    }
 
     if (isDataAssetRequest(url)) {
         event.respondWith(staleWhileRevalidate(event.request, CACHE_DATA));

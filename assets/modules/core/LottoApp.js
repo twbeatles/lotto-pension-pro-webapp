@@ -42,6 +42,7 @@ export class LottoApp {
         this.dataListState = this._loadDataListStateFromSession();
         this.targetDrawInputIds = ['genTargetDrawNo', 'campStartDraw', 'aiTargetDrawNo'];
         this._pwaInstallPrompt = null;
+        this._pwaCacheHealth = null;
         this._networkProbePromise = null;
         this._autoSyncTimer = null;
         this._autoSyncPendingForce = false;

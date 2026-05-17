@@ -300,7 +300,11 @@ export const dataIoImportMethods = {
             }
 
             if (prepared.mode === 'overwrite') {
-                this.exportAll({ silent: true, prefix: 'lotto_pension_pro_before_replace' });
+                const backup = this.ensureBackupBeforeDestructive?.({
+                    prefix: 'lotto_pension_pro_before_replace',
+                    errorMessage: '백업 파일 다운로드를 확인할 수 없어 덮어쓰기를 중단했습니다.'
+                });
+                if (!backup) return;
             }
             this.applyPreparedImport(prepared);
 

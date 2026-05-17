@@ -317,6 +317,33 @@ const regressionExecutionPlan = [
         label: 'storage summary byte accounting regression'
     },
     {
+        name: 'runStorageDirtyRetainedOnFailureRegression',
+        label: 'storage dirty-retained-on-failure regression'
+    },
+    {
+        name: 'runDestructiveBackupAbortRegression',
+        label: 'destructive backup abort regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720OfficialCacheRegression',
+        label: 'pension720 official-cache regression',
+        awaited: true
+    },
+    {
+        name: 'runAutoSyncAvailabilityRegression',
+        label: 'auto-sync availability regression'
+    },
+    {
+        name: 'runTemporaryResultsSessionRegression',
+        label: 'temporary results session regression'
+    },
+    {
+        name: 'runDomSelectorContractRegression',
+        label: 'DOM selector contract regression',
+        awaited: true
+    },
+    {
         name: 'runNotificationPermissionRegression',
         label: 'notification-permission regression',
         awaited: true
@@ -368,6 +395,11 @@ const regressionExecutionPlan = [
     {
         name: 'runPwaUpdateSettingsUiRegression',
         label: 'PWA update settings UI regression',
+        awaited: true
+    },
+    {
+        name: 'runPwaCacheHealthRegression',
+        label: 'PWA cache health regression',
         awaited: true
     },
     {

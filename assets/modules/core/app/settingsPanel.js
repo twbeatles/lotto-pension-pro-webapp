@@ -241,6 +241,10 @@ export const appSettingsMethods = {
     },
 
     getStorageHealthMessage(summary) {
+        if (summary.storageFailures?.length) {
+            const latest = summary.storageFailures[0];
+            return `localStorage 저장 실패가 감지되었습니다. 마지막 실패: ${latest.key || '-'} (${latest.name || 'error'})`;
+        }
         if (summary.status === 'danger') {
             return '저장량이 커졌습니다. 백업 후 오래된 히스토리와 정산 끝난 미당첨 번호를 정리하는 것을 권장합니다.';
         }

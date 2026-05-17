@@ -59,6 +59,8 @@ export const aiRenderingMethods = {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
         out.innerHTML = '';
+        this.app.data.state.aiResults = [];
+        this.app.data.persistTemporaryResultsToSession?.();
         out.setAttribute('aria-busy', 'true');
         log.innerHTML = '';
         aiContainer?.classList.add('fx-active');
@@ -209,6 +211,7 @@ export const aiRenderingMethods = {
             }
 
             this.app.data.state.aiResults = results;
+            this.app.data.persistTemporaryResultsToSession?.();
             this.lastRequest = request;
             this.lastExplain = explanations;
             this.renderResults(results, explanations);
@@ -229,6 +232,8 @@ export const aiRenderingMethods = {
     renderResults(results, explanations = []) {
         const out = $('#aiOutput');
         if (!out) return;
+        const notice = $('#aiResultTempNotice');
+        if (notice) notice.hidden = !results.length;
 
         out.innerHTML = '';
         results.forEach((set, idx) => {

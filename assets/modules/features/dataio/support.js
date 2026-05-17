@@ -73,7 +73,7 @@ export const dataIoSupportMethods = {
             makeCard(
                 '연금복권720+',
                 [
-                    ['source', pensionHealth?.source || '-'],
+                    ['source', this.data.getPension720DataHealthSourceLabel?.(pensionHealth?.source) || pensionHealth?.source || '-'],
                     ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
                     ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
                     ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
@@ -122,6 +122,20 @@ export const dataIoSupportMethods = {
             payload,
             downloaded: true
         };
+    },
+
+    ensureBackupBeforeDestructive(options = {}) {
+        const result = this.exportAll({
+            silent: true,
+            prefix: options.prefix || 'lotto_pension_pro_before_change'
+        });
+        if (result?.downloaded) return result;
+        UIManager.toast(
+            options.errorMessage || '백업 파일 다운로드를 확인할 수 없어 작업을 중단했습니다.',
+            'error',
+            4500
+        );
+        return null;
     },
 
     normalizeItems(items) {

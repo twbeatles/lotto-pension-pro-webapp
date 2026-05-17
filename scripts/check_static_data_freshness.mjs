@@ -2,8 +2,10 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
 
-const ALLOWED_BEHIND_BY = 1;
+const DEFAULT_ALLOWED_BEHIND_BY = 1;
 const DATA_PATH = resolve('data/winning_stats.json');
+const isStrict = process.argv.includes('--strict');
+const allowedBehindBy = isStrict ? 0 : DEFAULT_ALLOWED_BEHIND_BY;
 
 function latestDrawNo(rows = []) {
     return rows.reduce((max, row) => {
@@ -23,11 +25,11 @@ const estimatedLatest = estimateLatestDrawKST();
 const behindBy = Math.max(0, estimatedLatest - latestStatic);
 
 console.log(
-    `static data freshness: 내 데이터 ${latestStatic}회 / 예상 최신 ${estimatedLatest}회 / 차이 ${behindBy}회`
+    `static data freshness${isStrict ? ' (strict)' : ''}: latest ${latestStatic} / estimated ${estimatedLatest} / behind ${behindBy}`
 );
 
-if (behindBy > ALLOWED_BEHIND_BY) {
+if (behindBy > allowedBehindBy) {
     throw new Error(
-        `정적 당첨 데이터가 ${behindBy}회차 뒤처져 있습니다. 허용치는 ${ALLOWED_BEHIND_BY}회차입니다.`
+        `static winning data is ${behindBy} draw(s) behind the estimated latest draw. Allowed budget is ${allowedBehindBy}.`
     );
 }

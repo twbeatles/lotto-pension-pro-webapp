@@ -11,6 +11,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/LottoApp.js",
         "./assets/modules/core/MonteCarlo.js",
         "./assets/modules/core/Pension720Engine.js",
+        "./assets/modules/core/Pension720StrategyCatalog.js",
         "./assets/modules/core/StrategyCatalog.js",
         "./assets/modules/core/StrategyEngine.js",
         "./assets/modules/core/StrategyFilters.js",

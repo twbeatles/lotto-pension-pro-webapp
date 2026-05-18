@@ -71,6 +71,11 @@ export const dataPersistenceLoadSaveMethods = {
                 [],
                 CONFIG.KEYS.PENSION720_TICKETS
             );
+            const rawPension720Campaigns = this.safeJsonParse(
+                localStorage.getItem(CONFIG.KEYS.PENSION720_CAMPAIGNS) || '[]',
+                [],
+                CONFIG.KEYS.PENSION720_CAMPAIGNS
+            );
             const rawSyncMeta = this.safeJsonParse(
                 localStorage.getItem(CONFIG.KEYS.SYNC_META) || '{}',
                 {},
@@ -84,6 +89,7 @@ export const dataPersistenceLoadSaveMethods = {
             const normalizedAlertPrefs = this.mergeAlertPrefs(rawAlertPrefs);
             const normalizedStrategyPresets = this.mergeStrategyPresets(rawStrategyPresets);
             const normalizedPension720Tickets = this.mergePension720Tickets([], rawPension720Tickets);
+            const normalizedPension720Campaigns = this.mergePension720Campaigns([], rawPension720Campaigns);
             const normalizedSyncMeta = this.mergeSyncMeta(rawSyncMeta);
 
             if (Array.isArray(rawTickets)) {
@@ -101,6 +107,11 @@ export const dataPersistenceLoadSaveMethods = {
                 JSON.stringify(normalizedPension720Tickets) !== JSON.stringify(rawPension720Tickets)
             )
                 needsPersist = true;
+            if (
+                Array.isArray(rawPension720Campaigns) &&
+                JSON.stringify(normalizedPension720Campaigns) !== JSON.stringify(rawPension720Campaigns)
+            )
+                needsPersist = true;
             if (JSON.stringify(normalizedSyncMeta) !== JSON.stringify(rawSyncMeta || {})) needsPersist = true;
 
             this.state.ticketBook = normalizedTickets;
@@ -108,11 +119,14 @@ export const dataPersistenceLoadSaveMethods = {
             this.state.alertPrefs = normalizedAlertPrefs;
             this.state.strategyPresets = normalizedStrategyPresets;
             this.state.pension720Tickets = normalizedPension720Tickets;
+            this.state.pension720Campaigns = normalizedPension720Campaigns;
             this.state.syncMeta = normalizedSyncMeta;
             this.localUpdatesCache = normalizedLocalUpdates.items;
 
             const orphanCleanup = this.pruneOrphanCampaigns({ save: false });
             if (orphanCleanup.removed.length > 0) needsPersist = true;
+            const pensionOrphanCleanup = this.prunePension720CampaignsWithoutTickets({ save: false });
+            if (pensionOrphanCleanup.removed.length > 0) needsPersist = true;
 
             const localUpdateWarning = this.buildLocalUpdateWarningMessage(normalizedLocalUpdates);
             if (localUpdateWarning) {
@@ -143,6 +157,10 @@ export const dataPersistenceLoadSaveMethods = {
                     this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history)),
                     this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache)),
                     this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets)),
+                    this._safeSetItem(
+                        CONFIG.KEYS.PENSION720_CAMPAIGNS,
+                        JSON.stringify(this.state.pension720Campaigns)
+                    ),
                     this.persistSettings(),
                     this.persistExtendedData(),
                     this.persistSyncMeta()
@@ -187,6 +205,11 @@ export const dataPersistenceLoadSaveMethods = {
             writeDirty('alerts', CONFIG.KEYS.ALERT_PREFS, this.state.alertPrefs);
             writeDirty('presets', CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets || []);
             writeDirty('pension720Tickets', CONFIG.KEYS.PENSION720_TICKETS, this.state.pension720Tickets || []);
+            writeDirty(
+                'pension720Campaigns',
+                CONFIG.KEYS.PENSION720_CAMPAIGNS,
+                this.state.pension720Campaigns || []
+            );
             if (this._dirtyKeys.syncMeta) {
                 if (this.persistSyncMeta()) {
                     this._dirtyKeys.syncMeta = false;

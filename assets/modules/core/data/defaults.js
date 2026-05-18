@@ -1,4 +1,5 @@
 import { $ } from '../../utils/utils.js';
+import { createDefaultPension720StrategyRequest } from '../Pension720StrategyCatalog.js';
 import { createDefaultStrategyRequest } from '../StrategyCatalog.js';
 export const dataDefaultsMethods = {
     markDirty(...keys) {
@@ -19,7 +20,8 @@ export const dataDefaultsMethods = {
         return {
             generator: createDefaultStrategyRequest('ensemble_weighted'),
             ai: createDefaultStrategyRequest('ensemble_weighted'),
-            backtest: createDefaultStrategyRequest('random_baseline')
+            backtest: createDefaultStrategyRequest('random_baseline'),
+            pension720: createDefaultPension720StrategyRequest('mixed_balance')
         };
     },
 
@@ -131,7 +133,7 @@ export const dataDefaultsMethods = {
     },
 
     isStrategyScope(scope) {
-        return ['generator', 'ai', 'backtest'].includes(String(scope || '').trim());
+        return ['generator', 'ai', 'backtest', 'pension720'].includes(String(scope || '').trim());
     },
 
     mergeStrategyPrefs(raw) {
@@ -155,6 +157,12 @@ export const dataDefaultsMethods = {
                 ...(input.backtest || {}),
                 params: { ...defaults.backtest.params, ...(input.backtest?.params || {}) },
                 filters: { ...defaults.backtest.filters, ...(input.backtest?.filters || {}) }
+            },
+            pension720: {
+                ...defaults.pension720,
+                ...(input.pension720 || {}),
+                params: { ...defaults.pension720.params, ...(input.pension720?.params || {}) },
+                filters: { ...defaults.pension720.filters, ...(input.pension720?.filters || {}) }
             }
         };
     },
@@ -294,7 +302,7 @@ export const dataDefaultsMethods = {
     },
 
     setStrategyPrefs(scope, request) {
-        if (!['generator', 'ai', 'backtest'].includes(scope)) return;
+        if (!this.isStrategyScope(scope)) return;
         this.state.strategyPrefs[scope] = {
             ...this.state.strategyPrefs[scope],
             ...(request || {}),

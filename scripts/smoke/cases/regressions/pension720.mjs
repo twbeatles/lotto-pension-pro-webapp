@@ -78,12 +78,59 @@ function runPension720RecommendationRegression() {
     });
 }
 
+function runPension720AdvancedRecommendationRegression() {
+    const engine = new Pension720Engine(makeSamplePensionStats());
+    const request = {
+        strategyId: 'trailing_match',
+        params: {
+            seed: 720,
+            lookbackWindow: 3,
+            candidatePoolSize: 80
+        },
+        filters: {
+            groups: [2],
+            fixedDigits: [0, null, null, null, null, null],
+            excludedDigitsByPosition: [[], [9], [], [], [], []],
+            digitSumRange: [5, 40],
+            uniqueDigitMin: 2,
+            maxSameDigit: 3
+        }
+    };
+    const first = engine.recommend({ setCount: 2, request });
+    const second = engine.recommend({ setCount: 2, request });
+    const bonusFlow = engine.recommend({
+        setCount: 1,
+        request: {
+            ...request,
+            strategyId: 'bonus_flow',
+            filters: { groups: [2] }
+        }
+    });
+
+    assert.equal(first.length, 2, 'advanced pension720 recommendation must return requested count');
+    assert.deepEqual(first, second, 'advanced pension720 recommendation must be seeded');
+    first.forEach((item) => {
+        assert.equal(item.group, 2, 'pension720 group filter must be applied');
+        assert.match(item.number, /^0/, 'pension720 fixed digit filter must be applied');
+        assert.notEqual(item.digits[1], 9, 'pension720 excluded digit filter must be applied');
+        assert.equal(item.strategyId, 'trailing_match', 'pension720 recommendation must expose strategy id');
+    });
+    assert.equal(bonusFlow[0]?.strategyId, 'bonus_flow', 'bonus-flow strategy must be selectable');
+    assert.ok(Array.isArray(bonusFlow[0]?.reasons), 'bonus-flow strategy must expose reasons');
+}
+
 function runPension720TicketDedupeRegression() {
     const dm = new DataManager();
     dm.save = () => {};
 
     const first = dm.addPension720Ticket({ group: 2, number: '060727', source: 'recommendation' });
     const second = dm.addPension720Ticket({ group: 2, number: '060727', source: 'recommendation' });
+    const sameNumberNextDraw = dm.addPension720Ticket({
+        group: 2,
+        number: '060727',
+        targetDrawNo: 316,
+        source: 'campaign'
+    });
     const bulk = dm.addPension720TicketsBulk([
         { group: 1, number: '060727', source: 'recommendation' },
         { group: 2, number: '060727', source: 'recommendation' },
@@ -92,10 +139,11 @@ function runPension720TicketDedupeRegression() {
 
     assert.equal(first.inserted, true, 'first pension720 save must insert');
     assert.equal(second.duplicate, true, 'duplicate pension720 save must be reported');
+    assert.equal(sameNumberNextDraw.inserted, true, 'target draw must participate in pension720 dedupe');
     assert.equal(bulk.inserted, 2, 'pension720 expansion save must dedupe existing group/number');
     assert.equal(bulk.duplicate, 1, 'pension720 expansion save must report existing duplicate group/number');
     assert.equal(bulk.truncated, 0, 'pension720 expansion save must not report truncation under cap');
-    assert.equal(dm.state.pension720Tickets.length, 3, 'pension720 tickets must keep unique group/number rows');
+    assert.equal(dm.state.pension720Tickets.length, 4, 'pension720 tickets must keep unique target/group/number rows');
 }
 
 function runPension720TicketCapRegression() {
@@ -124,21 +172,62 @@ function runPension720TicketCapRegression() {
     );
 }
 
-function runPension720BackupV4Regression() {
+function runPension720CampaignRegression() {
+    const dm = new DataManager();
+    dm.save = () => {};
+
+    const campaign = dm.addPension720Campaign({
+        id: 'p720_campaign_test',
+        name: '테스트 캠페인',
+        startDrawNo: 316,
+        weeks: 2,
+        setsPerDraw: 1
+    });
+    const bulk = dm.addPension720TicketsBulk([
+        { group: 2, number: '060727', targetDrawNo: 316, campaignId: campaign.id, source: 'campaign' },
+        { group: 2, number: '060727', targetDrawNo: 317, campaignId: campaign.id, source: 'campaign' },
+        { group: 2, number: '060727', targetDrawNo: 317, campaignId: campaign.id, source: 'campaign' }
+    ]);
+
+    assert.ok(campaign, 'pension720 campaign must normalize and save');
+    assert.equal(bulk.inserted, 2, 'pension720 campaign tickets must keep per-draw rows');
+    assert.equal(bulk.duplicate, 1, 'pension720 campaign ticket duplicate must be counted');
+    assert.equal(dm.countPension720TicketsByCampaignId(campaign.id), 2, 'pension720 campaign count must use linked tickets');
+
+    const removed = dm.removePension720Campaign(campaign.id, { cascadeTickets: true });
+    assert.equal(removed.removedCampaign, true, 'pension720 campaign delete must remove campaign');
+    assert.equal(removed.removedTickets, 2, 'pension720 campaign delete must cascade linked tickets');
+    assert.equal(dm.state.pension720Tickets.length, 0, 'pension720 campaign delete must clear linked tickets');
+}
+
+function runPension720BackupV5Regression() {
     const payload = buildBackupPayload({
         theme: 'dark',
         pension720Tickets: [
-            { id: 'p720_a', group: 2, number: '060727', source: 'recommendation' },
-            { id: 'p720_b', group: 2, number: '060727', source: 'recommendation' },
-            { id: 'p720_c', group: 5, number: '537530', source: 'recommendation' }
+            { id: 'p720_a', group: 2, number: '060727', targetDrawNo: 316, campaignId: 'p720_camp_a' },
+            { id: 'p720_b', group: 2, number: '060727', targetDrawNo: 316, campaignId: 'p720_camp_a' },
+            { id: 'p720_c', group: 2, number: '060727', targetDrawNo: 317, campaignId: 'p720_camp_a' }
+        ],
+        pension720Campaigns: [
+            {
+                id: 'p720_camp_a',
+                name: '연금 캠페인',
+                startDrawNo: 316,
+                weeks: 2,
+                setsPerDraw: 1
+            }
         ]
     });
-    const normalizedV4 = normalizeBackupPayload(payload);
+    const normalizedV5 = normalizeBackupPayload(payload);
+    const normalizedV4 = normalizeBackupPayload({ ...payload, version: 4, pension720Campaigns: undefined });
     const normalizedV3 = normalizeBackupPayload({ ...payload, version: 3, pension720Tickets: undefined });
 
-    assert.equal(payload.version, 4, 'pension720 backup must use v4');
-    assert.equal(normalizedV4.pension720Tickets.length, 2, 'pension720 backup must dedupe tickets');
-    assert.equal(normalizedV4.pension720Tickets[0].number.length, 6, 'pension720 backup must preserve six digits');
+    assert.equal(payload.version, 5, 'pension720 backup must use v5');
+    assert.equal(normalizedV5.pension720Tickets.length, 2, 'pension720 backup must dedupe target-aware tickets');
+    assert.equal(normalizedV5.pension720Campaigns.length, 1, 'pension720 backup must include campaigns');
+    assert.equal(normalizedV5.pension720Tickets[0].number.length, 6, 'pension720 backup must preserve six digits');
+    assert.equal(normalizedV4.pension720Campaigns.length, 0, 'backup v4 must remain compatible without campaigns');
+    assert.equal(normalizedV4.pension720Tickets.length, 2, 'backup v4 must preserve pension720 tickets');
     assert.deepEqual(normalizedV3.pension720Tickets, [], 'backup v3 must remain compatible without pension720 data');
 }
 
@@ -208,12 +297,18 @@ async function runPension720UiContractRegression() {
     assert.match(indexSource, /pension720CopyAllBtn/, 'pension720 UI must expose copy-all action');
     assert.match(indexSource, /pension720ExportCsvBtn/, 'pension720 UI must expose CSV export action');
     assert.match(indexSource, /pension720CheckLatestBtn/, 'pension720 UI must expose latest-check action');
+    assert.match(indexSource, /pension720StrategySelect/, 'pension720 UI must expose strategy select');
+    assert.match(indexSource, /pension720PresetSaveBtn/, 'pension720 UI must expose preset save action');
+    assert.match(indexSource, /pension720CampaignBtn/, 'pension720 UI must expose campaign generation action');
+    assert.match(indexSource, /pension720FixedDigits/, 'pension720 UI must expose fixed-digit filter');
+    assert.match(indexSource, /pension720ExcludedDigits/, 'pension720 UI must expose excluded-digit filter');
     assert.match(indexSource, /저장 번호 기준 참고 확인이며 실물\/공식 확인이 필요합니다/, 'pension720 check disclaimer must stay visible');
     assert.match(featureSource, /UIManager\.confirm/, 'pension720 clear-all must require confirmation');
     assert.match(featureSource, /lastRecommendationOptions/, 'pension720 recommendations must remember generation options');
+    assert.match(featureSource, /runCampaignRecommendation/, 'pension720 feature must implement campaign generation');
     assert.match(featureSource, /copyText/, 'pension720 saved tickets must use generic text copy');
     assert.match(featureSource, /lotto_pension_pro_pension720_tickets_/, 'pension720 CSV filename must be rebranded');
-    assert.match(dataIoSupportSource, /lotto_pension_pro_backup_v4/, 'backup export filename prefix must be rebranded');
+    assert.match(dataIoSupportSource, /lotto_pension_pro_backup_v5/, 'backup export filename prefix must be v5');
 }
 
 async function runPension720BackupFixtureRegression() {
@@ -236,8 +331,10 @@ async function runPension720PrecacheRegression() {
 }
 
 export {
-    runPension720BackupV4Regression,
+    runPension720AdvancedRecommendationRegression,
+    runPension720BackupV5Regression,
     runPension720BackupFixtureRegression,
+    runPension720CampaignRegression,
     runPension720FreshnessComparisonRegression,
     runPension720LatestCheckRegression,
     runPension720NormalizationRegression,

@@ -554,7 +554,7 @@ async function runRecommendationCopyRegression() {
     assert.match(indexSource, /dataStatusSummary/, 'data page must expose lottery data status summary panel');
     assert.match(deploySource, /lotto-pension-pro-webapp/, 'deploy guide must use the rebranded Pages slug');
     assert.match(deploySource, /기존 설치형 PWA/, 'deploy guide must document installed PWA migration');
-    assert.match(readmeSource, /lotto_pension_pro_backup_v4/, 'README must document the rebranded backup filename prefix');
+    assert.match(readmeSource, /lotto_pension_pro_backup_v5/, 'README must document the backup v5 filename prefix');
     [indexSource, readmeSource, packageSource, manifestSource, claudeSource, geminiSource, fetchPensionSource].forEach(
         (source) => {
             assert.doesNotMatch(

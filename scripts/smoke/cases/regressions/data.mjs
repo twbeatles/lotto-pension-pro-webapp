@@ -515,7 +515,8 @@ function runLoadOrphanCampaignMigrationRegression() {
         [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
         [CONFIG.KEYS.SYNC_META, '{}'],
         [CONFIG.KEYS.LOCAL_UPDATES, '[]'],
-        [CONFIG.KEYS.PENSION720_TICKETS, '[]']
+        [CONFIG.KEYS.PENSION720_TICKETS, '[]'],
+        [CONFIG.KEYS.PENSION720_CAMPAIGNS, '[]']
     ]);
 
     globalThis.document = {
@@ -597,7 +598,8 @@ function runStorageSummaryByteAccountingRegression() {
         [CONFIG.KEYS.STRATEGY_PRESETS, '[]'],
         [CONFIG.KEYS.SYNC_META, '{}'],
         [CONFIG.KEYS.LOCAL_UPDATES, '[]'],
-        [CONFIG.KEYS.PENSION720_TICKETS, '[]']
+        [CONFIG.KEYS.PENSION720_TICKETS, '[]'],
+        [CONFIG.KEYS.PENSION720_CAMPAIGNS, '[]']
     ]);
 
     globalThis.localStorage = {

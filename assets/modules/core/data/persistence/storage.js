@@ -13,7 +13,8 @@ const APP_OWNED_STORAGE_KEYS = new Set([
     CONFIG.KEYS.SYNC_META,
     CONFIG.KEYS.LOCAL_UPDATES,
     CONFIG.KEYS.PENSION720_STATS_CACHE,
-    CONFIG.KEYS.PENSION720_TICKETS
+    CONFIG.KEYS.PENSION720_TICKETS,
+    CONFIG.KEYS.PENSION720_CAMPAIGNS
 ]);
 
 function createTabInstanceId() {
@@ -251,7 +252,8 @@ export const dataPersistenceStorageMethods = {
             this._safeSetItem(CONFIG.KEYS.CAMPAIGNS, JSON.stringify(this.state.campaigns)),
             this._safeSetItem(CONFIG.KEYS.ALERT_PREFS, JSON.stringify(this.state.alertPrefs)),
             this._safeSetItem(CONFIG.KEYS.STRATEGY_PRESETS, JSON.stringify(this.state.strategyPresets || [])),
-            this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || []))
+            this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets || [])),
+            this._safeSetItem(CONFIG.KEYS.PENSION720_CAMPAIGNS, JSON.stringify(this.state.pension720Campaigns || []))
         ];
         return results.every(Boolean);
     },
@@ -281,6 +283,7 @@ export const dataPersistenceStorageMethods = {
                     campaigns: this.state.campaigns?.length || 0,
                     presets: this.state.strategyPresets?.length || 0,
                     pension720Tickets: this.state.pension720Tickets?.length || 0,
+                    pension720Campaigns: this.state.pension720Campaigns?.length || 0,
                     localUpdates: Array.isArray(this.localUpdatesCache) ? this.localUpdatesCache.length : 0
                 },
                 warnings: [],
@@ -297,7 +300,8 @@ export const dataPersistenceStorageMethods = {
             [CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets?.length || 0],
             [CONFIG.KEYS.SYNC_META, 1],
             [CONFIG.KEYS.LOCAL_UPDATES, this.getLocalUpdates().length],
-            [CONFIG.KEYS.PENSION720_TICKETS, this.state.pension720Tickets?.length || 0]
+            [CONFIG.KEYS.PENSION720_TICKETS, this.state.pension720Tickets?.length || 0],
+            [CONFIG.KEYS.PENSION720_CAMPAIGNS, this.state.pension720Campaigns?.length || 0]
         ];
         const bytes = entries.reduce((sum, [key]) => {
             try {
@@ -315,6 +319,7 @@ export const dataPersistenceStorageMethods = {
             campaigns: this.state.campaigns?.length || 0,
             presets: this.state.strategyPresets?.length || 0,
             pension720Tickets: this.state.pension720Tickets?.length || 0,
+            pension720Campaigns: this.state.pension720Campaigns?.length || 0,
             localUpdates: this.getLocalUpdates().length
         };
 
@@ -323,6 +328,7 @@ export const dataPersistenceStorageMethods = {
         if (counts.history > 300) warnings.push(`히스토리 ${counts.history}개`);
         if (counts.tickets > 200) warnings.push(`티켓 ${counts.tickets}개`);
         if (counts.pension720Tickets > 200) warnings.push(`연금복권 저장 ${counts.pension720Tickets}개`);
+        if (counts.pension720Campaigns > 60) warnings.push(`연금복권 캠페인 ${counts.pension720Campaigns}개`);
         if (counts.campaigns > 60) warnings.push(`캠페인 ${counts.campaigns}개`);
         if (counts.localUpdates > 60) warnings.push(`로컬 업데이트 ${counts.localUpdates}개`);
 

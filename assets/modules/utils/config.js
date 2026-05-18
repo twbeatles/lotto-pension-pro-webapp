@@ -11,6 +11,7 @@ export const CONFIG = {
         LOCAL_UPDATES: 'lotto_pro_updates_v2',
         PENSION720_STATS_CACHE: 'lotto_pro_pension720_stats_cache_v1',
         PENSION720_TICKETS: 'lotto_pro_pension720_tickets_v1',
+        PENSION720_CAMPAIGNS: 'lotto_pro_pension720_campaigns_v1',
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
         LEGACY_SETTINGS: 'lotto_webapp_settings_v1',
         SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state',

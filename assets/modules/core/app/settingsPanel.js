@@ -103,6 +103,7 @@ export const appSettingsMethods = {
                 `티켓 ${storageSummary.counts.tickets}`,
                 `연금복권 ${storageSummary.counts.pension720Tickets || 0}`,
                 `캠페인 ${storageSummary.counts.campaigns}`,
+                `연금캠페인 ${storageSummary.counts.pension720Campaigns || 0}`,
                 `프리셋 ${storageSummary.counts.presets}`,
                 `로컬업데이트 ${storageSummary.counts.localUpdates}`
             ].join(' · ');

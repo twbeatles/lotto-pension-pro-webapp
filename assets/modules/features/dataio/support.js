@@ -77,6 +77,7 @@ export const dataIoSupportMethods = {
                     ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
                     ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
                     ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
+                    ['캠페인', `${storageSummary.counts?.pension720Campaigns || 0}개`],
                     ['마지막 확인', pensionHealth?.updatedAt ? this.app.formatDateTime(pensionHealth.updatedAt) : '-'],
                     ['메시지', pensionHealth?.message || '-']
                 ],
@@ -110,7 +111,7 @@ export const dataIoSupportMethods = {
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        const prefix = String(options.prefix || 'lotto_pension_pro_backup_v4').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const prefix = String(options.prefix || 'lotto_pension_pro_backup_v5').replace(/[^a-zA-Z0-9_-]/g, '_');
         a.download = `${prefix}_${ts}.json`;
         document.body.appendChild(a);
         a.click();
@@ -164,6 +165,10 @@ export const dataIoSupportMethods = {
         return this.data.mergePension720Tickets([], Array.isArray(items) ? items : []);
     },
 
+    normalizePension720CampaignItems(items) {
+        return this.data.mergePension720Campaigns([], Array.isArray(items) ? items : []);
+    },
+
     normalizeLocalUpdates(items) {
         return this.data.sanitizeLocalUpdates(items);
     },
@@ -215,7 +220,40 @@ export const dataIoSupportMethods = {
         return this.data.mergePension720Tickets(existing, incoming);
     },
 
+    mergePension720Campaigns(existing, incoming) {
+        return this.data.mergePension720Campaigns(existing, incoming);
+    },
+
     pruneCampaignsWithoutTickets(campaigns = [], tickets = [], targetCampaignIds = null) {
+        const targetIds =
+            targetCampaignIds instanceof Set
+                ? targetCampaignIds
+                : new Set((targetCampaignIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const limitToTargets = targetIds.size > 0;
+        const linkedCampaignIds = new Set(
+            (tickets || []).map((ticket) => String(ticket?.campaignId || '').trim()).filter(Boolean)
+        );
+
+        const kept = [];
+        const removed = [];
+
+        (campaigns || []).forEach((campaign) => {
+            const campaignId = String(campaign?.id || '').trim();
+            const shouldValidate = !limitToTargets || targetIds.has(campaignId);
+            if (shouldValidate && (!campaignId || !linkedCampaignIds.has(campaignId))) {
+                removed.push(campaign);
+                return;
+            }
+            kept.push(campaign);
+        });
+
+        return {
+            campaigns: kept,
+            removed
+        };
+    },
+
+    prunePension720CampaignsWithoutTickets(campaigns = [], tickets = [], targetCampaignIds = null) {
         const targetIds =
             targetCampaignIds instanceof Set
                 ? targetCampaignIds
@@ -295,5 +333,6 @@ export const dataIoSupportMethods = {
         this.app.generator?.presetController?.render();
         this.app.ai?.presetController?.render();
         this.app.backtest?.presetController?.render();
+        this.app.pension720?.presetController?.render();
     }
 };

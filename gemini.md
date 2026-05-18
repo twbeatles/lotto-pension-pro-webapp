@@ -32,8 +32,8 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 
 - `번호 생성`: Lotto 6/45 generation, fixed/excluded numbers, campaigns, QR, save flows.
 - `당첨 통계`: Lotto 6/45 frequency and distribution analysis.
-- `번호 추천`: strategy-based Lotto 6/45 recommendation with analysis presets and runtime entropy.
-- `연금복권`: Pension720+ stats, recommendation, expansion group suggestions, saved-number list, copy/CSV export, latest-draw reference check.
+- `번호 추천`: Strategy-based Lotto 6/45 recommendation with analysis presets and reproducible seed.
+- `연금복권`: Pension720+ stats, dedicated recommendation strategies, presets, group/digit filters, separate campaigns, expansion group suggestions, saved-number list, copy/CSV export, latest-draw reference check.
 - `시뮬레이션`: Lotto 6/45 strategy backtest.
 - `당첨 확인`: saved Lotto 6/45 ticket comparison and QR scan flow.
 - `데이터 관리`: backup/import, saved lists, local update cleanup, storage summary.
@@ -43,11 +43,12 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - App-facing brand is `로또·연금복권 프로`.
 - Slug/package/repository-facing name is `lotto-pension-pro-webapp`.
 - Existing `lotto_pro_*` localStorage keys remain for compatibility.
-- Backup export version is v4 and includes `pension720Tickets`; default export prefix is `lotto_pension_pro_backup_v4`.
+- Backup export version is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
+- v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Import overwrite backup prefix is `lotto_pension_pro_before_replace`; data cleanup backup prefix is `lotto_pension_pro_before_cleanup`.
 - Overwrite import and cleanup must abort if the silent backup download is not confirmed.
 - Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1` and may appear as `official_cache`.
-- Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only and are not included in backup v4.
+- Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only and are not included in backup v5.
 - Pension720+ saved-ticket CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 - Dated one-off review/audit docs may be deleted locally; do not restore them unless the user asks. Keep durable decisions in the maintained docs.
 - Recommended copy must keep `번호 추천` wording and avoid legacy AI-prediction phrasing.
@@ -68,7 +69,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Advanced data connection is supported only for absolute URLs whose path contains `/proxy/latest`.
 - Pension720+ data is fetched from official `selectPstPt720WnList.do` by `scripts/fetch_pension720_stats.mjs`.
 - `npm run check:pension720:freshness` compares the checked-in Pension720+ snapshot with the official endpoint and is part of `npm run build`.
-- `DataManager` keeps `pension720Stats`, `pension720DataHealth`, and `pension720Tickets` separate from Lotto 6/45 records.
+- `DataManager` keeps `pension720Stats`, `pension720DataHealth`, `pension720Tickets`, and `pension720Campaigns` separate from Lotto 6/45 records.
 - Multi-tab persistence uses `BroadcastChannel('lotto-data-sync')` with `storage` event fallback.
 
 ## Validation Commands

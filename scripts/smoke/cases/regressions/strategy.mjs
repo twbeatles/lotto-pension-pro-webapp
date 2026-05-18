@@ -309,12 +309,36 @@ function runBackupSmoke(stats) {
         history: [{ numbers: [7, 8, 9, 10, 11, 12], date: '2026-02-28T00:00:00.000Z' }],
         ticketBook: [],
         campaigns: [],
-        pension720Tickets: [{ id: 'p720_1', group: 2, number: '060727', createdAt: '2026-02-28T00:00:00.000Z' }],
+        pension720Tickets: [
+            {
+                id: 'p720_1',
+                group: 2,
+                number: '060727',
+                targetDrawNo: 316,
+                campaignId: 'p720_campaign_1',
+                createdAt: '2026-02-28T00:00:00.000Z'
+            }
+        ],
+        pension720Campaigns: [
+            {
+                id: 'p720_campaign_1',
+                name: 'p720 smoke',
+                startDrawNo: 316,
+                weeks: 1,
+                setsPerDraw: 1,
+                createdAt: '2026-02-28T00:00:00.000Z'
+            }
+        ],
         alertPrefs: { enableInApp: true, enableSystemNotification: false, notifyOnNewResult: true },
         strategyPrefs: {
             generator: buildSmokeRequest(),
             ai: buildSmokeRequest(),
-            backtest: buildSmokeRequest()
+            backtest: buildSmokeRequest(),
+            pension720: {
+                strategyId: 'mixed_balance',
+                params: { seed: 720, lookbackWindow: 40, candidatePoolSize: 140 },
+                filters: {}
+            }
         },
         strategyPresets: [
             {
@@ -333,13 +357,15 @@ function runBackupSmoke(stats) {
         strategyPresets: state.strategyPresets
     });
 
-    assert.equal(payload.version, 4, 'backup version must be 4');
+    assert.equal(payload.version, 5, 'backup version must be 5');
     assert.ok(Array.isArray(payload.localUpdates), 'localUpdates must be array');
     assert.ok(Array.isArray(payload.strategyPresets), 'strategyPresets must be array');
     assert.ok(Array.isArray(payload.pension720Tickets), 'pension720Tickets must be array');
+    assert.ok(Array.isArray(payload.pension720Campaigns), 'pension720Campaigns must be array');
     assert.ok(payload.localUpdates.length >= 1, 'localUpdates must include at least one item');
     assert.ok(payload.strategyPresets.length >= 1, 'strategyPresets must include at least one item');
     assert.equal(payload.pension720Tickets[0]?.number, '060727', 'pension720 backup must preserve leading zeroes');
+    assert.equal(payload.pension720Campaigns[0]?.id, 'p720_campaign_1', 'pension720 campaign must be exported');
 }
 
 export {

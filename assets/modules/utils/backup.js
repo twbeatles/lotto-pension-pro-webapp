@@ -1,4 +1,7 @@
-const BACKUP_VERSION = 4;
+const BACKUP_VERSION = 5;
+const MAX_PENSION720_CAMPAIGN_WEEKS = 52;
+const MAX_PENSION720_CAMPAIGN_SETS_PER_DRAW = 20;
+const MAX_PENSION720_CAMPAIGN_TOTAL_TICKETS = 500;
 
 function toObject(value, fallback = {}) {
     return value && typeof value === 'object' ? value : fallback;
@@ -88,6 +91,7 @@ function normalizePension720Ticket(raw, index = 0) {
     if (!src) return null;
     const group = Number(src.group);
     const number = String(src.number ?? '').trim();
+    const targetDrawNo = Number(src.targetDrawNo);
     if (!Number.isInteger(group) || group < 1 || group > 5) return null;
     if (!/^\d{6}$/.test(number)) return null;
 
@@ -96,7 +100,11 @@ function normalizePension720Ticket(raw, index = 0) {
         group,
         number,
         digits: number.split('').map(Number),
-        source: ['recommendation', 'import'].includes(src.source) ? src.source : 'import',
+        source: ['recommendation', 'campaign', 'import'].includes(src.source) ? src.source : 'import',
+        targetDrawNo: Number.isFinite(targetDrawNo) && targetDrawNo >= 1 ? Math.floor(targetDrawNo) : null,
+        campaignId:
+            typeof src.campaignId === 'string' && src.campaignId.trim() ? src.campaignId.trim().slice(0, 120) : '',
+        strategyRequest: toObject(src.strategyRequest, null),
         score: Number.isFinite(Number(src.score)) ? Number(src.score) : 0,
         memo: typeof src.memo === 'string' ? src.memo.slice(0, 200) : '',
         createdAt: typeof src.createdAt === 'string' ? src.createdAt : new Date().toISOString()
@@ -108,8 +116,47 @@ function dedupePension720Tickets(items = []) {
     items.forEach((item, index) => {
         const normalized = normalizePension720Ticket(item, index);
         if (!normalized) return;
-        const key = `${normalized.group}|${normalized.number}`;
+        const key = [normalized.group, normalized.number, normalized.targetDrawNo || '-', normalized.campaignId || '-'].join(
+            '|'
+        );
         if (!map.has(key)) map.set(key, normalized);
+    });
+    return Array.from(map.values()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+function normalizePension720Campaign(raw, index = 0) {
+    const src = toObject(raw, null);
+    if (!src) return null;
+    const startDrawNo = Number(src.startDrawNo);
+    const weeks = Number(src.weeks);
+    const setsPerDraw = Number(src.setsPerDraw ?? src.setsPerWeek);
+    if (!Number.isFinite(startDrawNo) || !Number.isFinite(weeks) || !Number.isFinite(setsPerDraw)) return null;
+    const normalizedWeeks = Math.max(1, Math.floor(weeks));
+    const normalizedSetsPerDraw = Math.max(1, Math.floor(setsPerDraw));
+    if (normalizedWeeks > MAX_PENSION720_CAMPAIGN_WEEKS) return null;
+    if (normalizedSetsPerDraw > MAX_PENSION720_CAMPAIGN_SETS_PER_DRAW) return null;
+    if (normalizedWeeks * normalizedSetsPerDraw > MAX_PENSION720_CAMPAIGN_TOTAL_TICKETS) return null;
+
+    return {
+        id:
+            typeof src.id === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(src.id)
+                ? src.id
+                : `p720_campaign_import_${index}`,
+        name: typeof src.name === 'string' ? src.name.trim().slice(0, 80) : 'pension720 campaign',
+        startDrawNo: Math.max(1, Math.floor(startDrawNo)),
+        weeks: normalizedWeeks,
+        setsPerDraw: normalizedSetsPerDraw,
+        strategyRequest: toObject(src.strategyRequest, null),
+        createdAt: typeof src.createdAt === 'string' ? src.createdAt : new Date().toISOString()
+    };
+}
+
+function dedupePension720Campaigns(items = []) {
+    const map = new Map();
+    items.forEach((item, index) => {
+        const normalized = normalizePension720Campaign(item, index);
+        if (!normalized || map.has(normalized.id)) return;
+        map.set(normalized.id, normalized);
     });
     return Array.from(map.values()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
@@ -130,6 +177,7 @@ export function buildBackupPayload(state = {}, extras = {}) {
         ticketBook: toArray(safeState.ticketBook),
         campaigns: toArray(safeState.campaigns),
         pension720Tickets: dedupePension720Tickets(toArray(safeState.pension720Tickets)),
+        pension720Campaigns: dedupePension720Campaigns(toArray(safeState.pension720Campaigns)),
         alertPrefs: toObject(safeState.alertPrefs, {}),
         settings,
         localUpdates: dedupeDrawUpdates(toArray(extras.localUpdates)),
@@ -142,7 +190,7 @@ export function normalizeBackupPayload(raw) {
     if (!source) return null;
 
     const version = Number(source.version || 1);
-    if (![1, 2, 3, 4].includes(version)) return null;
+    if (![1, 2, 3, 4, 5].includes(version)) return null;
 
     const settings = toObject(source.settings, {});
     return {
@@ -152,6 +200,7 @@ export function normalizeBackupPayload(raw) {
         ticketBook: version >= 2 ? toArray(source.ticketBook) : [],
         campaigns: version >= 2 ? toArray(source.campaigns) : [],
         pension720Tickets: version >= 4 ? dedupePension720Tickets(toArray(source.pension720Tickets)) : [],
+        pension720Campaigns: version >= 5 ? dedupePension720Campaigns(toArray(source.pension720Campaigns)) : [],
         alertPrefs: version >= 2 ? toObject(source.alertPrefs, {}) : {},
         settings: {
             theme: settings.theme,

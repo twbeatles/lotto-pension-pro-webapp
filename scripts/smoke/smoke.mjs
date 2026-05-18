@@ -54,7 +54,7 @@ async function main() {
     console.log(
         `[PASS] backtest-smoke: tickets=${backtest.tickets}, wins=${backtest.wins}, prize=${backtest.totalPrize}`
     );
-    console.log('[PASS] backup-v4 schema');
+    console.log('[PASS] backup-v5 schema');
     regressionExecutionPlan.forEach(({ label }) => {
         console.log(`[PASS] ${label}`);
     });

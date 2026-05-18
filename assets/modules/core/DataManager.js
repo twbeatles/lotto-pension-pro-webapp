@@ -17,6 +17,7 @@ export class DataManager {
             staticLatestDrawNo: 0,
             pension720Stats: [],
             pension720Tickets: [],
+            pension720Campaigns: [],
             pension720Results: [],
             generated: [],
             customProxy: '',
@@ -40,7 +41,8 @@ export class DataManager {
             alerts: false,
             presets: false,
             syncMeta: false,
-            pension720Tickets: false
+            pension720Tickets: false,
+            pension720Campaigns: false
         };
         this._lastStorageWriteFailures = new Map();
         this.pension720DataHealth = this.getDefaultPension720DataHealth();

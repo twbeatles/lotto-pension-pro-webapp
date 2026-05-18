@@ -200,16 +200,24 @@ const regressionExecutionPlan = [
         label: 'pension720 recommendation regression'
     },
     {
+        name: 'runPension720AdvancedRecommendationRegression',
+        label: 'pension720 advanced recommendation regression'
+    },
+    {
         name: 'runPension720TicketDedupeRegression',
         label: 'pension720 ticket dedupe regression'
+    },
+    {
+        name: 'runPension720CampaignRegression',
+        label: 'pension720 campaign regression'
     },
     {
         name: 'runPension720TicketCapRegression',
         label: 'pension720 ticket cap regression'
     },
     {
-        name: 'runPension720BackupV4Regression',
-        label: 'pension720 backup-v4 regression'
+        name: 'runPension720BackupV5Regression',
+        label: 'pension720 backup-v5 regression'
     },
     {
         name: 'runPension720BackupFixtureRegression',

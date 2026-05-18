@@ -31,16 +31,18 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Feature modules live under `assets/modules/features/`.
 - Lotto 6/45 recommendation logic remains under the existing strategy stack.
 - Pension720+ logic is split across:
+    - `assets/modules/core/Pension720StrategyCatalog.js`
     - `assets/modules/core/Pension720Engine.js`
     - `assets/modules/core/data/pension720.js`
     - `assets/modules/features/Pension720.js`
 - Storage keys under `CONFIG.KEYS` intentionally keep existing `lotto_pro_*` names for user data compatibility.
 - Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1`.
 - Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only.
-- Backup schema is v4 and includes `pension720Tickets`; default export prefix is `lotto_pension_pro_backup_v4`.
+- Backup schema is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
+- v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Overwrite imports create a silent pre-replace backup with prefix `lotto_pension_pro_before_replace`; data cleanup uses `lotto_pension_pro_before_cleanup`.
 - Destructive overwrite/cleanup flows abort if the silent backup download is not confirmed.
-- Pension720+ saved tickets support copy, CSV export, and latest-draw reference checking.
+- Pension720+ recommendation supports dedicated strategies, presets, group/digit filters, saved tickets, separate campaigns, copy, CSV export, and latest-draw reference checking.
 - Pension720+ CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 
 ## Product/Copy Contract

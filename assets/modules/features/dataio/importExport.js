@@ -14,6 +14,7 @@ function countStoredItems({
     ticketTotal = 0,
     campaigns = [],
     pension720Tickets = [],
+    pension720Campaigns = [],
     localUpdates = [],
     presets = []
 }) {
@@ -23,6 +24,7 @@ function countStoredItems({
         ticketTotal +
         campaigns.length +
         pension720Tickets.length +
+        pension720Campaigns.length +
         localUpdates.length +
         presets.length
     );
@@ -40,6 +42,7 @@ export const dataIoImportMethods = {
             tickets: this.normalizeTicketItems(normalized.ticketBook),
             campaigns: this.normalizeCampaignItems(normalized.campaigns),
             pension720Tickets: this.normalizePension720TicketItems(normalized.pension720Tickets),
+            pension720Campaigns: this.normalizePension720CampaignItems(normalized.pension720Campaigns),
             alertPrefs: this.data.mergeAlertPrefs(normalized.alertPrefs || {}),
             localUpdates: incomingLocalUpdateResult.items,
             futureDropped: incomingLocalUpdateResult.droppedFuture,
@@ -58,6 +61,7 @@ export const dataIoImportMethods = {
             ticketTotal: this.data.getTotalTicketCount(),
             campaigns: current.campaigns?.length || 0,
             pension720Tickets: current.pension720Tickets?.length || 0,
+            pension720Campaigns: current.pension720Campaigns?.length || 0,
             localUpdates: this.data.getLocalUpdates().length,
             presets: current.strategyPresets?.length || 0
         };
@@ -67,6 +71,7 @@ export const dataIoImportMethods = {
             ticketTotal: incomingTicketTotal,
             campaigns: incoming.campaigns,
             pension720Tickets: incoming.pension720Tickets,
+            pension720Campaigns: incoming.pension720Campaigns,
             localUpdates: incoming.localUpdates,
             presets: incoming.strategyPresets
         });
@@ -77,6 +82,12 @@ export const dataIoImportMethods = {
             );
             const incomingCampaignIds = new Set(
                 incoming.campaigns.map((item) => String(item?.id || '').trim()).filter(Boolean)
+            );
+            const beforePension720CampaignIds = new Set(
+                (current.pension720Campaigns || []).map((item) => String(item?.id || '').trim()).filter(Boolean)
+            );
+            const incomingPension720CampaignIds = new Set(
+                incoming.pension720Campaigns.map((item) => String(item?.id || '').trim()).filter(Boolean)
             );
             const nextFavorites = this.mergeByNumbers(
                 safeClone(current.favorites || []),
@@ -89,6 +100,15 @@ export const dataIoImportMethods = {
             const nextPension720Tickets = this.mergePension720Tickets(
                 safeClone(current.pension720Tickets || []),
                 safeClone(incoming.pension720Tickets)
+            );
+            const rawPension720Campaigns = this.mergePension720Campaigns(
+                safeClone(current.pension720Campaigns || []),
+                safeClone(incoming.pension720Campaigns)
+            );
+            const pension720CampaignCleanup = this.prunePension720CampaignsWithoutTickets(
+                rawPension720Campaigns,
+                nextPension720Tickets,
+                incomingPension720CampaignIds
             );
             const mergedLocalUpdates = this.mergeLocalUpdates(
                 safeClone(this.data.getLocalUpdates({ warningMode: 'manual' })),
@@ -103,6 +123,10 @@ export const dataIoImportMethods = {
                 const campaignId = String(item?.id || '').trim();
                 return campaignId && !beforeCampaignIds.has(campaignId);
             }).length;
+            const newPension720Campaigns = pension720CampaignCleanup.campaigns.filter((item) => {
+                const campaignId = String(item?.id || '').trim();
+                return campaignId && !beforePension720CampaignIds.has(campaignId);
+            }).length;
             const added =
                 nextFavorites.length -
                 before.favorites +
@@ -110,9 +134,10 @@ export const dataIoImportMethods = {
                 (this.data.getTotalTicketCount(nextTickets) - before.ticketTotal) +
                 newCampaigns +
                 (nextPension720Tickets.length - before.pension720Tickets) +
+                newPension720Campaigns +
                 (localUpdateResult.items.length - before.localUpdates) +
                 (nextPresets.length - before.presets);
-            const cleaned = campaignCleanup.removed.length;
+            const cleaned = campaignCleanup.removed.length + pension720CampaignCleanup.removed.length;
             const skipped = cleaned;
             const duplicate = Math.max(incomingTotal - added - skipped, 0);
 
@@ -135,6 +160,7 @@ export const dataIoImportMethods = {
                     tickets: nextTickets,
                     campaigns: campaignCleanup.campaigns,
                     pension720Tickets: nextPension720Tickets,
+                    pension720Campaigns: pension720CampaignCleanup.campaigns,
                     localUpdates: localUpdateResult.items,
                     strategyPresets: nextPresets,
                     alertPrefs: importOptions.applyAlerts
@@ -160,16 +186,21 @@ export const dataIoImportMethods = {
             safeClone(incoming.campaigns),
             safeClone(incoming.tickets)
         );
+        const pension720CampaignCleanup = this.prunePension720CampaignsWithoutTickets(
+            safeClone(incoming.pension720Campaigns),
+            safeClone(incoming.pension720Tickets)
+        );
         const added = countStoredItems({
             favorites: incoming.favorites,
             history: incoming.history,
             ticketTotal: incomingTicketTotal,
             campaigns: campaignCleanup.campaigns,
             pension720Tickets: incoming.pension720Tickets,
+            pension720Campaigns: pension720CampaignCleanup.campaigns,
             localUpdates: incoming.localUpdates,
             presets: incoming.strategyPresets
         });
-        const cleaned = campaignCleanup.removed.length;
+        const cleaned = campaignCleanup.removed.length + pension720CampaignCleanup.removed.length;
 
         return {
             mode: 'overwrite',
@@ -190,6 +221,7 @@ export const dataIoImportMethods = {
                 tickets: incoming.tickets,
                 campaigns: campaignCleanup.campaigns,
                 pension720Tickets: incoming.pension720Tickets,
+                pension720Campaigns: pension720CampaignCleanup.campaigns,
                 localUpdates: incoming.localUpdates,
                 strategyPresets: incoming.strategyPresets,
                 alertPrefs: importOptions.applyAlerts ? incoming.alertPrefs : current.alertPrefs,
@@ -214,6 +246,7 @@ export const dataIoImportMethods = {
             `건너뜀: ${prepared.preview.skipped}건`,
             `정리될 캠페인: ${prepared.preview.cleaned}개`,
             `예상 연금복권 저장 수: ${prepared.next.pension720Tickets?.length || 0}개`,
+            `예상 연금복권 캠페인: ${prepared.next.pension720Campaigns?.length || 0}개`,
             `적용될 설정: ${applied}`,
             `미래 회차 제외: ${prepared.preview.futureDropped}건`,
             `예상 내 번호 수: ${prepared.preview.projectedTicketTotal}개`,
@@ -239,6 +272,7 @@ export const dataIoImportMethods = {
         this.data.state.ticketBook = next.tickets;
         this.data.state.campaigns = next.campaigns;
         this.data.state.pension720Tickets = next.pension720Tickets;
+        this.data.state.pension720Campaigns = next.pension720Campaigns;
         this.data.state.strategyPresets = next.strategyPresets;
         this.data.state.alertPrefs = next.alertPrefs;
         this.data.state.theme = next.theme;

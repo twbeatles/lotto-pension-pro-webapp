@@ -33,7 +33,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - `번호 생성`: Lotto 6/45 generation, fixed/excluded numbers, campaigns, QR, save flows.
 - `당첨 통계`: Lotto 6/45 frequency and distribution analysis.
 - `번호 추천`: Strategy-based Lotto 6/45 recommendation with analysis presets and reproducible seed.
-- `연금복권`: Pension720+ stats, dedicated recommendation strategies, presets, group/digit filters, separate campaigns, expansion group suggestions, saved-number list, copy/CSV export, latest-draw reference check.
+- `연금복권`: Pension720+ stats, dedicated recommendation strategies, presets, group/digit filters, separate campaigns, expansion group suggestions, saved-number list, copy/CSV export, target-draw-aware check with latest-draw reference fallback.
 - `시뮬레이션`: Lotto 6/45 strategy backtest.
 - `당첨 확인`: saved Lotto 6/45 ticket comparison and QR scan flow.
 - `데이터 관리`: backup/import, saved lists, local update cleanup, storage summary.
@@ -46,10 +46,12 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Backup export version is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
 - v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Import overwrite backup prefix is `lotto_pension_pro_before_replace`; data cleanup backup prefix is `lotto_pension_pro_before_cleanup`.
-- Overwrite import and cleanup must abort if the silent backup download is not confirmed.
+- Overwrite import and cleanup trigger a backup download and then require explicit user confirmation before continuing.
 - Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1` and may appear as `official_cache`.
 - Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only and are not included in backup v5.
 - Pension720+ saved-ticket CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
+- CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
+- Strategy worker asset query version is `v21`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 - Dated one-off review/audit docs may be deleted locally; do not restore them unless the user asks. Keep durable decisions in the maintained docs.
 - Recommended copy must keep `번호 추천` wording and avoid legacy AI-prediction phrasing.
 
@@ -59,6 +61,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - `npm run check:data-freshness` allows one draw behind for normal development builds.
 - `npm run check:data-freshness:strict` and `npm run build:release` require zero missing draws for release.
 - localStorage write failures keep dirty state and surface in storage health.
+- Destructive overwrite/cleanup starts the JSON backup download and then requires user confirmation before replacing or cleaning stored data.
 - Service worker precache failures are exposed through `__cache-health.json`; install proceeds and the app shows a warning state.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path.
 - `.gitignore` excludes local browser/test artifacts such as `output/`, Playwright reports, test results, app backup downloads, and local traces.
@@ -99,6 +102,8 @@ npm run test:sync-live
 npm run bench:ai
 npm run bench:ai:full
 ```
+
+`npm run test:happy` includes Pension720+ recommendation, save, expansion save, campaign, target-aware check, and CSV download coverage.
 
 ## Deployment Notes
 

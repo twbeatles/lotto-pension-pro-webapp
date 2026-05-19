@@ -105,7 +105,7 @@ export const appDataListEventMethods = {
             if (!confirmed) return;
 
             const dataIo = await this.ensureModule?.('dataIO');
-            const backup = dataIo?.ensureBackupBeforeDestructive?.({
+            const backup = await dataIo?.ensureBackupBeforeDestructive?.({
                 prefix: 'lotto_pension_pro_before_cleanup',
                 errorMessage: '백업 파일 다운로드를 확인할 수 없어 데이터 정리를 중단했습니다.'
             });

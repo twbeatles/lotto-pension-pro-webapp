@@ -94,6 +94,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/utils/analysisPresets.js",
         "./assets/modules/utils/backup.js",
         "./assets/modules/utils/config.js",
+        "./assets/modules/utils/csv.js",
         "./assets/modules/utils/dom.js",
         "./assets/modules/utils/loader.js",
         "./assets/modules/utils/perf.js",

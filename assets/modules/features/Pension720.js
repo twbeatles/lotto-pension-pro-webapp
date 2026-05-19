@@ -8,6 +8,7 @@ import {
 import { UIManager } from '../core/UIManager.js';
 import { StrategyPresetController } from '../utils/strategyPresets.js';
 import { CONFIG } from '../utils/config.js';
+import { buildCsvLine } from '../utils/csv.js';
 
 const PENSION720_ANALYSIS_PRESETS = {
     fast: {
@@ -67,9 +68,14 @@ function getCheckSortValue(result) {
     return result.rank ? Number(result.rank) : 99;
 }
 
-function escapeCsvCell(value = '') {
-    const text = String(value ?? '');
-    return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+function getTargetAwareCheckSortValue(item) {
+    const statusOrder = {
+        target: 0,
+        reference: 20,
+        pending: 40,
+        missing: 45
+    };
+    return (statusOrder[item?.status] ?? 50) + getCheckSortValue(item?.result);
 }
 
 function getAnalysisPresetLabelFromRequest(request = {}) {
@@ -611,7 +617,11 @@ export class Pension720Module {
             const head = makeEl('div', 'p720-card-head');
             head.appendChild(makeEl('span', 'rank-badge', `#${index + 1}`));
             head.appendChild(
-                makeEl('span', 'badge', `${item.strategyLabel || strategyLabel} · ${analysisLabel} · 점수 ${Number(item.score || 0).toFixed(1)}`)
+                makeEl(
+                    'span',
+                    'badge',
+                    `${item.strategyLabel || strategyLabel} · ${analysisLabel} · 점수 ${Number(item.score || 0).toFixed(1)}`
+                )
             );
             card.appendChild(head);
 
@@ -706,7 +716,10 @@ export class Pension720Module {
             return false;
         }
 
-        const startDrawNo = Math.max(1, Math.floor(this.readNumberInput('pension720CampaignStartDraw', this.getSuggestedNextDrawNo())));
+        const startDrawNo = Math.max(
+            1,
+            Math.floor(this.readNumberInput('pension720CampaignStartDraw', this.getSuggestedNextDrawNo()))
+        );
         const weeks = Math.max(1, Math.floor(this.readNumberInput('pension720CampaignWeeks', 4)));
         const setsPerDraw = Math.max(1, Math.floor(this.readNumberInput('pension720CampaignSetsPerDraw', 3)));
         const totalRequested = weeks * setsPerDraw;
@@ -936,7 +949,7 @@ export class Pension720Module {
         }
         const header = ['group', 'number', 'targetDrawNo', 'campaignId', 'source', 'score', 'memo', 'createdAt'];
         const rows = tickets.map((ticket) =>
-            [
+            buildCsvLine([
                 ticket.group,
                 ticket.number,
                 ticket.targetDrawNo || '',
@@ -945,11 +958,9 @@ export class Pension720Module {
                 ticket.score || 0,
                 ticket.memo || '',
                 ticket.createdAt
-            ]
-                .map(escapeCsvCell)
-                .join(',')
+            ])
         );
-        const csv = `${header.join(',')}\n${rows.join('\n')}\n`;
+        const csv = `${buildCsvLine(header, { protectFormula: false })}\n${rows.join('\n')}\n`;
         if (
             typeof document === 'undefined' ||
             typeof Blob === 'undefined' ||
@@ -976,7 +987,9 @@ export class Pension720Module {
         const output = $('#pension720CheckOutput');
         if (force) clearElement(output);
         if (!output || output.childElementCount) return;
-        output.appendChild(makeEl('p', 'empty-state', '저장 번호가 있으면 최신 회차 기준으로 확인할 수 있습니다.'));
+        output.appendChild(
+            makeEl('p', 'empty-state', '저장 번호가 있으면 대상 회차 우선, 대상이 없으면 최신 회차 참고로 확인합니다.')
+        );
     }
 
     async runLatestCheck() {
@@ -994,12 +1007,9 @@ export class Pension720Module {
             return;
         }
         const results = tickets
-            .map((ticket) => ({
-                ticket,
-                result: this.data.evaluatePension720Ticket(ticket, latest)
-            }))
-            .filter((item) => item.result)
-            .sort((a, b) => getCheckSortValue(a.result) - getCheckSortValue(b.result));
+            .map((ticket) => this.data.resolvePension720TicketCheck(ticket, { latest }))
+            .filter(Boolean)
+            .sort((a, b) => getTargetAwareCheckSortValue(a) - getTargetAwareCheckSortValue(b));
         this.renderCheckResults(latest, results);
     }
 
@@ -1009,27 +1019,51 @@ export class Pension720Module {
         if (!output) return;
 
         const summary = makeEl('div', 'p720-check-summary');
-        summary.appendChild(makeEl('strong', '', `${latest.draw_no}회 · ${formatDate(latest.date)}`));
-        summary.appendChild(makeEl('span', '', `1등 ${latest.group}조 ${latest.number} / 보너스 ${latest.bonus_number}`));
+        summary.appendChild(makeEl('strong', '', `최신 데이터 ${latest.draw_no}회 · ${formatDate(latest.date)}`));
+        summary.appendChild(
+            makeEl(
+                'span',
+                '',
+                `대상 회차가 있는 번호는 해당 회차 우선 확인 · 최신 1등 ${latest.group}조 ${latest.number} / 보너스 ${latest.bonus_number}`
+            )
+        );
         output.appendChild(summary);
 
-        results.forEach(({ ticket, result }) => {
+        results.forEach(({ ticket, result, status, statusLabel, drawNo }) => {
             const row = makeEl('div', 'p720-check-row');
             const main = makeEl('div', 'p720-saved-main');
             appendDigitBalls(main, ticket.number, { group: ticket.group });
+            const basis =
+                status === 'target'
+                    ? `${drawNo}회 대상 회차`
+                    : status === 'pending'
+                      ? `${drawNo}회 대기`
+                      : status === 'missing'
+                        ? `${drawNo}회 데이터 없음`
+                        : `${drawNo}회 최신 참고 비교`;
             main.appendChild(
                 makeEl(
                     'span',
                     'result-meta',
-                    result.matchType === 'bonus'
-                        ? '보너스 번호 일치'
-                        : `끝자리 ${result.trailingMatches}개 일치`
+                    result
+                        ? `${basis} · ${
+                              result.matchType === 'bonus'
+                                  ? '보너스 번호 일치'
+                                  : `끝자리 ${result.trailingMatches}개 일치`
+                          }`
+                        : basis
                 )
             );
             row.appendChild(main);
-            const badge = makeEl('span', `badge ${result.rank ? 'ok' : 'no'}`, result.label);
+            const badgeClass =
+                status === 'pending'
+                    ? 'badge status-badge is-warn'
+                    : result?.rank
+                      ? 'badge status-badge is-good'
+                      : 'badge status-badge is-bad';
+            const badge = makeEl('span', badgeClass, result?.label || statusLabel);
             row.appendChild(badge);
-            row.appendChild(makeEl('span', 'p720-check-prize', result.prizeLabel));
+            row.appendChild(makeEl('span', 'p720-check-prize', result?.prizeLabel || '-'));
             output.appendChild(row);
         });
     }

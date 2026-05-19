@@ -41,9 +41,11 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Backup schema is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
 - v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Overwrite imports create a silent pre-replace backup with prefix `lotto_pension_pro_before_replace`; data cleanup uses `lotto_pension_pro_before_cleanup`.
-- Destructive overwrite/cleanup flows abort if the silent backup download is not confirmed.
-- Pension720+ recommendation supports dedicated strategies, presets, group/digit filters, saved tickets, separate campaigns, copy, CSV export, and latest-draw reference checking.
+- Destructive overwrite/cleanup flows trigger a backup download and then require explicit user confirmation before continuing.
+- Pension720+ recommendation supports dedicated strategies, presets, group/digit filters, saved tickets, separate campaigns, copy, CSV export, and target-draw-aware checking with latest-draw reference fallback.
 - Pension720+ CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
+- CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
+- Strategy worker asset query version is `v21`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 
 ## Product/Copy Contract
 
@@ -65,7 +67,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Lotto static data can be refreshed with `npm run sync:lotto`.
 - Normal freshness check allows one missing draw; strict release freshness requires zero missing draws.
 - localStorage write failures keep dirty state and are surfaced in storage health.
-- Destructive import overwrite and cleanup require confirmed silent backup download.
+- Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
 - Pension720+ official data is cached when it is at least as fresh as static data, and `official_cache` is shown as a distinct source.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path instead of being hard-coded.
@@ -109,6 +111,8 @@ npm run test:offline
 npm run test:pwa-mobile
 npm run test:sync-live
 ```
+
+`npm run test:happy` includes the Pension720+ browser path: recommendation, individual save, expansion save, campaign creation, target-aware check, and CSV download validation.
 
 Operational scripts:
 

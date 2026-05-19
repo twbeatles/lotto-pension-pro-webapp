@@ -73,7 +73,12 @@ export const dataIoSupportMethods = {
             makeCard(
                 '연금복권720+',
                 [
-                    ['source', this.data.getPension720DataHealthSourceLabel?.(pensionHealth?.source) || pensionHealth?.source || '-'],
+                    [
+                        'source',
+                        this.data.getPension720DataHealthSourceLabel?.(pensionHealth?.source) ||
+                            pensionHealth?.source ||
+                            '-'
+                    ],
                     ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
                     ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
                     ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
@@ -125,12 +130,25 @@ export const dataIoSupportMethods = {
         };
     },
 
-    ensureBackupBeforeDestructive(options = {}) {
+    async ensureBackupBeforeDestructive(options = {}) {
         const result = this.exportAll({
             silent: true,
             prefix: options.prefix || 'lotto_pension_pro_before_change'
         });
-        if (result?.downloaded) return result;
+        if (result?.downloaded) {
+            const confirmed = await UIManager.confirm({
+                title: options.confirmTitle || '백업 파일 확인',
+                message:
+                    options.confirmMessage ||
+                    `백업 다운로드를 시작했습니다${result.filename ? `: ${result.filename}` : ''}.\n` +
+                        '브라우저 다운로드 목록에서 백업 파일이 저장된 것을 확인한 뒤 계속 진행하세요.',
+                confirmText: options.confirmText || '백업 확인 후 진행',
+                cancelText: options.cancelText || '중단'
+            });
+            if (confirmed) return result;
+            UIManager.toast(options.cancelMessage || '백업 확인이 취소되어 작업을 중단했습니다.', 'info', 3500);
+            return null;
+        }
         UIManager.toast(
             options.errorMessage || '백업 파일 다운로드를 확인할 수 없어 작업을 중단했습니다.',
             'error',

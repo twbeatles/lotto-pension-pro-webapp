@@ -134,7 +134,9 @@ export const strategyGenerationMethods = {
     },
 
     generateMultipleSets(count, request, options = {}) {
-        const qty = Math.max(1, Math.floor(Number(count) || 1));
+        const requestedQty = Math.max(1, Math.floor(Number(count) || 1));
+        const maxCount = Math.floor(Number(options.maxCount || 0));
+        const qty = maxCount > 0 ? Math.min(requestedQty, maxCount) : requestedQty;
         const unique = new Set();
         const result = [];
 

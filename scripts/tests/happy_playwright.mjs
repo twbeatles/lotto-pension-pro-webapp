@@ -1,5 +1,6 @@
 /* global window, document */
 
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
@@ -184,16 +185,72 @@ async function runImportFlow(page) {
     });
 }
 
+async function runPension720Flow(page) {
+    await routeTo(page, 'pension720');
+    await page.evaluate(() => {
+        const count = document.querySelector('#pension720RecommendCount');
+        const seed = document.querySelector('#pension720Seed');
+        if (count) count.value = '1';
+        if (seed) seed.value = '20260519';
+    });
+
+    await page.click('#pension720RecommendBtn');
+    await page.waitForSelector('#pension720Output [data-p720-action="save"]', { timeout: 30000 });
+    await page.click('#pension720Output [data-p720-action="save"]');
+    await page.waitForFunction(() => (window.app.data.state.pension720Tickets || []).length >= 1);
+
+    await page.click('#pension720Output [data-p720-action="save-expansion"]');
+    await page.waitForFunction(() => (window.app.data.state.pension720Tickets || []).length >= 2);
+
+    await page.evaluate(() => {
+        const latestDrawNo = Number(window.app.data.state.pension720Stats?.[0]?.draw_no || 0);
+        const startDraw = document.querySelector('#pension720CampaignStartDraw');
+        const weeks = document.querySelector('#pension720CampaignWeeks');
+        const sets = document.querySelector('#pension720CampaignSetsPerDraw');
+        if (startDraw) startDraw.value = String(latestDrawNo + 1);
+        if (weeks) weeks.value = '1';
+        if (sets) sets.value = '1';
+    });
+    await page.click('#pension720CampaignBtn');
+    await page.waitForFunction(() => {
+        return (
+            (window.app.data.state.pension720Campaigns || []).length >= 1 &&
+            (window.app.data.state.pension720Tickets || []).some((ticket) => ticket.campaignId)
+        );
+    });
+
+    await page.click('#pension720CheckLatestBtn');
+    await page.waitForFunction(() => {
+        const text = document.querySelector('#pension720CheckOutput')?.textContent || '';
+        return text.includes('참고 비교') && text.includes('대기');
+    });
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.click('#pension720ExportCsvBtn');
+    const download = await downloadPromise;
+    const suggestedFilename = download.suggestedFilename();
+    assert.match(
+        suggestedFilename,
+        /^lotto_pension_pro_pension720_tickets_/,
+        'pension720 CSV download filename must use the expected prefix'
+    );
+    const downloadedPath = await download.path();
+    const csv = await fs.readFile(downloadedPath, 'utf8');
+    assert.match(csv, /group,number,targetDrawNo/, 'pension720 CSV download must include the expected header');
+    assert.match(csv, /\d,\d{6}/, 'pension720 CSV download must include saved ticket rows');
+}
+
 async function main() {
     const server = await createStaticServer();
     const browser = await launchBrowser();
 
     try {
-        const context = await browser.newContext();
+        const context = await browser.newContext({ acceptDownloads: true });
         const page = await createReadyPage(context, server.origin);
         await runGenerateTicketCheckFlow(page);
         await runAiPickFlow(page);
         await runImportFlow(page);
+        await runPension720Flow(page);
         await context.close();
         console.log(
             JSON.stringify(
@@ -202,7 +259,8 @@ async function main() {
                     scenarios: [
                         'generate -> ticket -> check',
                         'recommendation -> generator import',
-                        'backup import merge'
+                        'backup import merge',
+                        'pension720 recommend -> save -> campaign -> check -> csv'
                     ]
                 },
                 null,

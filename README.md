@@ -9,7 +9,7 @@
 
 ## 현재 기준
 
-2026-05-17 기준 문서와 정적 데이터 기준입니다.
+2026-05-19 기준 문서와 정적 데이터 기준입니다.
 
 - Lotto 6/45 static data: `data/winning_stats.json`
     - latest draw: `1224`
@@ -28,7 +28,7 @@
 2. **번호 추천:** `번호 추천` 탭에서 추천 방식을 고르고 `추천 시작`을 누릅니다. 분석 강도는 처음이면 `기본`을 권장합니다.
 3. **연금복권:** `연금복권` 탭에서 전용 전략, 조/자리 필터, 캠페인 옵션을 고르고 연금복권720+ 추천 번호를 만듭니다.
 4. **저장:** 로또 6/45는 `내 번호 보관함`, 연금복권720+는 `저장한 연금복권 번호` 목록에 저장합니다.
-5. **당첨 확인:** 저장한 로또 6/45 번호는 `당첨 확인`, 저장한 연금복권720+ 번호는 `연금복권` 탭에서 최신 결과와 비교합니다.
+5. **당첨 확인:** 저장한 로또 6/45 번호는 `당첨 확인`, 저장한 연금복권720+ 번호는 `연금복권` 탭에서 대상 회차 우선 또는 최신 참고 결과로 비교합니다.
 6. **백업:** `데이터 관리`의 `전체 데이터 내보내기`로 저장 데이터를 백업합니다.
 
 ## 주요 기능
@@ -49,7 +49,7 @@
     - 조 선택, 자리 고정/제외, 숫자 합계, 홀수/고숫자, 고유 숫자, 반복 제한 필터
     - 전략 프리셋 저장/불러오기와 시작 회차 기준 다회차 캠페인 생성
     - 같은 6자리의 확장 조 제안, 개별 저장, 확장 조 일괄 저장
-    - 저장 번호 복사, CSV 내보내기, 최신 회차 기준 간단 당첨 확인
+    - 저장 번호 복사, CSV 내보내기, target 회차 우선 확인과 최신 회차 참고 비교
 - 당첨 확인:
     - 저장된 로또 6/45 번호를 최신 당첨 데이터와 비교
     - 검색, 상태 필터, 키보드 이동, QR 스캔 흐름 지원
@@ -72,13 +72,15 @@
 - v4 이하 백업은 계속 가져올 수 있으며, v4의 연금복권 저장 번호는 손실 없이 유지됩니다.
 - 기본 백업 파일명 prefix는 `lotto_pension_pro_backup_v5`입니다.
 - overwrite import 전 자동 백업 prefix는 `lotto_pension_pro_before_replace`, cleanup 전 자동 백업 prefix는 `lotto_pension_pro_before_cleanup`입니다.
-- overwrite import와 cleanup은 자동 백업 다운로드 성공이 확인되지 않으면 중단합니다.
+- overwrite import와 cleanup은 자동 백업 다운로드를 시작한 뒤, 사용자가 백업 파일 저장을 확인해야 진행합니다.
 - 연금복권720+ 저장 번호 CSV 파일명은 `lotto_pension_pro_pension720_tickets_<timestamp>.csv` 형식입니다.
+- 연금복권720+와 시뮬레이션 CSV는 spreadsheet formula로 실행될 수 있는 `=`, `+`, `-`, `@` prefix를 안전하게 escape합니다.
 - generated/AI/Pension720 임시 결과는 `lotto_pro_temp_results_state` sessionStorage에만 저장합니다. 이 데이터는 backup v5나 localStorage 영구 저장 대상에 포함하지 않습니다.
 
 ## PWA와 릴리스 정책
 
 - `sw.js` cache version은 `v26`입니다.
+- `strategy.worker.js`는 service worker cache와 별도로 `STRATEGY_WORKER_ASSET_VERSION` query를 사용하며, 현재 값은 `v21`입니다. worker 실행 계약이 바뀌면 이 값을 함께 올립니다.
 - install precache에는 app shell과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - precache 실패 URL은 service worker가 `__cache-health.json` marker로 기록합니다. 설치는 계속 허용하고, 앱 설정/상태 화면에서 정상/주의 상태와 실패 개수를 표시합니다.
 - 일반 `npm run build`는 Lotto static data가 예상 최신 회차보다 1회차 뒤처지는 상황까지 허용합니다.
@@ -122,6 +124,7 @@ npm run test:pwa-mobile
 ```
 
 `test:browser`는 happy path, offline, PWA mobile 검증을 순서대로 실행하는 aggregate 명령입니다.
+현재 happy path에는 로또 생성/확인, 번호 추천 반영, 백업 merge, Pension720+ 추천/저장/캠페인/확인/CSV 다운로드 플로우가 포함됩니다.
 
 선택 검증:
 
@@ -168,3 +171,4 @@ lotto-pension-pro-webapp/
 - 배포 전 기준 명령은 `npm run build:release`입니다.
 - 브라우저 릴리스 체크에는 happy path, offline, PWA mobile 검증을 포함합니다.
 - 유지 문서는 `README.md`, `claude.md`, `gemini.md`, `deploy_github_pages.md`, `proxy/README.md`입니다. 일회성 리뷰/감사 문서는 삭제될 수 있으며, 삭제된 문서는 사용자가 명시적으로 요청하지 않는 한 복원하지 않습니다.
+- `FUNCTIONAL_IMPLEMENTATION_RISK_REVIEW_2026-05-19.md`는 이번 hardening 항목의 구현 결과와 검증 명령을 기록한 현재 repo-local 감사 문서입니다.

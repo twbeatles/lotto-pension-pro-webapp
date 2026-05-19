@@ -12,6 +12,7 @@ import { LottoApp } from '../../../../assets/modules/core/LottoApp.js';
 import { UIManager } from '../../../../assets/modules/core/UIManager.js';
 import { DataIOModule, runPostImportRefresh } from '../../../../assets/modules/features/DataIO.js';
 import { GeneratorModule } from '../../../../assets/modules/features/Generator.js';
+import { Pension720Module } from '../../../../assets/modules/features/Pension720.js';
 import { CheckModule } from '../../../../assets/modules/features/Check.js';
 import { buildBackupPayload, normalizeBackupPayload } from '../../../../assets/modules/utils/backup.js';
 import { passesFilters } from '../../../../assets/modules/core/StrategyFilters.js';
@@ -38,6 +39,7 @@ export {
     LottoApp,
     normalizeBackupPayload,
     passesFilters,
+    Pension720Module,
     Pension720Engine,
     QrScannerModule,
     readFile,

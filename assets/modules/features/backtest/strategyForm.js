@@ -3,6 +3,7 @@ import { UIManager } from '../../core/UIManager.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 import { listStrategies, resolveStrategyId } from '../../core/StrategyCatalog.js';
 import { syncAnalysisPresetSelect } from '../../utils/analysisPresets.js';
+import { buildCsvLine } from '../../utils/csv.js';
 
 export const backtestStrategyFormMethods = {
     readPayoutMode() {
@@ -176,10 +177,10 @@ export const backtestStrategyFormMethods = {
             'total_prize',
             'win_count'
         ];
-        const lines = [header.join(',')];
+        const lines = [buildCsvLine(header, { protectFormula: false })];
         this.lastComparisons.forEach((x) => {
             lines.push(
-                [
+                buildCsvLine([
                     x.strategyId || '',
                     this.getStrategyLabel(x.strategyId),
                     Number(x.roi || 0).toFixed(4),
@@ -189,7 +190,7 @@ export const backtestStrategyFormMethods = {
                     Number(x.cost || 0),
                     Number(x.totalPrize || 0),
                     Number(x.winCount || 0)
-                ].join(',')
+                ])
             );
         });
 

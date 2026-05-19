@@ -6,6 +6,12 @@ import { createRuntimeRng, withRuntimeSeed } from '../../core/strategy/runtimeEn
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
 
+function clampGeneratorSetCount(value, fallback = 5) {
+    const number = Number(value);
+    const next = Math.floor(Number.isFinite(number) ? number : fallback);
+    return Math.min(CONFIG.LIMITS.MAX_SET, Math.max(1, next));
+}
+
 function deriveCampaignRuntimeRequest(baseRequest, weekIndex = 0) {
     const normalizedWeekIndex = Math.max(0, Math.floor(Number(weekIndex) || 0));
     const baseSeed = baseRequest?.params?.seed;
@@ -59,7 +65,9 @@ export const generatorActionMethods = {
     async generate() {
         if (this.isGenerating || this.isGeneratingCampaign) return false;
         startMark('generator.generate');
-        let requested = Number($('#setCount').value) || 5;
+        const setCountEl = $('#setCount');
+        const requested = clampGeneratorSetCount(setCountEl?.value);
+        if (setCountEl) setCountEl.value = String(requested);
         let produced = 0;
         if (!Number.isFinite(this.generationToken)) this.generationToken = 0;
         const localToken = ++this.generationToken;
@@ -114,6 +122,7 @@ export const generatorActionMethods = {
                     fixed,
                     exclude,
                     maxAttempts: 300,
+                    maxCount: CONFIG.LIMITS.MAX_SET,
                     ...(runtimeRng ? { rng: runtimeRng } : {})
                 });
             } finally {

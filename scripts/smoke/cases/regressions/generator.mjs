@@ -596,6 +596,101 @@ async function runGeneratorStrategySelectionRegression() {
     }
 }
 
+async function runGeneratorSetCountClampRegression() {
+    const previousDocument = globalThis.document;
+    const previousConsoleWarn = console.warn;
+    const setCount = createField({ value: '9999' });
+    const fixedNums = createField({ value: '' });
+    const excludeNums = createField({ value: '' });
+    const limitConsecutive = createField({ checked: false });
+    const genResultList = createField();
+
+    globalThis.document = createDocumentStub({
+        '#setCount': setCount,
+        '#fixedNums': fixedNums,
+        '#excludeNums': excludeNums,
+        '#limitConsecutive': limitConsecutive,
+        '#genResultList': genResultList,
+        '#toast-container': null
+    });
+
+    const makeContext = (workerClient) => {
+        const data = new DataManager();
+        data.save = () => {};
+        data.state.winningStats = [
+            {
+                draw_no: 1209,
+                date: '2026-04-12',
+                numbers: [1, 2, 3, 4, 5, 6],
+                bonus: 7
+            }
+        ];
+        return {
+            data,
+            app: { data },
+            workerClient,
+            isGenerating: false,
+            isGeneratingCampaign: false,
+            generationToken: 0,
+            uiStrings: { workerFallback: '' },
+            syncBusyButtons() {},
+            parseInput() {
+                return [];
+            },
+            getStrategyRequestFromUI() {
+                return {
+                    strategyId: 'random_baseline',
+                    params: { simulationCount: 1000, lookbackWindow: 20, seed: 20260519 },
+                    filters: {}
+                };
+            },
+            renderResultItem() {},
+            isWorkerTimeoutError() {
+                return false;
+            }
+        };
+    };
+
+    try {
+        let workerCount = 0;
+        const workerCtx = makeContext({
+            async generate(payload) {
+                workerCount = payload.count;
+                return {
+                    sets: Array.from({ length: payload.count }, (_, index) => [1, 2, 3, 4, 5, 6 + (index % 40)])
+                };
+            }
+        });
+
+        await GeneratorModule.prototype.generate.call(workerCtx);
+        assert.equal(workerCount, CONFIG.LIMITS.MAX_SET, 'generator worker payload must clamp setCount to MAX_SET');
+        assert.equal(setCount.value, String(CONFIG.LIMITS.MAX_SET), 'generator input must reflect the clamped count');
+        assert.equal(
+            workerCtx.data.state.generated.length,
+            CONFIG.LIMITS.MAX_SET,
+            'generator worker result must not exceed MAX_SET'
+        );
+
+        setCount.value = '9999';
+        console.warn = () => {};
+        const fallbackCtx = makeContext({
+            async generate() {
+                throw new Error('force fallback');
+            }
+        });
+
+        await GeneratorModule.prototype.generate.call(fallbackCtx);
+        assert.ok(
+            fallbackCtx.data.state.generated.length <= CONFIG.LIMITS.MAX_SET,
+            'generator fallback result must not exceed MAX_SET'
+        );
+    } finally {
+        console.warn = previousConsoleWarn;
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 function runGeneratedTicketProvenanceRegression() {
     const data = new DataManager();
     data.save = () => {};
@@ -649,6 +744,7 @@ export {
     runDrawNormalizationRegression,
     runGeneratedTicketProvenanceRegression,
     runGeneratorStrategySelectionRegression,
+    runGeneratorSetCountClampRegression,
     runRequestNumbersRegression,
     runStrategyPresetCrudRegression,
     runTargetDrawAutofillRegression

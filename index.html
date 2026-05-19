@@ -925,7 +925,9 @@
                             <div class="strategy-panel">
                                 <div class="card-header">
                                     <h3>전략 설정</h3>
-                                    <button id="pension720ResetOptionsBtn" class="text-btn" type="button">초기화</button>
+                                    <button id="pension720ResetOptionsBtn" class="text-btn" type="button">
+                                        초기화
+                                    </button>
                                 </div>
                                 <label class="check-box" style="padding: 0 0 10px">
                                     <input type="checkbox" id="pension720ShowExperimental" />
@@ -1183,13 +1185,18 @@
                         <div class="card glass full-width">
                             <div class="card-header">
                                 <div>
-                                    <h3>최신 회차 당첨 확인</h3>
-                                    <p class="subtitle">저장 번호를 최신 연금복권720+ 결과와 비교합니다.</p>
+                                    <h3>저장 번호 당첨 확인</h3>
+                                    <p class="subtitle">
+                                        대상 회차가 있으면 해당 회차를 우선 확인하고, 없으면 최신 결과를 참고
+                                        비교합니다.
+                                    </p>
                                 </div>
                                 <button id="pension720CheckLatestBtn" class="btn ghost sm" type="button">확인</button>
                             </div>
                             <div id="pension720CheckOutput" class="p720-check-list">
-                                <p class="empty-state">저장 번호가 있으면 최신 회차 기준으로 확인할 수 있습니다.</p>
+                                <p class="empty-state">
+                                    저장 번호가 있으면 대상 회차 우선, 대상이 없으면 최신 회차 참고로 확인합니다.
+                                </p>
                             </div>
                             <p class="result-disclaimer">저장 번호 기준 참고 확인이며 실물/공식 확인이 필요합니다.</p>
                         </div>
@@ -1999,7 +2006,9 @@
                                 </button>
                             </div>
                             <p id="pwaUpdateNote" class="settings-note">필요할 때만 화면이 새로고침됩니다.</p>
-                            <p class="settings-note">cache: <span id="pwaCacheBadge" class="badge status-badge">pending</span></p>
+                            <p class="settings-note">
+                                cache: <span id="pwaCacheBadge" class="badge status-badge">pending</span>
+                            </p>
                             <p id="pwaCacheNote" class="settings-note">Cache health will be checked after install.</p>
                         </section>
                     </div>

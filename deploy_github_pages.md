@@ -29,6 +29,8 @@ git diff --check
 
 Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 또는 공식 endpoint 장애 시 실패할 수 있습니다.
 
+`npm run test:browser`의 happy path에는 Pension720+ 추천, 개별 저장, 확장 조 저장, 캠페인 생성, target-aware 확인, CSV 다운로드 검증이 포함됩니다.
+
 ## 배포 브랜치에 포함하지 않을 로컬 산출물
 
 - 브라우저 캡처/시각 검증 결과: `output/`
@@ -64,12 +66,14 @@ Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 
 
 ## 백업/내보내기 파일명
 
-- 전체 백업: `lotto_pension_pro_backup_v4_<timestamp>.json`
+- 전체 백업: `lotto_pension_pro_backup_v5_<timestamp>.json`
 - 가져오기 overwrite 전 자동 백업: `lotto_pension_pro_before_replace_<timestamp>.json`
 - 데이터 정리 전 자동 백업: `lotto_pension_pro_before_cleanup_<timestamp>.json`
 - Pension720+ 저장 번호 CSV: `lotto_pension_pro_pension720_tickets_<timestamp>.csv`
+- 시뮬레이션 전략 비교 CSV: `시뮬레이션_전략비교_<timestamp>.csv`
 
-overwrite import와 cleanup은 silent backup 다운로드 성공이 확인되지 않으면 중단합니다.
+overwrite import와 cleanup은 백업 다운로드를 먼저 트리거한 뒤, 사용자가 백업 파일 저장을 확인해야 계속 진행합니다.
+Pension720+ 저장 번호 CSV와 시뮬레이션 CSV는 spreadsheet formula로 실행될 수 있는 `=`, `+`, `-`, `@` prefix를 escape합니다.
 
 ## 고급 데이터 연결 주소
 
@@ -97,6 +101,7 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 ## PWA와 캐시
 
 - 현재 `sw.js` cache version: `v26`
+- 현재 strategy worker asset query version: `v21`
 - cache names:
     - `lotto-pension-pro-app-shell-v26`
     - `lotto-pension-pro-data-v26`
@@ -112,7 +117,7 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 3. DevTools > Application > Manifest에서 앱명 `로또·연금복권 프로` 확인
 4. DevTools > Application > Service Workers에서 `v26` 활성화 확인
 5. 설정/상태 화면에서 PWA cache health 확인
-6. Lotto 6/45 번호 생성, 번호 추천, 당첨 확인, Pension720+ 탭 진입 확인
+6. Lotto 6/45 번호 생성, 번호 추천, 당첨 확인, Pension720+ 추천/저장/대상 회차 확인 확인
 7. Offline 모드에서 캐시된 lazy route 접근 확인
 
 ## Repository Rename Checklist
@@ -133,7 +138,7 @@ GitHub repository rename은 코드 변경과 별도 운영 작업입니다.
 2. 새 URL `https://twbeatles.github.io/lotto-pension-pro-webapp/` 접속
 3. 필요하면 기존 설치 앱 제거 후 새 URL에서 재설치
 4. 새 앱의 `데이터 관리` > `가져오기`로 백업 복원
-5. 연금복권 탭에서 저장 번호와 최신 회차 당첨 확인 결과 유지 여부 확인
+5. 연금복권 탭에서 저장 번호와 대상 회차 우선 확인 결과 유지 여부 확인
 
 ## 로컬 실행
 

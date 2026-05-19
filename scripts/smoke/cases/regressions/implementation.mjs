@@ -65,6 +65,7 @@ function runStorageDirtyRetainedOnFailureRegression() {
 async function runDestructiveBackupAbortRegression() {
     const previousDocument = globalThis.document;
     const previousToast = UIManager.toast;
+    const previousConfirm = UIManager.confirm;
     const importMode = createField({ value: 'overwrite' });
     const importApplyTheme = createField({ checked: true });
     const importApplyProxy = createField({ checked: true });
@@ -127,7 +128,63 @@ async function runDestructiveBackupAbortRegression() {
         });
 
         assert.equal(data.state.favorites.length, 1, 'overwrite import must abort before replacing data');
-        assert.ok(toasts.some((item) => item.startsWith('error:')), 'backup failure must show an error toast');
+        assert.ok(
+            toasts.some((item) => item.startsWith('error:')),
+            'backup failure must show an error toast'
+        );
+
+        const cancelData = new DataManager();
+        cancelData.state.favorites = [{ numbers: [1, 2, 3, 4, 5, 6], date: '2026-05-17T00:00:00.000Z' }];
+        cancelData.save = () => {
+            throw new Error('save must not run after backup confirmation cancel');
+        };
+        cancelData.setLocalUpdates = () => ({ items: [], droppedFuture: 0 });
+        cancelData.getLocalUpdates = () => [];
+
+        const cancelCtx = Object.create(DataIOModule.prototype);
+        cancelCtx.data = cancelData;
+        cancelCtx.app = { applyTheme() {}, renderSettingsPanel() {} };
+        cancelCtx.syncProxyInput = () => {};
+        cancelCtx.refreshPresetSelectors = () => {};
+        cancelCtx.runPostImportRefresh = async () => {};
+        cancelCtx.confirmPreparedImport = async () => true;
+        cancelCtx.exportAll = () => ({ downloaded: true, filename: 'before-overwrite.json' });
+        UIManager.confirm = async () => false;
+
+        await DataIOModule.prototype.importAll.call(cancelCtx, {
+            currentTarget: {
+                files: [
+                    {
+                        size: 1,
+                        async text() {
+                            return JSON.stringify({
+                                version: 4,
+                                favorites: [],
+                                history: [],
+                                ticketBook: [],
+                                campaigns: [],
+                                pension720Tickets: [],
+                                alertPrefs: {},
+                                settings: {},
+                                localUpdates: [],
+                                strategyPresets: []
+                            });
+                        }
+                    }
+                ],
+                value: 'overwrite.json'
+            }
+        });
+
+        assert.equal(
+            cancelData.state.favorites.length,
+            1,
+            'overwrite import must abort when backup confirm is canceled'
+        );
+        assert.ok(
+            toasts.some((item) => item.includes('백업 확인이 취소')),
+            'backup confirmation cancel must show an abort toast'
+        );
 
         const cleanupSource = await readFile(
             resolve(process.cwd(), 'assets/modules/core/app/dataLists/events.js'),
@@ -140,6 +197,7 @@ async function runDestructiveBackupAbortRegression() {
         );
     } finally {
         UIManager.toast = previousToast;
+        UIManager.confirm = previousConfirm;
         if (previousDocument === undefined) delete globalThis.document;
         else globalThis.document = previousDocument;
     }
@@ -224,7 +282,11 @@ function runTemporaryResultsSessionRegression() {
         assert.equal(dm.persistTemporaryResultsToSession(), true, 'temporary results must persist to sessionStorage');
 
         const restored = new DataManager();
-        assert.equal(restored.loadTemporaryResultsFromSession(), true, 'temporary results must restore from sessionStorage');
+        assert.equal(
+            restored.loadTemporaryResultsFromSession(),
+            true,
+            'temporary results must restore from sessionStorage'
+        );
         assert.deepEqual(restored.state.generated[0]?.numbers, [1, 2, 3, 4, 5, 6], 'generated results must normalize');
         assert.deepEqual(restored.state.aiResults[0], [7, 8, 9, 10, 11, 12], 'AI results must restore');
         assert.equal(restored.state.pension720Results[0]?.number, '060727', 'pension720 results must restore');

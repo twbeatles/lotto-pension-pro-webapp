@@ -6,7 +6,7 @@ const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
-const STRATEGY_WORKER_ASSET_VERSION = 'v20';
+const STRATEGY_WORKER_ASSET_VERSION = 'v21';
 
 function createStatsFingerprint(statsData = []) {
     if (!Array.isArray(statsData) || !statsData.length) return '';

@@ -72,6 +72,28 @@ function runStrictFilterRegression(stats) {
     );
 }
 
+function runGenerateMultipleSetsMaxCountRegression(stats) {
+    const engine = new StrategyEngine(stats);
+    const request = {
+        strategyId: 'random_baseline',
+        params: {
+            simulationCount: 1000,
+            lookbackWindow: 20,
+            wheelPoolSize: null,
+            wheelGuarantee: null,
+            seed: 20260519,
+            payoutMode: 'hybrid_dynamic_first'
+        },
+        filters: {}
+    };
+
+    const clamped = engine.generateMultipleSets(30, request, { maxCount: 4, maxAttempts: 300 });
+    assertTicketShape(clamped, 4);
+
+    const bulk = engine.generateMultipleSets(30, request, { maxAttempts: 3000 });
+    assert.equal(bulk.length, 30, 'generateMultipleSets without maxCount must keep bulk-generation behavior');
+}
+
 function runWheelFixedNumbersRegression(stats) {
     const engine = new StrategyEngine(stats);
     const fixed = [10, 20, 30, 40, 45];
@@ -272,6 +294,21 @@ async function runRecommendationRuntimePolicyRegression() {
         'strategy worker must mark worker-based recommendation diagnostics'
     );
     assert.match(
+        workerSource,
+        /clampWorkerSetCount/,
+        'strategy worker must defensively clamp GENERATE and RECOMMEND set counts'
+    );
+    assert.match(
+        workerClientSource,
+        /STRATEGY_WORKER_ASSET_VERSION = 'v21'/,
+        'strategy worker asset version must be bumped when worker behavior changes'
+    );
+    assert.match(
+        workerClientSource,
+        /url\.searchParams\.set\('v', STRATEGY_WORKER_ASSET_VERSION\)/,
+        'strategy worker asset version must be applied as a worker URL query'
+    );
+    assert.match(
         workerClientSource,
         /if \(isAutoStrategyId\(payload\?\.request\?\.strategyId\)\)/,
         'worker timeout calculation must treat auto recommendation strategies separately'
@@ -373,6 +410,7 @@ export {
     runBacktestSmoke,
     runBackupSmoke,
     runCampaignDerivedSeedRegression,
+    runGenerateMultipleSetsMaxCountRegression,
     runNoSeedRuntimeEntropyRegression,
     runRecommendationRuntimePolicyRegression,
     runStrategyWorkerFinalTimeoutTerminatesRegression,

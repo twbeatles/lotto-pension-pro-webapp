@@ -12,6 +12,7 @@
 /lotto_pension_pro_before_replace_*.json
 /lotto_pension_pro_before_cleanup_*.json
 /lotto_pension_pro_pension720_tickets_*.csv
+/시뮬레이션_전략비교_*.csv
 
 # OS / editor noise
 .DS_Store

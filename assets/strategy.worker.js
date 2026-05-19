@@ -1,5 +1,6 @@
 import { StrategyEngine } from './modules/core/StrategyEngine.js';
 import { createRuntimeRng } from './modules/core/strategy/runtimeEntropy.js';
+import { CONFIG } from './modules/utils/config.js';
 
 let statsCacheKey = '';
 let statsCacheData = [];
@@ -52,6 +53,12 @@ function createEngine(payload) {
     return engine;
 }
 
+function clampWorkerSetCount(value, fallback = 1) {
+    const number = Number(value);
+    const next = Math.floor(Number.isFinite(number) ? number : fallback);
+    return Math.min(CONFIG.LIMITS.MAX_SET, Math.max(1, next));
+}
+
 self.onmessage = async (event) => {
     const { type, requestId, payload } = event.data || {};
 
@@ -70,7 +77,7 @@ self.onmessage = async (event) => {
         const engine = createEngine(payload);
 
         if (type === 'GENERATE') {
-            const count = Number(payload?.count || 1);
+            const count = clampWorkerSetCount(payload?.count, 1);
             const request = payload?.request || {};
             const fixed = toArray(payload?.fixed, []);
             const exclude = toArray(payload?.exclude, []);
@@ -81,6 +88,7 @@ self.onmessage = async (event) => {
                 fixed,
                 exclude,
                 maxAttempts,
+                maxCount: CONFIG.LIMITS.MAX_SET,
                 ...(runtimeRng ? { rng: runtimeRng } : {})
             });
 
@@ -96,7 +104,7 @@ self.onmessage = async (event) => {
         }
 
         const request = payload?.request || {};
-        const setCount = Number(payload?.setCount || 5);
+        const setCount = clampWorkerSetCount(payload?.setCount, 5);
         const runtimeRng = createRuntimeRng(request, payload?.runtimeSeed);
         const execution = engine.prepareExecution(request, {
             ...(runtimeRng ? { rng: runtimeRng } : {})

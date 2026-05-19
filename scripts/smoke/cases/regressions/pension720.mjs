@@ -3,9 +3,11 @@ import {
     buildBackupPayload,
     DataManager,
     normalizeBackupPayload,
+    Pension720Module,
     Pension720Engine,
     readFile,
-    resolve
+    resolve,
+    UIManager
 } from './support.mjs';
 import { buildPrecacheManifest } from '../../../generate_sw_manifest.mjs';
 import { comparePension720Freshness } from '../../../fetch_pension720_stats.mjs';
@@ -192,7 +194,11 @@ function runPension720CampaignRegression() {
     assert.ok(campaign, 'pension720 campaign must normalize and save');
     assert.equal(bulk.inserted, 2, 'pension720 campaign tickets must keep per-draw rows');
     assert.equal(bulk.duplicate, 1, 'pension720 campaign ticket duplicate must be counted');
-    assert.equal(dm.countPension720TicketsByCampaignId(campaign.id), 2, 'pension720 campaign count must use linked tickets');
+    assert.equal(
+        dm.countPension720TicketsByCampaignId(campaign.id),
+        2,
+        'pension720 campaign count must use linked tickets'
+    );
 
     const removed = dm.removePension720Campaign(campaign.id, { cascadeTickets: true });
     assert.equal(removed.removedCampaign, true, 'pension720 campaign delete must remove campaign');
@@ -238,7 +244,10 @@ async function runPension720StaticDataRegression() {
     const normalized = dm.normalizePension720Stats(rows);
 
     assert.ok(normalized.length >= 300, 'pension720 static data must include historical draws');
-    assert.ok(normalized[0].draw_no >= 315, 'pension720 static data latest draw must not regress below 2026-05-14 snapshot');
+    assert.ok(
+        normalized[0].draw_no >= 315,
+        'pension720 static data latest draw must not regress below 2026-05-14 snapshot'
+    );
     assert.equal(normalized.find((row) => row.draw_no === 314)?.number, '060727', 'static data must preserve zeroes');
 }
 
@@ -285,6 +294,76 @@ function runPension720LatestCheckRegression() {
             `pension720 check trailing matches mismatch for ${ticket.number}`
         );
     });
+
+    dm.state.pension720Stats = [
+        draw,
+        {
+            draw_no: 314,
+            date: '2026-05-07',
+            group: 1,
+            number: '111111',
+            bonus_number: '222222'
+        }
+    ];
+    const targetResult = dm.resolvePension720TicketCheck({ group: 1, number: '111111', targetDrawNo: 314 });
+    const futureResult = dm.resolvePension720TicketCheck({ group: 1, number: '123456', targetDrawNo: 316 });
+    const missingResult = dm.resolvePension720TicketCheck({ group: 1, number: '123456', targetDrawNo: 313 });
+    const referenceResult = dm.resolvePension720TicketCheck({ group: 2, number: '537530' });
+
+    assert.equal(targetResult.status, 'target', 'target draw ticket must evaluate against its target draw');
+    assert.equal(targetResult.result.rank, 1, 'target draw ticket must use target draw result');
+    assert.equal(futureResult.status, 'pending', 'future target draw ticket must be pending');
+    assert.equal(futureResult.result, null, 'future target draw ticket must not be evaluated as latest loss');
+    assert.equal(missingResult.status, 'missing', 'missing target draw ticket must surface data absence');
+    assert.equal(referenceResult.status, 'reference', 'ticket without target draw must use latest reference mode');
+    assert.equal(referenceResult.result.rank, 1, 'latest reference ticket must still evaluate against latest draw');
+}
+
+function runPension720CsvFormulaEscapeRegression() {
+    const previousDocument = globalThis.document;
+    const previousBlob = globalThis.Blob;
+    const previousUrl = globalThis.URL;
+    const previousCopyText = UIManager.copyText;
+    const previousToast = UIManager.toast;
+    let copied = '';
+
+    UIManager.copyText = (value) => {
+        copied = String(value || '');
+    };
+    UIManager.toast = () => {};
+    globalThis.document = undefined;
+    globalThis.Blob = undefined;
+    globalThis.URL = undefined;
+
+    try {
+        const data = new DataManager();
+        data.state.pension720Tickets = [
+            data.normalizePension720Ticket({
+                group: 2,
+                number: '060727',
+                targetDrawNo: 316,
+                source: 'recommendation',
+                score: 1.5,
+                memo: '=1+1',
+                createdAt: '2026-05-19T00:00:00.000Z'
+            })
+        ];
+
+        Pension720Module.prototype.exportSavedTicketsCsv.call({ data });
+
+        assert.match(copied, /memo/, 'pension720 CSV fallback must include header');
+        assert.match(copied, /'=1\+1/, 'pension720 CSV must protect spreadsheet formula prefixes');
+        assert.doesNotMatch(copied, /,=1\+1,/, 'pension720 CSV must not export raw formula-like memo cells');
+    } finally {
+        UIManager.copyText = previousCopyText;
+        UIManager.toast = previousToast;
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+        if (previousBlob === undefined) delete globalThis.Blob;
+        else globalThis.Blob = previousBlob;
+        if (previousUrl === undefined) delete globalThis.URL;
+        else globalThis.URL = previousUrl;
+    }
 }
 
 async function runPension720UiContractRegression() {
@@ -302,9 +381,22 @@ async function runPension720UiContractRegression() {
     assert.match(indexSource, /pension720CampaignBtn/, 'pension720 UI must expose campaign generation action');
     assert.match(indexSource, /pension720FixedDigits/, 'pension720 UI must expose fixed-digit filter');
     assert.match(indexSource, /pension720ExcludedDigits/, 'pension720 UI must expose excluded-digit filter');
-    assert.match(indexSource, /저장 번호 기준 참고 확인이며 실물\/공식 확인이 필요합니다/, 'pension720 check disclaimer must stay visible');
+    assert.match(
+        indexSource,
+        /대상 회차가 있으면 해당 회차를 우선 확인하고, 없으면 최신 결과를 참고\s+비교합니다/,
+        'pension720 check subtitle must explain target-aware checking'
+    );
+    assert.match(
+        indexSource,
+        /저장 번호 기준 참고 확인이며 실물\/공식 확인이 필요합니다/,
+        'pension720 check disclaimer must stay visible'
+    );
     assert.match(featureSource, /UIManager\.confirm/, 'pension720 clear-all must require confirmation');
-    assert.match(featureSource, /lastRecommendationOptions/, 'pension720 recommendations must remember generation options');
+    assert.match(
+        featureSource,
+        /lastRecommendationOptions/,
+        'pension720 recommendations must remember generation options'
+    );
     assert.match(featureSource, /runCampaignRecommendation/, 'pension720 feature must implement campaign generation');
     assert.match(featureSource, /copyText/, 'pension720 saved tickets must use generic text copy');
     assert.match(featureSource, /lotto_pension_pro_pension720_tickets_/, 'pension720 CSV filename must be rebranded');
@@ -335,6 +427,7 @@ export {
     runPension720BackupV5Regression,
     runPension720BackupFixtureRegression,
     runPension720CampaignRegression,
+    runPension720CsvFormulaEscapeRegression,
     runPension720FreshnessComparisonRegression,
     runPension720LatestCheckRegression,
     runPension720NormalizationRegression,

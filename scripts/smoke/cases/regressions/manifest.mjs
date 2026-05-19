@@ -5,6 +5,11 @@ const regressionExecutionPlan = [
         argKey: 'stats180'
     },
     {
+        name: 'runGenerateMultipleSetsMaxCountRegression',
+        label: 'generateMultipleSets maxCount regression',
+        argKey: 'stats180'
+    },
+    {
         name: 'runWheelFixedNumbersRegression',
         label: 'wheel-fixed regression',
         argKey: 'stats180'
@@ -35,6 +40,11 @@ const regressionExecutionPlan = [
     {
         name: 'runGeneratorStrategySelectionRegression',
         label: 'generator strategy-selection regression',
+        awaited: true
+    },
+    {
+        name: 'runGeneratorSetCountClampRegression',
+        label: 'generator set-count clamp regression',
         awaited: true
     },
     {
@@ -231,6 +241,10 @@ const regressionExecutionPlan = [
     {
         name: 'runPension720LatestCheckRegression',
         label: 'pension720 latest-check regression'
+    },
+    {
+        name: 'runPension720CsvFormulaEscapeRegression',
+        label: 'pension720 CSV formula escape regression'
     },
     {
         name: 'runPension720UiContractRegression',

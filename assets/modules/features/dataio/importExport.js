@@ -334,7 +334,7 @@ export const dataIoImportMethods = {
             }
 
             if (prepared.mode === 'overwrite') {
-                const backup = this.ensureBackupBeforeDestructive?.({
+                const backup = await this.ensureBackupBeforeDestructive?.({
                     prefix: 'lotto_pension_pro_before_replace',
                     errorMessage: '백업 파일 다운로드를 확인할 수 없어 덮어쓰기를 중단했습니다.'
                 });

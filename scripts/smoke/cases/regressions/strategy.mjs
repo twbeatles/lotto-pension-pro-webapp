@@ -300,7 +300,7 @@ async function runRecommendationRuntimePolicyRegression() {
     );
     assert.match(
         workerClientSource,
-        /STRATEGY_WORKER_ASSET_VERSION = 'v21'/,
+        /STRATEGY_WORKER_ASSET_VERSION = 'v22'/,
         'strategy worker asset version must be bumped when worker behavior changes'
     );
     assert.match(
@@ -336,6 +336,63 @@ async function runStrategyWorkerFinalTimeoutTerminatesRegression() {
     );
     assert.equal(terminateCount, 1, 'final worker timeout must terminate the busy worker');
     assert.equal(client.worker, null, 'final worker timeout must clear the worker instance');
+}
+
+async function runStrategyWorkerStatsCacheEmptyRetryRegression() {
+    const client = new StrategyWorkerClient();
+    const posts = [];
+    const statsData = [
+        { draw_no: 2, date: '2026-05-10', numbers: [1, 2, 3, 4, 5, 6], bonus: 7 },
+        { draw_no: 1, date: '2026-05-03', numbers: [8, 9, 10, 11, 12, 13], bonus: 14 }
+    ];
+
+    client.ensureWorker = function ensureFakeWorker() {
+        if (this.worker) return this.worker;
+        this.worker = {
+            postMessage: (message) => {
+                posts.push(message);
+                queueMicrotask(() => {
+                    if (posts.length === 1) {
+                        client.handleMessage({
+                            type: 'DONE',
+                            requestId: message.requestId,
+                            payload: { jobType: 'GENERATE', sets: [[1, 2, 3, 4, 5, 6]] }
+                        });
+                        return;
+                    }
+
+                    if (posts.length === 2 && !message.payload?.statsData) {
+                        client.handleMessage({
+                            type: 'ERROR',
+                            requestId: message.requestId,
+                            payload: {
+                                code: 'STRATEGY_WORKER_CACHE_EMPTY',
+                                message: 'Strategy worker data cache is empty.'
+                            }
+                        });
+                        return;
+                    }
+
+                    client.handleMessage({
+                        type: 'DONE',
+                        requestId: message.requestId,
+                        payload: { jobType: 'GENERATE', sets: [[7, 8, 9, 10, 11, 12]] }
+                    });
+                });
+            },
+            terminate() {}
+        };
+        return this.worker;
+    };
+
+    await client.post('GENERATE', { statsData, count: 1, request: {} }, 100, 0);
+    const result = await client.post('GENERATE', { statsData, count: 1, request: {} }, 100, 0);
+
+    assert.equal(posts.length, 3, 'cache-empty worker response must trigger exactly one full-payload retry');
+    assert.ok(Array.isArray(posts[0].payload.statsData), 'initial worker request must include statsData');
+    assert.equal(posts[1].payload.statsData, undefined, 'second request must use the stats cache fingerprint');
+    assert.ok(Array.isArray(posts[2].payload.statsData), 'cache-empty retry must resend statsData');
+    assert.deepEqual(result.sets[0], [7, 8, 9, 10, 11, 12], 'cache-empty retry result must resolve normally');
 }
 
 function runBackupSmoke(stats) {
@@ -414,6 +471,7 @@ export {
     runNoSeedRuntimeEntropyRegression,
     runRecommendationRuntimePolicyRegression,
     runStrategyWorkerFinalTimeoutTerminatesRegression,
+    runStrategyWorkerStatsCacheEmptyRetryRegression,
     runStrictFilterRegression,
     runWheelFixedNumbersRegression
 };

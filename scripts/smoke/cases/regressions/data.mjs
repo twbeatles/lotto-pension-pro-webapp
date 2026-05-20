@@ -1,5 +1,6 @@
 import {
     assert,
+    buildBackupPayload,
     buildSmokeRequest,
     CheckModule,
     CONFIG,
@@ -435,6 +436,73 @@ function runImportStoredListStrictNormalizationRegression() {
     assert.notEqual(normalized[1].date, 'not-a-date', 'invalid import dates must be replaced with a valid timestamp');
 }
 
+function buildLargeBackupFixture() {
+    const strategyRequest = {
+        strategyId: 'ensemble_weighted',
+        params: {
+            simulationCount: 5000,
+            lookbackWindow: 20,
+            note: 'x'.repeat(CONFIG.LIMITS.MAX_STRATEGY_REQUEST_BYTES - 900)
+        },
+        filters: {
+            sumRange: [100, 175],
+            oddEven: [2, 4]
+        }
+    };
+
+    const makeNumbers = (index) => {
+        const start = (index % 39) + 1;
+        return [start, start + 1, start + 2, start + 3, start + 4, start + 5];
+    };
+
+    const ticketBook = Array.from({ length: CONFIG.LIMITS.MAX_IMPORT_TICKETS }, (_, index) => ({
+        id: `ticket_large_${index}`,
+        numbers: makeNumbers(index),
+        targetDrawNo: 1200 + (index % 80),
+        source: 'import',
+        quantity: 1,
+        campaignId: `campaign_${index % 40}`,
+        strategyRequest,
+        memo: `large lotto backup row ${index}`,
+        createdAt: `2026-05-20T00:${String(index % 60).padStart(2, '0')}:00.000Z`
+    }));
+
+    const pension720Tickets = Array.from({ length: CONFIG.LIMITS.MAX_PENSION720_TICKETS }, (_, index) => ({
+        id: `p720_large_${index}`,
+        group: (index % 5) + 1,
+        number: String(100000 + index).padStart(6, '0'),
+        source: 'import',
+        targetDrawNo: 300 + (index % 40),
+        campaignId: `p720_campaign_${index % 20}`,
+        strategyRequest,
+        memo: `large pension backup row ${index}`,
+        createdAt: `2026-05-20T01:${String(index % 60).padStart(2, '0')}:00.000Z`
+    }));
+
+    return buildBackupPayload(
+        {
+            theme: 'dark',
+            customProxy: 'https://example.com/proxy/latest',
+            favorites: [],
+            history: [],
+            ticketBook,
+            campaigns: [],
+            pension720Tickets,
+            pension720Campaigns: [],
+            alertPrefs: {},
+            strategyPrefs: {
+                generator: buildSmokeRequest(),
+                ai: buildSmokeRequest()
+            },
+            strategyPresets: []
+        },
+        {
+            localUpdates: [],
+            strategyPresets: []
+        }
+    );
+}
+
 async function runImportSafetyLimitsRegression() {
     const previousToast = UIManager.toast;
     const toasts = [];
@@ -485,6 +553,25 @@ async function runImportSafetyLimitsRegression() {
             ticket.strategyRequest,
             null,
             'oversized strategy snapshots must be stripped during normalization'
+        );
+
+        const largeBackupPayload = buildLargeBackupFixture();
+        const largeBackupBytes = new TextEncoder().encode(JSON.stringify(largeBackupPayload, null, 2)).length;
+        const normalizedLargeBackup = normalizeBackupPayload(largeBackupPayload);
+
+        assert.equal(
+            normalizedLargeBackup.ticketBook.length,
+            CONFIG.LIMITS.MAX_IMPORT_TICKETS,
+            'max lotto ticket backup fixture must preserve the app-supported ticket count'
+        );
+        assert.equal(
+            normalizedLargeBackup.pension720Tickets.length,
+            CONFIG.LIMITS.MAX_PENSION720_TICKETS,
+            'max pension720 ticket backup fixture must preserve the app-supported ticket count'
+        );
+        assert.ok(
+            largeBackupBytes < CONFIG.LIMITS.MAX_IMPORT_BYTES,
+            `app-created max backup (${largeBackupBytes} bytes) must fit under MAX_IMPORT_BYTES`
         );
     } finally {
         UIManager.toast = previousToast;

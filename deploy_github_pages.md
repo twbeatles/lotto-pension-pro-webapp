@@ -16,18 +16,20 @@ npm run sync:sw-manifest
 npm run lint
 npm run check:data-freshness
 npm run check:data-freshness:strict
+npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
 node scripts/smoke/smoke.mjs
 npm run build
 npm run build:release
 npm run test:browser
+npm run test:sync-live:browser
 git diff --check
 ```
 
-`npm run build`는 별도 번들을 만들지 않고 `lint -> check:data-freshness -> check:pension720 -> check:pension720:freshness -> smoke`를 실행합니다. `npm run build:release`는 strict Lotto freshness를 추가로 요구하며, 최신 회차 차이가 0이 아니면 실패합니다.
+`npm run build`는 별도 번들을 만들지 않고 `lint -> check:data-freshness -> check:pension720 -> check:pension720:freshness -> smoke`를 실행합니다. `npm run build:release`는 strict Lotto freshness와 `check:lotto:official`을 추가로 요구하며, 최신 회차 차이나 공식값 mismatch가 있으면 실패합니다.
 
-Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 또는 공식 endpoint 장애 시 실패할 수 있습니다.
+Lotto official freshness와 Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 또는 공식 endpoint 장애 시 실패할 수 있습니다.
 
 `npm run test:browser`의 happy path에는 Pension720+ 추천, 개별 저장, 확장 조 저장, 캠페인 생성, target-aware 확인, CSV 다운로드 검증이 포함됩니다.
 
@@ -52,6 +54,7 @@ Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 
     - 동기화: `npm run sync:lotto`
     - 개발 검증: `npm run check:data-freshness`
     - 릴리스 검증: `npm run check:data-freshness:strict`
+    - 공식 필드 검증: `npm run check:lotto:official`
 - Pension720+:
     - 정적 데이터: `data/pension720_stats.json`
     - 최신 회차: `315`
@@ -72,7 +75,7 @@ Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 
 - Pension720+ 저장 번호 CSV: `lotto_pension_pro_pension720_tickets_<timestamp>.csv`
 - 시뮬레이션 전략 비교 CSV: `시뮬레이션_전략비교_<timestamp>.csv`
 
-overwrite import와 cleanup은 백업 다운로드를 먼저 트리거한 뒤, 사용자가 백업 파일 저장을 확인해야 계속 진행합니다.
+전체 백업/가져오기 파일 크기 한도는 32MB입니다. overwrite import와 cleanup은 지원 브라우저에서 File System Access API로 백업 파일 쓰기 완료를 먼저 시도하고, 미지원 브라우저에서는 백업 다운로드 후 사용자가 파일 저장을 확인해야 계속 진행합니다.
 Pension720+ 저장 번호 CSV와 시뮬레이션 CSV는 spreadsheet formula로 실행될 수 있는 `=`, `+`, `-`, `@` prefix를 escape합니다.
 
 ## 고급 데이터 연결 주소
@@ -100,11 +103,11 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 
 ## PWA와 캐시
 
-- 현재 `sw.js` cache version: `v26`
-- 현재 strategy worker asset query version: `v21`
+- 현재 `sw.js` cache version: `v27`
+- 현재 strategy worker asset query version: `v22`
 - cache names:
-    - `lotto-pension-pro-app-shell-v26`
-    - `lotto-pension-pro-data-v26`
+    - `lotto-pension-pro-app-shell-v27`
+    - `lotto-pension-pro-data-v27`
 - precache manifest는 `scripts/generate_sw_manifest.mjs`가 `assets/sw-precache-manifest.js`로 생성합니다.
 - install precache에는 앱 셸과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - precache 실패는 `__cache-health.json` marker로 기록합니다. 설치는 계속 허용하고 앱 설정/상태 화면에서 정상/주의 상태와 실패 개수를 표시합니다.
@@ -115,7 +118,7 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 1. Pages URL 접속
 2. 강력 새로고침
 3. DevTools > Application > Manifest에서 앱명 `로또·연금복권 프로` 확인
-4. DevTools > Application > Service Workers에서 `v26` 활성화 확인
+4. DevTools > Application > Service Workers에서 `v27` 활성화 확인
 5. 설정/상태 화면에서 PWA cache health 확인
 6. Lotto 6/45 번호 생성, 번호 추천, 당첨 확인, Pension720+ 추천/저장/대상 회차 확인 확인
 7. Offline 모드에서 캐시된 lazy route 접근 확인
@@ -161,15 +164,17 @@ npm run test:browser
 npm run test:happy
 npm run test:offline
 npm run test:pwa-mobile
+npm run test:sync-live:browser
 ```
 
 - 시스템 `Chrome`/`Edge` 또는 Playwright Chromium이 필요합니다.
 - 브라우저가 없으면 `npx playwright install chromium`을 먼저 실행합니다.
-- `npm run test:sync-live`는 네트워크 기반 opt-in 동기화 검증입니다.
+- `npm run test:sync-live`는 Node 기반 opt-in 동기화 검증입니다.
+- `npm run test:sync-live:browser`는 실제 브라우저에서 Lotto 단일 회차 fetch와 Pension720+ source/fallback 상태를 확인하는 opt-in live canary입니다.
 
 ## 문제 해결
 
 - 화면은 열리지만 기능이 멈추면 Console의 module error와 Network의 `assets/modules/**/*.js` 상태를 먼저 확인합니다.
 - 앱명이 오래 보이면 service worker와 site data를 지우고 다시 접속합니다.
-- 데이터가 오래되었으면 `npm run sync:lotto`, `npm run check:data-freshness`, `npm run check:pension720`, `npm run check:pension720:freshness` 결과를 확인합니다.
+- 데이터가 오래되었으면 `npm run sync:lotto`, `npm run check:data-freshness`, `npm run check:lotto:official`, `npm run check:pension720`, `npm run check:pension720:freshness` 결과를 확인합니다.
 - precache 목록 변경이 반영되지 않으면 `npm run sync:sw-manifest`를 다시 실행하고 `sw.js` cache version을 확인합니다.

@@ -186,6 +186,23 @@ async function runDestructiveBackupAbortRegression() {
             'backup confirmation cancel must show an abort toast'
         );
 
+        const dataIoSource = await readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8');
+        assert.match(
+            dataIoSource,
+            /preferFilePicker:\s*true/,
+            'destructive backup helper must prefer a browser file picker when available'
+        );
+        assert.match(
+            dataIoSource,
+            /showSaveFilePicker/,
+            'destructive backup helper must support a write-complete file picker path'
+        );
+        assert.match(
+            dataIoSource,
+            /다운로드가 차단되었거나 실패했으면 중단/,
+            'download fallback confirmation must warn about blocked or failed downloads'
+        );
+
         const cleanupSource = await readFile(
             resolve(process.cwd(), 'assets/modules/core/app/dataLists/events.js'),
             'utf8'
@@ -244,6 +261,54 @@ async function runPension720OfficialCacheRegression() {
         assert.equal(ok, true, 'pension720 fetch must succeed from static plus official cache');
         assert.equal(dm.state.pension720Stats[0]?.draw_no, 4, 'official cache must win when newer than static');
         assert.equal(dm.pension720DataHealth.source, 'official_cache', 'health source must expose official cache');
+
+        const sameDrawCache = [
+            {
+                draw_no: 5,
+                date: '2026-05-28',
+                group: 1,
+                number: '111111',
+                bonus_number: '222222'
+            }
+        ];
+        const sameDrawStatic = [
+            {
+                draw_no: 5,
+                date: '2026-05-28',
+                group: 3,
+                number: '333333',
+                bonus_number: '444444'
+            }
+        ];
+        globalThis.localStorage = makeMemoryStorage({
+            [CONFIG.KEYS.PENSION720_STATS_CACHE]: JSON.stringify({
+                version: 1,
+                updatedAt: '2026-05-27T00:00:00.000Z',
+                items: sameDrawCache
+            })
+        });
+        globalThis.fetch = async () => ({
+            ok: true,
+            async json() {
+                return sameDrawStatic;
+            }
+        });
+
+        const correctedDm = new DataManager();
+        const correctedOk = await correctedDm.fetchPension720Stats({ remote: false });
+        assert.equal(correctedOk, true, 'same-draw static correction must load successfully');
+        assert.equal(
+            correctedDm.state.pension720Stats[0]?.number,
+            '333333',
+            'same-draw static data must beat an older official cache copy'
+        );
+        assert.equal(correctedDm.pension720DataHealth.source, 'static', 'same-draw cache must not shadow static data');
+        assert.equal(correctedDm.clearPension720StatsCache(), true, 'official cache clear must remove the stored cache');
+        assert.equal(
+            globalThis.localStorage.getItem(CONFIG.KEYS.PENSION720_STATS_CACHE),
+            null,
+            'official cache clear must delete the storage key'
+        );
     } finally {
         if (previousStorage === undefined) delete globalThis.localStorage;
         else globalThis.localStorage = previousStorage;

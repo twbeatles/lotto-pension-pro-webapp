@@ -1,11 +1,26 @@
 import { $ } from '../../utils/utils.js';
+import { CONFIG } from '../../utils/config.js';
 import { UIManager } from '../../core/UIManager.js';
 import { buildBackupPayload } from '../../utils/backup.js';
 import { runPostImportRefresh } from './postImportRefresh.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+
+function getUtf8ByteLength(value = '') {
+    const text = String(value || '');
+    if (typeof TextEncoder !== 'undefined') {
+        return new TextEncoder().encode(text).length;
+    }
+    return unescape(encodeURIComponent(text)).length;
+}
+
 export const dataIoSupportMethods = {
     bindEvents() {
-        $('#exportAll')?.addEventListener('click', () => this.exportAll());
+        $('#exportAll')?.addEventListener('click', () => {
+            this.exportAll().catch((error) => {
+                console.error('Backup export failed', error);
+                UIManager.toast('백업 파일을 생성하지 못했습니다.', 'error', 3500);
+            });
+        });
         $('#importAllTrigger')?.addEventListener('click', () => $('#importInput')?.click());
         $('#importInput')?.addEventListener('change', (e) => this.importAll(e));
         $('#importMode')?.addEventListener('change', (e) =>
@@ -57,47 +72,72 @@ export const dataIoSupportMethods = {
             return card;
         };
 
-        container.append(
-            makeCard(
-                '로또 6/45',
-                [
-                    ['source', this.data.getDataHealthSourceLabel?.(freshness.source) || freshness.source || '-'],
-                    ['최신 회차', freshness.latestDrawNo ? `${freshness.latestDrawNo}회` : '-'],
-                    ['예상 최신', freshness.estimatedLatestDrawNo ? `${freshness.estimatedLatestDrawNo}회` : '-'],
-                    ['local update', `${localUpdates.length}건`],
-                    ['마지막 성공', syncMeta.lastSuccessAt ? this.app.formatDateTime(syncMeta.lastSuccessAt) : '-'],
-                    ['메시지', freshness.dataHealthMessage || syncMeta.lastFailureMessage || '-']
-                ],
-                freshness.availability === 'full' ? '정상' : '확인 필요'
-            ),
-            makeCard(
-                '연금복권720+',
-                [
-                    [
-                        'source',
-                        this.data.getPension720DataHealthSourceLabel?.(pensionHealth?.source) ||
-                            pensionHealth?.source ||
-                            '-'
-                    ],
-                    ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
-                    ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
-                    ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
-                    ['캠페인', `${storageSummary.counts?.pension720Campaigns || 0}개`],
-                    ['마지막 확인', pensionHealth?.updatedAt ? this.app.formatDateTime(pensionHealth.updatedAt) : '-'],
-                    ['메시지', pensionHealth?.message || '-']
-                ],
-                pensionHealth?.availability === 'full' ? '정상' : '확인 필요'
-            )
+        const lottoCard = makeCard(
+            '로또 6/45',
+            [
+                ['source', this.data.getDataHealthSourceLabel?.(freshness.source) || freshness.source || '-'],
+                ['최신 회차', freshness.latestDrawNo ? `${freshness.latestDrawNo}회` : '-'],
+                ['예상 최신', freshness.estimatedLatestDrawNo ? `${freshness.estimatedLatestDrawNo}회` : '-'],
+                ['local update', `${localUpdates.length}건`],
+                ['마지막 성공', syncMeta.lastSuccessAt ? this.app.formatDateTime(syncMeta.lastSuccessAt) : '-'],
+                ['메시지', freshness.dataHealthMessage || syncMeta.lastFailureMessage || '-']
+            ],
+            freshness.availability === 'full' ? '정상' : '확인 필요'
         );
+        const pensionCard = makeCard(
+            '연금복권720+',
+            [
+                [
+                    'source',
+                    this.data.getPension720DataHealthSourceLabel?.(pensionHealth?.source) ||
+                        pensionHealth?.source ||
+                        '-'
+                ],
+                ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
+                ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
+                ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
+                ['캠페인', `${storageSummary.counts?.pension720Campaigns || 0}개`],
+                ['마지막 확인', pensionHealth?.updatedAt ? this.app.formatDateTime(pensionHealth.updatedAt) : '-'],
+                ['메시지', pensionHealth?.message || '-']
+            ],
+            pensionHealth?.availability === 'full' ? '정상' : '확인 필요'
+        );
+
+        if (pensionHealth?.source === 'official_cache') {
+            const actions = document.createElement('div');
+            actions.className = 'data-status-actions';
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'btn ghost sm';
+            clearBtn.textContent = '캐시 삭제';
+            clearBtn.addEventListener('click', async () => {
+                const cleared = this.data.clearPension720StatsCache?.();
+                if (!cleared) {
+                    UIManager.toast('삭제할 연금복권 공식 캐시가 없습니다.', 'info', 2500);
+                    return;
+                }
+                await this.data.fetchPension720Stats?.({ remote: false, preserveExistingOnFailure: true });
+                UIManager.toast('연금복권 공식 캐시를 삭제했습니다.', 'success', 2500);
+                this.renderDataStatusSummary();
+            });
+            actions.appendChild(clearBtn);
+            pensionCard.appendChild(actions);
+        }
+
+        container.append(lottoCard, pensionCard);
     },
 
-    exportAll(options = {}) {
+    async exportAll(options = {}) {
         const payload = buildBackupPayload(this.data.state, {
             localUpdates: this.data.getLocalUpdates(),
             strategyPresets: this.data.state.strategyPresets || []
         });
 
         const json = JSON.stringify(payload, null, 2);
+        const byteLength = getUtf8ByteLength(json);
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const prefix = String(options.prefix || 'lotto_pension_pro_backup_v5').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filename = `${prefix}_${ts}.json`;
         if (
             typeof document === 'undefined' ||
             typeof document.createElement !== 'function' ||
@@ -106,42 +146,113 @@ export const dataIoSupportMethods = {
             typeof URL.createObjectURL !== 'function'
         ) {
             return {
-                filename: '',
+                filename,
                 payload,
-                downloaded: false
+                downloaded: false,
+                saved: false,
+                method: 'unavailable',
+                byteLength
             };
         }
         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+
+        if (
+            options.preferFilePicker &&
+            typeof window !== 'undefined' &&
+            typeof window.showSaveFilePicker === 'function'
+        ) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [
+                        {
+                            description: 'JSON backup',
+                            accept: {
+                                'application/json': ['.json']
+                            }
+                        }
+                    ]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                if (!options.silent) UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
+                return {
+                    filename: handle.name || filename,
+                    payload,
+                    downloaded: true,
+                    saved: true,
+                    method: 'file-picker',
+                    byteLength
+                };
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return {
+                        filename,
+                        payload,
+                        downloaded: false,
+                        saved: false,
+                        canceled: true,
+                        method: 'file-picker',
+                        byteLength
+                    };
+                }
+                console.warn('File picker backup failed; falling back to download anchor.', error);
+            }
+        }
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const ts = new Date().toISOString().replace(/[:.]/g, '-');
         a.href = url;
-        const prefix = String(options.prefix || 'lotto_pension_pro_backup_v5').replace(/[^a-zA-Z0-9_-]/g, '_');
-        a.download = `${prefix}_${ts}.json`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        if (!options.silent) UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
+        if (!options.silent) {
+            const warningLimit = Number(CONFIG.LIMITS.IMPORT_SIZE_WARNING_BYTES || 0);
+            if (warningLimit > 0 && byteLength >= warningLimit) {
+                UIManager.toast(
+                    `백업 파일이 ${(byteLength / (1024 * 1024)).toFixed(1)}MB입니다. 복원 한도는 ${(
+                        CONFIG.LIMITS.MAX_IMPORT_BYTES /
+                        (1024 * 1024)
+                    ).toFixed(1)}MB입니다.`,
+                    'warning',
+                    4500
+                );
+            } else {
+                UIManager.toast(UI_STRINGS.dataio.backupExported, 'success');
+            }
+        }
         return {
             filename: a.download,
             payload,
-            downloaded: true
+            downloaded: true,
+            saved: false,
+            method: 'download-anchor',
+            byteLength
         };
     },
 
     async ensureBackupBeforeDestructive(options = {}) {
-        const result = this.exportAll({
+        const result = await this.exportAll({
             silent: true,
-            prefix: options.prefix || 'lotto_pension_pro_before_change'
+            prefix: options.prefix || 'lotto_pension_pro_before_change',
+            preferFilePicker: true
         });
+        if (result?.saved) {
+            UIManager.toast(options.savedMessage || '백업 파일 저장을 완료했습니다.', 'success', 2500);
+            return result;
+        }
         if (result?.downloaded) {
             const confirmed = await UIManager.confirm({
                 title: options.confirmTitle || '백업 파일 확인',
                 message:
                     options.confirmMessage ||
                     `백업 다운로드를 시작했습니다${result.filename ? `: ${result.filename}` : ''}.\n` +
-                        '브라우저 다운로드 목록에서 백업 파일이 저장된 것을 확인한 뒤 계속 진행하세요.',
+                        `파일 크기: ${((result.byteLength || 0) / 1024).toFixed(1)}KB\n` +
+                        '브라우저 다운로드 목록에서 파일 저장 완료를 확인한 뒤 계속 진행하세요.\n' +
+                        '다운로드가 차단되었거나 실패했으면 중단을 선택하세요.',
                 confirmText: options.confirmText || '백업 확인 후 진행',
                 cancelText: options.cancelText || '중단'
             });

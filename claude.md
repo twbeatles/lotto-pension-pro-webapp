@@ -8,7 +8,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v26`
+- Service worker cache version: `v27`
 
 ## Current Data Baseline
 
@@ -41,11 +41,11 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Backup schema is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
 - v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Overwrite imports create a silent pre-replace backup with prefix `lotto_pension_pro_before_replace`; data cleanup uses `lotto_pension_pro_before_cleanup`.
-- Destructive overwrite/cleanup flows trigger a backup download and then require explicit user confirmation before continuing.
+- Destructive overwrite/cleanup flows prefer File System Access API backup writes and fall back to download-plus-confirm when the browser does not support it.
 - Pension720+ recommendation supports dedicated strategies, presets, group/digit filters, saved tickets, separate campaigns, copy, CSV export, and target-draw-aware checking with latest-draw reference fallback.
 - Pension720+ CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 - CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
-- Strategy worker asset query version is `v21`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
+- Strategy worker asset query version is `v22`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 
 ## Product/Copy Contract
 
@@ -69,7 +69,9 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - localStorage write failures keep dirty state and are surfaced in storage health.
 - Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
-- Pension720+ official data is cached when it is at least as fresh as static data, and `official_cache` is shown as a distinct source.
+- Pension720+ official data is cached when it is newer than static data, same-draw static corrections beat older cache copies, and `official_cache` is shown as a distinct source with a settings cache-clear action.
+- Backup import accepts up to 32MB so app-created max-size backups remain reimportable.
+- Strategy worker cache-empty errors reset the stats fingerprint and retry once with full stats data.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path instead of being hard-coded.
 - DOM selector contract and focused implementation regressions live in the smoke suite.
 
@@ -80,6 +82,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
     - Runtime sync can use the official API, supported custom `/proxy/latest`, and built-in fallback providers.
     - `npm run check:data-freshness` fails if static data is more than one draw behind the estimated latest draw.
     - `npm run check:data-freshness:strict` fails if static data is not at the estimated latest draw.
+    - `npm run check:lotto:official` compares the checked-in latest Lotto draw fields with the official endpoint and is part of `npm run build:release`.
 - Pension720+:
     - `scripts/fetch_pension720_stats.mjs` fetches official `selectPstPt720WnList.do`.
     - `npm run sync:pension720` refreshes `data/pension720_stats.json`.
@@ -95,6 +98,7 @@ Run these before considering a change complete:
 npm run lint
 npm run check:data-freshness
 npm run check:data-freshness:strict
+npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
 node scripts/smoke/smoke.mjs
@@ -110,6 +114,7 @@ npm run test:happy
 npm run test:offline
 npm run test:pwa-mobile
 npm run test:sync-live
+npm run test:sync-live:browser
 ```
 
 `npm run test:happy` includes the Pension720+ browser path: recommendation, individual save, expansion save, campaign creation, target-aware check, and CSV download validation.
@@ -129,7 +134,7 @@ npm run bench:ai:full
 - GitHub Pages URL target: `https://twbeatles.github.io/lotto-pension-pro-webapp/`
 - Repository rename itself is an external GitHub operation; docs assume it has been or will be completed.
 - After changing app shell, manifest, service worker, data files, styles, or modules, rerun `npm run sync:sw-manifest`.
-- If installable app metadata changes, bump `CACHE_VERSION` in `sw.js`.
+- If installable app metadata or app-shell behavior changes and installed clients need a forced refresh, bump `CACHE_VERSION` in `sw.js`.
 - Release baseline is `npm run build:release`.
 - Browser release checks should include happy path, offline, and PWA mobile validation.
 - Use `git diff --check` before publishing. CRLF warnings from Git are not the same as whitespace errors.

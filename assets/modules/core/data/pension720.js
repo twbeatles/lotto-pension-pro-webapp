@@ -259,6 +259,17 @@ export const dataPension720Methods = {
         );
     },
 
+    clearPension720StatsCache() {
+        if (typeof localStorage === 'undefined') return false;
+        try {
+            const hadCache = Boolean(localStorage.getItem(CONFIG.KEYS.PENSION720_STATS_CACHE));
+            localStorage.removeItem(CONFIG.KEYS.PENSION720_STATS_CACHE);
+            return hadCache;
+        } catch (_e) {
+            return false;
+        }
+    },
+
     async fetchPension720Stats(options = {}) {
         const useRemote = options.remote !== false;
         const preserveExisting = options.preserveExistingOnFailure !== false;
@@ -278,7 +289,7 @@ export const dataPension720Methods = {
         }
 
         const cachedItems = this.readPension720StatsCache();
-        if (cachedItems.length && (!bestItems.length || cachedItems[0].draw_no >= bestItems[0].draw_no)) {
+        if (cachedItems.length && (!bestItems.length || cachedItems[0].draw_no > bestItems[0].draw_no)) {
             bestItems = cachedItems;
             source = 'official_cache';
         }
@@ -324,7 +335,9 @@ export const dataPension720Methods = {
             message: bestItems.length
                 ? source === 'official'
                     ? '동행복권 공식 연금복권 데이터를 사용 중입니다.'
-                    : '기본 포함 연금복권 데이터를 사용 중입니다.'
+                    : source === 'official_cache'
+                      ? '동행복권 공식 연금복권 캐시 데이터를 사용 중입니다.'
+                      : '기본 포함 연금복권 데이터를 사용 중입니다.'
                 : errorMessage || '연금복권 데이터를 구성하지 못했습니다.',
             updatedAt: new Date().toISOString()
         });

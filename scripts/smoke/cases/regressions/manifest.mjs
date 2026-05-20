@@ -25,6 +25,11 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runStrategyWorkerStatsCacheEmptyRetryRegression',
+        label: 'strategy worker cache-empty retry regression',
+        awaited: true
+    },
+    {
         name: 'runDrawNormalizationRegression',
         label: 'draw-normalization regression'
     },
@@ -196,6 +201,10 @@ const regressionExecutionPlan = [
         name: 'runStaticDataFreshnessBudgetRegression',
         label: 'static data freshness budget regression',
         awaited: true
+    },
+    {
+        name: 'runLottoOfficialFreshnessComparisonRegression',
+        label: 'lotto official freshness comparison regression'
     },
     {
         name: 'runBuiltInSyncProviderRegression',

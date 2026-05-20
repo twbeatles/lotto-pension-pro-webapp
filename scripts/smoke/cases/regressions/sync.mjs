@@ -1,5 +1,6 @@
 import {
     assert,
+    compareLottoOfficialFreshness,
     createDocumentStub,
     createField,
     DataManager,
@@ -588,6 +589,48 @@ async function runStaticDataFreshnessBudgetRegression() {
     );
 }
 
+function runLottoOfficialFreshnessComparisonRegression() {
+    const localLatest = {
+        draw_no: 10,
+        date: '2026-05-16',
+        numbers: [1, 2, 3, 4, 5, 6],
+        bonus: 7,
+        prize_amount: 1000,
+        winners_count: 1,
+        total_sales: 9000
+    };
+    const matching = compareLottoOfficialFreshness([localLatest], [{ ...localLatest }], {
+        estimatedLatestDrawNo: 10
+    });
+    assert.equal(matching.ok, true, 'matching official latest draw fields must pass');
+
+    const correctedOfficial = compareLottoOfficialFreshness(
+        [localLatest],
+        [
+            {
+                ...localLatest,
+                numbers: [2, 3, 4, 5, 6, 8],
+                bonus: 9
+            }
+        ],
+        { estimatedLatestDrawNo: 10 }
+    );
+    assert.equal(correctedOfficial.ok, false, 'official row field mismatches must fail');
+    assert.ok(
+        correctedOfficial.issues.some((issue) => issue.includes('numbers mismatch')),
+        'official mismatch report must identify number drift'
+    );
+
+    const estimatedBehind = compareLottoOfficialFreshness([localLatest], [{ ...localLatest }], {
+        estimatedLatestDrawNo: 11
+    });
+    assert.equal(estimatedBehind.ok, false, 'estimated latest draw drift must still fail');
+    assert.ok(
+        estimatedBehind.issues.some((issue) => issue.includes('estimated latest draw 11')),
+        'estimated drift report must identify the estimated latest draw'
+    );
+}
+
 function runBuiltInSyncProviderRegression() {
     const dm = new DataManager();
     const urls = dm.buildBuiltInSingleFetchUrls(1215);
@@ -1004,6 +1047,7 @@ export {
     runAutoSyncFallbackRegression,
     runBackgroundAutoSyncRegression,
     runBuiltInSyncProviderRegression,
+    runLottoOfficialFreshnessComparisonRegression,
     runExpectedMissingDrawAllowanceRegression,
     runMalformedDrawDateRejectedRegression,
     runOfflineProbeRecoveryRegression,

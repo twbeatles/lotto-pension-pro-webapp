@@ -19,6 +19,7 @@ import { passesFilters } from '../../../../assets/modules/core/StrategyFilters.j
 import { CONFIG } from '../../../../assets/modules/utils/config.js';
 import { QrScannerModule } from '../../../../assets/modules/features/QrScanner.js';
 import { estimateLatestDrawKST } from '../../../../assets/modules/utils/utils.js';
+import { compareLottoOfficialFreshness } from '../../../check_lotto_official_freshness.mjs';
 
 import { assertTicketShape, buildSmokeRequest, createDocumentStub, createField } from '../../helpers/common.mjs';
 
@@ -28,6 +29,7 @@ export {
     buildBackupPayload,
     buildSmokeRequest,
     CheckModule,
+    compareLottoOfficialFreshness,
     CONFIG,
     createDocumentStub,
     createField,

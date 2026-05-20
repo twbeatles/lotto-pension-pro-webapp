@@ -6,7 +6,7 @@ const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
-const STRATEGY_WORKER_ASSET_VERSION = 'v21';
+const STRATEGY_WORKER_ASSET_VERSION = 'v22';
 
 function createStatsFingerprint(statsData = []) {
     if (!Array.isArray(statsData) || !statsData.length) return '';
@@ -78,7 +78,10 @@ export class StrategyWorkerClient {
 
         if (message.type === 'ERROR') {
             const payload = message.payload || {};
-            task.reject(new Error(payload.message || 'Strategy worker request failed.'));
+            const err = new Error(payload.message || 'Strategy worker request failed.');
+            err.code = payload.code || 'STRATEGY_WORKER_ERROR';
+            err.requestId = requestId;
+            task.reject(err);
             return;
         }
 
@@ -133,7 +136,7 @@ export class StrategyWorkerClient {
         return err;
     }
 
-    preparePayloadForWorker(type, payload) {
+    preparePayloadForWorker(type, payload, options = {}) {
         if (!['GENERATE', 'RECOMMEND'].includes(type) || !Array.isArray(payload?.statsData)) {
             return payload;
         }
@@ -141,7 +144,7 @@ export class StrategyWorkerClient {
         const statsKey = createStatsFingerprint(payload.statsData);
         if (!statsKey) return payload;
 
-        if (this.workerStatsFingerprint === statsKey) {
+        if (!options.forceStatsData && this.workerStatsFingerprint === statsKey) {
             const rest = { ...payload };
             delete rest.statsData;
             return {
@@ -157,10 +160,10 @@ export class StrategyWorkerClient {
         };
     }
 
-    postOnce(type, payload, timeoutMs) {
+    postOnce(type, payload, timeoutMs, options = {}) {
         const worker = this.ensureWorker();
         const requestId = createRequestId(type.toLowerCase());
-        const workerPayload = this.preparePayloadForWorker(type, payload);
+        const workerPayload = this.preparePayloadForWorker(type, payload, options);
 
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -176,11 +179,25 @@ export class StrategyWorkerClient {
     async post(type, payload, timeoutMs = null, retries = MAX_RETRY) {
         const resolvedTimeoutMs = timeoutMs ?? this.resolveTimeoutMs(type, payload);
         let attempt = 0;
+        let cacheRetryUsed = false;
+        let forceStatsData = false;
 
         while (attempt <= retries) {
             try {
-                return await this.postOnce(type, payload, resolvedTimeoutMs);
+                return await this.postOnce(type, payload, resolvedTimeoutMs, { forceStatsData });
             } catch (err) {
+                if (
+                    err?.code === 'STRATEGY_WORKER_CACHE_EMPTY' &&
+                    !cacheRetryUsed &&
+                    Array.isArray(payload?.statsData)
+                ) {
+                    console.warn(`[STRATEGY_WORKER_CACHE_EMPTY_RETRY] ${type} retrying with full statsData`);
+                    this.workerStatsFingerprint = '';
+                    cacheRetryUsed = true;
+                    forceStatsData = true;
+                    continue;
+                }
+                forceStatsData = false;
                 const isTimeout = err?.code === 'WORKER_TIMEOUT';
                 if (isTimeout && attempt < retries) {
                     console.warn(`[WORKER_TIMEOUT_RETRY] ${type} attempt=${attempt + 1}/${retries + 1}`);

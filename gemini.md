@@ -8,7 +8,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App shell: no-build static SPA
 - Entry: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- PWA cache version: `v26`
+- PWA cache version: `v27`
 
 ## Current Snapshot
 
@@ -46,12 +46,13 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Backup export version is v5 and includes `pension720Tickets` plus `pension720Campaigns`; default export prefix is `lotto_pension_pro_backup_v5`.
 - v4 Pension720+ backups remain import-compatible and keep saved tickets.
 - Import overwrite backup prefix is `lotto_pension_pro_before_replace`; data cleanup backup prefix is `lotto_pension_pro_before_cleanup`.
-- Overwrite import and cleanup trigger a backup download and then require explicit user confirmation before continuing.
-- Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1` and may appear as `official_cache`.
+- Overwrite import and cleanup prefer File System Access API backup writes and fall back to download-plus-confirm when unsupported.
+- Backup import accepts up to 32MB so app-created max-size backups remain reimportable.
+- Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1`, may appear as `official_cache`, and only beats static when it is newer than the static snapshot.
 - Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only and are not included in backup v5.
 - Pension720+ saved-ticket CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 - CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
-- Strategy worker asset query version is `v21`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
+- Strategy worker asset query version is `v22`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 - Dated one-off review/audit docs may be deleted locally; do not restore them unless the user asks. Keep durable decisions in the maintained docs.
 - Recommended copy must keep `번호 추천` wording and avoid legacy AI-prediction phrasing.
 
@@ -60,6 +61,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Lotto static data can be refreshed with `npm run sync:lotto`.
 - `npm run check:data-freshness` allows one draw behind for normal development builds.
 - `npm run check:data-freshness:strict` and `npm run build:release` require zero missing draws for release.
+- `npm run check:lotto:official` compares the latest checked-in Lotto draw with the official endpoint and is part of `npm run build:release`.
 - localStorage write failures keep dirty state and surface in storage health.
 - Destructive overwrite/cleanup starts the JSON backup download and then requires user confirmation before replacing or cleaning stored data.
 - Service worker precache failures are exposed through `__cache-health.json`; install proceeds and the app shows a warning state.
@@ -81,6 +83,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 npm run lint
 npm run check:data-freshness
 npm run check:data-freshness:strict
+npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
 node scripts/smoke/smoke.mjs
@@ -99,6 +102,7 @@ npm run test:happy
 npm run test:offline
 npm run test:pwa-mobile
 npm run test:sync-live
+npm run test:sync-live:browser
 npm run bench:ai
 npm run bench:ai:full
 ```

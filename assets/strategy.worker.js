@@ -12,10 +12,11 @@ function toArray(value, fallback = []) {
 }
 
 function createErrorPayload(requestId, code, err) {
+    const message = err?.message || '전략 워커 실행 중 오류가 발생했습니다.';
     return {
         requestId,
-        code,
-        message: err?.message || '전략 워커 실행 중 오류가 발생했습니다.'
+        code: /data cache is empty/i.test(message) ? 'STRATEGY_WORKER_CACHE_EMPTY' : code,
+        message
     };
 }
 

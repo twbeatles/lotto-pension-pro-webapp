@@ -8,7 +8,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v27`
+- Service worker cache version: `v28`
 
 ## Current Data Baseline
 
@@ -19,10 +19,10 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
     - Allowed missing draw: `[146]`
 - Pension720+ static data:
     - Source: `data/pension720_stats.json`
-    - Latest draw: `315`
-    - Latest date: `2026-05-14`
-    - Latest primary: `2조 537530`
-    - Latest bonus: `358127`
+    - Latest draw: `316`
+    - Latest date: `2026-05-21`
+    - Latest primary: `3조 331818`
+    - Latest bonus: `449298`
 - Both data files are included in the generated service-worker precache manifest.
 
 ## Runtime Shape
@@ -69,6 +69,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - localStorage write failures keep dirty state and are surfaced in storage health.
 - Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
+- Service worker data JSON fetches are network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
 - Pension720+ official data is cached when it is newer than static data, same-draw static corrections beat older cache copies, and `official_cache` is shown as a distinct source with a settings cache-clear action.
 - Backup import accepts up to 32MB so app-created max-size backups remain reimportable.
 - Strategy worker cache-empty errors reset the stats fingerprint and retry once with full stats data.
@@ -104,6 +105,7 @@ npm run check:pension720:freshness
 node scripts/smoke/smoke.mjs
 npm run build
 npm run build:release
+npm run build:release:browser
 ```
 
 Useful browser checks:
@@ -115,6 +117,7 @@ npm run test:offline
 npm run test:pwa-mobile
 npm run test:sync-live
 npm run test:sync-live:browser
+npm run test:sync-live:browser:official
 ```
 
 `npm run test:happy` includes the Pension720+ browser path: recommendation, individual save, expansion save, campaign creation, target-aware check, and CSV download validation.
@@ -136,7 +139,9 @@ npm run bench:ai:full
 - After changing app shell, manifest, service worker, data files, styles, or modules, rerun `npm run sync:sw-manifest`.
 - If installable app metadata or app-shell behavior changes and installed clients need a forced refresh, bump `CACHE_VERSION` in `sw.js`.
 - Release baseline is `npm run build:release`.
-- Browser release checks should include happy path, offline, and PWA mobile validation.
+- Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
+- `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks and `npm run build:release` without auto-committing data.
+- `.gitignore` was rechecked on 2026-05-22 against app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and no new ignore rule was required.
 - Use `git diff --check` before publishing. CRLF warnings from Git are not the same as whitespace errors.
 
 ## Session Handoff Template

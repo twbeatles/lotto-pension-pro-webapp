@@ -1,6 +1,7 @@
 import { assert, readFile, resolve } from './support.mjs';
 import { readdir, stat } from 'node:fs/promises';
 import { relative } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { buildPrecacheManifest, renderManifestSource } from '../../../generate_sw_manifest.mjs';
 
 async function runRuntimeAssetLocalizationRegression() {
@@ -68,7 +69,7 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v27';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v28';/, 'service worker cache version must be bumped');
     assert.match(
         swSource,
         /lotto-pension-pro-app-shell-/,
@@ -131,8 +132,13 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
     );
     assert.match(
         swSource,
+        /networkFirstWithTimeout\(event\.request, CACHE_DATA, 3500, \{ fallbackOnErrorStatus: true \}\)/,
+        'data cache must prefer network-first delivery with cached fallback'
+    );
+    assert.doesNotMatch(
+        swSource,
         /staleWhileRevalidate\(event\.request, CACHE_DATA\)/,
-        'data cache must answer from cached snapshots immediately while refreshing in the background'
+        'data cache must not use stale-while-revalidate for first responses'
     );
     assert.match(
         swSource,
@@ -158,6 +164,61 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
         swSource,
         /__network_probe/,
         'service worker must not special-case the deprecated probe route anymore'
+    );
+}
+
+async function runServiceWorkerDataNetworkFirstRegression() {
+    const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
+    const store = new Map();
+    const cache = {
+        async put(request, response) {
+            store.set(request.url, response.clone());
+        },
+        async match(request) {
+            return store.get(request.url)?.clone() || null;
+        }
+    };
+    const context = {
+        caches: {
+            async open() {
+                return cache;
+            }
+        },
+        console,
+        fetch: async () => new Response('network-316', { status: 200 }),
+        Response,
+        self: {
+            __SW_PRECACHE_MANIFEST: null,
+            addEventListener() {}
+        },
+        setTimeout,
+        URL
+    };
+    runInNewContext(swSource, context);
+
+    const request = new Request('https://example.test/data/pension720_stats.json');
+    await cache.put(request, new Response('cached-315', { status: 200 }));
+    const options = { fallbackOnErrorStatus: true };
+    const networkResult = await context.networkFirstWithTimeout(request, 'data-cache', 3500, options);
+    assert.equal(await networkResult.text(), 'network-316', 'data request must prefer a fresh network response');
+    assert.equal(
+        await (await cache.match(request)).text(),
+        'network-316',
+        'network data response must refresh the data cache'
+    );
+
+    context.fetch = async () => {
+        throw new Error('offline');
+    };
+    const cachedResult = await context.networkFirstWithTimeout(request, 'data-cache', 3500, options);
+    assert.equal(await cachedResult.text(), 'network-316', 'data request must fall back to cached data when offline');
+
+    context.fetch = async () => new Response('server-error', { status: 503 });
+    const errorStatusResult = await context.networkFirstWithTimeout(request, 'data-cache', 3500, options);
+    assert.equal(
+        await errorStatusResult.text(),
+        'network-316',
+        'data request must fall back to cached data when the network returns an error status'
     );
 }
 
@@ -314,6 +375,7 @@ export {
     runLocalFontPathRegression,
     runPwaUpdateSettingsUiRegression,
     runRuntimeAssetLocalizationRegression,
+    runServiceWorkerDataNetworkFirstRegression,
     runServiceWorkerCoreDataPrecacheRegression,
     runServiceWorkerManifestParityRegression,
     runServiceWorkerPrecacheReachabilityRegression,

@@ -245,8 +245,8 @@ async function runPension720StaticDataRegression() {
 
     assert.ok(normalized.length >= 300, 'pension720 static data must include historical draws');
     assert.ok(
-        normalized[0].draw_no >= 315,
-        'pension720 static data latest draw must not regress below 2026-05-14 snapshot'
+        normalized[0].draw_no >= 316,
+        'pension720 static data minimum fixture regression must not regress below the 2026-05-21 snapshot; run check:pension720:freshness for online freshness'
     );
     assert.equal(normalized.find((row) => row.draw_no === 314)?.number, '060727', 'static data must preserve zeroes');
 }

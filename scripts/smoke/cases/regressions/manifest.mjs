@@ -419,6 +419,11 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runServiceWorkerDataNetworkFirstRegression',
+        label: 'service-worker data network-first regression',
+        awaited: true
+    },
+    {
         name: 'runWebManifestInstallabilityRegression',
         label: 'web manifest installability regression',
         awaited: true

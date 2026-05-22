@@ -7,6 +7,7 @@
   "scripts": {
     "build": "npm run lint && npm run check:data-freshness && npm run check:pension720 && npm run check:pension720:freshness && node scripts/smoke/smoke.mjs",
     "build:release": "npm run build && npm run check:data-freshness:strict && npm run check:lotto:official",
+    "build:release:browser": "npm run build:release && npm run test:sync-live:browser:official",
     "lint": "eslint assets proxy scripts sw.js index.html",
     "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",
     "format:check": "prettier --check \"**/*.{js,mjs,json,md,css,html}\"",
@@ -25,6 +26,7 @@
     "test:pwa-mobile": "node scripts/tests/pwa_mobile_playwright.mjs",
     "test:sync-live": "node scripts/tests/sync_live.mjs",
     "test:sync-live:browser": "node scripts/tests/live_data_source_playwright.mjs",
+    "test:sync-live:browser:official": "node scripts/tests/live_data_source_playwright.mjs --require-official",
     "bench:ai": "node scripts/perf/ai_eval.mjs",
     "bench:ai:full": "node scripts/perf/ai_eval.mjs --full --start 1100 --end 1209 --set-count 5 --simulation-count 5000 --lookback 20 --seed 2026"
   },

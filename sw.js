@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v27';
+const CACHE_VERSION = 'v28';
 const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
@@ -125,6 +125,10 @@ async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500, opt
 
     try {
         const networkRes = await Promise.race([fetch(request), timeoutPromise]);
+        if (options.fallbackOnErrorStatus && !networkRes.ok && networkRes.type !== 'opaque') {
+            const cached = await matchCachedResponse(cache, request, options);
+            if (cached) return cached;
+        }
         try {
             await putIfOk(cacheName, request, networkRes);
         } catch (_e) {
@@ -199,7 +203,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isDataAssetRequest(url)) {
-        event.respondWith(staleWhileRevalidate(event.request, CACHE_DATA));
+        event.respondWith(networkFirstWithTimeout(event.request, CACHE_DATA, 3500, { fallbackOnErrorStatus: true }));
         return;
     }
 

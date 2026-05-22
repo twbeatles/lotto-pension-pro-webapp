@@ -154,6 +154,27 @@ function comparePension720Freshness(staticRows, officialRows) {
     };
 }
 
+function renderNumberArray(items = []) {
+    return `[${items.map((item) => Number(item)).join(', ')}]`;
+}
+
+function renderPension720Rows(rows = []) {
+    const blocks = rows.map((row) =>
+        [
+            '  {',
+            `    "draw_no": ${row.draw_no},`,
+            `    "date": ${JSON.stringify(row.date)},`,
+            `    "group": ${row.group},`,
+            `    "digits": ${renderNumberArray(row.digits)},`,
+            `    "number": ${JSON.stringify(row.number)},`,
+            `    "bonus_digits": ${renderNumberArray(row.bonus_digits)},`,
+            `    "bonus_number": ${JSON.stringify(row.bonus_number)}`,
+            '  }'
+        ].join('\n')
+    );
+    return `[\n${blocks.join(',\n')}\n]\n`;
+}
+
 async function readExistingRows(outputPath) {
     const raw = await readFile(outputPath, 'utf8');
     return JSON.parse(raw);
@@ -214,7 +235,7 @@ async function main() {
 
     if (!checkOnly) {
         await mkdir(dirname(outputPath), { recursive: true });
-        await writeFile(outputPath, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
+        await writeFile(outputPath, renderPension720Rows(rows), 'utf8');
     }
 }
 
@@ -225,4 +246,4 @@ if (process.argv[1] && resolve(process.argv[1]) === __filename) {
     });
 }
 
-export { comparePension720Freshness, normalizePension720Item, normalizePayload, SOURCE_URL };
+export { comparePension720Freshness, normalizePension720Item, normalizePayload, renderPension720Rows, SOURCE_URL };

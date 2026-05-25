@@ -621,7 +621,16 @@ function runFacadeExportParityRegression() {
         assert.equal(typeof DataManager.prototype[name], 'function', `DataManager prototype must expose ${name}()`);
     });
 
-    const uiManagerMethods = ['init', 'openModal', 'closeModal', 'toast', 'renderBalls', 'copyText', 'copyNumbers', 'showQR'];
+    const uiManagerMethods = [
+        'init',
+        'openModal',
+        'closeModal',
+        'toast',
+        'renderBalls',
+        'copyText',
+        'copyNumbers',
+        'showQR'
+    ];
     uiManagerMethods.forEach((name) => {
         assert.equal(typeof UIManager[name], 'function', `UIManager must expose static ${name}()`);
     });

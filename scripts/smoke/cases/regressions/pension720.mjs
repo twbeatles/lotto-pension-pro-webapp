@@ -10,7 +10,7 @@ import {
     UIManager
 } from './support.mjs';
 import { buildPrecacheManifest } from '../../../generate_sw_manifest.mjs';
-import { comparePension720Freshness } from '../../../fetch_pension720_stats.mjs';
+import { comparePension720Freshness, fetchOfficialPayload } from '../../../fetch_pension720_stats.mjs';
 
 function makeSamplePensionStats() {
     return [
@@ -262,6 +262,29 @@ function runPension720FreshnessComparisonRegression() {
     assert.equal(mismatch.ok, false, 'pension720 online freshness comparison must fail latest draw mismatches');
 }
 
+async function runPension720OfficialFetchRetryRegression() {
+    let calls = 0;
+    const expectedPayload = makeSamplePensionStats();
+    const result = await fetchOfficialPayload({
+        retryDelayMs: 0,
+        fetchImpl: async () => {
+            calls += 1;
+            if (calls < 3) {
+                const error = new TypeError('fetch failed');
+                error.cause = { code: 'UND_ERR_CONNECT_TIMEOUT' };
+                throw error;
+            }
+            return new Response(JSON.stringify(expectedPayload), {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+            });
+        }
+    });
+
+    assert.equal(calls, 3, 'pension720 official fetch must retry transient connection timeouts');
+    assert.deepEqual(result, expectedPayload, 'pension720 official fetch must return the eventual successful payload');
+}
+
 function runPension720LatestCheckRegression() {
     const dm = new DataManager();
     const draw = {
@@ -429,6 +452,7 @@ export {
     runPension720CampaignRegression,
     runPension720CsvFormulaEscapeRegression,
     runPension720FreshnessComparisonRegression,
+    runPension720OfficialFetchRetryRegression,
     runPension720LatestCheckRegression,
     runPension720NormalizationRegression,
     runPension720PrecacheRegression,

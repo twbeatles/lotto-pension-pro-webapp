@@ -5,6 +5,20 @@ import { fileURLToPath } from 'node:url';
 const SOURCE_URL = 'https://www.dhlottery.co.kr/pt720/selectPstPt720WnList.do';
 const DEFAULT_OUTPUT_PATH = resolve('data/pension720_stats.json');
 const __filename = fileURLToPath(import.meta.url);
+const OFFICIAL_FETCH_RETRIES = 2;
+const OFFICIAL_FETCH_RETRY_DELAY_MS = 750;
+const OFFICIAL_FETCH_TIMEOUT_MS = 15000;
+const RETRIABLE_FETCH_CODES = new Set([
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+    'UND_ERR_BODY_TIMEOUT',
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'EAI_AGAIN'
+]);
+
+const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
 function normalizeDate(rawValue = '') {
     const raw = String(rawValue ?? '').trim();
@@ -71,15 +85,53 @@ function normalizePayload(payload) {
     return Array.from(map.values()).sort((a, b) => b.draw_no - a.draw_no);
 }
 
-async function fetchOfficialPayload() {
-    const response = await fetch(SOURCE_URL, {
-        headers: {
-            Accept: 'application/json',
-            'User-Agent': 'Mozilla/5.0 lotto-pension-pro-webapp data sync'
+function isRetriableOfficialFetchError(error) {
+    const status = Number(error?.status || 0);
+    if (status === 429 || status >= 500) return true;
+
+    const code = error?.cause?.code || error?.code;
+    return RETRIABLE_FETCH_CODES.has(code) || error instanceof TypeError;
+}
+
+async function fetchOfficialPayload({
+    fetchImpl = fetch,
+    retries = OFFICIAL_FETCH_RETRIES,
+    retryDelayMs = OFFICIAL_FETCH_RETRY_DELAY_MS,
+    timeoutMs = OFFICIAL_FETCH_TIMEOUT_MS
+} = {}) {
+    let lastError = null;
+    const maxRetries = Math.max(0, Math.floor(Number(retries || 0)));
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+            const signal =
+                typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+                    ? AbortSignal.timeout(timeoutMs)
+                    : undefined;
+            const response = await fetchImpl(SOURCE_URL, {
+                headers: {
+                    Accept: 'application/json',
+                    'User-Agent': 'Mozilla/5.0 lotto-pension-pro-webapp data sync'
+                },
+                signal
+            });
+            if (!response.ok) {
+                const error = new Error(`HTTP ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            return response.json();
+        } catch (error) {
+            lastError = error;
+            if (attempt >= maxRetries || !isRetriableOfficialFetchError(error)) break;
+            await sleep(retryDelayMs * (attempt + 1));
         }
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+    }
+
+    throw new Error(
+        `official pension720 fetch failed after ${maxRetries + 1} attempt(s): ${lastError?.message || lastError}`,
+        { cause: lastError }
+    );
 }
 
 function validateRows(rows) {
@@ -129,7 +181,9 @@ function comparePension720Freshness(staticRows, officialRows) {
         const fields = ['date', 'group', 'number', 'bonus_number'];
         fields.forEach((field) => {
             if (latestLocal[field] !== latestOfficial[field]) {
-                issues.push(`latest draw ${field} mismatch: static=${latestLocal[field]} official=${latestOfficial[field]}`);
+                issues.push(
+                    `latest draw ${field} mismatch: static=${latestLocal[field]} official=${latestOfficial[field]}`
+                );
             }
         });
     }
@@ -246,4 +300,11 @@ if (process.argv[1] && resolve(process.argv[1]) === __filename) {
     });
 }
 
-export { comparePension720Freshness, normalizePension720Item, normalizePayload, renderPension720Rows, SOURCE_URL };
+export {
+    comparePension720Freshness,
+    fetchOfficialPayload,
+    normalizePension720Item,
+    normalizePayload,
+    renderPension720Rows,
+    SOURCE_URL
+};

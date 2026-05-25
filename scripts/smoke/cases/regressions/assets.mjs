@@ -2,7 +2,13 @@ import { assert, readFile, resolve } from './support.mjs';
 import { readdir, stat } from 'node:fs/promises';
 import { relative } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { safeHtml } from '../../../../assets/modules/utils/dom.js';
 import { buildPrecacheManifest, renderManifestSource } from '../../../generate_sw_manifest.mjs';
+import { getDataBaseline, updateDocSource } from '../../../update_docs_data_baseline.mjs';
+
+function normalizeLineEndings(text = '') {
+    return String(text).replace(/\r\n/g, '\n');
+}
 
 async function runRuntimeAssetLocalizationRegression() {
     const targets = ['index.html', 'assets/app.css', 'assets/modules/utils/loader.js'];
@@ -69,7 +75,7 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v28';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v29';/, 'service worker cache version must be bumped');
     assert.match(
         swSource,
         /lotto-pension-pro-app-shell-/,
@@ -100,6 +106,8 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
         /const PRECACHE_MANIFEST = self\.__SW_PRECACHE_MANIFEST \|\| FALLBACK_PRECACHE_MANIFEST;/,
         'service worker must consume the generated precache manifest'
     );
+    assert.match(swSource, /PRECACHE_MANIFEST_VERSION/, 'service worker must track the generated manifest version');
+    assert.match(swSource, /manifestVersion: PRECACHE_MANIFEST_VERSION/, 'cache health must include manifest version');
     assert.match(
         swSource,
         /const DATA_CORE_ASSETS = Array\.isArray\(PRECACHE_MANIFEST\.data\)/,
@@ -160,6 +168,8 @@ async function runServiceWorkerCoreDataPrecacheRegression() {
         /networkFirstWithTimeout\(event\.request, CACHE_APP_SHELL, 3500, \{ ignoreSearch: true \}\)/,
         'app-shell code assets must prefer network-first delivery'
     );
+    assert.match(swSource, /new AbortController\(\)/, 'network-first timeout must be able to abort fetches');
+    assert.match(swSource, /clearTimeout\(timeoutId\)/, 'network-first timeout must clear its timer');
     assert.doesNotMatch(
         swSource,
         /__network_probe/,
@@ -192,6 +202,8 @@ async function runServiceWorkerDataNetworkFirstRegression() {
             addEventListener() {}
         },
         setTimeout,
+        clearTimeout,
+        AbortController,
         URL
     };
     runInNewContext(swSource, context);
@@ -220,6 +232,26 @@ async function runServiceWorkerDataNetworkFirstRegression() {
         'network-316',
         'data request must fall back to cached data when the network returns an error status'
     );
+
+    let abortObserved = false;
+    context.fetch = async (_request, fetchOptions = {}) =>
+        new Promise((_, reject) => {
+            fetchOptions?.signal?.addEventListener(
+                'abort',
+                () => {
+                    abortObserved = true;
+                    reject(new Error('aborted'));
+                },
+                { once: true }
+            );
+        });
+    const timeoutResult = await context.networkFirstWithTimeout(request, 'data-cache', 1, options);
+    assert.equal(
+        await timeoutResult.text(),
+        'network-316',
+        'timed-out data request must still fall back to cached data'
+    );
+    assert.equal(abortObserved, true, 'timed-out network-first fetch must be aborted');
 }
 
 async function runWebManifestInstallabilityRegression() {
@@ -270,10 +302,11 @@ async function runServiceWorkerManifestParityRegression() {
     const expectedManifest = await buildPrecacheManifest();
 
     assert.equal(
-        manifestSource.trim(),
-        renderManifestSource(expectedManifest).trim(),
+        normalizeLineEndings(manifestSource).trim(),
+        normalizeLineEndings(renderManifestSource(expectedManifest)).trim(),
         'generated SW precache manifest must stay in sync with the manifest generator'
     );
+    assert.match(manifestSource, /"version": "sha256-[a-f0-9]{16}"/, 'generated manifest must include a content hash');
     assert.doesNotMatch(
         manifestSource,
         /online-check\.txt/,
@@ -292,6 +325,29 @@ async function runServiceWorkerPrecacheReachabilityRegression() {
         const info = await stat(filePath);
         assert.equal(info.isFile(), true, `precache entry must point to an existing file: ${entry}`);
     }
+}
+
+async function runDocsDataBaselineRegression() {
+    const baseline = getDataBaseline(
+        JSON.parse(await readFile(resolve(process.cwd(), 'data/winning_stats.json'), 'utf8')),
+        JSON.parse(await readFile(resolve(process.cwd(), 'data/pension720_stats.json'), 'utf8'))
+    );
+    const docs = ['README.md', 'claude.md', 'gemini.md', 'deploy_github_pages.md'];
+
+    for (const doc of docs) {
+        const source = await readFile(resolve(process.cwd(), doc), 'utf8');
+        assert.equal(updateDocSource(source, baseline), source, `${doc} must match the checked-in data baseline`);
+    }
+}
+
+function runSafeHtmlHelperRegression() {
+    const userValue = '<img src=x onerror=alert(1)>';
+    const rendered = safeHtml`<span>${userValue}</span>`;
+    assert.equal(
+        rendered,
+        '<span>&lt;img src=x onerror=alert(1)&gt;</span>',
+        'safeHtml must escape interpolated values'
+    );
 }
 
 async function runHiddenAttributeStyleRegression() {
@@ -373,6 +429,8 @@ export {
     runHiddenAttributeStyleRegression,
     runInnerHtmlAllowlistRegression,
     runLocalFontPathRegression,
+    runDocsDataBaselineRegression,
+    runSafeHtmlHelperRegression,
     runPwaUpdateSettingsUiRegression,
     runRuntimeAssetLocalizationRegression,
     runServiceWorkerDataNetworkFirstRegression,

@@ -83,39 +83,44 @@ async function launchBrowser() {
 }
 
 async function runCanary(page, { requireOfficial = false } = {}) {
-    return page.evaluate(async (options) => {
-        const data = window.app?.data;
-        if (!data?.state?.winningStats?.length) {
-            throw new Error('app winning stats were not loaded');
-        }
-
-        const latestDrawNo = Number(data.state.winningStats[0]?.draw_no || 0);
-        const lottoLogs = [];
-        const lottoItem = await data.fetchOneDraw(
-            latestDrawNo,
-            { url: '', source: 'built-in' },
-            (message, code, meta = null) => {
-                lottoLogs.push({ message, code, meta });
+    return page.evaluate(
+        async (options) => {
+            const data = window.app?.data;
+            if (!data?.state?.winningStats?.length) {
+                throw new Error('app winning stats were not loaded');
             }
-        );
 
-        const pensionOk = await data.fetchPension720Stats({ remote: true, preserveExistingOnFailure: true });
-        const pensionHealth = data.mergePension720DataHealth(
-            data.pension720DataHealth || data.getDefaultPension720DataHealth()
-        );
-        const pensionLatest = data.state.pension720Stats?.[0] || null;
-        const allowedSources = options.requireOfficial ? ['official', 'official_cache'] : ['official', 'official_cache', 'static'];
+            const latestDrawNo = Number(data.state.winningStats[0]?.draw_no || 0);
+            const lottoLogs = [];
+            const lottoItem = await data.fetchOneDraw(
+                latestDrawNo,
+                { url: '', source: 'built-in' },
+                (message, code, meta = null) => {
+                    lottoLogs.push({ message, code, meta });
+                }
+            );
 
-        return {
-            latestDrawNo,
-            lottoItem,
-            lottoLogs,
-            pensionOk,
-            pensionHealth,
-            pensionLatest,
-            allowedSources
-        };
-    }, { requireOfficial });
+            const pensionOk = await data.fetchPension720Stats({ remote: true, preserveExistingOnFailure: true });
+            const pensionHealth = data.mergePension720DataHealth(
+                data.pension720DataHealth || data.getDefaultPension720DataHealth()
+            );
+            const pensionLatest = data.state.pension720Stats?.[0] || null;
+            const allowedSources = options.requireOfficial
+                ? ['official', 'official_cache']
+                : ['official', 'official_cache', 'static'];
+
+            return {
+                latestDrawNo,
+                lottoItem,
+                lottoLogs,
+                pensionOk,
+                pensionHealth,
+                pensionLatest,
+                allowedSources
+            };
+        },
+        { requireOfficial }
+    );
 }
 
 async function main() {

@@ -116,9 +116,12 @@ function dedupePension720Tickets(items = []) {
     items.forEach((item, index) => {
         const normalized = normalizePension720Ticket(item, index);
         if (!normalized) return;
-        const key = [normalized.group, normalized.number, normalized.targetDrawNo || '-', normalized.campaignId || '-'].join(
-            '|'
-        );
+        const key = [
+            normalized.group,
+            normalized.number,
+            normalized.targetDrawNo || '-',
+            normalized.campaignId || '-'
+        ].join('|');
         if (!map.has(key)) map.set(key, normalized);
     });
     return Array.from(map.values()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));

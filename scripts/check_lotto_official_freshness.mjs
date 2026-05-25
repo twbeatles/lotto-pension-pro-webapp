@@ -7,6 +7,19 @@ import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
 
 const DEFAULT_DATA_PATH = resolve('data/winning_stats.json');
 const __filename = fileURLToPath(import.meta.url);
+const OFFICIAL_FETCH_RETRIES = 2;
+const OFFICIAL_FETCH_RETRY_DELAY_MS = 750;
+const RETRIABLE_FETCH_CODES = new Set([
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+    'UND_ERR_BODY_TIMEOUT',
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'EAI_AGAIN'
+]);
+
+const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
 function normalizeRows(rows = []) {
     const dm = new DataManager();
@@ -53,7 +66,9 @@ function compareLatestDrawFields(localLatest, officialLatest) {
 
     ['prize_amount', 'winners_count', 'total_sales'].forEach((field) => {
         if (Number(localLatest[field] || 0) !== Number(officialLatest[field] || 0)) {
-            issues.push(`latest draw ${field} mismatch: static=${localLatest[field]} official=${officialLatest[field]}`);
+            issues.push(
+                `latest draw ${field} mismatch: static=${localLatest[field]} official=${officialLatest[field]}`
+            );
         }
     });
 
@@ -61,7 +76,10 @@ function compareLatestDrawFields(localLatest, officialLatest) {
 }
 
 function compareLottoOfficialFreshness(staticRows, officialRows, options = {}) {
-    const estimatedLatestDrawNo = Math.max(0, Math.floor(Number(options.estimatedLatestDrawNo || estimateLatestDrawKST())));
+    const estimatedLatestDrawNo = Math.max(
+        0,
+        Math.floor(Number(options.estimatedLatestDrawNo || estimateLatestDrawKST()))
+    );
     const local = summarizeRows(staticRows);
     const official = summarizeRows(officialRows);
     const issues = [];
@@ -106,37 +124,108 @@ async function readStaticRows(dataPath = DEFAULT_DATA_PATH) {
     return JSON.parse(raw);
 }
 
-async function fetchOfficialDraw(drawNo) {
-    const dm = new DataManager();
+function isRetriableOfficialFetchError(error) {
+    const code = error?.cause?.code || error?.code;
+    return RETRIABLE_FETCH_CODES.has(code) || error instanceof TypeError;
+}
+
+async function fetchOfficialDraw(drawNo, options = {}) {
+    const retries = Math.max(0, Math.floor(Number(options.retries ?? OFFICIAL_FETCH_RETRIES)));
+    const retryDelayMs = Math.max(0, Math.floor(Number(options.retryDelayMs ?? OFFICIAL_FETCH_RETRY_DELAY_MS)));
+    const dmFactory = typeof options.dmFactory === 'function' ? options.dmFactory : () => new DataManager();
+    let lastError = null;
     const logs = [];
-    const item = await dm.fetchOneDraw(drawNo, { url: '', source: 'built-in' }, (message, code, meta = null) => {
-        logs.push({ message, code, meta });
-    });
-    if (!item) {
-        throw new Error(`official lotto draw ${drawNo} could not be fetched`);
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+            const dm = dmFactory();
+            const item = await dm.fetchOneDraw(
+                drawNo,
+                { url: '', source: 'built-in' },
+                (message, code, meta = null) => {
+                    logs.push({ attempt: attempt + 1, message, code, meta });
+                }
+            );
+            if (item) {
+                return {
+                    item,
+                    logs,
+                    attempts: attempt + 1
+                };
+            }
+            lastError = new Error(`official lotto draw ${drawNo} returned no usable payload`);
+        } catch (error) {
+            lastError = error;
+            if (!isRetriableOfficialFetchError(error)) break;
+        }
+
+        if (attempt < retries) {
+            await sleep(retryDelayMs * (attempt + 1));
+        }
     }
-    return {
-        item,
-        logs
-    };
+
+    throw new Error(
+        `official lotto draw ${drawNo} could not be fetched after ${retries + 1} attempt(s): ${
+            lastError?.message || lastError
+        }`,
+        { cause: lastError }
+    );
 }
 
 async function main() {
     const dataPath = DEFAULT_DATA_PATH;
+    const deferEstimatedMissing = process.argv.includes('--defer-estimated-missing');
     const staticRows = await readStaticRows(dataPath);
-    const latestStatic = summarizeRows(staticRows).rows[0];
-    const { item: officialLatest, logs } = await fetchOfficialDraw(latestStatic.draw_no);
-    const result = compareLottoOfficialFreshness(staticRows, [officialLatest]);
+    const staticSummary = summarizeRows(staticRows);
+    const latestStatic = staticSummary.rows[0];
+    const estimatedLatestDrawNo = estimateLatestDrawKST();
+    const targetDrawNo = Math.max(latestStatic.draw_no, estimatedLatestDrawNo);
+    let result;
+    let logs = [];
+    let attempts = 0;
+    let deferred = false;
+    let deferredReason = '';
+
+    try {
+        const fetched = await fetchOfficialDraw(targetDrawNo);
+        logs = fetched.logs;
+        attempts = fetched.attempts;
+        result = compareLottoOfficialFreshness(staticRows, [fetched.item], { estimatedLatestDrawNo });
+    } catch (error) {
+        if (deferEstimatedMissing && targetDrawNo > latestStatic.draw_no) {
+            deferred = true;
+            deferredReason = `estimated latest draw ${targetDrawNo} is not available from the official endpoint yet`;
+            result = {
+                ok: true,
+                static: {
+                    count: staticSummary.count,
+                    latestDrawNo: staticSummary.latestDrawNo,
+                    latestDate: staticSummary.latestDate,
+                    latestNumbers: staticSummary.latestNumbers,
+                    latestBonus: staticSummary.latestBonus
+                },
+                official: null,
+                estimatedLatestDrawNo,
+                issues: []
+            };
+        } else {
+            throw error;
+        }
+    }
 
     console.log(
         JSON.stringify(
             {
                 ok: result.ok,
+                deferred,
+                deferredReason,
                 dataPath,
+                targetDrawNo,
                 static: result.static,
                 official: result.official,
                 estimatedLatestDrawNo: result.estimatedLatestDrawNo,
                 issues: result.issues,
+                attempts,
                 warnings: logs.filter((entry) => entry.code === 'SYNC_FETCH_ONE_INVALID_PAYLOAD'),
                 checkedOnline: true
             },

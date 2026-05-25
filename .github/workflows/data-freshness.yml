@@ -5,12 +5,17 @@ on:
   schedule:
     - cron: '20 22 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   data-freshness:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -21,14 +26,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check strict Lotto freshness
-        run: npm run check:data-freshness:strict
+      - name: Check data freshness
+        id: data-check
+        continue-on-error: true
+        run: npm run ci:data:check
 
-      - name: Check Lotto official latest draw
-        run: npm run check:lotto:official
+      - name: Refresh data snapshots
+        id: data-refresh
+        if: steps.data-check.outcome == 'failure'
+        run: npm run ci:data:refresh
 
-      - name: Check Pension720 official freshness
-        run: npm run check:pension720:freshness
+      - name: Re-check data freshness
+        if: steps.data-check.outcome == 'failure' && steps.data-refresh.outputs.deferred != 'true'
+        run: npm run ci:data:check
 
       - name: Release gate
-        run: npm run build:release
+        if: steps.data-check.outcome == 'success' || steps.data-refresh.outputs.deferred != 'true'
+        run: npm run ci:release
+
+      - name: Detect refreshed files
+        id: changes
+        if: steps.data-check.outcome == 'success' || steps.data-refresh.outputs.deferred != 'true'
+        shell: bash
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit refreshed data
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/winning_stats.json data/pension720_stats.json assets/sw-precache-manifest.js README.md claude.md gemini.md deploy_github_pages.md
+          git commit -m "chore: refresh lottery data snapshots"
+          git push

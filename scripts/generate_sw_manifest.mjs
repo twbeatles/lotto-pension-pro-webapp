@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,10 +73,27 @@ async function buildPrecacheManifest() {
 
     const data = DATA_FILES.filter((file) => !EXCLUDE_FILES.has(file)).map((file) => toManifestPath(file));
 
-    return {
+    const manifest = {
         appShell: [...appShell].sort(),
         data: [...new Set(data)].sort()
     };
+    manifest.version = await createPrecacheManifestVersion(manifest);
+    return manifest;
+}
+
+async function createPrecacheManifestVersion(manifest) {
+    const hash = createHash('sha256');
+    const entries = [...(manifest.appShell || []), ...(manifest.data || [])].sort();
+
+    for (const entry of entries) {
+        hash.update(`${entry}\0`);
+        if (entry === './') continue;
+        const filePath = path.resolve(repoRoot, entry.replace(/^\.\//, ''));
+        hash.update(await fs.readFile(filePath));
+        hash.update('\0');
+    }
+
+    return `sha256-${hash.digest('hex').slice(0, 16)}`;
 }
 
 function renderManifestSource(manifest) {
@@ -104,4 +122,4 @@ if (process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === __filenam
     );
 }
 
-export { buildPrecacheManifest, renderManifestSource, writeManifestFile };
+export { buildPrecacheManifest, createPrecacheManifestVersion, renderManifestSource, writeManifestFile };

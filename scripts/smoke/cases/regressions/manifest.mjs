@@ -30,6 +30,11 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runStrategyWorkerStatsFingerprintRegression',
+        label: 'strategy worker stats fingerprint regression',
+        awaited: true
+    },
+    {
         name: 'runDrawNormalizationRegression',
         label: 'draw-normalization regression'
     },
@@ -203,8 +208,17 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runEstimateLatestDrawKstBoundaryRegression',
+        label: 'estimate latest draw KST boundary regression'
+    },
+    {
         name: 'runLottoOfficialFreshnessComparisonRegression',
         label: 'lotto official freshness comparison regression'
+    },
+    {
+        name: 'runLottoOfficialFetchRetryRegression',
+        label: 'lotto official fetch retry regression',
+        awaited: true
     },
     {
         name: 'runBuiltInSyncProviderRegression',
@@ -246,6 +260,11 @@ const regressionExecutionPlan = [
     {
         name: 'runPension720FreshnessComparisonRegression',
         label: 'pension720 online freshness comparison regression'
+    },
+    {
+        name: 'runPension720OfficialFetchRetryRegression',
+        label: 'pension720 official fetch retry regression',
+        awaited: true
     },
     {
         name: 'runPension720LatestCheckRegression',
@@ -352,6 +371,10 @@ const regressionExecutionPlan = [
         label: 'storage dirty-retained-on-failure regression'
     },
     {
+        name: 'runLocalUpdatesDirtyRetryRegression',
+        label: 'localUpdates dirty retry regression'
+    },
+    {
         name: 'runDestructiveBackupAbortRegression',
         label: 'destructive backup abort regression',
         awaited: true
@@ -447,6 +470,15 @@ const regressionExecutionPlan = [
         name: 'runServiceWorkerPrecacheReachabilityRegression',
         label: 'service-worker precache reachability regression',
         awaited: true
+    },
+    {
+        name: 'runDocsDataBaselineRegression',
+        label: 'docs data-baseline regression',
+        awaited: true
+    },
+    {
+        name: 'runSafeHtmlHelperRegression',
+        label: 'safeHtml helper regression'
     },
     {
         name: 'runHiddenAttributeStyleRegression',

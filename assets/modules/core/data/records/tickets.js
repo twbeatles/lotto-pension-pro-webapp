@@ -262,8 +262,7 @@ export const recordTicketMethods = {
             }
         }
 
-        const campaignCleanup =
-            removedTicketRows > 0 ? this.pruneOrphanCampaigns({ save: false }) : { removed: [] };
+        const campaignCleanup = removedTicketRows > 0 ? this.pruneOrphanCampaigns({ save: false }) : { removed: [] };
         const removedCampaigns = campaignCleanup.removed.length;
 
         if (historyTrimmed > 0 || removedTicketRows > 0 || removedCampaigns > 0) {

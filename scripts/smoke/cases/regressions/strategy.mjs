@@ -300,7 +300,7 @@ async function runRecommendationRuntimePolicyRegression() {
     );
     assert.match(
         workerClientSource,
-        /STRATEGY_WORKER_ASSET_VERSION = 'v22'/,
+        /STRATEGY_WORKER_ASSET_VERSION = 'v23'/,
         'strategy worker asset version must be bumped when worker behavior changes'
     );
     assert.match(
@@ -395,6 +395,49 @@ async function runStrategyWorkerStatsCacheEmptyRetryRegression() {
     assert.deepEqual(result.sets[0], [7, 8, 9, 10, 11, 12], 'cache-empty retry result must resolve normally');
 }
 
+async function runStrategyWorkerStatsFingerprintRegression() {
+    const client = new StrategyWorkerClient();
+    const posts = [];
+    const statsA = [
+        { draw_no: 3, date: '2026-05-17', numbers: [1, 2, 3, 4, 5, 6], bonus: 7 },
+        { draw_no: 2, date: '2026-05-10', numbers: [8, 9, 10, 11, 12, 13], bonus: 14 },
+        { draw_no: 1, date: '2026-05-03', numbers: [15, 16, 17, 18, 19, 20], bonus: 21 }
+    ];
+    const statsB = [
+        statsA[0],
+        { draw_no: 2, date: '2026-05-10', numbers: [8, 9, 10, 11, 12, 45], bonus: 14 },
+        statsA[2]
+    ];
+
+    client.ensureWorker = function ensureFakeWorker() {
+        if (this.worker) return this.worker;
+        this.worker = {
+            postMessage: (message) => {
+                posts.push(message);
+                queueMicrotask(() => {
+                    client.handleMessage({
+                        type: 'DONE',
+                        requestId: message.requestId,
+                        payload: { jobType: 'GENERATE', sets: [[1, 2, 3, 4, 5, 6]] }
+                    });
+                });
+            },
+            terminate() {}
+        };
+        return this.worker;
+    };
+
+    await client.post('GENERATE', { statsData: statsA, count: 1, request: {} }, 100, 0);
+    await client.post('GENERATE', { statsData: statsB, count: 1, request: {} }, 100, 0);
+
+    assert.ok(Array.isArray(posts[0].payload.statsData), 'initial worker request must include statsData');
+    assert.ok(
+        Array.isArray(posts[1].payload.statsData),
+        'changed middle draw data must invalidate the worker stats fingerprint'
+    );
+    assert.notEqual(posts[0].payload.statsKey, posts[1].payload.statsKey, 'stats fingerprint must include all rows');
+}
+
 function runBackupSmoke(stats) {
     const state = {
         theme: 'dark',
@@ -472,6 +515,7 @@ export {
     runRecommendationRuntimePolicyRegression,
     runStrategyWorkerFinalTimeoutTerminatesRegression,
     runStrategyWorkerStatsCacheEmptyRetryRegression,
+    runStrategyWorkerStatsFingerprintRegression,
     runStrictFilterRegression,
     runWheelFixedNumbersRegression
 };

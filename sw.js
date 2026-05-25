@@ -1,7 +1,8 @@
-const CACHE_VERSION = 'v28';
+const CACHE_VERSION = 'v29';
 const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {
+    version: `fallback-${CACHE_VERSION}`,
     appShell: [
         './',
         './index.html',
@@ -31,6 +32,10 @@ try {
 }
 
 const PRECACHE_MANIFEST = self.__SW_PRECACHE_MANIFEST || FALLBACK_PRECACHE_MANIFEST;
+const PRECACHE_MANIFEST_VERSION =
+    typeof PRECACHE_MANIFEST.version === 'string' && PRECACHE_MANIFEST.version.trim()
+        ? PRECACHE_MANIFEST.version.trim()
+        : `missing-${CACHE_VERSION}`;
 const APP_SHELL_ASSETS = Array.isArray(PRECACHE_MANIFEST.appShell)
     ? PRECACHE_MANIFEST.appShell
     : FALLBACK_PRECACHE_MANIFEST.appShell;
@@ -42,6 +47,7 @@ const CACHE_HEALTH_PATH_SUFFIX = '/__cache-health.json';
 let lastPrecacheHealth = {
     ok: true,
     cacheVersion: CACHE_VERSION,
+    manifestVersion: PRECACHE_MANIFEST_VERSION,
     checkedAt: '',
     failures: []
 };
@@ -76,6 +82,7 @@ async function safePrecache() {
     lastPrecacheHealth = {
         ok: failures.length === 0,
         cacheVersion: CACHE_VERSION,
+        manifestVersion: PRECACHE_MANIFEST_VERSION,
         checkedAt: new Date().toISOString(),
         failures
     };
@@ -119,12 +126,18 @@ async function matchCachedResponse(cache, request, options = {}) {
 
 async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500, options = {}) {
     const cache = await caches.open(cacheName);
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    let timeoutId = null;
     const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('network-timeout')), timeoutMs);
+        timeoutId = setTimeout(() => {
+            if (controller) controller.abort();
+            reject(new Error('network-timeout'));
+        }, timeoutMs);
     });
 
     try {
-        const networkRes = await Promise.race([fetch(request), timeoutPromise]);
+        const fetchOptions = controller ? { signal: controller.signal } : undefined;
+        const networkRes = await Promise.race([fetch(request, fetchOptions), timeoutPromise]);
         if (options.fallbackOnErrorStatus && !networkRes.ok && networkRes.type !== 'opaque') {
             const cached = await matchCachedResponse(cache, request, options);
             if (cached) return cached;
@@ -142,6 +155,8 @@ async function networkFirstWithTimeout(request, cacheName, timeoutMs = 2500, opt
             return cache.match('./index.html');
         }
         throw e;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 }
 

@@ -8,14 +8,14 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v28`
+- Service worker cache version: `v29`
 
 ## Current Data Baseline
 
 - Lotto 6/45 static data:
     - Source: `data/winning_stats.json`
-    - Latest draw: `1224`
-    - Rows: `1223`
+    - Latest draw: `1225`
+    - Rows: `1224`
     - Allowed missing draw: `[146]`
 - Pension720+ static data:
     - Source: `data/pension720_stats.json`
@@ -45,7 +45,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Pension720+ recommendation supports dedicated strategies, presets, group/digit filters, saved tickets, separate campaigns, copy, CSV export, and target-draw-aware checking with latest-draw reference fallback.
 - Pension720+ CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 - CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
-- Strategy worker asset query version is `v22`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
+- Strategy worker asset query version is `v23`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 
 ## Product/Copy Contract
 
@@ -70,6 +70,8 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
 - Service worker data JSON fetches are network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
+- Data freshness CI can refresh Lotto/Pension720 snapshots, regenerate the service-worker manifest, sync maintained document baselines, and auto-commit to `main`.
+- Scheduled Lotto official checks may defer when the estimated latest draw is not published by the official endpoint yet.
 - Pension720+ official data is cached when it is newer than static data, same-draw static corrections beat older cache copies, and `official_cache` is shown as a distinct source with a settings cache-clear action.
 - Backup import accepts up to 32MB so app-created max-size backups remain reimportable.
 - Strategy worker cache-empty errors reset the stats fingerprint and retry once with full stats data.
@@ -102,6 +104,7 @@ npm run check:data-freshness:strict
 npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
+npm run check:docs-data-baseline
 node scripts/smoke/smoke.mjs
 npm run build
 npm run build:release
@@ -126,8 +129,11 @@ Operational scripts:
 
 ```bash
 npm run sync:sw-manifest
+npm run sync:docs-data-baseline
 npm run sync:lotto
 npm run sync:pension720
+npm run ci:data:check
+npm run ci:data:refresh
 npm run bench:ai
 npm run bench:ai:full
 ```
@@ -140,8 +146,9 @@ npm run bench:ai:full
 - If installable app metadata or app-shell behavior changes and installed clients need a forced refresh, bump `CACHE_VERSION` in `sw.js`.
 - Release baseline is `npm run build:release`.
 - Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
-- `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks and `npm run build:release` without auto-committing data.
-- `.gitignore` was rechecked on 2026-05-22 against app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and no new ignore rule was required.
+- `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks, refreshes stale data/docs, and auto-commits to `main` after the release gate passes.
+- `.github/workflows/browser-official.yml` runs the official-source browser canary manually and weekly.
+- `.gitignore` was rechecked on 2026-05-25 against app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and no new ignore rule was required.
 - Use `git diff --check` before publishing. CRLF warnings from Git are not the same as whitespace errors.
 
 ## Session Handoff Template

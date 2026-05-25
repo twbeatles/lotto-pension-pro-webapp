@@ -9,18 +9,18 @@
 
 ## 현재 기준
 
-2026-05-22 기준 문서와 정적 데이터 기준입니다.
+2026-05-25 기준 문서와 정적 데이터/CI 운영 기준입니다.
 
 - Lotto 6/45 static data: `data/winning_stats.json`
-    - latest draw: `1224`
-    - rows: `1223`
+    - latest draw: `1225`
+    - rows: `1224`
     - allowed missing draw: `[146]`
 - Pension720+ static data: `data/pension720_stats.json`
     - latest draw: `316`
     - latest date: `2026-05-21`
     - latest primary: `3조 331818`
     - latest bonus: `449298`
-- Service worker cache version: `v28`
+- Service worker cache version: `v29`
 
 ## 3분 사용법
 
@@ -79,8 +79,8 @@
 
 ## PWA와 릴리스 정책
 
-- `sw.js` cache version은 `v28`입니다.
-- `strategy.worker.js`는 service worker cache와 별도로 `STRATEGY_WORKER_ASSET_VERSION` query를 사용하며, 현재 값은 `v22`입니다. worker 실행 계약이 바뀌면 이 값을 함께 올립니다.
+- `sw.js` cache version은 `v29`입니다.
+- `strategy.worker.js`는 service worker cache와 별도로 `STRATEGY_WORKER_ASSET_VERSION` query를 사용하며, 현재 값은 `v23`입니다. worker 실행 계약이 바뀌면 이 값을 함께 올립니다.
 - install precache에는 app shell과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - `data/*.json` 요청은 최신성 우선 network-first를 사용하고, 네트워크 실패나 오류 응답 시 data cache로 fallback합니다.
 - precache 실패 URL은 service worker가 `__cache-health.json` marker로 기록합니다. 설치는 계속 허용하고, 앱 설정/상태 화면에서 정상/주의 상태와 실패 개수를 표시합니다.
@@ -105,6 +105,7 @@ npm run check:data-freshness:strict
 npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
+npm run check:docs-data-baseline
 node scripts/smoke/smoke.mjs
 npm run build
 npm run build:release
@@ -116,6 +117,7 @@ npm run build:release:browser
 ```bash
 npm run sync:lotto
 npm run sync:pension720
+npm run sync:docs-data-baseline
 ```
 
 브라우저/PWA 검증:
@@ -141,7 +143,7 @@ npm run bench:ai:full
 npm run format:check
 ```
 
-현재 `format:check`는 저장소 기존 포맷 기준의 영향을 받을 수 있으므로 코드 변경 검증은 `npm run build`와 변경 파일 범위 Prettier 확인을 우선합니다.
+`format:check`는 저장소 전체 Prettier 기준선 검증입니다.
 
 ## 프로젝트 구조
 
@@ -161,11 +163,14 @@ lotto-pension-pro-webapp/
 ├── proxy/
 ├── .github/
 │   └── workflows/
-│       └── data-freshness.yml
+│       ├── data-freshness.yml
+│       └── browser-official.yml
 ├── scripts/
 │   ├── fetch_pension720_stats.mjs
 │   ├── sync_lotto_stats.mjs
 │   ├── generate_sw_manifest.mjs
+│   ├── refresh_ci_data.mjs
+│   ├── update_docs_data_baseline.mjs
 │   ├── smoke/
 │   └── tests/
 ├── index.html
@@ -180,7 +185,7 @@ lotto-pension-pro-webapp/
 - 배포 전 기준 명령은 `npm run build:release`입니다. 브라우저 공식 source까지 포함하려면 `npm run build:release:browser`를 사용합니다.
 - 브라우저 릴리스 체크에는 happy path, offline, PWA mobile 검증을 포함합니다.
 - 외부 live source까지 확인할 때는 `npm run test:sync-live`, `npm run test:sync-live:browser`, `npm run test:sync-live:browser:official`을 opt-in으로 실행합니다.
-- `.github/workflows/data-freshness.yml`은 자동 커밋 없이 scheduled/manual freshness check와 release gate를 실행합니다.
-- `.gitignore`는 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-05-22 점검에서 대표 경로를 `git check-ignore -v`로 확인했으며 새 ignore 규칙은 필요하지 않았습니다.
-- 유지 문서는 `README.md`, `claude.md`, `gemini.md`, `deploy_github_pages.md`, `proxy/README.md`입니다. 일회성 리뷰/감사 문서는 삭제될 수 있으며, 삭제된 문서는 사용자가 명시적으로 요청하지 않는 한 복원하지 않습니다.
-- `FUNCTIONAL_IMPLEMENTATION_RISK_REVIEW_2026-05-22.md`는 최신 기능 리스크 개선 결과와 검증 명령을 기록한 현재 repo-local 감사 문서입니다.
+- `.github/workflows/data-freshness.yml`은 scheduled/manual freshness check 후 필요한 데이터와 문서 baseline을 갱신하고 release gate 통과 시 main에 자동 커밋합니다. Lotto 공식 회차가 아직 반영되지 않은 예약 실행은 deferred로 기록합니다.
+- `.github/workflows/browser-official.yml`은 공식 source browser canary를 수동 실행과 주 1회 예약 실행으로 검증합니다.
+- `.gitignore`는 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-05-25 점검에서 대표 경로를 `git check-ignore -v`로 확인했으며 새 ignore 규칙은 필요하지 않았습니다.
+- 유지 문서는 `README.md`, `claude.md`, `gemini.md`, `cladue.md`, `deploy_github_pages.md`, `proxy/README.md`입니다. 삭제된 dated review/audit 문서는 사용자가 명시적으로 요청하지 않는 한 복원하지 않고, 지속 보존할 결론은 유지 문서에 흡수합니다.

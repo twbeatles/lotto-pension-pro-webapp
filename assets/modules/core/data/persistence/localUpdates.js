@@ -128,6 +128,20 @@ export const dataPersistenceLocalUpdateMethods = {
         return text.includes('로컬 업데이트') && text.includes('허용 상한');
     },
 
+    persistLocalUpdates() {
+        if (typeof localStorage === 'undefined') {
+            if (Object.prototype.hasOwnProperty.call(this._dirtyKeys || {}, 'localUpdates')) {
+                this._dirtyKeys.localUpdates = false;
+            }
+            return true;
+        }
+        const ok = this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache || []));
+        if (Object.prototype.hasOwnProperty.call(this._dirtyKeys || {}, 'localUpdates')) {
+            this._dirtyKeys.localUpdates = !ok;
+        }
+        return ok;
+    },
+
     getLocalUpdates(options = {}) {
         const warningMode = String(options?.warningMode || 'auto');
         if (typeof localStorage === 'undefined') {
@@ -143,7 +157,7 @@ export const dataPersistenceLocalUpdateMethods = {
         const sanitized = this.sanitizeLocalUpdates(parsed);
         this.localUpdatesCache = sanitized.items;
         if (JSON.stringify(this.localUpdatesCache) !== JSON.stringify(Array.isArray(parsed) ? parsed : [])) {
-            this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
+            this.persistLocalUpdates();
         }
         if (warningMode !== 'silent') {
             const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
@@ -158,9 +172,8 @@ export const dataPersistenceLocalUpdateMethods = {
         const warningMode = String(options?.warningMode || 'auto');
         const sanitized = this.sanitizeLocalUpdates(items);
         this.localUpdatesCache = sanitized.items;
-        if (typeof localStorage !== 'undefined') {
-            this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache));
-        }
+        this.markDirty('localUpdates');
+        this.persistLocalUpdates();
         if (warningMode !== 'silent') {
             const warningMessage = this.buildLocalUpdateWarningMessage(sanitized);
             if (warningMessage) this.markSyncWarning(warningMessage);

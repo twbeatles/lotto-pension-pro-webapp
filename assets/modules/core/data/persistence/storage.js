@@ -260,7 +260,10 @@ export const dataPersistenceStorageMethods = {
 
     persistSyncMeta() {
         if (typeof localStorage === 'undefined') return true;
-        return this._safeSetItem(CONFIG.KEYS.SYNC_META, JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta()));
+        return this._safeSetItem(
+            CONFIG.KEYS.SYNC_META,
+            JSON.stringify(this.state.syncMeta || this.getDefaultSyncMeta())
+        );
     },
 
     getSettingsPayload() {

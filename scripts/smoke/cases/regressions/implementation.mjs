@@ -62,6 +62,71 @@ function runStorageDirtyRetainedOnFailureRegression() {
     }
 }
 
+function runLocalUpdatesDirtyRetryRegression() {
+    const previousStorage = globalThis.localStorage;
+    const previousToast = UIManager.toast;
+    const previousConsoleError = console.error;
+    const previousConsoleWarn = console.warn;
+    let failLocalUpdates = true;
+    const store = new Map();
+    const quotaError = new Error('quota full');
+    quotaError.name = 'QuotaExceededError';
+
+    globalThis.localStorage = {
+        getItem(key) {
+            return store.has(key) ? store.get(key) : null;
+        },
+        setItem(key, value) {
+            if (key === CONFIG.KEYS.LOCAL_UPDATES && failLocalUpdates) {
+                throw quotaError;
+            }
+            store.set(key, String(value));
+        }
+    };
+    UIManager.toast = () => {};
+    console.error = () => {};
+    console.warn = () => {};
+
+    try {
+        const dm = new DataManager();
+        const update = {
+            draw_no: 1210,
+            date: '2026-03-07',
+            numbers: [1, 2, 3, 4, 5, 6],
+            bonus: 7
+        };
+        dm.setLocalUpdates([update], { warningMode: 'silent' });
+
+        assert.equal(dm._dirtyKeys.localUpdates, true, 'failed localUpdates write must keep the dirty flag');
+        assert.equal(
+            store.has(CONFIG.KEYS.LOCAL_UPDATES),
+            false,
+            'failed localUpdates write must not appear persisted'
+        );
+
+        failLocalUpdates = false;
+        dm.save(true);
+
+        assert.equal(dm._dirtyKeys.localUpdates, false, 'next save must clear localUpdates after retry success');
+        assert.equal(
+            JSON.parse(store.get(CONFIG.KEYS.LOCAL_UPDATES))[0]?.draw_no,
+            1210,
+            'next save must retry and persist localUpdates'
+        );
+
+        store.set(CONFIG.KEYS.LOCAL_UPDATES, '{bad json');
+        const loaded = new DataManager();
+        loaded.load();
+        assert.deepEqual(loaded.localUpdatesCache, [], 'malformed localUpdates JSON must recover to an empty list');
+    } finally {
+        console.warn = previousConsoleWarn;
+        console.error = previousConsoleError;
+        UIManager.toast = previousToast;
+        if (previousStorage === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = previousStorage;
+    }
+}
+
 async function runDestructiveBackupAbortRegression() {
     const previousDocument = globalThis.document;
     const previousToast = UIManager.toast;
@@ -186,7 +251,10 @@ async function runDestructiveBackupAbortRegression() {
             'backup confirmation cancel must show an abort toast'
         );
 
-        const dataIoSource = await readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8');
+        const dataIoSource = await readFile(
+            resolve(process.cwd(), 'assets/modules/features/dataio/support.js'),
+            'utf8'
+        );
         assert.match(
             dataIoSource,
             /preferFilePicker:\s*true/,
@@ -303,7 +371,11 @@ async function runPension720OfficialCacheRegression() {
             'same-draw static data must beat an older official cache copy'
         );
         assert.equal(correctedDm.pension720DataHealth.source, 'static', 'same-draw cache must not shadow static data');
-        assert.equal(correctedDm.clearPension720StatsCache(), true, 'official cache clear must remove the stored cache');
+        assert.equal(
+            correctedDm.clearPension720StatsCache(),
+            true,
+            'official cache clear must remove the stored cache'
+        );
         assert.equal(
             globalThis.localStorage.getItem(CONFIG.KEYS.PENSION720_STATS_CACHE),
             null,
@@ -399,6 +471,7 @@ export {
     runAutoSyncAvailabilityRegression,
     runDestructiveBackupAbortRegression,
     runDomSelectorContractRegression,
+    runLocalUpdatesDirtyRetryRegression,
     runPension720OfficialCacheRegression,
     runPwaCacheHealthRegression,
     runStorageDirtyRetainedOnFailureRegression,

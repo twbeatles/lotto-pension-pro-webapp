@@ -41,6 +41,7 @@ export class DataManager {
             alerts: false,
             presets: false,
             syncMeta: false,
+            localUpdates: false,
             pension720Tickets: false,
             pension720Campaigns: false
         };

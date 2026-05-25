@@ -6,19 +6,35 @@ const MAX_RETRY = 1;
 const GENERATE_TIMEOUT_CAP_MS = 32000;
 const RECOMMEND_TIMEOUT_CAP_MS = 40000;
 const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
-const STRATEGY_WORKER_ASSET_VERSION = 'v22';
+const STRATEGY_WORKER_ASSET_VERSION = 'v23';
+
+function updateHash(hash, value) {
+    const text = String(value ?? '');
+    let nextHash = hash >>> 0;
+    for (let index = 0; index < text.length; index += 1) {
+        nextHash ^= text.charCodeAt(index);
+        nextHash = Math.imul(nextHash, 16777619) >>> 0;
+    }
+    return nextHash >>> 0;
+}
 
 function createStatsFingerprint(statsData = []) {
     if (!Array.isArray(statsData) || !statsData.length) return '';
-    const first = statsData[0] || {};
-    const last = statsData[statsData.length - 1] || {};
-    const signature = (row) =>
-        [
+    let hash = 2166136261;
+    statsData.forEach((row) => {
+        const parts = [
             Number(row?.draw_no || 0),
+            String(row?.date || ''),
             ...(Array.isArray(row?.numbers) ? row.numbers : []).map(Number),
             Number(row?.bonus || 0)
-        ].join('.');
-    return `${statsData.length}:${signature(first)}:${signature(last)}`;
+        ];
+        parts.forEach((part) => {
+            hash = updateHash(hash, part);
+            hash = updateHash(hash, '|');
+        });
+        hash = updateHash(hash, ';');
+    });
+    return `${statsData.length}:${hash.toString(16).padStart(8, '0')}`;
 }
 
 /** 저속 네트워크(2G/slow-2G) 감지 시 타임아웃을 배수로 확장 */
@@ -234,3 +250,5 @@ export class StrategyWorkerClient {
         return this.post('RECOMMEND', withRuntimeSeed(payload));
     }
 }
+
+export { createStatsFingerprint };

@@ -94,11 +94,7 @@ export const appPwaInstallMethods = {
         const note = document.getElementById('pwaUpdateNote');
 
         if (badge) {
-            badge.textContent = normalized.updateReady
-                ? '업데이트 준비됨'
-                : normalized.checking
-                  ? '확인 중'
-                  : '최신';
+            badge.textContent = normalized.updateReady ? '업데이트 준비됨' : normalized.checking ? '확인 중' : '최신';
             badge.className = `badge ${this.getStatusBadgeClass?.(
                 normalized.updateReady ? 'warning' : normalized.checking ? 'prompt' : 'success'
             )}`;

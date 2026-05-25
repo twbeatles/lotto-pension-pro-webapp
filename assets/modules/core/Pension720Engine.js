@@ -62,11 +62,7 @@ function normalizeGroups(value) {
     if (value === null || value === undefined || value === '') return null;
     const source = Array.isArray(value) ? value : String(value).split(/[^0-9]+/);
     const groups = [
-        ...new Set(
-            source
-                .map(Number)
-                .filter((item) => Number.isInteger(item) && item >= 1 && item <= 5)
-        )
+        ...new Set(source.map(Number).filter((item) => Number.isInteger(item) && item >= 1 && item <= 5))
     ].sort((a, b) => a - b);
     return groups.length ? groups : null;
 }
@@ -160,7 +156,11 @@ function clampNullableInt(value, min, max) {
 
 function applyProfileDefaults(params, profile = '') {
     if (profile === 'fast') {
-        return { ...params, lookbackWindow: params.lookbackWindow ?? 20, candidatePoolSize: params.candidatePoolSize ?? 80 };
+        return {
+            ...params,
+            lookbackWindow: params.lookbackWindow ?? 20,
+            candidatePoolSize: params.candidatePoolSize ?? 80
+        };
     }
     if (profile === 'precise') {
         return {
@@ -169,7 +169,11 @@ function applyProfileDefaults(params, profile = '') {
             candidatePoolSize: params.candidatePoolSize ?? 240
         };
     }
-    return { ...params, lookbackWindow: params.lookbackWindow ?? 40, candidatePoolSize: params.candidatePoolSize ?? 140 };
+    return {
+        ...params,
+        lookbackWindow: params.lookbackWindow ?? 40,
+        candidatePoolSize: params.candidatePoolSize ?? 140
+    };
 }
 
 function normalizeRequest(raw = {}) {
@@ -189,7 +193,10 @@ function normalizeRequest(raw = {}) {
         strategyId,
         evidenceTier: defaults.evidenceTier,
         params: {
-            seed: Number.isFinite(Number(params.seed)) && Number(params.seed) > 0 ? Math.floor(Number(params.seed)) : null,
+            seed:
+                Number.isFinite(Number(params.seed)) && Number(params.seed) > 0
+                    ? Math.floor(Number(params.seed))
+                    : null,
             lookbackWindow: clampInt(params.lookbackWindow, 1, 300, defaults.params.lookbackWindow),
             candidatePoolSize: clampInt(params.candidatePoolSize, 20, 800, defaults.params.candidatePoolSize)
         },
@@ -326,7 +333,10 @@ export class Pension720Engine {
                 value: item.group,
                 weight: this.getGroupWeight(item, request.strategyId)
             }));
-        return weightedPick(items.length ? items : analysis.groupStats.map((item) => ({ value: item.group, weight: 1 })), rng);
+        return weightedPick(
+            items.length ? items : analysis.groupStats.map((item) => ({ value: item.group, weight: 1 })),
+            rng
+        );
     }
 
     getDigitWeight(pos, digit, analysis, request) {
@@ -338,7 +348,8 @@ export class Pension720Engine {
         const gap = analysis.digitGapStats[pos]?.[digit] || 0;
 
         if (strategyId === 'position_hot') return 1 + primary * 1.65 + bonus * 0.2;
-        if (strategyId === 'trailing_match') return 1 + primary * (pos >= 3 ? 1.75 : 0.65) + bonus * (pos >= 3 ? 0.45 : 0.15);
+        if (strategyId === 'trailing_match')
+            return 1 + primary * (pos >= 3 ? 1.75 : 0.65) + bonus * (pos >= 3 ? 0.45 : 0.15);
         if (strategyId === 'group_rotation') return 1 + primary * 0.9 + bonus * 0.25 + Math.min(5, gap * 0.08);
         if (strategyId === 'gap_rebound') return 1 + primary * 0.55 + Math.min(12, gap * 0.8);
         if (strategyId === 'bonus_flow') return 1 + primary * 0.75 + bonus * 1.15;
@@ -389,11 +400,16 @@ export class Pension720Engine {
         const digits = String(number || '')
             .split('')
             .map(Number);
-        if (digits.length !== 6 || digits.some((digit) => !Number.isInteger(digit) || digit < 0 || digit > 9)) return false;
+        if (digits.length !== 6 || digits.some((digit) => !Number.isInteger(digit) || digit < 0 || digit > 9))
+            return false;
         if (filters.groups && !filters.groups.includes(group)) return false;
         if (filters.fixedDigits) {
             for (let pos = 0; pos < 6; pos++) {
-                if (filters.fixedDigits[pos] !== null && filters.fixedDigits[pos] !== undefined && digits[pos] !== filters.fixedDigits[pos]) {
+                if (
+                    filters.fixedDigits[pos] !== null &&
+                    filters.fixedDigits[pos] !== undefined &&
+                    digits[pos] !== filters.fixedDigits[pos]
+                ) {
                     return false;
                 }
             }
@@ -411,11 +427,20 @@ export class Pension720Engine {
 
         if (filters.digitSumRange && (sum < filters.digitSumRange[0] || sum > filters.digitSumRange[1])) return false;
         if (filters.oddDigitRange && (odd < filters.oddDigitRange[0] || odd > filters.oddDigitRange[1])) return false;
-        if (filters.highDigitRange && (high < filters.highDigitRange[0] || high > filters.highDigitRange[1])) return false;
-        if (filters.uniqueDigitMin !== null && filters.uniqueDigitMin !== undefined && frequency.uniqueCount < filters.uniqueDigitMin) {
+        if (filters.highDigitRange && (high < filters.highDigitRange[0] || high > filters.highDigitRange[1]))
+            return false;
+        if (
+            filters.uniqueDigitMin !== null &&
+            filters.uniqueDigitMin !== undefined &&
+            frequency.uniqueCount < filters.uniqueDigitMin
+        ) {
             return false;
         }
-        if (filters.maxSameDigit !== null && filters.maxSameDigit !== undefined && frequency.maxSame > filters.maxSameDigit) {
+        if (
+            filters.maxSameDigit !== null &&
+            filters.maxSameDigit !== undefined &&
+            frequency.maxSame > filters.maxSameDigit
+        ) {
             return false;
         }
         return true;
@@ -436,7 +461,8 @@ export class Pension720Engine {
             return sum + primary + bonus * 0.35 + Math.min(4, gap * 0.08);
         }, 0);
         const frequency = digitFrequencyMeta(digits);
-        const diversityBonus = request.strategyId === 'diversity' ? frequency.uniqueCount * 3 - frequency.maxSame * 2 : 0;
+        const diversityBonus =
+            request.strategyId === 'diversity' ? frequency.uniqueCount * 3 - frequency.maxSame * 2 : 0;
         const flowBonus = request.strategyId === 'consecutive_pattern' ? countAdjacentFlow(digits) * 3 : 0;
         const score = groupScore * 0.26 + digitScore * 0.74 + diversityBonus + flowBonus;
         return Number(score.toFixed(4));

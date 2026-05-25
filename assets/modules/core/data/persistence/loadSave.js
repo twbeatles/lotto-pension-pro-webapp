@@ -157,10 +157,7 @@ export const dataPersistenceLoadSaveMethods = {
                     this._safeSetItem(CONFIG.KEYS.HIST, JSON.stringify(this.state.history)),
                     this._safeSetItem(CONFIG.KEYS.LOCAL_UPDATES, JSON.stringify(this.localUpdatesCache)),
                     this._safeSetItem(CONFIG.KEYS.PENSION720_TICKETS, JSON.stringify(this.state.pension720Tickets)),
-                    this._safeSetItem(
-                        CONFIG.KEYS.PENSION720_CAMPAIGNS,
-                        JSON.stringify(this.state.pension720Campaigns)
-                    ),
+                    this._safeSetItem(CONFIG.KEYS.PENSION720_CAMPAIGNS, JSON.stringify(this.state.pension720Campaigns)),
                     this.persistSettings(),
                     this.persistExtendedData(),
                     this.persistSyncMeta()
@@ -204,12 +201,9 @@ export const dataPersistenceLoadSaveMethods = {
             writeDirty('campaigns', CONFIG.KEYS.CAMPAIGNS, this.state.campaigns);
             writeDirty('alerts', CONFIG.KEYS.ALERT_PREFS, this.state.alertPrefs);
             writeDirty('presets', CONFIG.KEYS.STRATEGY_PRESETS, this.state.strategyPresets || []);
+            writeDirty('localUpdates', CONFIG.KEYS.LOCAL_UPDATES, this.localUpdatesCache || []);
             writeDirty('pension720Tickets', CONFIG.KEYS.PENSION720_TICKETS, this.state.pension720Tickets || []);
-            writeDirty(
-                'pension720Campaigns',
-                CONFIG.KEYS.PENSION720_CAMPAIGNS,
-                this.state.pension720Campaigns || []
-            );
+            writeDirty('pension720Campaigns', CONFIG.KEYS.PENSION720_CAMPAIGNS, this.state.pension720Campaigns || []);
             if (this._dirtyKeys.syncMeta) {
                 if (this.persistSyncMeta()) {
                     this._dirtyKeys.syncMeta = false;

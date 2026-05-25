@@ -8,14 +8,14 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App shell: no-build static SPA
 - Entry: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- PWA cache version: `v28`
+- PWA cache version: `v29`
 
 ## Current Snapshot
 
 - Lotto 6/45 data:
     - Source: `data/winning_stats.json`
-    - Latest draw: `1224`
-    - Rows: `1223`
+    - Latest draw: `1225`
+    - Rows: `1224`
     - Allowed missing draw: `[146]`
 - Pension720+ data:
     - Source: `data/pension720_stats.json`
@@ -52,7 +52,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only and are not included in backup v5.
 - Pension720+ saved-ticket CSV exports use `lotto_pension_pro_pension720_tickets_<timestamp>.csv`.
 - CSV exports protect spreadsheet formula prefixes (`=`, `+`, `-`, `@`) in user-visible cells.
-- Strategy worker asset query version is `v22`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
+- Strategy worker asset query version is `v23`; bump `STRATEGY_WORKER_ASSET_VERSION` whenever worker execution behavior changes.
 - Dated one-off review/audit docs may be deleted locally; do not restore them unless the user asks. Keep durable decisions in the maintained docs.
 - Recommended copy must keep `번호 추천` wording and avoid legacy AI-prediction phrasing.
 
@@ -66,6 +66,8 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Destructive overwrite/cleanup starts the JSON backup download and then requires user confirmation before replacing or cleaning stored data.
 - Service worker precache failures are exposed through `__cache-health.json`; install proceeds and the app shows a warning state.
 - Service worker data JSON requests use network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
+- Data freshness CI can refresh Lotto/Pension720 snapshots, regenerate the service-worker manifest, sync maintained document baselines, and auto-commit to `main`.
+- Scheduled Lotto official checks may defer when the estimated latest draw is not published by the official endpoint yet.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path.
 - `.gitignore` excludes local browser/test artifacts such as `output/`, Playwright reports, test results, app backup downloads, and local traces.
 
@@ -87,6 +89,7 @@ npm run check:data-freshness:strict
 npm run check:lotto:official
 npm run check:pension720
 npm run check:pension720:freshness
+npm run check:docs-data-baseline
 node scripts/smoke/smoke.mjs
 npm run build
 npm run build:release
@@ -97,8 +100,11 @@ Optional:
 
 ```bash
 npm run sync:sw-manifest
+npm run sync:docs-data-baseline
 npm run sync:lotto
 npm run sync:pension720
+npm run ci:data:check
+npm run ci:data:refresh
 npm run test:browser
 npm run test:happy
 npm run test:offline
@@ -120,8 +126,9 @@ npm run bench:ai:full
 - Bump `CACHE_VERSION` when installable app metadata or app shell files need a forced installed-app refresh.
 - Release baseline is `npm run build:release`.
 - Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
-- `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks and `npm run build:release` without auto-committing data.
-- `.gitignore` coverage was rechecked on 2026-05-22 for backup JSON, Pension720+/simulation CSV, Playwright/browser outputs, reports, trace/HAR/video, dependency/temp/build folders; no new ignore rule was required.
+- `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks, refreshes stale data/docs, and auto-commits to `main` after the release gate passes.
+- `.github/workflows/browser-official.yml` runs the official-source browser canary manually and weekly.
+- `.gitignore` coverage was rechecked on 2026-05-25 for backup JSON, Pension720+/simulation CSV, Playwright/browser outputs, reports, trace/HAR/video, dependency/temp/build folders; no new ignore rule was required.
 
 ## Handoff Template
 

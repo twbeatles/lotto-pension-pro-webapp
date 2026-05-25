@@ -37,9 +37,7 @@ export const dataAnalyticsMethods = {
             hasProxy: hasCustomProxy,
             hasCustomProxy,
             canAutoSync,
-            autoSyncBlockedReason: canAutoSync
-                ? ''
-                : syncMeta.lastFailureMessage || 'recent sync failure',
+            autoSyncBlockedReason: canAutoSync ? '' : syncMeta.lastFailureMessage || 'recent sync failure',
             isPartial: dataHealth.availability === 'partial',
             isUnavailable: dataHealth.availability === 'none' || latestDrawNo <= 0,
             isStale: dataHealth.availability === 'full' && behindBy > 0

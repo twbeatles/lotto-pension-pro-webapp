@@ -22,6 +22,7 @@ const DATA_FILES = ['data/pension720_stats.json', 'data/winning_stats.json'];
 const EXCLUDE_FILES = new Set(['assets/sw-precache-manifest.js', 'online-check.txt']);
 
 const INCLUDED_EXTENSIONS = new Set(['.js', '.css', '.woff', '.woff2', '.ttf', '.svg', '.png', '.json', '.html']);
+const TEXT_HASH_EXTENSIONS = new Set(['.js', '.css', '.svg', '.json', '.html']);
 const LEGACY_FONT_FALLBACK_EXTENSIONS = new Set(['.woff', '.ttf', '.svg']);
 
 function shouldIncludeFile(relativePath) {
@@ -88,8 +89,13 @@ async function createPrecacheManifestVersion(manifest) {
     for (const entry of entries) {
         hash.update(`${entry}\0`);
         if (entry === './') continue;
-        const filePath = path.resolve(repoRoot, entry.replace(/^\.\//, ''));
-        hash.update(await fs.readFile(filePath));
+        const relativePath = entry.replace(/^\.\//, '');
+        const filePath = path.resolve(repoRoot, relativePath);
+        const buffer = await fs.readFile(filePath);
+        const ext = path.extname(relativePath).toLowerCase();
+        hash.update(
+            TEXT_HASH_EXTENSIONS.has(ext) ? Buffer.from(buffer.toString('utf8').replace(/\r\n/g, '\n')) : buffer
+        );
         hash.update('\0');
     }
 

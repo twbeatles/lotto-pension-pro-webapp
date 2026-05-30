@@ -12,8 +12,8 @@
 2026-05-25 기준 문서와 정적 데이터/CI 운영 기준입니다.
 
 - Lotto 6/45 static data: `data/winning_stats.json`
-    - latest draw: `1225`
-    - rows: `1224`
+    - latest draw: `1226`
+    - rows: `1225`
     - allowed missing draw: `[146]`
 - Pension720+ static data: `data/pension720_stats.json`
     - latest draw: `317`

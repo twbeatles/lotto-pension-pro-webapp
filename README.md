@@ -16,10 +16,10 @@
     - rows: `1225`
     - allowed missing draw: `[146]`
 - Pension720+ static data: `data/pension720_stats.json`
-    - latest draw: `317`
-    - latest date: `2026-05-28`
-    - latest primary: `3조 827917`
-    - latest bonus: `719917`
+    - latest draw: `318`
+    - latest date: `2026-06-04`
+    - latest primary: `5조 401384`
+    - latest bonus: `981462`
 - Service worker cache version: `v29`
 
 ## 3분 사용법

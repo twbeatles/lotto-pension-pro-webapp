@@ -7,6 +7,7 @@ import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
 
 const execFileAsync = promisify(execFile);
 const DATA_PATH = resolve('data/winning_stats.json');
+const LOTTO_OFFICIAL_SCHEDULED_ARGS = ['--defer-estimated-missing', '--defer-official-unavailable'];
 
 function latestDrawNo(rows = []) {
     return rows.reduce((max, row) => {
@@ -48,13 +49,43 @@ async function setGithubOutput(name, value) {
     await appendFile(process.env.GITHUB_OUTPUT, `${name}=${value}\n`, 'utf8');
 }
 
+function parseJsonOutput(stdout = '') {
+    const text = String(stdout || '').trim();
+    if (!text) return null;
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        const lines = text.split(/\r?\n/);
+        for (let index = 0; index < lines.length; index += 1) {
+            if (!lines[index].startsWith('{')) continue;
+
+            try {
+                return JSON.parse(lines.slice(index).join('\n'));
+            } catch {
+                // Keep scanning; earlier log lines can contain object-like diagnostics.
+            }
+        }
+    }
+
+    return null;
+}
+
 async function main() {
     const estimatedLatestDrawNo = estimateLatestDrawKST();
     const latestBefore = await readLatestStaticDrawNo();
     let deferred = false;
     let deferredReason = '';
+    let lottoOfficialDeferred = false;
+    let lottoOfficialDeferredReason = '';
 
-    await runNodeScript('scripts/fetch_pension720_stats.mjs');
+    const pension720Refresh = await runNodeScript('scripts/fetch_pension720_stats.mjs', [
+        '--defer-official-unavailable',
+        '--defer-estimated-missing'
+    ]);
+    const pension720Summary = parseJsonOutput(pension720Refresh.result.stdout);
+    const pension720Deferred = Boolean(pension720Summary?.deferred);
+    const pension720DeferredReason = pension720Summary?.deferredReason || '';
 
     if (estimatedLatestDrawNo > latestBefore) {
         const lottoSync = await runNodeScript(
@@ -65,17 +96,28 @@ async function main() {
         if (!lottoSync.ok) {
             const scheduledCheck = await runNodeScript(
                 'scripts/check_lotto_official_freshness.mjs',
-                ['--defer-estimated-missing'],
+                LOTTO_OFFICIAL_SCHEDULED_ARGS,
                 { allowFailure: true }
             );
             if (!scheduledCheck.ok) {
                 throw lottoSync.error;
             }
+            const lottoOfficialSummary = parseJsonOutput(scheduledCheck.result.stdout);
+            lottoOfficialDeferred = Boolean(lottoOfficialSummary?.deferred);
+            lottoOfficialDeferredReason = lottoOfficialSummary?.deferredReason || '';
             deferred = true;
-            deferredReason = `estimated Lotto draw ${estimatedLatestDrawNo} is not published by the official endpoint yet`;
+            deferredReason =
+                lottoOfficialDeferredReason ||
+                `estimated Lotto draw ${estimatedLatestDrawNo} is not published by the official endpoint yet`;
         }
     } else {
-        await runNodeScript('scripts/check_lotto_official_freshness.mjs', ['--defer-estimated-missing']);
+        const scheduledCheck = await runNodeScript(
+            'scripts/check_lotto_official_freshness.mjs',
+            LOTTO_OFFICIAL_SCHEDULED_ARGS
+        );
+        const lottoOfficialSummary = parseJsonOutput(scheduledCheck.result.stdout);
+        lottoOfficialDeferred = Boolean(lottoOfficialSummary?.deferred);
+        lottoOfficialDeferredReason = lottoOfficialSummary?.deferredReason || '';
     }
 
     if (!deferred) {
@@ -88,17 +130,25 @@ async function main() {
         ok: true,
         deferred,
         deferredReason,
+        lottoOfficialDeferred,
+        lottoOfficialDeferredReason,
+        pension720Deferred,
+        pension720DeferredReason,
         estimatedLatestDrawNo,
         latestBefore,
         latestAfter
     };
 
     await setGithubOutput('deferred', deferred ? 'true' : 'false');
+    await setGithubOutput('lotto_official_deferred', lottoOfficialDeferred ? 'true' : 'false');
+    await setGithubOutput('pension720_deferred', pension720Deferred ? 'true' : 'false');
     console.log(JSON.stringify(summary, null, 2));
 }
 
 main().catch(async (error) => {
     await setGithubOutput('deferred', 'false');
+    await setGithubOutput('lotto_official_deferred', 'false');
+    await setGithubOutput('pension720_deferred', 'false');
     console.error(error);
     process.exitCode = 1;
 });

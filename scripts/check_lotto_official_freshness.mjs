@@ -21,6 +21,32 @@ const RETRIABLE_FETCH_CODES = new Set([
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
+function collectErrorChain(error) {
+    const chain = [];
+    const seen = new Set();
+    let current = error;
+
+    while (current && typeof current === 'object' && !seen.has(current)) {
+        chain.push(current);
+        seen.add(current);
+        current = current.cause;
+    }
+
+    return chain;
+}
+
+function formatOfficialUnavailableReason(error) {
+    const code = collectErrorChain(error).find((item) => RETRIABLE_FETCH_CODES.has(item?.code))?.code;
+    const message = error?.message || String(error);
+    return code ? `${message} (${code})` : message;
+}
+
+function isRetriableOfficialFetchLog(entry) {
+    if (entry?.code !== 'SYNC_FETCH_ONE_FAIL') return false;
+    const message = String(entry?.meta?.message || entry?.message || '');
+    return /fetch failed|timeout|network|socket|ECONN|ETIMEDOUT|EAI_AGAIN|UND_ERR/i.test(message);
+}
+
 function normalizeRows(rows = []) {
     const dm = new DataManager();
     const normalized = (Array.isArray(rows) ? rows : []).map((row) => dm.normalizeDrawItem(row)).filter(Boolean);
@@ -125,8 +151,14 @@ async function readStaticRows(dataPath = DEFAULT_DATA_PATH) {
 }
 
 function isRetriableOfficialFetchError(error) {
-    const code = error?.cause?.code || error?.code;
-    return RETRIABLE_FETCH_CODES.has(code) || error instanceof TypeError;
+    return collectErrorChain(error).some((item) => {
+        if (Array.isArray(item?.logs) && item.logs.some(isRetriableOfficialFetchLog)) return true;
+
+        const status = Number(item?.status || 0);
+        if (status === 429 || status >= 500) return true;
+
+        return RETRIABLE_FETCH_CODES.has(item?.code) || item instanceof TypeError;
+    });
 }
 
 async function fetchOfficialDraw(drawNo, options = {}) {
@@ -139,6 +171,13 @@ async function fetchOfficialDraw(drawNo, options = {}) {
     for (let attempt = 0; attempt <= retries; attempt += 1) {
         try {
             const dm = dmFactory();
+            const originalLogSync = typeof dm.logSync === 'function' ? dm.logSync.bind(dm) : null;
+            dm.logSync = (code, message, meta = null) => {
+                if (code === 'SYNC_FETCH_ONE_FAIL') {
+                    logs.push({ attempt: attempt + 1, message, code, meta });
+                }
+                originalLogSync?.(code, message, meta);
+            };
             const item = await dm.fetchOneDraw(
                 drawNo,
                 { url: '', source: 'built-in' },
@@ -154,8 +193,12 @@ async function fetchOfficialDraw(drawNo, options = {}) {
                 };
             }
             lastError = new Error(`official lotto draw ${drawNo} returned no usable payload`);
+            lastError.logs = logs.slice();
         } catch (error) {
             lastError = error;
+            if (lastError && typeof lastError === 'object') {
+                lastError.logs = logs.slice();
+            }
             if (!isRetriableOfficialFetchError(error)) break;
         }
 
@@ -164,17 +207,20 @@ async function fetchOfficialDraw(drawNo, options = {}) {
         }
     }
 
-    throw new Error(
+    const error = new Error(
         `official lotto draw ${drawNo} could not be fetched after ${retries + 1} attempt(s): ${
             lastError?.message || lastError
         }`,
         { cause: lastError }
     );
+    error.logs = logs.slice();
+    throw error;
 }
 
 async function main() {
     const dataPath = DEFAULT_DATA_PATH;
     const deferEstimatedMissing = process.argv.includes('--defer-estimated-missing');
+    const deferOfficialUnavailable = process.argv.includes('--defer-official-unavailable');
     const staticRows = await readStaticRows(dataPath);
     const staticSummary = summarizeRows(staticRows);
     const latestStatic = staticSummary.rows[0];
@@ -192,7 +238,23 @@ async function main() {
         attempts = fetched.attempts;
         result = compareLottoOfficialFreshness(staticRows, [fetched.item], { estimatedLatestDrawNo });
     } catch (error) {
-        if (deferEstimatedMissing && targetDrawNo > latestStatic.draw_no) {
+        if (deferOfficialUnavailable && isRetriableOfficialFetchError(error)) {
+            deferred = true;
+            deferredReason = `official Lotto source unavailable: ${formatOfficialUnavailableReason(error)}`;
+            result = {
+                ok: true,
+                static: {
+                    count: staticSummary.count,
+                    latestDrawNo: staticSummary.latestDrawNo,
+                    latestDate: staticSummary.latestDate,
+                    latestNumbers: staticSummary.latestNumbers,
+                    latestBonus: staticSummary.latestBonus
+                },
+                official: null,
+                estimatedLatestDrawNo,
+                issues: []
+            };
+        } else if (deferEstimatedMissing && targetDrawNo > latestStatic.draw_no) {
             deferred = true;
             deferredReason = `estimated latest draw ${targetDrawNo} is not available from the official endpoint yet`;
             result = {
@@ -246,4 +308,11 @@ if (process.argv[1] && resolve(process.argv[1]) === __filename) {
     });
 }
 
-export { compareLottoOfficialFreshness, fetchOfficialDraw, normalizeRows, readStaticRows, summarizeRows };
+export {
+    compareLottoOfficialFreshness,
+    fetchOfficialDraw,
+    isRetriableOfficialFetchError,
+    normalizeRows,
+    readStaticRows,
+    summarizeRows
+};

@@ -221,6 +221,10 @@ const regressionExecutionPlan = [
         awaited: true
     },
     {
+        name: 'runLottoOfficialFetchWrappedErrorRegression',
+        label: 'lotto official fetch wrapped-error regression'
+    },
+    {
         name: 'runBuiltInSyncProviderRegression',
         label: 'built-in sync provider regression'
     },
@@ -265,6 +269,10 @@ const regressionExecutionPlan = [
         name: 'runPension720OfficialFetchRetryRegression',
         label: 'pension720 official fetch retry regression',
         awaited: true
+    },
+    {
+        name: 'runPension720OfficialFetchWrappedErrorRegression',
+        label: 'pension720 official fetch wrapped-error regression'
     },
     {
         name: 'runPension720LatestCheckRegression',

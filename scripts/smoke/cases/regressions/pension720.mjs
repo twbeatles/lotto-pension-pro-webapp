@@ -10,7 +10,11 @@ import {
     UIManager
 } from './support.mjs';
 import { buildPrecacheManifest } from '../../../generate_sw_manifest.mjs';
-import { comparePension720Freshness, fetchOfficialPayload } from '../../../fetch_pension720_stats.mjs';
+import {
+    comparePension720Freshness,
+    fetchOfficialPayload,
+    isRetriableOfficialFetchError
+} from '../../../fetch_pension720_stats.mjs';
 
 function makeSamplePensionStats() {
     return [
@@ -253,13 +257,19 @@ async function runPension720StaticDataRegression() {
 
 function runPension720FreshnessComparisonRegression() {
     const rows = makeSamplePensionStats();
-    const ok = comparePension720Freshness(rows, rows);
-    const stale = comparePension720Freshness(rows.slice(1), rows);
-    const mismatch = comparePension720Freshness(rows, [{ ...rows[0], number: '111111' }, ...rows.slice(1)]);
+    const options = { estimatedLatestDrawNo: rows[0].draw_no };
+    const ok = comparePension720Freshness(rows, rows, options);
+    const stale = comparePension720Freshness(rows.slice(1), rows, options);
+    const mismatch = comparePension720Freshness(rows, [{ ...rows[0], number: '111111' }, ...rows.slice(1)], options);
 
     assert.equal(ok.ok, true, 'pension720 online freshness comparison must pass matching snapshots');
     assert.equal(stale.ok, false, 'pension720 online freshness comparison must fail stale static data');
     assert.equal(mismatch.ok, false, 'pension720 online freshness comparison must fail latest draw mismatches');
+    assert.equal(
+        comparePension720Freshness(rows, rows, { estimatedLatestDrawNo: rows[0].draw_no + 1 }).ok,
+        false,
+        'pension720 online freshness comparison must fail when official data is behind estimated draw schedule'
+    );
 }
 
 async function runPension720OfficialFetchRetryRegression() {
@@ -283,6 +293,28 @@ async function runPension720OfficialFetchRetryRegression() {
 
     assert.equal(calls, 3, 'pension720 official fetch must retry transient connection timeouts');
     assert.deepEqual(result, expectedPayload, 'pension720 official fetch must return the eventual successful payload');
+}
+
+function runPension720OfficialFetchWrappedErrorRegression() {
+    const timeout = new TypeError('fetch failed');
+    timeout.cause = { code: 'UND_ERR_CONNECT_TIMEOUT' };
+    const wrapped = new Error('official pension720 fetch failed after 3 attempt(s): fetch failed', {
+        cause: timeout
+    });
+    const malformedJson = new Error('official pension720 fetch failed after 1 attempt(s): bad json', {
+        cause: new SyntaxError('Unexpected token')
+    });
+
+    assert.equal(
+        isRetriableOfficialFetchError(wrapped),
+        true,
+        'wrapped pension720 timeout must be classified as retriable for CI defer'
+    );
+    assert.equal(
+        isRetriableOfficialFetchError(malformedJson),
+        false,
+        'malformed official payload must not be treated as a deferred network outage'
+    );
 }
 
 function runPension720LatestCheckRegression() {
@@ -453,6 +485,7 @@ export {
     runPension720CsvFormulaEscapeRegression,
     runPension720FreshnessComparisonRegression,
     runPension720OfficialFetchRetryRegression,
+    runPension720OfficialFetchWrappedErrorRegression,
     runPension720LatestCheckRegression,
     runPension720NormalizationRegression,
     runPension720PrecacheRegression,

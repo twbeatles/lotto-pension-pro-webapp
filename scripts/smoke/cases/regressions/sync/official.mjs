@@ -7,6 +7,7 @@ import {
     DataManager,
     estimateLatestDrawKST,
     fetchOfficialDraw,
+    isRetriableOfficialFetchError,
     LottoApp,
     readFile,
     resolve
@@ -32,19 +33,19 @@ async function runStaticDataFreshnessBudgetRegression() {
 
 function runEstimateLatestDrawKstBoundaryRegression() {
     assert.equal(
-        estimateLatestDrawKST(new Date(Date.UTC(2026, 4, 23, 20, 59, 0))),
+        estimateLatestDrawKST(new Date(Date.UTC(2026, 4, 23, 21, 4, 0))),
 
         1224,
 
-        'Saturday 20:59 KST must still report the previous Lotto draw'
+        'Saturday 21:04 KST must still report the previous Lotto draw during publish grace'
     );
 
     assert.equal(
-        estimateLatestDrawKST(new Date(Date.UTC(2026, 4, 23, 21, 0, 0))),
+        estimateLatestDrawKST(new Date(Date.UTC(2026, 4, 23, 21, 5, 0))),
 
         1225,
 
-        'Saturday 21:00 KST must advance to the new Lotto draw'
+        'Saturday 21:05 KST must advance to the new Lotto draw after publish grace'
     );
 
     assert.equal(
@@ -179,9 +180,55 @@ async function runLottoOfficialFetchRetryRegression() {
     );
 }
 
+function runLottoOfficialFetchWrappedErrorRegression() {
+    const timeout = new TypeError('fetch failed');
+    timeout.cause = { code: 'UND_ERR_CONNECT_TIMEOUT' };
+
+    const wrapped = new Error('official lotto draw 10 could not be fetched after 3 attempt(s): fetch failed', {
+        cause: timeout
+    });
+
+    const loggedTimeout = new Error('official lotto draw 10 could not be fetched after 3 attempt(s): no payload');
+    loggedTimeout.logs = [
+        {
+            code: 'SYNC_FETCH_ONE_FAIL',
+            meta: { message: 'fetch failed' }
+        }
+    ];
+
+    const malformedJson = new Error('official lotto draw 10 could not be fetched after 1 attempt(s): bad json', {
+        cause: new SyntaxError('Unexpected token')
+    });
+    malformedJson.logs = [
+        {
+            code: 'SYNC_FETCH_ONE_INVALID_PAYLOAD',
+            meta: { keys: ['foo'] }
+        }
+    ];
+
+    assert.equal(
+        isRetriableOfficialFetchError(wrapped),
+        true,
+        'wrapped Lotto timeout must be classified as retriable for scheduled CI defer'
+    );
+
+    assert.equal(
+        isRetriableOfficialFetchError(loggedTimeout),
+        true,
+        'logged Lotto provider fetch failures must be classified as retriable for scheduled CI defer'
+    );
+
+    assert.equal(
+        isRetriableOfficialFetchError(malformedJson),
+        false,
+        'malformed Lotto official payload must not be treated as a deferred network outage'
+    );
+}
+
 export {
     runStaticDataFreshnessBudgetRegression,
     runEstimateLatestDrawKstBoundaryRegression,
     runLottoOfficialFreshnessComparisonRegression,
-    runLottoOfficialFetchRetryRegression
+    runLottoOfficialFetchRetryRegression,
+    runLottoOfficialFetchWrappedErrorRegression
 };

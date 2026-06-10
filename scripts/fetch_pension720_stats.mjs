@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { estimateLatestPension720DrawKST } from '../assets/modules/utils/utils.js';
+
 const SOURCE_URL = 'https://www.dhlottery.co.kr/pt720/selectPstPt720WnList.do';
 const DEFAULT_OUTPUT_PATH = resolve('data/pension720_stats.json');
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +21,26 @@ const RETRIABLE_FETCH_CODES = new Set([
 ]);
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+
+function collectErrorChain(error) {
+    const chain = [];
+    const seen = new Set();
+    let current = error;
+
+    while (current && typeof current === 'object' && !seen.has(current)) {
+        chain.push(current);
+        seen.add(current);
+        current = current.cause;
+    }
+
+    return chain;
+}
+
+function formatOfficialUnavailableReason(error) {
+    const code = collectErrorChain(error).find((item) => RETRIABLE_FETCH_CODES.has(item?.code))?.code;
+    const message = error?.message || String(error);
+    return code ? `${message} (${code})` : message;
+}
 
 function normalizeDate(rawValue = '') {
     const raw = String(rawValue ?? '').trim();
@@ -86,11 +108,12 @@ function normalizePayload(payload) {
 }
 
 function isRetriableOfficialFetchError(error) {
-    const status = Number(error?.status || 0);
-    if (status === 429 || status >= 500) return true;
+    return collectErrorChain(error).some((item) => {
+        const status = Number(item?.status || 0);
+        if (status === 429 || status >= 500) return true;
 
-    const code = error?.cause?.code || error?.code;
-    return RETRIABLE_FETCH_CODES.has(code) || error instanceof TypeError;
+        return RETRIABLE_FETCH_CODES.has(item?.code) || item instanceof TypeError;
+    });
 }
 
 async function fetchOfficialPayload({
@@ -163,11 +186,48 @@ function buildLatestSummary(rows) {
     };
 }
 
-function comparePension720Freshness(staticRows, officialRows) {
+function buildStaticSummary(rows) {
+    const summary = buildLatestSummary(rows);
+    return {
+        count: summary.count,
+        latestDrawNo: summary.latestDrawNo,
+        latestDate: summary.latestDate,
+        latestNumber: summary.latestNumber,
+        latestBonus: summary.latestBonus
+    };
+}
+
+function buildDeferredOfficialResult({ outputPath, rows, error, checkedOnline }) {
+    return {
+        ok: true,
+        deferred: true,
+        deferredReason: `official pension720 source unavailable: ${formatOfficialUnavailableReason(error)}`,
+        outputPath,
+        sourceUrl: SOURCE_URL,
+        static: buildStaticSummary(rows),
+        official: null,
+        issues: [],
+        checkedOnline
+    };
+}
+
+function comparePension720Freshness(staticRows, officialRows, options = {}) {
+    const estimatedLatestDrawNo = Math.max(
+        0,
+        Math.floor(Number(options.estimatedLatestDrawNo || estimateLatestPension720DrawKST()))
+    );
     const local = buildLatestSummary(staticRows);
     const official = buildLatestSummary(officialRows);
     const issues = [];
 
+    if (estimatedLatestDrawNo > local.latestDrawNo) {
+        issues.push(`static data is behind estimated latest draw ${estimatedLatestDrawNo}`);
+    }
+    if (estimatedLatestDrawNo > official.latestDrawNo) {
+        issues.push(
+            `official latest draw ${official.latestDrawNo} is behind estimated latest draw ${estimatedLatestDrawNo}`
+        );
+    }
     if (official.latestDrawNo > local.latestDrawNo) {
         issues.push(`static data is behind official latest draw ${official.latestDrawNo}`);
     }
@@ -204,6 +264,7 @@ function comparePension720Freshness(staticRows, officialRows) {
             latestNumber: official.latestNumber,
             latestBonus: official.latestBonus
         },
+        estimatedLatestDrawNo,
         issues
     };
 }
@@ -237,22 +298,54 @@ async function readExistingRows(outputPath) {
 async function main() {
     const checkOnly = process.argv.includes('--check');
     const checkOnline = process.argv.includes('--check-online');
+    const deferOfficialUnavailable = process.argv.includes('--defer-official-unavailable');
+    const deferEstimatedMissing = process.argv.includes('--defer-estimated-missing');
     const outputFlagIndex = process.argv.indexOf('--out');
     const outputPath =
         outputFlagIndex >= 0 && process.argv[outputFlagIndex + 1]
             ? resolve(process.argv[outputFlagIndex + 1])
             : DEFAULT_OUTPUT_PATH;
+    const estimatedLatestDrawNo = estimateLatestPension720DrawKST();
 
     if (checkOnline) {
-        const result = comparePension720Freshness(await readExistingRows(outputPath), await fetchOfficialPayload());
+        const staticRows = await readExistingRows(outputPath);
+        let officialPayload;
+        try {
+            officialPayload = await fetchOfficialPayload();
+        } catch (error) {
+            if (!deferOfficialUnavailable || !isRetriableOfficialFetchError(error)) {
+                throw error;
+            }
+
+            const deferredResult = buildDeferredOfficialResult({
+                outputPath,
+                rows: staticRows,
+                error,
+                checkedOnline: true
+            });
+            console.warn(`pension720 official freshness deferred: ${deferredResult.deferredReason}`);
+            console.log(JSON.stringify(deferredResult, null, 2));
+            return;
+        }
+
+        const result = comparePension720Freshness(staticRows, officialPayload, { estimatedLatestDrawNo });
+        const shouldDeferEstimatedMissing =
+            deferEstimatedMissing &&
+            result.official.latestDrawNo < estimatedLatestDrawNo &&
+            result.official.latestDrawNo <= result.static.latestDrawNo;
         console.log(
             JSON.stringify(
                 {
-                    ok: result.ok,
+                    ok: result.ok || shouldDeferEstimatedMissing,
+                    deferred: shouldDeferEstimatedMissing,
+                    deferredReason: shouldDeferEstimatedMissing
+                        ? `estimated Pension720+ draw ${estimatedLatestDrawNo} is not available from the official endpoint yet`
+                        : '',
                     outputPath,
                     sourceUrl: SOURCE_URL,
                     static: result.static,
                     official: result.official,
+                    estimatedLatestDrawNo: result.estimatedLatestDrawNo,
                     issues: result.issues,
                     checkedOnline: true
                 },
@@ -260,13 +353,49 @@ async function main() {
                 2
             )
         );
+        if (shouldDeferEstimatedMissing) return;
         if (!result.ok) {
             throw new Error(`pension720 freshness check failed: ${result.issues.join('; ')}`);
         }
         return;
     }
 
-    const rows = checkOnly ? await readExistingRows(outputPath) : normalizePayload(await fetchOfficialPayload());
+    let deferred = false;
+    let deferredReason = '';
+    let rows;
+
+    if (checkOnly) {
+        rows = await readExistingRows(outputPath);
+    } else {
+        try {
+            const officialRows = normalizePayload(await fetchOfficialPayload());
+            const existingRows = await readExistingRows(outputPath);
+            const officialSummary = buildStaticSummary(officialRows);
+            const staticSummary = buildStaticSummary(existingRows);
+            if (
+                deferEstimatedMissing &&
+                officialSummary.latestDrawNo < estimatedLatestDrawNo &&
+                officialSummary.latestDrawNo <= staticSummary.latestDrawNo
+            ) {
+                rows = existingRows;
+                deferred = true;
+                deferredReason = `estimated Pension720+ draw ${estimatedLatestDrawNo} is not available from the official endpoint yet`;
+                console.warn(`pension720 refresh deferred: ${deferredReason}`);
+            } else {
+                rows = officialRows;
+            }
+        } catch (error) {
+            if (!deferOfficialUnavailable || !isRetriableOfficialFetchError(error)) {
+                throw error;
+            }
+
+            rows = await readExistingRows(outputPath);
+            deferred = true;
+            deferredReason = `official pension720 source unavailable: ${formatOfficialUnavailableReason(error)}`;
+            console.warn(`pension720 refresh deferred: ${deferredReason}`);
+        }
+    }
+
     validateRows(rows);
 
     const latest = rows[0];
@@ -274,9 +403,13 @@ async function main() {
         JSON.stringify(
             {
                 ok: true,
+                deferred,
+                deferredReason,
                 outputPath,
+                sourceUrl: SOURCE_URL,
                 count: rows.length,
                 latestDrawNo: latest.draw_no,
+                estimatedLatestDrawNo,
                 latestDate: latest.date,
                 latestNumber: `${latest.group}조 ${latest.number}`,
                 latestBonus: latest.bonus_number,
@@ -287,7 +420,7 @@ async function main() {
         )
     );
 
-    if (!checkOnly) {
+    if (!checkOnly && !deferred) {
         await mkdir(dirname(outputPath), { recursive: true });
         await writeFile(outputPath, renderPension720Rows(rows), 'utf8');
     }
@@ -303,6 +436,7 @@ if (process.argv[1] && resolve(process.argv[1]) === __filename) {
 export {
     comparePension720Freshness,
     fetchOfficialPayload,
+    isRetriableOfficialFetchError,
     normalizePension720Item,
     normalizePayload,
     renderPension720Rows,

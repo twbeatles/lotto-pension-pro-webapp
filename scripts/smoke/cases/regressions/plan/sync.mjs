@@ -87,6 +87,10 @@ const syncPlan = [
         awaited: true
     },
     {
+        name: 'runLottoOfficialFetchWrappedErrorRegression',
+        label: 'lotto official fetch wrapped-error regression'
+    },
+    {
         name: 'runBuiltInSyncProviderRegression',
         label: 'built-in sync provider regression'
     }

@@ -251,10 +251,11 @@ async function runDestructiveBackupAbortRegression() {
             'backup confirmation cancel must show an abort toast'
         );
 
-        const dataIoSource = await readFile(
-            resolve(process.cwd(), 'assets/modules/features/dataio/support.js'),
-            'utf8'
-        );
+        const [dataIoSupportSource, dataIoBackupSource] = await Promise.all([
+            readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8'),
+            readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport.js'), 'utf8')
+        ]);
+        const dataIoSource = [dataIoSupportSource, dataIoBackupSource].join('\n');
         assert.match(
             dataIoSource,
             /preferFilePicker:\s*true/,

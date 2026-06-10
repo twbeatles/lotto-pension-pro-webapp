@@ -390,11 +390,30 @@ function runPension720CsvFormulaEscapeRegression() {
 }
 
 async function runPension720UiContractRegression() {
-    const [indexSource, featureSource, dataIoSupportSource] = await Promise.all([
+    const [
+        indexSource,
+        featureFacadeSource,
+        pension720ModuleSource,
+        pension720TicketsSource,
+        pension720CampaignsSource,
+        dataIoSupportSource,
+        dataIoBackupSource
+    ] = await Promise.all([
         readFile(resolve(process.cwd(), 'index.html'), 'utf8'),
         readFile(resolve(process.cwd(), 'assets/modules/features/Pension720.js'), 'utf8'),
-        readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8')
+        readFile(resolve(process.cwd(), 'assets/modules/features/pension720/module.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/pension720/tickets.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/pension720/campaigns.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport.js'), 'utf8')
     ]);
+    const featureSource = [
+        featureFacadeSource,
+        pension720ModuleSource,
+        pension720TicketsSource,
+        pension720CampaignsSource
+    ].join('\n');
+    const dataIoSource = [dataIoSupportSource, dataIoBackupSource].join('\n');
 
     assert.match(indexSource, /pension720CopyAllBtn/, 'pension720 UI must expose copy-all action');
     assert.match(indexSource, /pension720ExportCsvBtn/, 'pension720 UI must expose CSV export action');
@@ -423,7 +442,7 @@ async function runPension720UiContractRegression() {
     assert.match(featureSource, /runCampaignRecommendation/, 'pension720 feature must implement campaign generation');
     assert.match(featureSource, /copyText/, 'pension720 saved tickets must use generic text copy');
     assert.match(featureSource, /lotto_pension_pro_pension720_tickets_/, 'pension720 CSV filename must be rebranded');
-    assert.match(dataIoSupportSource, /lotto_pension_pro_backup_v5/, 'backup export filename prefix must be v5');
+    assert.match(dataIoSource, /lotto_pension_pro_backup_v5/, 'backup export filename prefix must be v5');
 }
 
 async function runPension720BackupFixtureRegression() {

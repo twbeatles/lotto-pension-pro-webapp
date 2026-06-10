@@ -9,17 +9,17 @@
 
 ## 현재 기준
 
-2026-05-25 기준 문서와 정적 데이터/CI 운영 기준입니다.
+2026-06-10 기준 문서와 정적 데이터/CI 운영 기준입니다.
 
 - Lotto 6/45 static data: `data/winning_stats.json`
-    - latest draw: `1225`
-    - rows: `1224`
+    - latest draw: `1227`
+    - rows: `1226`
     - allowed missing draw: `[146]`
 - Pension720+ static data: `data/pension720_stats.json`
-    - latest draw: `316`
-    - latest date: `2026-05-21`
-    - latest primary: `3조 331818`
-    - latest bonus: `449298`
+    - latest draw: `318`
+    - latest date: `2026-06-04`
+    - latest primary: `5조 401384`
+    - latest bonus: `981462`
 - Service worker cache version: `v29`
 
 ## 3분 사용법
@@ -152,7 +152,12 @@ lotto-pension-pro-webapp/
 ├── assets/
 │   ├── modules/
 │   │   ├── core/
+│   │   │   ├── data/
+│   │   │   │   └── pension720/
+│   │   │   └── pension720Engine/
 │   │   ├── features/
+│   │   │   ├── dataio/
+│   │   │   └── pension720/
 │   │   └── utils/
 │   ├── styles/
 │   ├── vendor/
@@ -172,11 +177,14 @@ lotto-pension-pro-webapp/
 │   ├── refresh_ci_data.mjs
 │   ├── update_docs_data_baseline.mjs
 │   ├── smoke/
+│   │   └── cases/regressions/{data,generator,sync,ui,plan}
 │   └── tests/
 ├── index.html
 ├── manifest.json
 └── sw.js
 ```
+
+`assets/modules/core/Pension720Engine.js`, `assets/modules/core/data/pension720.js`, `assets/modules/features/Pension720.js`, `assets/modules/features/dataio/support.js`, `assets/modules/features/dataio/importExport.js`, `scripts/smoke/cases/regressions.mjs`, `scripts/smoke/cases/regressions/manifest.mjs`는 기존 import 경로를 유지하는 facade입니다. 실제 구현은 위 하위 폴더에 책임별로 분리되어 있습니다.
 
 ## 운영 메모
 
@@ -187,5 +195,5 @@ lotto-pension-pro-webapp/
 - 외부 live source까지 확인할 때는 `npm run test:sync-live`, `npm run test:sync-live:browser`, `npm run test:sync-live:browser:official`을 opt-in으로 실행합니다.
 - `.github/workflows/data-freshness.yml`은 scheduled/manual freshness check 후 필요한 데이터와 문서 baseline을 갱신하고 release gate 통과 시 main에 자동 커밋합니다. Lotto 공식 회차가 아직 반영되지 않은 예약 실행은 deferred로 기록합니다.
 - `.github/workflows/browser-official.yml`은 공식 source browser canary를 수동 실행과 주 1회 예약 실행으로 검증합니다.
-- `.gitignore`는 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-05-25 점검에서 대표 경로를 `git check-ignore -v`로 확인했으며 새 ignore 규칙은 필요하지 않았습니다.
+- `.gitignore`는 `.codegraph/`, 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-06-10 점검에서 대표 경로를 `git check-ignore -v --no-index`로 확인했습니다.
 - 유지 문서는 `README.md`, `claude.md`, `gemini.md`, `cladue.md`, `deploy_github_pages.md`, `proxy/README.md`입니다. 삭제된 dated review/audit 문서는 사용자가 명시적으로 요청하지 않는 한 복원하지 않고, 지속 보존할 결론은 유지 문서에 흡수합니다.

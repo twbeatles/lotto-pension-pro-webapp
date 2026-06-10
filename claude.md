@@ -14,15 +14,15 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 
 - Lotto 6/45 static data:
     - Source: `data/winning_stats.json`
-    - Latest draw: `1225`
-    - Rows: `1224`
+    - Latest draw: `1227`
+    - Rows: `1226`
     - Allowed missing draw: `[146]`
 - Pension720+ static data:
     - Source: `data/pension720_stats.json`
-    - Latest draw: `316`
-    - Latest date: `2026-05-21`
-    - Latest primary: `3조 331818`
-    - Latest bonus: `449298`
+    - Latest draw: `318`
+    - Latest date: `2026-06-04`
+    - Latest primary: `5조 401384`
+    - Latest bonus: `981462`
 - Both data files are included in the generated service-worker precache manifest.
 
 ## Runtime Shape
@@ -32,9 +32,11 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Lotto 6/45 recommendation logic remains under the existing strategy stack.
 - Pension720+ logic is split across:
     - `assets/modules/core/Pension720StrategyCatalog.js`
-    - `assets/modules/core/Pension720Engine.js`
-    - `assets/modules/core/data/pension720.js`
-    - `assets/modules/features/Pension720.js`
+    - `assets/modules/core/Pension720Engine.js` facade -> `assets/modules/core/pension720Engine/`
+    - `assets/modules/core/data/pension720.js` facade -> `assets/modules/core/data/pension720/`
+    - `assets/modules/features/Pension720.js` facade -> `assets/modules/features/pension720/`
+- Data import/export UI keeps `assets/modules/features/DataIO.js`, `dataio/support.js`, and `dataio/importExport.js` as public composition points; detailed backup, preview, normalizer, status, and import flow logic lives under `assets/modules/features/dataio/`.
+- Smoke regressions keep the `scripts/smoke/cases/regressions.mjs` barrel and `regressions/manifest.mjs` public plan; large regression groups are split under `regressions/{data,generator,sync,ui,plan}/`.
 - Storage keys under `CONFIG.KEYS` intentionally keep existing `lotto_pro_*` names for user data compatibility.
 - Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1`.
 - Generated/AI/Pension720 temporary results use `lotto_pro_temp_results_state` in sessionStorage only.
@@ -148,7 +150,7 @@ npm run bench:ai:full
 - Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
 - `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks, refreshes stale data/docs, and auto-commits to `main` after the release gate passes.
 - `.github/workflows/browser-official.yml` runs the official-source browser canary manually and weekly.
-- `.gitignore` was rechecked on 2026-05-25 against app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and no new ignore rule was required.
+- `.gitignore` was rechecked on 2026-06-10 against `.codegraph/`, app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and `.codegraph/` is ignored at the repo root.
 - Use `git diff --check` before publishing. CRLF warnings from Git are not the same as whitespace errors.
 
 ## Session Handoff Template

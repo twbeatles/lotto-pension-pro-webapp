@@ -69,6 +69,11 @@ const syncPlan = [
         awaited: true
     },
     {
+        name: 'runWinningStatsPreserveExistingWithLocalUpdatesRegression',
+        label: 'winning-stats static-failure local-update preserve regression',
+        awaited: true
+    },
+    {
         name: 'runStaticDataFreshnessBudgetRegression',
         label: 'static data freshness budget regression',
         awaited: true
@@ -76,6 +81,11 @@ const syncPlan = [
     {
         name: 'runEstimateLatestDrawKstBoundaryRegression',
         label: 'estimate latest draw KST boundary regression'
+    },
+    {
+        name: 'runProxyWorkerDrawScheduleAndFutureCapRegression',
+        label: 'proxy worker draw schedule/future-cap regression',
+        awaited: true
     },
     {
         name: 'runLottoOfficialFreshnessComparisonRegression',

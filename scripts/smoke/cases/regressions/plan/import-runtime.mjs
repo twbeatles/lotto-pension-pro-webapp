@@ -90,6 +90,11 @@ const importRuntimePlan = [
         awaited: true
     },
     {
+        name: 'runBackupUnavailableFallbackResultRegression',
+        label: 'backup unavailable fallback result regression',
+        awaited: true
+    },
+    {
         name: 'runPension720OfficialCacheRegression',
         label: 'pension720 official-cache regression',
         awaited: true
@@ -101,6 +106,16 @@ const importRuntimePlan = [
     {
         name: 'runTemporaryResultsSessionRegression',
         label: 'temporary results session regression'
+    },
+    {
+        name: 'runRemoteRehydrateFlushesPendingPersistenceRegression',
+        label: 'remote rehydrate persistence-flush regression',
+        awaited: true
+    },
+    {
+        name: 'runStrategyWorkerPostMessageCleanupRegression',
+        label: 'strategy worker postMessage cleanup regression',
+        awaited: true
     },
     {
         name: 'runDomSelectorContractRegression',

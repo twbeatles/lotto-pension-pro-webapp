@@ -1,3 +1,5 @@
+import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
+
 const DEFAULT_OFFICIAL_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 const MAX_RANGE = 40;
 const RANGE_CONCURRENCY = 4;
@@ -6,6 +8,7 @@ const FETCH_RETRY_COUNT = 1;
 const TTL_NEAR_LATEST_SECONDS = 60;
 const TTL_HISTORICAL_SECONDS = 6 * 60 * 60;
 const TTL_HISTORICAL_RANGE_SECONDS = 12 * 60 * 60;
+export const MAX_FUTURE_DRAW_SLACK = 1;
 
 const CORS = {
     'Access-Control-Allow-Origin': '*',
@@ -194,56 +197,30 @@ async function getRange(from, to) {
     return { from, to, count: data.length, missing, data };
 }
 
-const getKstParts = () => {
-    const dtf = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Seoul',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
-    const parts = dtf.formatToParts(new Date());
-    const pick = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
-    return {
-        y: pick('year'),
-        m: pick('month'),
-        d: pick('day'),
-        hh: pick('hour'),
-        mm: pick('minute'),
-        ss: pick('second')
-    };
-};
-
-const estimateLatestDrawKST = () => {
-    const BASE_DRAW_NO = 1;
-    const BASE_DATE_UTC = Date.UTC(2002, 11, 7, 0, 0, 0);
-    const INTERVAL_DAYS = 7;
-    const CUTOFF_HOUR = 21;
-
-    const p = getKstParts();
-    const nowKstUtc = new Date(Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss));
-    const daysDiff = Math.floor((nowKstUtc.getTime() - BASE_DATE_UTC) / 86400000);
-    let estimated = Math.floor(daysDiff / INTERVAL_DAYS) + BASE_DRAW_NO;
-    estimated = Math.max(BASE_DRAW_NO, estimated);
-
-    const cutoffUtc = new Date(
-        BASE_DATE_UTC + (estimated - BASE_DRAW_NO) * INTERVAL_DAYS * 86400000 + CUTOFF_HOUR * 3600000
-    );
-    if (nowKstUtc.getTime() < cutoffUtc.getTime()) estimated -= 1;
-
-    return Math.max(BASE_DRAW_NO, estimated);
-};
-
 const isNearLatestDraw = (drawNo) => {
     const latestEstimate = estimateLatestDrawKST();
     return Number(drawNo) >= Math.max(latestEstimate - 1, 1);
 };
 
+export const getMaxAllowedDrawNo = (nowKstUtc = undefined) =>
+    estimateLatestDrawKST(nowKstUtc) + MAX_FUTURE_DRAW_SLACK;
+
+export const isAllowedProxyDrawNo = (drawNo, nowKstUtc = undefined) =>
+    Number.isInteger(drawNo) && drawNo >= 1 && drawNo <= getMaxAllowedDrawNo(nowKstUtc);
+
+const futureDrawResponse = (drawNo, maxDrawNo) =>
+    toJsonResponse(
+        { error: 'draw_no too far in future', drawNo, maxDrawNo },
+        {
+            status: 400,
+            headers: { 'X-Lotto-Cache': 'BYPASS' }
+        }
+    );
+
 const resolveLatestTtl = (drawNo) => (isNearLatestDraw(drawNo) ? TTL_NEAR_LATEST_SECONDS : TTL_HISTORICAL_SECONDS);
 const resolveRangeTtl = (to) => (isNearLatestDraw(to) ? TTL_NEAR_LATEST_SECONDS : TTL_HISTORICAL_RANGE_SECONDS);
+
+export { estimateLatestDrawKST };
 
 export default {
     async fetch(request) {
@@ -301,6 +278,10 @@ export default {
                     }
                 );
             }
+            const maxAllowedDrawNo = getMaxAllowedDrawNo();
+            if (drawNo > maxAllowedDrawNo) {
+                return futureDrawResponse(drawNo, maxAllowedDrawNo);
+            }
             const format = String(url.searchParams.get('format') || 'hybrid').toLowerCase();
             const ttlSeconds = resolveLatestTtl(drawNo);
 
@@ -340,6 +321,10 @@ export default {
                         headers: { 'X-Lotto-Cache': 'BYPASS' }
                     }
                 );
+            }
+            const maxAllowedDrawNo = getMaxAllowedDrawNo();
+            if (to > maxAllowedDrawNo) {
+                return futureDrawResponse(to, maxAllowedDrawNo);
             }
 
             const ttlSeconds = resolveRangeTtl(to);

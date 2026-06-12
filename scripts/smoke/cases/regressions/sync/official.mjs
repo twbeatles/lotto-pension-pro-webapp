@@ -12,6 +12,12 @@ import {
     readFile,
     resolve
 } from '../support.mjs';
+import proxyWorker, {
+    estimateLatestDrawKST as estimateLatestProxyDrawKST,
+    getMaxAllowedDrawNo,
+    isAllowedProxyDrawNo,
+    MAX_FUTURE_DRAW_SLACK
+} from '../../../../../proxy/worker.js';
 
 async function runStaticDataFreshnessBudgetRegression() {
     const raw = await readFile(resolve(process.cwd(), 'data/winning_stats.json'), 'utf8');
@@ -180,6 +186,46 @@ async function runLottoOfficialFetchRetryRegression() {
     );
 }
 
+async function runProxyWorkerDrawScheduleAndFutureCapRegression() {
+    const beforePublishGrace = new Date(Date.UTC(2026, 4, 23, 21, 4, 0));
+    const afterPublishGrace = new Date(Date.UTC(2026, 4, 23, 21, 5, 0));
+
+    assert.equal(
+        estimateLatestProxyDrawKST(beforePublishGrace),
+        estimateLatestDrawKST(beforePublishGrace),
+        'proxy worker must use the app Lotto draw schedule before publish grace ends'
+    );
+    assert.equal(
+        estimateLatestProxyDrawKST(afterPublishGrace),
+        estimateLatestDrawKST(afterPublishGrace),
+        'proxy worker must use the app Lotto draw schedule after publish grace ends'
+    );
+    assert.equal(MAX_FUTURE_DRAW_SLACK, 1, 'proxy worker must allow only one future draw slack');
+
+    const maxAtBoundary = getMaxAllowedDrawNo(afterPublishGrace);
+    assert.equal(isAllowedProxyDrawNo(maxAtBoundary, afterPublishGrace), true, 'latest+1 draw must be accepted');
+    assert.equal(
+        isAllowedProxyDrawNo(maxAtBoundary + 1, afterPublishGrace),
+        false,
+        'latest+2 draw must be rejected'
+    );
+
+    const currentMax = getMaxAllowedDrawNo();
+    const single = await proxyWorker.fetch(
+        new Request(`https://worker.example/proxy/latest?draw_no=${currentMax + 1}`)
+    );
+    assert.equal(single.status, 400, 'far-future single draw must be rejected before upstream fetch');
+    const singlePayload = await single.json();
+    assert.equal(singlePayload.maxDrawNo, currentMax, 'single-draw rejection must report the max allowed draw');
+
+    const range = await proxyWorker.fetch(
+        new Request(`https://worker.example/proxy/range?from=${currentMax + 1}&to=${currentMax + 1}`)
+    );
+    assert.equal(range.status, 400, 'far-future range draw must be rejected before upstream fetch');
+    const rangePayload = await range.json();
+    assert.equal(rangePayload.maxDrawNo, currentMax, 'range rejection must report the max allowed draw');
+}
+
 function runLottoOfficialFetchWrappedErrorRegression() {
     const timeout = new TypeError('fetch failed');
     timeout.cause = { code: 'UND_ERR_CONNECT_TIMEOUT' };
@@ -228,6 +274,7 @@ function runLottoOfficialFetchWrappedErrorRegression() {
 export {
     runStaticDataFreshnessBudgetRegression,
     runEstimateLatestDrawKstBoundaryRegression,
+    runProxyWorkerDrawScheduleAndFutureCapRegression,
     runLottoOfficialFreshnessComparisonRegression,
     runLottoOfficialFetchRetryRegression,
     runLottoOfficialFetchWrappedErrorRegression

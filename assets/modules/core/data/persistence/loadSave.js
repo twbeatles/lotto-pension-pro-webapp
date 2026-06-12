@@ -2,6 +2,17 @@ import { CONFIG } from '../../../utils/config.js';
 import { UIManager } from '../../UIManager.js';
 
 export const dataPersistenceLoadSaveMethods = {
+    hasPendingLocalPersistence() {
+        if (this._saveTimer) return true;
+        return Object.values(this._dirtyKeys || {}).some(Boolean);
+    },
+
+    flushPendingLocalPersistence() {
+        if (!this.hasPendingLocalPersistence()) return true;
+        this.save(true);
+        return !this.hasPendingLocalPersistence();
+    },
+
     load() {
         try {
             if (typeof localStorage === 'undefined') return;

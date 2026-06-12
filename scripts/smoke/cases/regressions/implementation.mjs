@@ -6,8 +6,10 @@ import {
     DataIOModule,
     DataManager,
     estimateLatestDrawKST,
+    LottoApp,
     readFile,
     resolve,
+    StrategyWorkerClient,
     UIManager
 } from './support.mjs';
 
@@ -434,6 +436,117 @@ function runTemporaryResultsSessionRegression() {
     }
 }
 
+async function runRemoteRehydrateFlushesPendingPersistenceRegression() {
+    const previousWarn = console.warn;
+    const order = [];
+    console.warn = () => {};
+
+    try {
+        const app = Object.create(LottoApp.prototype);
+        app.currentRoute = 'gen';
+        app.data = {
+            hasPendingLocalPersistence() {
+                order.push('hasPending');
+                return true;
+            },
+            flushPendingLocalPersistence() {
+                order.push('flush');
+                return true;
+            },
+            runWithBroadcastSuppressed(task) {
+                order.push('suppress');
+                task();
+            },
+            load() {
+                order.push('load');
+            }
+        };
+        app.applyTheme = () => order.push('theme');
+        app.renderSettingsPanel = () => order.push('settings');
+        app.updateLatestWin = () => order.push('latest');
+        app.bindTargetDrawInputs = () => order.push('target');
+        app.refreshCurrentRoute = async () => order.push('route');
+
+        await app._rehydrateAfterRemotePersistenceSync([CONFIG.KEYS.SETTINGS]);
+
+        assert.deepEqual(
+            order.slice(0, 4),
+            ['hasPending', 'flush', 'suppress', 'load'],
+            'remote rehydrate must flush pending local persistence before load clears dirty flags'
+        );
+
+        const blockedOrder = [];
+        const blockedApp = Object.create(LottoApp.prototype);
+        blockedApp.currentRoute = 'gen';
+        blockedApp.data = {
+            hasPendingLocalPersistence() {
+                return true;
+            },
+            flushPendingLocalPersistence() {
+                blockedOrder.push('flush-failed');
+                return false;
+            },
+            runWithBroadcastSuppressed() {
+                blockedOrder.push('load');
+            }
+        };
+        blockedApp.applyTheme = () => blockedOrder.push('theme');
+        blockedApp.refreshCurrentRoute = async () => blockedOrder.push('route');
+
+        await blockedApp._rehydrateAfterRemotePersistenceSync([CONFIG.KEYS.SETTINGS]);
+
+        assert.deepEqual(
+            blockedOrder,
+            ['flush-failed'],
+            'remote rehydrate must not load remote state when local dirty persistence failed to flush'
+        );
+    } finally {
+        console.warn = previousWarn;
+    }
+}
+
+async function runStrategyWorkerPostMessageCleanupRegression() {
+    const client = new StrategyWorkerClient();
+    const postError = new Error('DataCloneError');
+    postError.name = 'DataCloneError';
+    client.worker = {
+        postMessage() {
+            throw postError;
+        }
+    };
+
+    await assert.rejects(
+        () => client.postOnce('GENERATE', { bad: true }, 1000),
+        /DataCloneError/,
+        'postOnce must reject when worker.postMessage throws synchronously'
+    );
+    assert.equal(client.pending.size, 0, 'postOnce must clean pending entries after synchronous postMessage failure');
+}
+
+async function runBackupUnavailableFallbackResultRegression() {
+    const previousDocument = globalThis.document;
+
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = undefined;
+
+    try {
+        const ctx = Object.create(DataIOModule.prototype);
+        ctx.data = new DataManager();
+        const result = await DataIOModule.prototype.exportAll.call(ctx, {
+            prefix: 'fallback_probe'
+        });
+
+        assert.equal(result.downloaded, false, 'unavailable backup environment must not claim download success');
+        assert.equal(result.saved, false, 'unavailable backup environment must not claim file-picker save success');
+        assert.equal(result.method, 'unavailable', 'unavailable backup environment must expose fallback method');
+        assert.match(result.filename, /^fallback_probe_/, 'unavailable backup result must still expose a filename');
+        assert.ok(result.payload?.version >= 5, 'unavailable backup result must still expose the backup payload');
+    } finally {
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 async function runDomSelectorContractRegression() {
     const indexSource = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
     const navTargets = [...indexSource.matchAll(/data-target="([^"]+)"/g)].map((match) => match[1]);
@@ -475,6 +588,9 @@ export {
     runLocalUpdatesDirtyRetryRegression,
     runPension720OfficialCacheRegression,
     runPwaCacheHealthRegression,
+    runBackupUnavailableFallbackResultRegression,
+    runRemoteRehydrateFlushesPendingPersistenceRegression,
     runStorageDirtyRetainedOnFailureRegression,
+    runStrategyWorkerPostMessageCleanupRegression,
     runTemporaryResultsSessionRegression
 };

@@ -19,6 +19,73 @@ export const dataSyncOrchestratorMethods = {
                 statusEl.querySelector('.dot') && (statusEl.querySelector('.dot').style.background = color);
             }
         };
+        const mergeWinningStatRows = (...groups) => {
+            const mergedMap = new Map();
+            groups.forEach((group) => {
+                (Array.isArray(group) ? group : [])
+                    .map((row) => this.normalizeDrawItem(row))
+                    .filter(Boolean)
+                    .forEach((row) => mergedMap.set(Number(row.draw_no), row));
+            });
+            return Array.from(mergedMap.values()).sort((a, b) => b.draw_no - a.draw_no);
+        };
+        const preserveExistingWinningStats = async (staticError, localUpdates = []) => {
+            const preservedItems = mergeWinningStatRows(previousWinningStats, localUpdates);
+            if (!preservedItems.length) return false;
+
+            this.state.winningStats = preservedItems;
+            this.state.staticLatestDrawNo = previousStaticLatestDrawNo || preservedItems[0]?.draw_no || 0;
+            this.buildAnalyticsCache();
+
+            const preservedBaseHealth = this.getWinningStatsDataHealth({
+                staticItems: previousWinningStats,
+                localUpdates,
+                mergedItems: preservedItems,
+                staticError
+            });
+            const previousAvailability =
+                previousDataHealth?.availability && previousDataHealth.availability !== 'none'
+                    ? previousDataHealth.availability
+                    : '';
+            const previousSource =
+                previousDataHealth?.source && previousDataHealth.source !== 'none' ? previousDataHealth.source : '';
+            const preservedAvailability =
+                previousAvailability === 'full'
+                    ? 'full'
+                    : preservedBaseHealth.availability !== 'none'
+                      ? preservedBaseHealth.availability
+                      : previousAvailability || 'partial';
+            const preservedSource =
+                localUpdates.length && previousSource === 'static'
+                    ? 'static_local'
+                    : preservedBaseHealth.source !== 'none'
+                      ? preservedBaseHealth.source
+                      : previousSource || (localUpdates.length ? 'static_local' : 'static');
+            const preservedHealth = this.mergeDataHealth({
+                ...preservedBaseHealth,
+                availability: preservedAvailability,
+                source: preservedSource,
+                latestDrawNo: preservedItems[0]?.draw_no || 0,
+                message: localUpdates.length
+                    ? '당첨 데이터 새로고침에 실패해 이전에 로드된 데이터와 로컬 보정 데이터를 유지합니다.'
+                    : '당첨 데이터 새로고침에 실패해 이전에 로드된 데이터를 유지합니다.'
+            });
+            this.setDataHealth(preservedHealth);
+            this.setSyncMeta({
+                mode: this.getSyncMode(),
+                currentSource: this.getDataHealthSourceLabel(preservedHealth.source)
+            });
+            this.lastWinningStatsLoad = {
+                ok: true,
+                offline: false,
+                error: String(staticError?.message || ''),
+                updatedAt: new Date().toISOString()
+            };
+            this.clampSyncMetaToWinningStats({ immediate: false });
+            await this.reconcileTicketChecks({ silent: !notifyTicketSettle });
+            updateStatus('이전 데이터 유지', 'var(--warning)');
+            return true;
+        };
 
         try {
             updateStatus('로또 확인 중', 'var(--warning)');
@@ -42,14 +109,7 @@ export const dataSyncOrchestratorMethods = {
             }
             this.state.staticLatestDrawNo = normalizedStatic[0]?.draw_no || 0;
 
-            const mergedMap = new Map();
-            normalizedStatic.forEach((d) => mergedMap.set(Number(d.draw_no), d));
-            localUpdates.forEach((d) => mergedMap.set(Number(d.draw_no), d));
-
-            const mergedItems = Array.from(mergedMap.values())
-                .map((row) => this.normalizeDrawItem(row))
-                .filter(Boolean)
-                .sort((a, b) => b.draw_no - a.draw_no);
+            const mergedItems = mergeWinningStatRows(normalizedStatic, localUpdates);
             this.state.winningStats = mergedItems;
             this.buildAnalyticsCache();
 
@@ -60,48 +120,15 @@ export const dataSyncOrchestratorMethods = {
                 staticError
             });
 
-            if (
-                dataHealth.availability === 'none' &&
-                staticError &&
-                preserveExistingOnFailure &&
-                previousWinningStats.length
-            ) {
-                const preservedItems = previousWinningStats
-                    .map((row) => this.normalizeDrawItem(row))
-                    .filter(Boolean)
-                    .sort((a, b) => b.draw_no - a.draw_no);
-                if (preservedItems.length) {
-                    this.state.winningStats = preservedItems;
-                    this.state.staticLatestDrawNo = previousStaticLatestDrawNo || preservedItems[0]?.draw_no || 0;
-                    this.buildAnalyticsCache();
-                    const preservedHealth = this.mergeDataHealth({
-                        ...(previousDataHealth || {}),
-                        availability:
-                            previousDataHealth?.availability && previousDataHealth.availability !== 'none'
-                                ? previousDataHealth.availability
-                                : 'partial',
-                        source:
-                            previousDataHealth?.source && previousDataHealth.source !== 'none'
-                                ? previousDataHealth.source
-                                : 'static',
-                        latestDrawNo: preservedItems[0]?.draw_no || 0,
-                        message: '당첨 데이터 새로고침에 실패해 이전에 로드된 데이터를 유지합니다.'
-                    });
-                    this.setDataHealth(preservedHealth);
-                    this.setSyncMeta({
-                        mode: this.getSyncMode(),
-                        currentSource: this.getDataHealthSourceLabel(preservedHealth.source)
-                    });
-                    this.lastWinningStatsLoad = {
-                        ok: true,
-                        offline: false,
-                        error: String(staticError?.message || ''),
-                        updatedAt: new Date().toISOString()
-                    };
-                    this.clampSyncMetaToWinningStats({ immediate: false });
-                    await this.reconcileTicketChecks({ silent: !notifyTicketSettle });
-                    updateStatus('이전 데이터 유지', 'var(--warning)');
-                    return true;
+            if (staticError && preserveExistingOnFailure && previousWinningStats.length) {
+                const previousStructure = this.assessWinningStatsStructure(previousWinningStats);
+                const mergedStructure = this.assessWinningStatsStructure(mergedItems);
+                const localOnlyDowngrade =
+                    dataHealth.source === 'local_only' &&
+                    (previousStructure.totalDraws > mergedStructure.totalDraws ||
+                        (previousStructure.isStructurallyComplete && !mergedStructure.isStructurallyComplete));
+                if (dataHealth.availability === 'none' || localOnlyDowngrade) {
+                    if (await preserveExistingWinningStats(staticError, localUpdates)) return true;
                 }
             }
 

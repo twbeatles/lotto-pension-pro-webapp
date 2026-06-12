@@ -69,6 +69,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Lotto static data can be refreshed with `npm run sync:lotto`.
 - Normal freshness check allows one missing draw; strict release freshness requires zero missing draws.
 - localStorage write failures keep dirty state and are surfaced in storage health.
+- Cross-tab storage rehydrate flushes pending dirty local state before `data.load()` and defers the remote load if the flush still fails.
 - Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
 - Service worker data JSON fetches are network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
@@ -76,7 +77,9 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Scheduled Lotto official checks may defer when the estimated latest draw is not published by the official endpoint yet.
 - Pension720+ official data is cached when it is newer than static data, same-draw static corrections beat older cache copies, and `official_cache` is shown as a distinct source with a settings cache-clear action.
 - Backup import accepts up to 32MB so app-created max-size backups remain reimportable.
+- Lotto static JSON failures preserve existing in-memory winning stats, and local updates are merged into that preserved dataset instead of downgrading to local-only partial rows.
 - Strategy worker cache-empty errors reset the stats fingerprint and retry once with full stats data.
+- Strategy worker requests clean `pending` timers if `worker.postMessage()` fails synchronously.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path instead of being hard-coded.
 - DOM selector contract and focused implementation regressions live in the smoke suite.
 
@@ -85,6 +88,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Lotto 6/45:
     - Bundled static JSON is loaded first.
     - Runtime sync can use the official API, supported custom `/proxy/latest`, and built-in fallback providers.
+    - The Cloudflare Worker proxy uses the same KST draw schedule helper as the app and rejects public single/range requests beyond estimated latest draw `+1`.
     - `npm run check:data-freshness` fails if static data is more than one draw behind the estimated latest draw.
     - `npm run check:data-freshness:strict` fails if static data is not at the estimated latest draw.
     - `npm run check:lotto:official` compares the checked-in latest Lotto draw fields with the official endpoint and is part of `npm run build:release`.
@@ -150,7 +154,7 @@ npm run bench:ai:full
 - Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
 - `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks, refreshes stale data/docs, and auto-commits to `main` after the release gate passes.
 - `.github/workflows/browser-official.yml` runs the official-source browser canary manually and weekly.
-- `.gitignore` was rechecked on 2026-06-10 against `.codegraph/`, app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and `.codegraph/` is ignored at the repo root.
+- `.gitignore` was rechecked on 2026-06-12 against `.codegraph/`, app backups, Pension720+/simulation CSV exports, Playwright outputs, report/perf folders, trace/HAR/video files, dependency/temp/build folders, and `.codegraph/` is ignored at the repo root.
 - Use `git diff --check` before publishing. CRLF warnings from Git are not the same as whitespace errors.
 
 ## Session Handoff Template

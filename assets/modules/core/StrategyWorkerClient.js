@@ -188,7 +188,13 @@ export class StrategyWorkerClient {
             }, timeoutMs);
 
             this.pending.set(requestId, { resolve, reject, timer });
-            worker.postMessage({ type, requestId, payload: workerPayload });
+            try {
+                worker.postMessage({ type, requestId, payload: workerPayload });
+            } catch (err) {
+                clearTimeout(timer);
+                this.pending.delete(requestId);
+                reject(err);
+            }
         });
     }
 

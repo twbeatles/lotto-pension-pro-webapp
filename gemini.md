@@ -63,11 +63,15 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - `npm run check:data-freshness:strict` and `npm run build:release` require zero missing draws for release.
 - `npm run check:lotto:official` compares the latest checked-in Lotto draw with the official endpoint and is part of `npm run build:release`.
 - localStorage write failures keep dirty state and surface in storage health.
+- Cross-tab storage rehydrate flushes pending dirty state before `data.load()` and defers the remote load if the flush still fails.
+- Lotto static JSON failures preserve existing in-memory winning stats, and local updates are merged into that preserved dataset instead of downgrading to local-only partial rows.
 - Destructive overwrite/cleanup starts the JSON backup download and then requires user confirmation before replacing or cleaning stored data.
 - Service worker precache failures are exposed through `__cache-health.json`; install proceeds and the app shows a warning state.
 - Service worker data JSON requests use network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
 - Data freshness CI can refresh Lotto/Pension720 snapshots, regenerate the service-worker manifest, sync maintained document baselines, and auto-commit to `main`.
 - Scheduled Lotto official checks may defer when the estimated latest draw is not published by the official endpoint yet.
+- Cloudflare Worker proxy requests share the app Lotto draw schedule helper and reject public single/range requests beyond estimated latest draw `+1`.
+- Strategy worker requests clean `pending` timers if `worker.postMessage()` fails synchronously.
 - Auto-sync availability is computed from recent failure state, last success time, and available sync path.
 - `.gitignore` excludes local browser/test artifacts such as `.codegraph/`, `output/`, Playwright reports, test results, app backup downloads, and local traces.
 - Public facade modules preserve existing import paths while implementation is split by responsibility under `core/pension720Engine/`, `core/data/pension720/`, `features/pension720/`, `features/dataio/`, and `scripts/smoke/cases/regressions/{data,generator,sync,ui,plan}/`.
@@ -76,10 +80,11 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 
 - Lotto 6/45 static data loads from `data/winning_stats.json`, then runtime sync may supplement via official/fallback providers.
 - Advanced data connection is supported only for absolute URLs whose path contains `/proxy/latest`.
+- `/proxy/latest` and `/proxy/range` reject future requests above estimated latest draw `+1` and return `maxDrawNo`.
 - Pension720+ data is fetched from official `selectPstPt720WnList.do` by `scripts/fetch_pension720_stats.mjs`.
 - `npm run check:pension720:freshness` compares the checked-in Pension720+ snapshot with the official endpoint and is part of `npm run build`.
 - `DataManager` keeps `pension720Stats`, `pension720DataHealth`, `pension720Tickets`, and `pension720Campaigns` separate from Lotto 6/45 records.
-- Multi-tab persistence uses `BroadcastChannel('lotto-data-sync')` with `storage` event fallback.
+- Multi-tab persistence uses `BroadcastChannel('lotto-data-sync')` with `storage` event fallback and flushes this tab's dirty local state before remote rehydrate.
 
 ## Validation Commands
 
@@ -129,7 +134,7 @@ npm run bench:ai:full
 - Browser release checks should include happy path, offline, PWA mobile validation, and `npm run test:sync-live:browser:official` when official source availability matters.
 - `.github/workflows/data-freshness.yml` runs scheduled/manual freshness checks, refreshes stale data/docs, and auto-commits to `main` after the release gate passes.
 - `.github/workflows/browser-official.yml` runs the official-source browser canary manually and weekly.
-- `.gitignore` coverage was rechecked on 2026-06-10 for `.codegraph/`, backup JSON, Pension720+/simulation CSV, Playwright/browser outputs, reports, trace/HAR/video, dependency/temp/build folders.
+- `.gitignore` coverage was rechecked on 2026-06-12 for `.codegraph/`, backup JSON, Pension720+/simulation CSV, Playwright/browser outputs, reports, trace/HAR/video, dependency/temp/build folders.
 
 ## Handoff Template
 

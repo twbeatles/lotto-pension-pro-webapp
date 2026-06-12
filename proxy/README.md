@@ -35,6 +35,7 @@ wrangler deploy proxy/worker.js
 - `?format=normalized`: 정규화 형식 (`data: [{ draw_no, numbers, ... }]`)
 - 앱은 `draw_no`/`ltEpsd`를 정수 `>= 1`로만 수락하므로 프록시 응답도 소수/문자열 소수/0/음수 회차를 반환하지 않아야 합니다.
 - `draw_no`를 생략하면 Worker가 KST 기준 예상 최신 회차를 조회합니다.
+- `draw_no`가 예상 최신 회차 `+1`을 넘으면 upstream 호출 없이 `400`과 `maxDrawNo`를 반환합니다.
 
 `/proxy/range` 응답 형식:
 
@@ -42,6 +43,7 @@ wrangler deploy proxy/worker.js
 - `?format=legacy`: 기존 형식 배열 (`data.list`)
 - `?format=hybrid`: 정규화 + 기존 형식 동시 제공
 - 최대 구간 폭: `40` (예: `from=1200&to=1240` 허용, `to=1241` 거부)
+- `to`가 예상 최신 회차 `+1`을 넘으면 upstream 호출 없이 `400`과 `maxDrawNo`를 반환합니다.
 
 앱에서 사용하는 방법:
 

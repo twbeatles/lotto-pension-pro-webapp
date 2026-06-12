@@ -371,11 +371,119 @@ async function runWinningStatsPreserveExistingOnStaticFailureRegression() {
     }
 }
 
+async function runWinningStatsPreserveExistingWithLocalUpdatesRegression() {
+    const previousDocument = globalThis.document;
+
+    const previousWarn = console.warn;
+
+    const statusText = createField();
+
+    const statusDot = createField({ style: {} });
+
+    const statusEl = {
+        querySelector(selector) {
+            if (selector === '.text') return statusText;
+
+            if (selector === '.dot') return statusDot;
+
+            return null;
+        }
+    };
+
+    console.warn = (...args) => {
+        if (String(args[0] || '').includes('정적 당첨 데이터 조회 실패')) return;
+
+        previousWarn(...args);
+    };
+
+    globalThis.document = createDocumentStub({
+        '#syncStatus': statusEl
+    });
+
+    try {
+        const dm = new DataManager();
+
+        dm.save = () => {};
+
+        dm.state.winningStats = [5, 4, 3, 2, 1].map((drawNo) => ({
+            draw_no: drawNo,
+
+            date: `2026-03-${String(drawNo).padStart(2, '0')}`,
+
+            numbers: [1, 2, 3, 4, 5, 6],
+
+            bonus: 7
+        }));
+
+        dm.state.staticLatestDrawNo = 5;
+
+        dm.dataHealth = dm.mergeDataHealth({
+            availability: 'full',
+
+            source: 'static',
+
+            latestDrawNo: 5,
+
+            message: 'previous full data'
+        });
+
+        dm.localUpdatesCache = [
+            {
+                draw_no: 6,
+
+                date: '2026-03-06',
+
+                numbers: [6, 7, 8, 9, 10, 11],
+
+                bonus: 12
+            }
+        ];
+
+        dm.fetchWithTimeout = async () => {
+            throw new Error('transient-static-failure');
+        };
+
+        const result = await dm.fetchWinningStats({ notifyTicketSettle: false });
+
+        assert.equal(result, true, 'local updates must not force a local-only downgrade after static failure');
+
+        assert.deepEqual(
+            dm.state.winningStats.map((item) => item.draw_no),
+
+            [6, 5, 4, 3, 2, 1],
+
+            'preserved winning stats must merge previous full rows with local updates'
+        );
+
+        assert.equal(dm.state.staticLatestDrawNo, 5, 'static latest draw must stay anchored to previous static data');
+
+        assert.equal(dm.dataHealth.availability, 'full', 'merged preserved data should keep full availability');
+
+        assert.equal(dm.dataHealth.source, 'static_local', 'merged preserved data must expose static plus local source');
+
+        assert.match(
+            dm.dataHealth.message,
+
+            /로컬 보정 데이터/,
+
+            'preserved health message must explain local update preservation'
+        );
+
+        assert.equal(statusText.textContent, '이전 데이터 유지', 'status must surface preserved-data mode');
+    } finally {
+        console.warn = previousWarn;
+
+        if (previousDocument === undefined) delete globalThis.document;
+        else globalThis.document = previousDocument;
+    }
+}
+
 export {
     runWinningStatsLoadClassificationRegression,
     runUnexpectedStaticHoleClassificationRegression,
     runExpectedMissingDrawAllowanceRegression,
     runMergedLocalUpdatesGapClassificationRegression,
     runPartialWinningStatsRecoveryRegression,
-    runWinningStatsPreserveExistingOnStaticFailureRegression
+    runWinningStatsPreserveExistingOnStaticFailureRegression,
+    runWinningStatsPreserveExistingWithLocalUpdatesRegression
 };

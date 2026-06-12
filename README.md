@@ -9,7 +9,7 @@
 
 ## 현재 기준
 
-2026-06-10 기준 문서와 정적 데이터/CI 운영 기준입니다.
+2026-06-12 기준 문서와 정적 데이터/CI 운영 기준입니다.
 
 - Lotto 6/45 static data: `data/winning_stats.json`
     - latest draw: `1227`
@@ -73,6 +73,7 @@
 - 기본 백업 파일명 prefix는 `lotto_pension_pro_backup_v5`입니다.
 - overwrite import 전 자동 백업 prefix는 `lotto_pension_pro_before_replace`, cleanup 전 자동 백업 prefix는 `lotto_pension_pro_before_cleanup`입니다.
 - overwrite import와 cleanup은 지원 브라우저에서 File System Access API로 백업 파일 쓰기 완료를 먼저 시도합니다. 미지원 브라우저에서는 자동 백업 다운로드를 시작한 뒤, 사용자가 백업 파일 저장 완료를 확인해야 진행합니다.
+- 멀티탭 저장소 동기화는 원격 변경을 다시 읽기 전에 이 탭의 미저장 dirty 상태를 즉시 저장합니다. 저장 실패가 남아 있으면 원격 재수화를 보류해 로컬 변경을 덮어쓰지 않습니다.
 - 연금복권720+ 저장 번호 CSV 파일명은 `lotto_pension_pro_pension720_tickets_<timestamp>.csv` 형식입니다.
 - 연금복권720+와 시뮬레이션 CSV는 spreadsheet formula로 실행될 수 있는 `=`, `+`, `-`, `@` prefix를 안전하게 escape합니다.
 - generated/AI/Pension720 임시 결과는 `lotto_pro_temp_results_state` sessionStorage에만 저장합니다. 이 데이터는 backup v5나 localStorage 영구 저장 대상에 포함하지 않습니다.
@@ -84,6 +85,7 @@
 - install precache에는 app shell과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - `data/*.json` 요청은 최신성 우선 network-first를 사용하고, 네트워크 실패나 오류 응답 시 data cache로 fallback합니다.
 - 예상 최신 회차는 동행복권 공식 추첨시간 기준으로 계산하되, 방송/공개 지연을 감안해 30분 grace 후 새 회차로 전환합니다.
+- Cloudflare Worker 프록시는 앱과 같은 Lotto 6/45 회차 추정 helper를 사용하고, 공개 `/proxy/latest`/`/proxy/range` 요청은 예상 최신 회차 `+1`을 넘는 미래 회차를 거부합니다.
 - precache 실패 URL은 service worker가 `__cache-health.json` marker로 기록합니다. 설치는 계속 허용하고, 앱 설정/상태 화면에서 정상/주의 상태와 실패 개수를 표시합니다.
 - 일반 `npm run build`는 Lotto static data가 예상 최신 회차보다 1회차 뒤처지는 상황까지 허용합니다.
 - 배포 전 `npm run build:release`는 strict freshness와 Lotto 최신 회차 공식 필드 비교를 적용하며, 최신 회차 차이나 공식값 mismatch가 있으면 실패합니다.
@@ -198,5 +200,5 @@ lotto-pension-pro-webapp/
   통과 시 main에 자동 커밋합니다. Lotto 공식 회차가 아직 반영되지 않았거나 Lotto/Pension720+ 공식 endpoint가 일시적으로 응답하지 않는 예약 실행은 deferred로
   기록합니다.
 - `.github/workflows/browser-official.yml`은 공식 source browser canary를 수동 실행과 주 1회 예약 실행으로 검증합니다.
-- `.gitignore`는 `.codegraph/`, 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-06-10 점검에서 대표 경로를 `git check-ignore -v --no-index`로 확인했습니다.
+- `.gitignore`는 `.codegraph/`, 백업 JSON, Pension720+/시뮬레이션 CSV, Playwright 산출물, `output/`, `reports/`, `bench-results/`, `perf-results/`, `downloads/`, `screenshots/`, trace/HAR/video, `node_modules/`, `.tmp_vendor/`, `.cache/`, `dist/`, `build/`를 제외합니다. 2026-06-12 점검에서 대표 경로를 `git check-ignore -v --no-index`로 확인했습니다.
 - 유지 문서는 `README.md`, `claude.md`, `gemini.md`, `cladue.md`, `deploy_github_pages.md`, `proxy/README.md`입니다. 삭제된 dated review/audit 문서는 사용자가 명시적으로 요청하지 않는 한 복원하지 않고, 지속 보존할 결론은 유지 문서에 흡수합니다.

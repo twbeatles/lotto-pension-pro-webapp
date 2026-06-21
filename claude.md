@@ -14,8 +14,8 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 
 - Lotto 6/45 static data:
     - Source: `data/winning_stats.json`
-    - Latest draw: `1228`
-    - Rows: `1227`
+    - Latest draw: `1229`
+    - Rows: `1228`
     - Allowed missing draw: `[146]`
 - Pension720+ static data:
     - Source: `data/pension720_stats.json`

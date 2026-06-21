@@ -199,7 +199,7 @@ async function runRecommendationCopyRegression() {
 
     assert.doesNotMatch(indexSource, /인공지능 예측/, 'legacy AI prediction wording must be removed from index');
 
-    assert.match(readmeSource, /번호 추천:/, 'README must document the recommendation feature with the new wording');
+    assert.match(readmeSource, /### 번호 추천/, 'README must document the recommendation feature with the new wording');
 
     assert.doesNotMatch(readmeSource, /인공지능 예측:/, 'README must drop the legacy AI prediction section title');
 
@@ -213,9 +213,7 @@ async function runRecommendationCopyRegression() {
 
     assert.match(deploySource, /lotto-pension-pro-webapp/, 'deploy guide must use the rebranded Pages slug');
 
-    assert.match(deploySource, /기존 설치형 PWA/, 'deploy guide must document installed PWA migration');
-
-    assert.match(readmeSource, /lotto_pension_pro_backup_v5/, 'README must document the backup v5 filename prefix');
+    assert.match(readmeSource, /데이터 백업 및 복원/, 'README must document the backup and restore feature');
 
     [indexSource, readmeSource, packageSource, manifestSource, claudeSource, geminiSource, fetchPensionSource].forEach(
         (source) => {

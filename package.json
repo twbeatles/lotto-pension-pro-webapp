@@ -11,6 +11,7 @@
     "ci:data:check": "npm run check:data-freshness:strict && npm run check:lotto:official:scheduled && npm run check:pension720:freshness:scheduled && npm run check:docs-data-baseline",
     "ci:data:refresh": "node scripts/refresh_ci_data.mjs",
     "ci:release": "npm run lint && npm run check:data-freshness && npm run check:pension720 && node scripts/smoke/smoke.mjs",
+    "ci:verify": "npm run lint && npm run check:pension720 && npm run check:docs-data-baseline && node scripts/smoke/smoke.mjs",
     "ci:browser-official": "npm run test:sync-live:browser:official",
     "lint": "eslint assets proxy scripts sw.js index.html",
     "lint:fix": "eslint assets proxy scripts sw.js index.html --fix",

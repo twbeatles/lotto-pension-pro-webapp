@@ -702,3 +702,28 @@ input:checked + .slider:before {
     color: var(--text-main);
     box-shadow: none !important;
 }
+
+.reproduction-code-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+}
+
+.reproduction-code-bar .reproduction-code-label {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.reproduction-code-bar .reproduction-code-value {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 14px;
+    color: var(--primary);
+}
+
+.reproduction-code-bar .field-help {
+    flex-basis: 100%;
+    margin: 0;
+}

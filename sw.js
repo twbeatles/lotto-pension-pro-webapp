@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v29';
+const CACHE_VERSION = 'v30';
 const CACHE_APP_SHELL = `lotto-pension-pro-app-shell-${CACHE_VERSION}`;
 const CACHE_DATA = `lotto-pension-pro-data-${CACHE_VERSION}`;
 const FALLBACK_PRECACHE_MANIFEST = {

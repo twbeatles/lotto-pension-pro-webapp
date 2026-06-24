@@ -224,9 +224,24 @@ function runBuiltInSyncProviderRegression() {
     );
 }
 
+async function runSyncThirdPartyProviderNoticeRegression() {
+    const rangeSource = await readFile(resolve(process.cwd(), 'assets/modules/core/data/sync/range.js'), 'utf8');
+    assert.match(
+        rangeSource,
+        /SYNC_THIRD_PARTY_PROVIDER/,
+        'single-draw sync must log when a third-party provider is used'
+    );
+    assert.match(
+        rangeSource,
+        /candidate\.label !== '공식 API'/,
+        'third-party sync notice must skip the official API label'
+    );
+}
+
 export {
     runSyncInvalidPayloadRegression,
     runSyncPayloadDrawIntegerGuardRegression,
     runMalformedDrawDateRejectedRegression,
-    runBuiltInSyncProviderRegression
+    runBuiltInSyncProviderRegression,
+    runSyncThirdPartyProviderNoticeRegression
 };

@@ -75,7 +75,7 @@ async function runServiceWorkerReloadPolicyRegression() {
 
 async function runServiceWorkerCoreDataPrecacheRegression() {
     const swSource = await readFile(resolve(process.cwd(), 'sw.js'), 'utf8');
-    assert.match(swSource, /const CACHE_VERSION = 'v29';/, 'service worker cache version must be bumped');
+    assert.match(swSource, /const CACHE_VERSION = 'v30';/, 'service worker cache version must be bumped');
     assert.match(
         swSource,
         /lotto-pension-pro-app-shell-/,
@@ -389,29 +389,7 @@ async function collectJsFiles(dir) {
 }
 
 async function runInnerHtmlAllowlistRegression() {
-    const expected = {
-        'assets/modules/bootstrap/pwa.js': 1,
-        'assets/modules/core/app/dataLists/pagination.js': 2,
-        'assets/modules/core/app/dataLists/render.js': 5,
-        'assets/modules/core/app/latestDraw.js': 4,
-        'assets/modules/core/app/moduleLoader/dataHealthGate.js': 2,
-        'assets/modules/core/app/moduleLoader/requestBridge.js': 1,
-        'assets/modules/core/app/pwaInstall.js': 1,
-        'assets/modules/core/data/sync/orchestrator.js': 1,
-        'assets/modules/core/ui/qrModal.js': 1,
-        'assets/modules/features/Stats.js': 8,
-        'assets/modules/features/ai/form.js': 1,
-        'assets/modules/features/ai/rendering.js': 7,
-        'assets/modules/features/backtest/events.js': 5,
-        'assets/modules/features/backtest/rendering.js': 7,
-        'assets/modules/features/backtest/run.js': 4,
-        'assets/modules/features/backtest/strategyForm.js': 3,
-        'assets/modules/features/check/list.js': 2,
-        'assets/modules/features/check/results.js': 5,
-        'assets/modules/features/generator/actions.js': 2,
-        'assets/modules/features/generator/form.js': 9,
-        'assets/modules/utils/strategyPresets.js': 1
-    };
+    const { INNERHTML_ALLOWLIST } = await import('../../../lib/innerhtml_allowlist.mjs');
     const files = await collectJsFiles(resolve(process.cwd(), 'assets/modules'));
     const actual = {};
     for (const file of files) {
@@ -422,12 +400,39 @@ async function runInnerHtmlAllowlistRegression() {
         actual[relativePath] = count;
     }
 
-    assert.deepEqual(actual, expected, 'innerHTML usage must stay within the reviewed per-file allowlist');
+    assert.deepEqual(actual, INNERHTML_ALLOWLIST, 'innerHTML usage must stay within the reviewed per-file allowlist');
+}
+
+async function runInnerHtmlEscapeAuditRegression() {
+    const { spawnSync } = await import('node:child_process');
+    const result = spawnSync(process.execPath, ['scripts/check_innerhtml_escape.mjs'], {
+        cwd: process.cwd(),
+        encoding: 'utf8'
+    });
+    assert.equal(
+        result.status,
+        0,
+        `innerHTML escape audit failed: ${result.stderr || result.stdout || 'unknown error'}`
+    );
+}
+
+async function runUtf8KoreanIntegrityRegression() {
+    const { spawnSync } = await import('node:child_process');
+    const result = spawnSync(process.execPath, ['scripts/check_utf8_korean.mjs'], {
+        cwd: process.cwd(),
+        encoding: 'utf8'
+    });
+    assert.equal(
+        result.status,
+        0,
+        `utf8 korean integrity check failed: ${result.stderr || result.stdout || 'unknown error'}`
+    );
 }
 
 export {
     runHiddenAttributeStyleRegression,
     runInnerHtmlAllowlistRegression,
+    runInnerHtmlEscapeAuditRegression,
     runLocalFontPathRegression,
     runDocsDataBaselineRegression,
     runSafeHtmlHelperRegression,
@@ -438,5 +443,6 @@ export {
     runServiceWorkerManifestParityRegression,
     runServiceWorkerPrecacheReachabilityRegression,
     runServiceWorkerReloadPolicyRegression,
-    runWebManifestInstallabilityRegression
+    runWebManifestInstallabilityRegression,
+    runUtf8KoreanIntegrityRegression
 };

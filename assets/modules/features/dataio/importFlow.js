@@ -90,6 +90,21 @@ export const dataIoImportFlowMethods = {
             }
             this.applyPreparedImport(prepared);
 
+            if (prepared.preview.droppedInvalidProxy) {
+                UIManager.toast(
+                    '지원되지 않는 데이터 연결 주소는 무시했습니다. 기본 자동 동기화를 사용합니다.',
+                    'warning',
+                    3500
+                );
+            }
+            if (prepared.preview.historyTrimmed > 0) {
+                UIManager.toast(
+                    `생성 히스토리 ${prepared.preview.historyTrimmed}건을 ${CONFIG.LIMITS.MAX_HIST}개 한도에 맞게 정리했습니다.`,
+                    'info',
+                    3500
+                );
+            }
+
             if (this.data.state.history.length > CONFIG.LIMITS.MAX_HIST) {
                 this.data.state.history = this.data.state.history.slice(0, CONFIG.LIMITS.MAX_HIST);
             }

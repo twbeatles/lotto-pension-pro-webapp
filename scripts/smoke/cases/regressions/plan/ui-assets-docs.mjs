@@ -94,6 +94,11 @@ const uiAssetDocsPlan = [
         awaited: true
     },
     {
+        name: 'runInnerHtmlEscapeAuditRegression',
+        label: 'innerHTML escape audit regression',
+        awaited: true
+    },
+    {
         name: 'runLatestWinDateEscapingRegression',
         label: 'latest win date escaping regression'
     },
@@ -105,6 +110,21 @@ const uiAssetDocsPlan = [
     {
         name: 'runRecommendationRuntimePolicyRegression',
         label: 'recommendation runtime policy regression',
+        awaited: true
+    },
+    {
+        name: 'runAiRunStaleTokenRegression',
+        label: 'ai run stale-token regression',
+        awaited: true
+    },
+    {
+        name: 'runAiRuntimeSeedSurfaceRegression',
+        label: 'ai runtime-seed surface regression',
+        awaited: true
+    },
+    {
+        name: 'runUtf8KoreanIntegrityRegression',
+        label: 'utf8 korean integrity regression',
         awaited: true
     }
 ];

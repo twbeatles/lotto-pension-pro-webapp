@@ -43,6 +43,7 @@ export const appNetworkLifecycleMethods = {
         if (keySet.has(CONFIG.KEYS.LOCAL_UPDATES)) {
             await this.data.fetchWinningStats?.({ notifyTicketSettle: false });
         }
+        UIManager.toast('다른 탭에서 저장한 데이터를 반영했습니다.', 'info', 2500);
         this.applyTheme();
         this.renderSettingsPanel?.();
         this.updateLatestWin?.();

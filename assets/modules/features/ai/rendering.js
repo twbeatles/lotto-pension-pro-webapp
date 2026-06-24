@@ -6,6 +6,7 @@ import { getStrategyMeta, isAutoStrategyId, STRATEGY_CATALOG, resolveStrategyId 
 import { createRuntimeRng, withRuntimeSeed } from '../../core/strategy/runtimeEntropy.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+import { upsertReproductionCodeBar } from '../../utils/reproductionCode.js';
 
 function formatAdaptiveSelection(adaptive = null) {
     if (!adaptive || !Array.isArray(adaptive.selectedStrategies) || !adaptive.selectedStrategies.length) {
@@ -54,10 +55,17 @@ export const aiRenderingMethods = {
             UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
             return;
         }
+        if (this.isRecommending) return;
+
+        if (!Number.isFinite(this.runToken)) this.runToken = 0;
+        const localToken = ++this.runToken;
+        this.isRecommending = true;
 
         startMark('ai.run');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
+        }
         out.innerHTML = '';
         this.app.data.state.aiResults = [];
         this.app.data.persistTemporaryResultsToSession?.();
@@ -66,9 +74,10 @@ export const aiRenderingMethods = {
         aiContainer?.classList.add('fx-active');
 
         const request = this.buildStrategyRequest();
-        this.app.data.save();
+        this.app.data.save(true);
         const targetSetCount = 5;
         const selectedModelName = getStrategyMeta(request.strategyId).label || '선택 전략';
+        let workerPayload;
 
         const logs = [
             `선택 모델: ${selectedModelName}`,
@@ -87,7 +96,7 @@ export const aiRenderingMethods = {
             let fallback = false;
             let workerTimedOut = false;
             startMark('ai.worker');
-            const workerPayload = withRuntimeSeed({
+            workerPayload = withRuntimeSeed({
                 statsData: this.app.data.state.winningStats,
                 request,
                 setCount: targetSetCount
@@ -141,6 +150,8 @@ export const aiRenderingMethods = {
             } finally {
                 endMark('ai.worker', { requested: targetSetCount, count: results.length, fallback });
             }
+
+            if (localToken !== this.runToken) return;
 
             if (!results || results.length === 0) {
                 throw new Error('시뮬레이션 결과가 비어 있습니다');
@@ -210,32 +221,49 @@ export const aiRenderingMethods = {
                 this.appendLog(log, `> 최고 내부 랭킹 점수: ${topScore.toFixed(4)}`);
             }
 
+            if (localToken !== this.runToken) return;
+
+            this.lastRuntimeSeed = workerPayload?.runtimeSeed ?? null;
             this.app.data.state.aiResults = results;
             this.app.data.persistTemporaryResultsToSession?.();
             this.lastRequest = request;
             this.lastExplain = explanations;
-            this.renderResults(results, explanations);
+            this.renderResults(results, explanations, {
+                runtimeSeed: this.lastRuntimeSeed,
+                request
+            });
         } catch (e) {
             console.error('인공지능 분석 오류:', e);
             if (e?.userFacingHandled) return;
             this.appendLog(log, `> 오류: ${e.message}`, 'var(--danger)');
             UIManager.toast('분석 중 오류가 발생했습니다.', 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 추천';
-            out?.setAttribute('aria-busy', 'false');
-            aiContainer?.classList.remove('fx-active');
-            endMark('ai.run', { strategyId: request.strategyId });
+            if (localToken === this.runToken) {
+                this.isRecommending = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 추천';
+                }
+                out?.setAttribute('aria-busy', 'false');
+                aiContainer?.classList.remove('fx-active');
+            }
+            endMark('ai.run', { strategyId: request?.strategyId });
         }
     },
 
-    renderResults(results, explanations = []) {
+    renderResults(results, explanations = [], options = {}) {
         const out = $('#aiOutput');
         if (!out) return;
         const notice = $('#aiResultTempNotice');
         if (notice) notice.hidden = !results.length;
 
         out.innerHTML = '';
+        upsertReproductionCodeBar({
+            host: out,
+            barId: 'aiReproductionCode',
+            seed: options.runtimeSeed ?? this.lastRuntimeSeed,
+            request: options.request ?? this.lastRequest
+        });
         results.forEach((set, idx) => {
             const sum = AdvancedMonteCarlo.calculateSum(set);
             const ac = AdvancedMonteCarlo.calculateAC(set);

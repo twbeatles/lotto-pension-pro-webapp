@@ -488,6 +488,59 @@ async function runPension720BackupFixtureRegression() {
     assert.equal(roundtrip.pension720Tickets[0]?.number, '060727', 'pension720 fixture must preserve leading zeroes');
 }
 
+async function runPension720RuntimeSeedSurfaceRegression() {
+    const [recommendationsSource, reproductionSource] = await Promise.all([
+        readFile(resolve(process.cwd(), 'assets/modules/features/pension720/recommendations.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/utils/reproductionCode.js'), 'utf8')
+    ]);
+
+    assert.match(recommendationsSource, /createRuntimeSeed/, 'pension720 recommendation must allocate runtime seeds');
+    assert.match(recommendationsSource, /upsertReproductionCodeBar/, 'pension720 results must surface reproduction code');
+    assert.match(reproductionSource, /재현 코드/, 'reproduction helper must expose Korean reproduction label');
+}
+
+async function runPension720RuntimeSeedDeterminismRegression() {
+    const stats = makeSamplePensionStats();
+    const engine = new Pension720Engine(stats);
+    const request = {
+        strategyId: 'mixed_balance',
+        params: {
+            seed: 424242,
+            lookbackWindow: 40,
+            candidatePoolSize: 120,
+            simulationCount: 5000
+        },
+        filters: {}
+    };
+    const first = engine.recommend({ setCount: 3, request });
+    const second = engine.recommend({ setCount: 3, request });
+
+    assert.equal(first.length, 3, 'seeded pension720 recommendation must return requested set count');
+    assert.deepEqual(
+        first.map((item) => `${item.group}|${item.number}`),
+        second.map((item) => `${item.group}|${item.number}`),
+        'seeded pension720 recommendation must be reproducible'
+    );
+}
+
+async function runPension720DomEncodingRegression() {
+    const { formatTicket, getAnalysisPresetLabelFromRequest, PENSION720_ANALYSIS_PRESETS } = await import(
+        '../../../../assets/modules/features/pension720/dom.js'
+    );
+
+    assert.equal(formatTicket({ group: 5, number: '123456' }), '5조 123456', 'formatTicket must keep 조 suffix');
+    assert.equal(PENSION720_ANALYSIS_PRESETS.fast.label, '빠름', 'fast preset label must stay UTF-8');
+    assert.equal(PENSION720_ANALYSIS_PRESETS.basic.label, '기본', 'basic preset label must stay UTF-8');
+    assert.equal(PENSION720_ANALYSIS_PRESETS.precise.label, '정밀', 'precise preset label must stay UTF-8');
+    assert.equal(
+        getAnalysisPresetLabelFromRequest({
+            params: { lookbackWindow: 40, candidatePoolSize: 140 }
+        }),
+        '기본',
+        'analysis preset label must resolve from request params'
+    );
+}
+
 async function runPension720PrecacheRegression() {
     const manifest = await buildPrecacheManifest();
     assert.ok(
@@ -502,6 +555,9 @@ export {
     runPension720BackupFixtureRegression,
     runPension720CampaignRegression,
     runPension720CsvFormulaEscapeRegression,
+    runPension720DomEncodingRegression,
+    runPension720RuntimeSeedDeterminismRegression,
+    runPension720RuntimeSeedSurfaceRegression,
     runPension720FreshnessComparisonRegression,
     runPension720OfficialFetchRetryRegression,
     runPension720OfficialFetchWrappedErrorRegression,

@@ -13,6 +13,9 @@ export class AiModule {
         this.workerClient = this.app.strategyWorker || new StrategyWorkerClient();
         this.lastRequest = null;
         this.lastExplain = [];
+        this.lastRuntimeSeed = null;
+        this.runToken = 0;
+        this.isRecommending = false;
         this.outputDelegationBound = false;
 
         const btn = $('#aiPredictBtn');

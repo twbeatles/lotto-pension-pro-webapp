@@ -215,6 +215,12 @@ async function runRecommendationCopyRegression() {
 
     assert.match(readmeSource, /데이터 백업 및 복원/, 'README must document the backup and restore feature');
 
+    assert.match(
+        readmeSource,
+        /결과 화면의 \*\*재현 코드\*\*/,
+        'README must document reproduction code on the result screen'
+    );
+
     [indexSource, readmeSource, packageSource, manifestSource, claudeSource, geminiSource, fetchPensionSource].forEach(
         (source) => {
             assert.doesNotMatch(

@@ -8,7 +8,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v29`
+- Service worker cache version: `v30`
 
 ## Current Data Baseline
 
@@ -70,6 +70,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Normal freshness check allows one missing draw; strict release freshness requires zero missing draws.
 - localStorage write failures keep dirty state and are surfaced in storage health.
 - Cross-tab storage rehydrate flushes pending dirty local state before `data.load()` and defers the remote load if the flush still fails.
+- `save(true)` immediate flush is used for pagehide/visibility hidden, cross-tab dirty flush (`flushPendingLocalPersistence`), and pre-async recommendation/generation starts so in-flight UI work is not lost before long worker calls.
 - Destructive import overwrite and cleanup trigger a backup download and continue only after explicit user confirmation.
 - Service worker precache failures are recorded in `__cache-health.json`; install is allowed and the app shows a warning state.
 - Service worker data JSON fetches are network-first with data-cache fallback on network failures or error statuses so data-only deploys prefer the newest static snapshot.
@@ -105,6 +106,8 @@ Run these before considering a change complete:
 
 ```bash
 npm run lint
+npm run check:utf8-korean
+npm run check:innerhtml-escape
 npm run check:data-freshness
 npm run check:data-freshness:strict
 npm run check:lotto:official

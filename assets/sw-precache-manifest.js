@@ -128,6 +128,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/utils/dom.js",
         "./assets/modules/utils/loader.js",
         "./assets/modules/utils/perf.js",
+        "./assets/modules/utils/reproductionCode.js",
         "./assets/modules/utils/strategyPresets.js",
         "./assets/modules/utils/strings.js",
         "./assets/modules/utils/utils.js",
@@ -162,5 +163,5 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ],
-    "version": "sha256-cf103c613f88d7e1"
+    "version": "sha256-8afa35a08390e5c3"
 });

@@ -14,6 +14,7 @@ export class GeneratorModule {
         this.boundDelegation = false;
         this.isGenerating = false;
         this.isGeneratingCampaign = false;
+        this.lastRuntimeSeed = null;
         this.generationToken = 0;
         this.campaignToken = 0;
         this.generateBtnOriginalHtml = '';

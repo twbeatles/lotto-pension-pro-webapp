@@ -1,0 +1,23 @@
+export const INNERHTML_ALLOWLIST = {
+    'assets/modules/bootstrap/pwa.js': 1,
+    'assets/modules/core/app/dataLists/pagination.js': 2,
+    'assets/modules/core/app/dataLists/render.js': 5,
+    'assets/modules/core/app/latestDraw.js': 4,
+    'assets/modules/core/app/moduleLoader/dataHealthGate.js': 2,
+    'assets/modules/core/app/moduleLoader/requestBridge.js': 1,
+    'assets/modules/core/app/pwaInstall.js': 1,
+    'assets/modules/core/data/sync/orchestrator.js': 1,
+    'assets/modules/core/ui/qrModal.js': 1,
+    'assets/modules/features/Stats.js': 8,
+    'assets/modules/features/ai/form.js': 1,
+    'assets/modules/features/ai/rendering.js': 7,
+    'assets/modules/features/backtest/events.js': 5,
+    'assets/modules/features/backtest/rendering.js': 7,
+    'assets/modules/features/backtest/run.js': 4,
+    'assets/modules/features/backtest/strategyForm.js': 3,
+    'assets/modules/features/check/list.js': 2,
+    'assets/modules/features/check/results.js': 5,
+    'assets/modules/features/generator/actions.js': 2,
+    'assets/modules/features/generator/form.js': 9,
+    'assets/modules/utils/strategyPresets.js': 1
+};

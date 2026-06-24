@@ -154,6 +154,7 @@ async function runAiPickFlow(page) {
     });
     await page.click('#aiPredictBtn');
     await page.waitForSelector('#aiOutput .pick-btn', { timeout: 30000 });
+    await page.waitForSelector('#aiReproductionCode .reproduction-code-value', { timeout: 5000 });
     await page.click('#aiOutput .pick-btn');
     await routeTo(page, 'gen');
     await page.waitForSelector('#genResultList .result-item');
@@ -198,6 +199,10 @@ async function runPension720Flow(page) {
     await page.waitForSelector('#pension720Output [data-p720-action="save"]', { timeout: 30000 });
     await page.click('#pension720Output [data-p720-action="save"]');
     await page.waitForFunction(() => (window.app.data.state.pension720Tickets || []).length >= 1);
+    await page.waitForFunction(() => {
+        const groupBall = document.querySelector('#pension720SavedList .p720-group');
+        return Boolean(groupBall?.textContent?.includes('조'));
+    });
 
     await page.click('#pension720Output [data-p720-action="save-expansion"]');
     await page.waitForFunction(() => (window.app.data.state.pension720Tickets || []).length >= 2);

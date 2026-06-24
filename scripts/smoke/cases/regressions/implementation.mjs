@@ -466,8 +466,19 @@ async function runRemoteRehydrateFlushesPendingPersistenceRegression() {
         app.updateLatestWin = () => order.push('latest');
         app.bindTargetDrawInputs = () => order.push('target');
         app.refreshCurrentRoute = async () => order.push('route');
+        const toastMessages = [];
+        const previousToast = UIManager.toast;
+        UIManager.toast = (message) => {
+            toastMessages.push(String(message || ''));
+        };
 
         await app._rehydrateAfterRemotePersistenceSync([CONFIG.KEYS.SETTINGS]);
+        UIManager.toast = previousToast;
+
+        assert.ok(
+            toastMessages.some((message) => message.includes('다른 탭에서 저장한 데이터를 반영했습니다')),
+            'remote rehydrate must notify the user after applying cross-tab storage changes'
+        );
 
         assert.deepEqual(
             order.slice(0, 4),
@@ -547,6 +558,75 @@ async function runBackupUnavailableFallbackResultRegression() {
     }
 }
 
+async function runLottoAppInitSequenceRegression() {
+    const source = await readFile(resolve(process.cwd(), 'assets/modules/core/LottoApp.js'), 'utf8');
+    const initBlock = source.match(/async init\(\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
+
+    assert.match(initBlock, /this\.data\.initCrossTabSync/, 'init must wire cross-tab sync before persistence load');
+    assert.match(
+        initBlock,
+        /initCrossTabSync[\s\S]*this\.data\.load\(\)/,
+        'init must load persisted state after cross-tab sync wiring'
+    );
+    assert.match(initBlock, /await this\.route\('gen'\)/, 'init must route to generator before background fetches');
+    assert.match(initBlock, /fetchWinningStats/, 'init must fetch lotto winning stats during bootstrap');
+    assert.match(initBlock, /fetchPension720Stats/, 'init must fetch pension720 stats during bootstrap');
+    assert.match(initBlock, /queueAutoSync/, 'init must queue auto-sync when bootstrap recovery is needed');
+}
+
+async function runDataManagerLoadNormalizationRegression() {
+    const previousStorage = globalThis.localStorage;
+    const storage = makeMemoryStorage({
+        [CONFIG.KEYS.FAV]: JSON.stringify([{ numbers: [1, 2, 3, 4, 5, 6], date: '2026-01-01T00:00:00.000Z' }]),
+        [CONFIG.KEYS.HIST]: '"not-an-array"',
+        [CONFIG.KEYS.SETTINGS]: JSON.stringify({ theme: 'light', customProxy: 'ftp://blocked.example/latest' }),
+        [CONFIG.KEYS.TICKET_BOOK]: JSON.stringify([
+            {
+                numbers: [7, 8, 9, 10, 11, 12],
+                targetDrawNo: 1229,
+                source: 'generator',
+                createdAt: '2026-01-02T00:00:00.000Z'
+            }
+        ])
+    });
+    globalThis.localStorage = storage;
+
+    try {
+        const dm = new DataManager();
+        dm.load();
+
+        assert.equal(dm.state.favorites.length, 1, 'load must keep valid favorites');
+        assert.deepEqual(dm.state.history, [], 'load must normalize invalid history payloads to an empty array');
+        assert.equal(dm.state.theme, 'light', 'load must restore theme from settings');
+        assert.equal(dm.state.ticketBook.length, 1, 'load must normalize ticket book entries');
+        assert.equal(
+            dm.state.customProxy,
+            'ftp://blocked.example/latest',
+            'load must restore persisted proxy text for later validation'
+        );
+        assert.equal(
+            dm.validateCustomProxyUrl(dm.state.customProxy).valid,
+            false,
+            'loaded proxy text must still be rejected by validateCustomProxyUrl'
+        );
+    } finally {
+        if (previousStorage === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = previousStorage;
+    }
+}
+
+async function runImportAllGuardSurfaceRegression() {
+    const [importFlowSource, importPayloadSource] = await Promise.all([
+        readFile(resolve(process.cwd(), 'assets/modules/features/dataio/importFlow.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/dataio/importPayload.js'), 'utf8')
+    ]);
+
+    assert.match(importFlowSource, /async importAll\(/, 'import flow must expose importAll entrypoint');
+    assert.match(importFlowSource, /normalizeImportPayload/, 'importAll must normalize imported payloads before apply');
+    assert.match(importPayloadSource, /normalizeImportProxy/, 'import payload must normalize custom proxy URLs');
+    assert.match(importPayloadSource, /validateCustomProxyUrl/, 'import payload must validate custom proxy URLs');
+}
+
 async function runDomSelectorContractRegression() {
     const indexSource = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
     const navTargets = [...indexSource.matchAll(/data-target="([^"]+)"/g)].map((match) => match[1]);
@@ -583,8 +663,11 @@ async function runPwaCacheHealthRegression() {
 
 export {
     runAutoSyncAvailabilityRegression,
+    runDataManagerLoadNormalizationRegression,
     runDestructiveBackupAbortRegression,
     runDomSelectorContractRegression,
+    runImportAllGuardSurfaceRegression,
+    runLottoAppInitSequenceRegression,
     runLocalUpdatesDirtyRetryRegression,
     runPension720OfficialCacheRegression,
     runPwaCacheHealthRegression,

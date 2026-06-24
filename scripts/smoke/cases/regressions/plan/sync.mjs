@@ -103,6 +103,11 @@ const syncPlan = [
     {
         name: 'runBuiltInSyncProviderRegression',
         label: 'built-in sync provider regression'
+    },
+    {
+        name: 'runSyncThirdPartyProviderNoticeRegression',
+        label: 'sync third-party provider notice regression',
+        awaited: true
     }
 ];
 

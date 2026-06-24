@@ -1,16 +1,16 @@
 const PENSION720_ANALYSIS_PRESETS = {
     fast: {
-        label: '??',
+        label: '빠름',
         lookbackWindow: 20,
         candidatePoolSize: 80
     },
     basic: {
-        label: '??',
+        label: '기본',
         lookbackWindow: 40,
         candidatePoolSize: 140
     },
     precise: {
-        label: '??',
+        label: '정밀',
         lookbackWindow: 80,
         candidatePoolSize: 240
     }
@@ -30,7 +30,7 @@ function makeEl(tag, className = '', text = '') {
 function appendDigitBalls(container, number, options = {}) {
     const wrap = makeEl('div', 'p720-number');
     if (options.group) {
-        const group = makeEl('span', 'p720-ball p720-group', String(options.group) + '?');
+        const group = makeEl('span', 'p720-ball p720-group', `${String(options.group)}조`);
         wrap.appendChild(group);
     }
     String(number || '')
@@ -47,7 +47,7 @@ function formatDate(date = '') {
 }
 
 function formatTicket(ticket) {
-    return `${Number(ticket?.group || 0)}? ${String(ticket?.number || '').padStart(6, '0')}`;
+    return `${Number(ticket?.group || 0)}조 ${String(ticket?.number || '').padStart(6, '0')}`;
 }
 
 function getCheckSortValue(result) {
@@ -72,7 +72,7 @@ function getAnalysisPresetLabelFromRequest(request = {}) {
     const matched = Object.values(PENSION720_ANALYSIS_PRESETS).find((preset) => {
         return preset.lookbackWindow === lookbackWindow && preset.candidatePoolSize === candidatePoolSize;
     });
-    return matched?.label || '??';
+    return matched?.label || '사용자';
 }
 
 export {

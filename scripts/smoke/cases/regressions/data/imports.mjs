@@ -782,10 +782,80 @@ async function runImportPreviewAndOverwriteBackupRegression() {
     }
 }
 
+function runImportProxyValidationRegression() {
+    const data = new DataManager();
+    const ctx = Object.create(DataIOModule.prototype);
+    ctx.data = data;
+
+    const valid = ctx.normalizeImportProxy('https://example.com/proxy/latest');
+    assert.equal(valid.proxy, 'https://example.com/proxy/latest', 'valid import proxy must normalize');
+    assert.equal(valid.droppedInvalidProxy, false, 'valid import proxy must not be dropped');
+
+    const invalid = ctx.normalizeImportProxy('https://example.com/not-supported');
+    assert.equal(invalid.proxy, '', 'invalid import proxy must be cleared');
+    assert.equal(invalid.droppedInvalidProxy, true, 'invalid import proxy must be flagged as dropped');
+}
+
+function runImportMergeHistoryCapRegression() {
+    const data = new DataManager();
+    const ctx = Object.create(DataIOModule.prototype);
+    ctx.data = data;
+    ctx.describeAppliedSettings = () => [];
+    ctx.mergeByNumbers = (existing, incoming) => [...incoming, ...existing];
+    ctx.mergeHistoryEntries = (existing, incoming) => [...incoming, ...existing];
+    ctx.mergeTickets = (existing, incoming) => [...existing, ...incoming];
+    ctx.mergeCampaigns = (existing, incoming) => [...existing, ...incoming];
+    ctx.mergePension720Tickets = (existing, incoming) => [...existing, ...incoming];
+    ctx.mergePension720Campaigns = (existing, incoming) => [...existing, ...incoming];
+    ctx.mergeLocalUpdates = (existing, incoming) => [...existing, ...incoming];
+    ctx.normalizeLocalUpdates = (items) => ({ items, droppedFuture: 0 });
+    ctx.mergeStrategyPresets = (existing, incoming) => [...existing, ...incoming];
+    ctx.pruneCampaignsWithoutTickets = (campaigns) => ({ campaigns, removed: [] });
+    ctx.prunePension720CampaignsWithoutTickets = (campaigns) => ({ campaigns, removed: [] });
+
+    const oversizedHistory = Array.from({ length: CONFIG.LIMITS.MAX_HIST + 12 }, (_, index) => ({
+        numbers: [1, 2, 3, 4, 5, 6],
+        date: `2026-05-${String((index % 28) + 1).padStart(2, '0')}T00:00:00.000Z`
+    }));
+
+    const prepared = ctx.buildImportPreview(
+        {
+            favorites: [],
+            history: oversizedHistory,
+            theme: 'dark',
+            proxy: '',
+            droppedInvalidProxy: false,
+            tickets: [],
+            campaigns: [],
+            pension720Tickets: [],
+            pension720Campaigns: [],
+            alertPrefs: {},
+            localUpdates: [],
+            futureDropped: 0,
+            strategyPresets: []
+        },
+        { mode: 'overwrite', applyProxy: false, applyTheme: false, applyAlerts: false, applyStrategyPrefs: false }
+    );
+
+    assert.equal(
+        prepared.next.history.length,
+        CONFIG.LIMITS.MAX_HIST,
+        'import preview must cap merged history to MAX_HIST'
+    );
+    assert.equal(prepared.preview.historyTrimmed, 12, 'import preview must report trimmed history count');
+    assert.match(
+        ctx.buildImportPreviewMessage(prepared),
+        /히스토리 정리: 12건/,
+        'import preview message must mention history trimming'
+    );
+}
+
 export {
     runImportSafetyLimitsRegression,
     runLoadOrphanCampaignMigrationRegression,
     runImportAlertOptionRegression,
     runImportOrphanCampaignCleanupRegression,
-    runImportPreviewAndOverwriteBackupRegression
+    runImportPreviewAndOverwriteBackupRegression,
+    runImportProxyValidationRegression,
+    runImportMergeHistoryCapRegression
 };

@@ -50,6 +50,20 @@ const pension720Plan = [
         label: 'pension720 CSV formula escape regression'
     },
     {
+        name: 'runPension720DomEncodingRegression',
+        label: 'pension720 dom encoding regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720RuntimeSeedSurfaceRegression',
+        label: 'pension720 runtime-seed surface regression',
+        awaited: true
+    },
+    {
+        name: 'runPension720RuntimeSeedDeterminismRegression',
+        label: 'pension720 runtime-seed determinism regression'
+    },
+    {
         name: 'runPension720UiContractRegression',
         label: 'pension720 expanded UI contract regression',
         awaited: true

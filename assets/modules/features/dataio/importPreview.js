@@ -1,4 +1,14 @@
+import { CONFIG } from '../../utils/config.js';
 import { countStoredItems, safeClone } from './importHelpers.js';
+
+function capImportHistory(history = []) {
+    const items = Array.isArray(history) ? history : [];
+    const capped = items.slice(0, CONFIG.LIMITS.MAX_HIST);
+    return {
+        items: capped,
+        trimmed: Math.max(0, items.length - capped.length)
+    };
+}
 
 export const dataIoImportPreviewMethods = {
     buildImportPreview(incoming, importOptions) {
@@ -70,6 +80,7 @@ export const dataIoImportPreviewMethods = {
                 safeClone(current.strategyPresets || []),
                 safeClone(incoming.strategyPresets)
             );
+            const historyCap = capImportHistory(nextHistory);
             const newCampaigns = campaignCleanup.campaigns.filter((item) => {
                 const campaignId = String(item?.id || '').trim();
                 return campaignId && !beforeCampaignIds.has(campaignId);
@@ -103,11 +114,14 @@ export const dataIoImportPreviewMethods = {
                     cleaned,
                     futureDropped: incoming.futureDropped,
                     appliedSettings,
-                    projectedTicketTotal: this.data.getTotalTicketCount(nextTickets)
+                    projectedTicketTotal: this.data.getTotalTicketCount(nextTickets),
+                    projectedHistoryCount: historyCap.items.length,
+                    historyTrimmed: historyCap.trimmed,
+                    droppedInvalidProxy: Boolean(importOptions.applyProxy && incoming.droppedInvalidProxy)
                 },
                 next: {
                     favorites: nextFavorites,
-                    history: nextHistory,
+                    history: historyCap.items,
                     tickets: nextTickets,
                     campaigns: campaignCleanup.campaigns,
                     pension720Tickets: nextPension720Tickets,
@@ -152,6 +166,7 @@ export const dataIoImportPreviewMethods = {
             presets: incoming.strategyPresets
         });
         const cleaned = campaignCleanup.removed.length + pension720CampaignCleanup.removed.length;
+        const historyCap = capImportHistory(incoming.history);
 
         return {
             mode: 'overwrite',
@@ -164,11 +179,14 @@ export const dataIoImportPreviewMethods = {
                 cleaned,
                 futureDropped: incoming.futureDropped,
                 appliedSettings,
-                projectedTicketTotal: incomingTicketTotal
+                projectedTicketTotal: incomingTicketTotal,
+                projectedHistoryCount: historyCap.items.length,
+                historyTrimmed: historyCap.trimmed,
+                droppedInvalidProxy: Boolean(importOptions.applyProxy && incoming.droppedInvalidProxy)
             },
             next: {
                 favorites: incoming.favorites,
-                history: incoming.history,
+                history: historyCap.items,
                 tickets: incoming.tickets,
                 campaigns: campaignCleanup.campaigns,
                 pension720Tickets: incoming.pension720Tickets,
@@ -201,6 +219,13 @@ export const dataIoImportPreviewMethods = {
             `적용될 설정: ${applied}`,
             `미래 회차 제외: ${prepared.preview.futureDropped}건`,
             `예상 내 번호 수: ${prepared.preview.projectedTicketTotal}개`,
+            `예상 생성 히스토리: ${prepared.preview.projectedHistoryCount ?? prepared.next.history?.length ?? 0}개`,
+            prepared.preview.historyTrimmed
+                ? `히스토리 정리: ${prepared.preview.historyTrimmed}건이 ${CONFIG.LIMITS.MAX_HIST}개 한도로 잘립니다.`
+                : '',
+            prepared.preview.droppedInvalidProxy
+                ? '지원되지 않는 데이터 연결 주소는 가져오지 않고 기본 자동 동기화를 사용합니다.'
+                : '',
             prepared.mode === 'overwrite' ? '현재 데이터는 자동 백업 파일로 먼저 저장됩니다.' : ''
         ]
             .filter((line) => line !== '')

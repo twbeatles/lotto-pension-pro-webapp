@@ -24,6 +24,14 @@ const importRuntimePlan = [
         awaited: true
     },
     {
+        name: 'runImportProxyValidationRegression',
+        label: 'import proxy validation regression'
+    },
+    {
+        name: 'runImportMergeHistoryCapRegression',
+        label: 'import merge history cap regression'
+    },
+    {
         name: 'runCampaignEmptySaveRegression',
         label: 'campaign-empty-save regression',
         awaited: true
@@ -110,6 +118,20 @@ const importRuntimePlan = [
     {
         name: 'runRemoteRehydrateFlushesPendingPersistenceRegression',
         label: 'remote rehydrate persistence-flush regression',
+        awaited: true
+    },
+    {
+        name: 'runLottoAppInitSequenceRegression',
+        label: 'lotto app init sequence regression',
+        awaited: true
+    },
+    {
+        name: 'runDataManagerLoadNormalizationRegression',
+        label: 'data manager load normalization regression'
+    },
+    {
+        name: 'runImportAllGuardSurfaceRegression',
+        label: 'importAll guard surface regression',
         awaited: true
     },
     {

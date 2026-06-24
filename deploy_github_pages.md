@@ -110,11 +110,11 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 
 ## PWA와 캐시
 
-- 현재 `sw.js` cache version: `v29`
+- 현재 `sw.js` cache version: `v30`
 - 현재 strategy worker asset query version: `v23`
 - cache names:
-    - `lotto-pension-pro-app-shell-v29`
-    - `lotto-pension-pro-data-v29`
+    - `lotto-pension-pro-app-shell-v30`
+    - `lotto-pension-pro-data-v30`
 - precache manifest는 `scripts/generate_sw_manifest.mjs`가 `assets/sw-precache-manifest.js`로 생성합니다.
 - install precache에는 split module 기반 앱 셸과 `data/winning_stats.json`, `data/pension720_stats.json`이 포함됩니다.
 - `data/*.json` 요청은 최신성 우선 network-first를 사용하고, 네트워크 실패나 오류 응답 시 data cache로 fallback합니다.
@@ -126,7 +126,7 @@ https://twbeatles.github.io/lotto-pension-pro-webapp/?proxyUrl=https%3A%2F%2F<wo
 1. Pages URL 접속
 2. 강력 새로고침
 3. DevTools > Application > Manifest에서 앱명 `로또·연금복권 프로` 확인
-4. DevTools > Application > Service Workers에서 `v29` 활성화 확인
+4. DevTools > Application > Service Workers에서 `v30` 활성화 확인
 5. 설정/상태 화면에서 PWA cache health 확인
 6. Lotto 6/45 번호 생성, 번호 추천, 당첨 확인, Pension720+ 추천/저장/대상 회차 확인 확인
 7. Offline 모드에서 캐시된 lazy route 접근 확인

@@ -5,6 +5,7 @@ import { StrategyEngine } from '../../core/StrategyEngine.js';
 import { createRuntimeRng, withRuntimeSeed } from '../../core/strategy/runtimeEntropy.js';
 import { endMark, startMark } from '../../utils/perf.js';
 import { UI_STRINGS } from '../../utils/strings.js';
+import { upsertReproductionCodeBar } from '../../utils/reproductionCode.js';
 
 function clampGeneratorSetCount(value, fallback = 5) {
     const number = Number(value);
@@ -88,7 +89,7 @@ export const generatorActionMethods = {
                 request.filters.maxConsecutivePairs = request.filters.maxConsecutivePairs ?? 1;
             }
             this.data.setStrategyPrefs('generator', request);
-            this.data.save();
+            this.data.save(true);
 
             const listEl = $('#genResultList');
             listEl?.setAttribute('aria-busy', 'true');
@@ -130,6 +131,14 @@ export const generatorActionMethods = {
             }
 
             if (localToken !== this.generationToken) return false;
+            this.lastRuntimeSeed = workerPayload.runtimeSeed ?? null;
+            const genPanel = listEl?.parentElement;
+            upsertReproductionCodeBar({
+                host: genPanel,
+                barId: 'genReproductionCode',
+                seed: this.lastRuntimeSeed,
+                request
+            });
             const generatedEntries = this.data.setGeneratedEntries(
                 sets.map((numbers) => ({
                     numbers,

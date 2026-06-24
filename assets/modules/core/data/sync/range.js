@@ -58,7 +58,15 @@ export const dataSyncRangeMethods = {
                 if (!res.ok) continue;
                 const payload = this.parseSyncPayload(await res.text());
                 const item = this.extractSingleDrawFromPayload(payload);
-                if (item) return item;
+                if (item) {
+                    if (candidate.label && candidate.label !== '공식 API') {
+                        log(
+                            `[fetch] ${drawNo}회차: ${candidate.label} 경유로 수집했습니다. 개인 프록시 배포를 권장합니다.`,
+                            'SYNC_THIRD_PARTY_PROVIDER'
+                        );
+                    }
+                    return item;
+                }
                 if (payload) {
                     const shape = this.describePayloadShape(payload);
                     const warningMessage = `${drawNo}회차 응답 구조가 예상 형식과 다릅니다. (${candidate.label})`;

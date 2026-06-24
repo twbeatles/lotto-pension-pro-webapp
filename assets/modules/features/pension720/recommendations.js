@@ -1,7 +1,9 @@
 import { $ } from '../../utils/utils.js';
 import { Pension720Engine } from '../../core/Pension720Engine.js';
 import { getPension720StrategyMeta } from '../../core/Pension720StrategyCatalog.js';
+import { createRuntimeSeed, hasExplicitSeed } from '../../core/strategy/runtimeEntropy.js';
 import { UIManager } from '../../core/UIManager.js';
+import { upsertReproductionCodeBar } from '../../utils/reproductionCode.js';
 import { appendDigitBalls, clearElement, getAnalysisPresetLabelFromRequest, makeEl } from './dom.js';
 
 export const pension720RecommendationMethods = {
@@ -37,7 +39,26 @@ export const pension720RecommendationMethods = {
             this.data.setStrategyPrefs('pension720', options.request);
             this.data.save();
             this.lastRecommendationOptions = options;
-            this.lastRecommendations = engine.recommend(options);
+            const recommendPayload = (() => {
+                if (hasExplicitSeed(options.request)) {
+                    this.lastRuntimeSeed = null;
+                    return options;
+                }
+                const runtimeSeed = createRuntimeSeed();
+                this.lastRuntimeSeed = runtimeSeed;
+                return {
+                    ...options,
+                    seed: runtimeSeed,
+                    request: {
+                        ...options.request,
+                        params: {
+                            ...(options.request?.params || {}),
+                            seed: runtimeSeed
+                        }
+                    }
+                };
+            })();
+            this.lastRecommendations = engine.recommend(recommendPayload);
             if (localToken !== this.recommendationToken) return;
             this.data.state.pension720Results = this.lastRecommendations;
             this.data.persistTemporaryResultsToSession?.();
@@ -58,13 +79,19 @@ export const pension720RecommendationMethods = {
         if (!out) return;
         const notice = $('#pension720ResultTempNotice');
         if (notice) notice.hidden = !recommendations.length;
+        const request = this.lastRecommendationOptions?.request || this.getRecommendationOptions().request;
+        upsertReproductionCodeBar({
+            host: out,
+            barId: 'pension720ReproductionCode',
+            seed: this.lastRuntimeSeed,
+            request
+        });
 
         if (!recommendations.length) {
             out.appendChild(makeEl('p', 'empty-state', '추천 시작을 누르면 연금복권 번호가 표시됩니다.'));
             return;
         }
 
-        const request = this.lastRecommendationOptions?.request || this.getRecommendationOptions().request;
         const strategyLabel = getPension720StrategyMeta(request?.strategyId || 'mixed_balance').label;
         const analysisLabel = getAnalysisPresetLabelFromRequest(request);
         recommendations.forEach((item, index) => {

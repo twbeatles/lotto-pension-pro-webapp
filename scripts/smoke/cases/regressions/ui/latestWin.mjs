@@ -217,8 +217,8 @@ async function runRecommendationCopyRegression() {
 
     assert.match(
         readmeSource,
-        /결과 화면의 \*\*재현 코드\*\*/,
-        'README must document reproduction code on the result screen'
+        /번호 생성.*번호 추천.*연금복권.*결과 화면에 표시되는 \*\*재현 코드\*\*/,
+        'README must document reproduction code on generator, AI, and pension720 result screens'
     );
 
     [indexSource, readmeSource, packageSource, manifestSource, claudeSource, geminiSource, fetchPensionSource].forEach(

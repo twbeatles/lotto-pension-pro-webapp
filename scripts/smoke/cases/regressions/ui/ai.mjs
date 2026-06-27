@@ -71,14 +71,15 @@ async function runAiRunStaleTokenRegression() {
 }
 
 async function runAiRuntimeSeedSurfaceRegression() {
-    const [aiRenderingSource, reproductionSource] = await Promise.all([
-        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8'),
+    const [aiRunSource, aiResultsSource, reproductionSource] = await Promise.all([
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/run/methods.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/results.js'), 'utf8'),
         readFile(resolve(process.cwd(), 'assets/modules/utils/reproductionCode.js'), 'utf8')
     ]);
 
-    assert.match(aiRenderingSource, /const localToken = \+\+this\.runToken/, 'AI run must track runToken');
-    assert.match(aiRenderingSource, /if \(localToken !== this\.runToken\) return/, 'AI run must ignore stale completions');
-    assert.match(aiRenderingSource, /upsertReproductionCodeBar/, 'AI results must surface reproduction code');
+    assert.match(aiRunSource, /const localToken = \+\+this\.runToken/, 'AI run must track runToken');
+    assert.match(aiRunSource, /if \(localToken !== this\.runToken\) return/, 'AI run must ignore stale completions');
+    assert.match(aiResultsSource, /upsertReproductionCodeBar/, 'AI results must surface reproduction code');
     assert.match(reproductionSource, /재현 코드/, 'reproduction helper must expose Korean reproduction label');
 }
 

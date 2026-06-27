@@ -253,11 +253,19 @@ async function runDestructiveBackupAbortRegression() {
             'backup confirmation cancel must show an abort toast'
         );
 
-        const [dataIoSupportSource, dataIoBackupSource] = await Promise.all([
-            readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8'),
-            readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport.js'), 'utf8')
-        ]);
-        const dataIoSource = [dataIoSupportSource, dataIoBackupSource].join('\n');
+        const [dataIoSupportSource, dataIoBackupSource, dataIoBackupDestructiveSource, dataIoBackupExportAllSource] =
+            await Promise.all([
+                readFile(resolve(process.cwd(), 'assets/modules/features/dataio/support.js'), 'utf8'),
+                readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport.js'), 'utf8'),
+                readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport/destructive.js'), 'utf8'),
+                readFile(resolve(process.cwd(), 'assets/modules/features/dataio/backupExport/exportAll.js'), 'utf8')
+            ]);
+        const dataIoSource = [
+            dataIoSupportSource,
+            dataIoBackupSource,
+            dataIoBackupDestructiveSource,
+            dataIoBackupExportAllSource
+        ].join('\n');
         assert.match(
             dataIoSource,
             /preferFilePicker:\s*true/,
@@ -275,7 +283,7 @@ async function runDestructiveBackupAbortRegression() {
         );
 
         const cleanupSource = await readFile(
-            resolve(process.cwd(), 'assets/modules/core/app/dataLists/events.js'),
+            resolve(process.cwd(), 'assets/modules/core/app/dataLists/events/bindDataEvents.js'),
             'utf8'
         );
         assert.match(
@@ -559,7 +567,7 @@ async function runBackupUnavailableFallbackResultRegression() {
 }
 
 async function runLottoAppInitSequenceRegression() {
-    const source = await readFile(resolve(process.cwd(), 'assets/modules/core/LottoApp.js'), 'utf8');
+    const source = await readFile(resolve(process.cwd(), 'assets/modules/core/lottoApp/init.js'), 'utf8');
     const initBlock = source.match(/async init\(\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
 
     assert.match(initBlock, /this\.data\.initCrossTabSync/, 'init must wire cross-tab sync before persistence load');
@@ -648,11 +656,13 @@ async function runDomSelectorContractRegression() {
 }
 
 async function runPwaCacheHealthRegression() {
-    const [swSource, pwaSource, indexSource] = await Promise.all([
+    const [swSource, pwaCacheHealthSource, pwaUpdateControlsSource, indexSource] = await Promise.all([
         readFile(resolve(process.cwd(), 'sw.js'), 'utf8'),
-        readFile(resolve(process.cwd(), 'assets/modules/core/app/pwaInstall.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/core/app/pwaInstall/cacheHealth.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/core/app/pwaInstall/updateControls.js'), 'utf8'),
         readFile(resolve(process.cwd(), 'index.html'), 'utf8')
     ]);
+    const pwaSource = [pwaCacheHealthSource, pwaUpdateControlsSource].join('\n');
 
     assert.match(swSource, /CACHE_HEALTH_PATH_SUFFIX = '\/__cache-health\.json'/, 'SW must expose cache health path');
     assert.match(swSource, /failures\.push/, 'SW precache must collect failed assets');

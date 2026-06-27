@@ -225,7 +225,10 @@ function runBuiltInSyncProviderRegression() {
 }
 
 async function runSyncThirdPartyProviderNoticeRegression() {
-    const rangeSource = await readFile(resolve(process.cwd(), 'assets/modules/core/data/sync/range.js'), 'utf8');
+    const rangeSource = await readFile(
+        resolve(process.cwd(), 'assets/modules/core/data/sync/range/fetchSingle.js'),
+        'utf8'
+    );
     assert.match(
         rangeSource,
         /SYNC_THIRD_PARTY_PROVIDER/,

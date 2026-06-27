@@ -154,7 +154,9 @@ async function runRecommendationCopyRegression() {
 
         catalogSource,
 
-        aiRenderingSource
+        aiRenderingModelGuideSource,
+
+        aiRenderingResultsSource
     ] = await Promise.all([
         readFile(resolve(process.cwd(), 'index.html'), 'utf8'),
 
@@ -174,7 +176,9 @@ async function runRecommendationCopyRegression() {
 
         readFile(resolve(process.cwd(), 'assets/modules/core/StrategyCatalog.js'), 'utf8'),
 
-        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8')
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/modelGuide.js'), 'utf8'),
+
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/results.js'), 'utf8')
     ]);
 
     const packageJson = JSON.parse(packageSource);
@@ -252,7 +256,7 @@ async function runRecommendationCopyRegression() {
     );
 
     assert.match(
-        aiRenderingSource,
+        aiRenderingModelGuideSource,
 
         /const tierLabels = \{ A: '기본', B: '확장', C: '실험' \};/,
 
@@ -260,7 +264,7 @@ async function runRecommendationCopyRegression() {
     );
 
     assert.match(
-        aiRenderingSource,
+        aiRenderingResultsSource,
 
         /내부 랭킹 점수/,
 

@@ -1,0 +1,6 @@
+export const DEFAULT_TIMEOUT_MS = 8000;
+export const MAX_RETRY = 1;
+export const GENERATE_TIMEOUT_CAP_MS = 32000;
+export const RECOMMEND_TIMEOUT_CAP_MS = 40000;
+export const AUTO_RECOMMEND_TIMEOUT_CAP_MS = 60000;
+export const STRATEGY_WORKER_ASSET_VERSION = 'v23';

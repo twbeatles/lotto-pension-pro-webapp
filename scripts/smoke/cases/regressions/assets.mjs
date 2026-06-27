@@ -275,10 +275,11 @@ async function runWebManifestInstallabilityRegression() {
 }
 
 async function runPwaUpdateSettingsUiRegression() {
-    const [indexSource, pwaInstallSource] = await Promise.all([
+    const [indexSource, pwaInstallUpdateControlsSource] = await Promise.all([
         readFile(resolve(process.cwd(), 'index.html'), 'utf8'),
-        readFile(resolve(process.cwd(), 'assets/modules/core/app/pwaInstall.js'), 'utf8')
+        readFile(resolve(process.cwd(), 'assets/modules/core/app/pwaInstall/updateControls.js'), 'utf8')
     ]);
+    const pwaInstallSource = pwaInstallUpdateControlsSource;
 
     assert.match(indexSource, /id="pwaUpdateCheckBtn"/, 'settings modal must include a PWA update button');
     assert.match(indexSource, /id="pwaUpdateBadge"/, 'settings modal must include a PWA update status badge');

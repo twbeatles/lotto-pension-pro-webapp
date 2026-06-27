@@ -272,19 +272,29 @@ function runNoSeedRuntimeEntropyRegression(stats) {
 }
 
 async function runRecommendationRuntimePolicyRegression() {
-    const [aiRenderingSource, workerSource, workerClientSource] = await Promise.all([
-        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering.js'), 'utf8'),
+    const [
+        aiWorkerExecutionSource,
+        aiFormattersSource,
+        workerSource,
+        workerClientConfigSource,
+        workerClientSource,
+        workerClientTimeoutsSource
+    ] = await Promise.all([
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/run/workerExecution.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/features/ai/rendering/formatters.js'), 'utf8'),
         readFile(resolve(process.cwd(), 'assets/strategy.worker.js'), 'utf8'),
-        readFile(resolve(process.cwd(), 'assets/modules/core/StrategyWorkerClient.js'), 'utf8')
+        readFile(resolve(process.cwd(), 'assets/modules/core/strategyWorkerClient/config.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/core/strategyWorkerClient/client.js'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/core/strategyWorkerClient/timeouts.js'), 'utf8')
     ]);
 
     assert.match(
-        aiRenderingSource,
+        aiWorkerExecutionSource,
         /if \(workerTimedOut && isAutoStrategyId\(request\.strategyId\)\)/,
         'auto strategy timeouts must short-circuit instead of falling back to main-thread recommendation'
     );
     assert.match(
-        aiRenderingSource,
+        aiFormattersSource,
         /executionMode,\s*fallbackMode,\s*effectiveAdaptiveWindow/s,
         'AI rendering must read the richer diagnostics fields'
     );
@@ -299,7 +309,7 @@ async function runRecommendationRuntimePolicyRegression() {
         'strategy worker must defensively clamp GENERATE and RECOMMEND set counts'
     );
     assert.match(
-        workerClientSource,
+        workerClientConfigSource,
         /STRATEGY_WORKER_ASSET_VERSION = 'v23'/,
         'strategy worker asset version must be bumped when worker behavior changes'
     );
@@ -309,7 +319,7 @@ async function runRecommendationRuntimePolicyRegression() {
         'strategy worker asset version must be applied as a worker URL query'
     );
     assert.match(
-        workerClientSource,
+        workerClientTimeoutsSource,
         /if \(isAutoStrategyId\(payload\?\.request\?\.strategyId\)\)/,
         'worker timeout calculation must treat auto recommendation strategies separately'
     );

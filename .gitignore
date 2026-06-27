@@ -23,6 +23,7 @@ Thumbs.db
 
 # Local temporary artifacts
 .codegraph/
+mcps/
 node_modules/
 .eslintcache
 .cache/

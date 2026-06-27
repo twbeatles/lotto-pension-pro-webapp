@@ -324,5 +324,5 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ],
-    "version": "sha256-5ea9c74699b19493"
+    "version": "sha256-aa165fb4a3cd6c40"
 });

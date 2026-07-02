@@ -15,7 +15,8 @@ export const CONFIG = {
         LEGACY_PROXY: 'lotto_webapp_settings_v1.proxyLatestUrl',
         LEGACY_SETTINGS: 'lotto_webapp_settings_v1',
         SESSION_DATA_LIST_STATE: 'lotto_pro_datalist_state',
-        SESSION_RESULTS_STATE: 'lotto_pro_temp_results_state'
+        SESSION_RESULTS_STATE: 'lotto_pro_temp_results_state',
+        SESSION_QUERY_PROXY_ACK: 'lotto_pro_query_proxy_ack'
     },
     LIMITS: {
         MAX_SET: 20,

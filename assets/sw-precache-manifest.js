@@ -44,6 +44,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/app/networkLifecycle/networkProbe.js",
         "./assets/modules/core/app/networkLifecycle/offlineBanner.js",
         "./assets/modules/core/app/networkLifecycle/remoteSync.js",
+        "./assets/modules/core/app/networkLifecycle/storageFailureBanner.js",
         "./assets/modules/core/app/pwaInstall.js",
         "./assets/modules/core/app/pwaInstall/cacheHealth.js",
         "./assets/modules/core/app/pwaInstall/installPrompt.js",
@@ -60,6 +61,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/data/analytics/freshness.js",
         "./assets/modules/core/data/analytics/notifications.js",
         "./assets/modules/core/data/analytics/ticketSettlement.js",
+        "./assets/modules/core/data/dataSource.js",
         "./assets/modules/core/data/defaults.js",
         "./assets/modules/core/data/defaults/alertPrefs.js",
         "./assets/modules/core/data/defaults/appBinding.js",
@@ -76,6 +78,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/data/pension720/check/methods.js",
         "./assets/modules/core/data/pension720/health.js",
         "./assets/modules/core/data/pension720/normalize.js",
+        "./assets/modules/core/data/pension720/remoteFetch.js",
         "./assets/modules/core/data/pension720/stats.js",
         "./assets/modules/core/data/pension720/tickets.js",
         "./assets/modules/core/data/persistence.js",
@@ -110,8 +113,10 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/data/records/tickets/merge.js",
         "./assets/modules/core/data/records/tickets/settle.js",
         "./assets/modules/core/data/sync.js",
+        "./assets/modules/core/data/sync/builtinProviders.js",
         "./assets/modules/core/data/sync/health.js",
         "./assets/modules/core/data/sync/http.js",
+        "./assets/modules/core/data/sync/lottoPayloadCore.js",
         "./assets/modules/core/data/sync/orchestrator.js",
         "./assets/modules/core/data/sync/orchestrator/fetchLatestApi.js",
         "./assets/modules/core/data/sync/orchestrator/fetchWinningStats.js",
@@ -324,5 +329,5 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ],
-    "version": "sha256-aa165fb4a3cd6c40"
+    "version": "sha256-5e6f69dae0a163f7"
 });

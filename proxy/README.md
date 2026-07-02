@@ -10,7 +10,9 @@ Cloudflare Worker 예시가 포함되어 있습니다.
 
 - 메인 웹앱 런타임 자산(font/icon/QR/캡처 라이브러리)은 현재 `assets/vendor/` same-origin 경로로 로컬화되어 있습니다.
 - 따라서 프록시는 최신 회차 동기화 강화를 위한 선택 기능이며, UI 런타임은 프록시/CDN 의존 없이 동작합니다.
-- 이 프록시는 Lotto 6/45 고급 연결 주소 전용입니다. Pension720+ 정적 데이터 동기화와 최신성 검증은 `scripts/fetch_pension720_stats.mjs`가 동행복권 `selectPstPt720WnList.do` endpoint를 직접 확인합니다.
+- Lotto 6/45 고급 연결 주소(`/proxy/latest`)와 함께 Pension720+ 목록(`/proxy/pension720/list`)도 제공합니다.
+- 앱은 `/proxy/latest`만 설정해도 연금복권 갱신용 `/proxy/pension720/list` URL을 같은 Worker에서 자동 유도합니다.
+- CI/정적 스냅샷 갱신은 `scripts/fetch_pension720_stats.mjs`가 동행복권 `selectPstPt720WnList.do`를 직접 확인합니다.
 
 ## 배포 (Cloudflare Workers)
 
@@ -27,6 +29,7 @@ wrangler deploy proxy/worker.js
 - 최신 회차: `https://<your-worker>.workers.dev/proxy/latest`
 - 특정 회차 단건 테스트: `https://<your-worker>.workers.dev/proxy/latest?draw_no=1180`
 - 구간 조회: `https://<your-worker>.workers.dev/proxy/range?from=1175&to=1180`
+- 연금복권720+ 목록: `https://<your-worker>.workers.dev/proxy/pension720/list`
 
 `/proxy/latest` 응답 형식:
 

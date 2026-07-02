@@ -1,25 +1,6 @@
-const OFFICIAL_DRAW_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
+import { buildBuiltinCorsFetchUrls } from './builtinProviders.js';
 
-const BUILTIN_SYNC_SINGLE_PROVIDERS = [
-    {
-        label: '공식 API',
-        buildUrl(targetUrl) {
-            return targetUrl;
-        }
-    },
-    {
-        label: 'corsproxy.io',
-        buildUrl(targetUrl) {
-            return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-        }
-    },
-    {
-        label: 'CodeTabs',
-        buildUrl(targetUrl) {
-            return `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`;
-        }
-    }
-];
+const OFFICIAL_DRAW_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 
 export const dataSyncProviderMethods = {
     buildCustomSingleFetchUrls(drawNo, proxyConfig = this.resolveProxyConfig()) {
@@ -50,9 +31,6 @@ export const dataSyncProviderMethods = {
 
     buildBuiltInSingleFetchUrls(drawNo) {
         const targetUrl = `${OFFICIAL_DRAW_API_URL}${drawNo}`;
-        return BUILTIN_SYNC_SINGLE_PROVIDERS.map((provider) => ({
-            label: provider.label,
-            url: provider.buildUrl(targetUrl)
-        }));
+        return buildBuiltinCorsFetchUrls(targetUrl);
     }
 };

@@ -33,6 +33,11 @@ export const dataIoImportFlowMethods = {
     },
 
     async importAll(e) {
+        if (this._importInFlight) {
+            UIManager.toast('다른 가져오기 작업이 진행 중입니다.', 'info', 2500);
+            return;
+        }
+
         const input = e.currentTarget;
         const file = input.files?.[0];
         if (!file) return;
@@ -46,6 +51,7 @@ export const dataIoImportFlowMethods = {
             return;
         }
 
+        this._importInFlight = true;
         try {
             const text = await file.text();
             const json = JSON.parse(text);
@@ -130,6 +136,7 @@ export const dataIoImportFlowMethods = {
             console.error('Import failed', err);
             UIManager.toast(UI_STRINGS.dataio.importInvalid, 'error', 3500);
         } finally {
+            this._importInFlight = false;
             input.value = '';
         }
     }

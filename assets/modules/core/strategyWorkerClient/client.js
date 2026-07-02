@@ -10,6 +10,7 @@ export class StrategyWorkerClient {
         this.pending = new Map();
         this.warmupPromise = null;
         this.workerStatsFingerprint = '';
+        this._dispatchChain = Promise.resolve();
     }
 
     ensureWorker() {
@@ -120,43 +121,49 @@ export class StrategyWorkerClient {
     }
 
     async post(type, payload, timeoutMs = null, retries = MAX_RETRY) {
-        const resolvedTimeoutMs = timeoutMs ?? resolveTimeoutMs(type, payload);
-        let attempt = 0;
-        let cacheRetryUsed = false;
-        let forceStatsData = false;
+        const run = async () => {
+            const resolvedTimeoutMs = timeoutMs ?? resolveTimeoutMs(type, payload);
+            let attempt = 0;
+            let cacheRetryUsed = false;
+            let forceStatsData = false;
 
-        while (attempt <= retries) {
-            try {
-                return await this.postOnce(type, payload, resolvedTimeoutMs, { forceStatsData });
-            } catch (err) {
-                if (
-                    err?.code === 'STRATEGY_WORKER_CACHE_EMPTY' &&
-                    !cacheRetryUsed &&
-                    Array.isArray(payload?.statsData)
-                ) {
-                    console.warn(`[STRATEGY_WORKER_CACHE_EMPTY_RETRY] ${type} retrying with full statsData`);
-                    this.workerStatsFingerprint = '';
-                    cacheRetryUsed = true;
-                    forceStatsData = true;
-                    continue;
+            while (attempt <= retries) {
+                try {
+                    return await this.postOnce(type, payload, resolvedTimeoutMs, { forceStatsData });
+                } catch (err) {
+                    if (
+                        err?.code === 'STRATEGY_WORKER_CACHE_EMPTY' &&
+                        !cacheRetryUsed &&
+                        Array.isArray(payload?.statsData)
+                    ) {
+                        console.warn(`[STRATEGY_WORKER_CACHE_EMPTY_RETRY] ${type} retrying with full statsData`);
+                        this.workerStatsFingerprint = '';
+                        cacheRetryUsed = true;
+                        forceStatsData = true;
+                        continue;
+                    }
+                    forceStatsData = false;
+                    const isTimeout = err?.code === 'WORKER_TIMEOUT';
+                    if (isTimeout && attempt < retries) {
+                        console.warn(`[WORKER_TIMEOUT_RETRY] ${type} attempt=${attempt + 1}/${retries + 1}`);
+                        this.resetWorker();
+                        attempt++;
+                        continue;
+                    }
+                    if (isTimeout) {
+                        this.resetWorker();
+                        throw createTimeoutError(resolvedTimeoutMs, true);
+                    }
+                    throw err;
                 }
-                forceStatsData = false;
-                const isTimeout = err?.code === 'WORKER_TIMEOUT';
-                if (isTimeout && attempt < retries) {
-                    console.warn(`[WORKER_TIMEOUT_RETRY] ${type} attempt=${attempt + 1}/${retries + 1}`);
-                    this.resetWorker();
-                    attempt++;
-                    continue;
-                }
-                if (isTimeout) {
-                    this.resetWorker();
-                    throw createTimeoutError(resolvedTimeoutMs, true);
-                }
-                throw err;
             }
-        }
 
-        throw createTimeoutError(resolvedTimeoutMs, true);
+            throw createTimeoutError(resolvedTimeoutMs, true);
+        };
+
+        const next = this._dispatchChain.then(run, run);
+        this._dispatchChain = next.catch(() => {});
+        return next;
     }
 
     warmup() {

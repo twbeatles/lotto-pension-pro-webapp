@@ -106,8 +106,10 @@ async function runCanary(page, { requireOfficial = false } = {}) {
             );
             const pensionLatest = data.state.pension720Stats?.[0] || null;
             const allowedSources = options.requireOfficial
-                ? ['official', 'official_cache']
-                : ['official', 'official_cache', 'static'];
+                ? ['official', 'official_cache', 'custom_proxy', 'third_party']
+                : ['official', 'official_cache', 'custom_proxy', 'third_party', 'static'];
+
+            const pensionRemote = typeof data.fetchPension720OfficialRemote === 'function';
 
             return {
                 latestDrawNo,
@@ -116,6 +118,10 @@ async function runCanary(page, { requireOfficial = false } = {}) {
                 pensionOk,
                 pensionHealth,
                 pensionLatest,
+                pensionRemote,
+                pensionSyncMeta: data.mergePension720SyncMeta?.(
+                    data.state.syncMeta?.pension720 || data.getDefaultPension720SyncMeta?.()
+                ),
                 allowedSources
             };
         },
@@ -148,10 +154,17 @@ async function main() {
             result.allowedSources.includes(result.pensionHealth.source),
             `Pension720 source must be ${result.allowedSources.join('/')} in browser runtime`
         );
-        if (!['official', 'official_cache'].includes(result.pensionHealth.source)) {
+        assert.equal(result.pensionRemote, true, 'browser canary must expose pension720 official remote fetch API');
+        if (result.pensionSyncMeta?.lastSuccessDrawNo) {
+            assert.ok(
+                result.pensionSyncMeta.lastSuccessDrawNo >= Number(result.pensionLatest?.draw_no || 0),
+                'pension720 sync meta must track the latest reflected draw'
+            );
+        }
+        if (!result.allowedSources.includes(result.pensionHealth.source)) {
             assert.match(
                 result.pensionHealth.message || '',
-                /기본 포함|캐시|공식/,
+                /기본 포함|캐시|공식|CORS|중계|연결/,
                 'browser runtime fallback must expose a data-source message'
             );
         }
@@ -171,7 +184,8 @@ async function main() {
                         source: result.pensionHealth.source,
                         availability: result.pensionHealth.availability,
                         latestDrawNo: result.pensionLatest?.draw_no || 0,
-                        message: result.pensionHealth.message
+                        message: result.pensionHealth.message,
+                        syncMeta: result.pensionSyncMeta
                     }
                 },
                 null,

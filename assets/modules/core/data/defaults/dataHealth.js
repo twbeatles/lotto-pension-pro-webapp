@@ -1,3 +1,5 @@
+import { getLottoLoadSourceLabel, LOTTO_LOAD_SOURCE_VALUES } from '../dataSource.js';
+
 export const dataDefaultsDataHealthMethods = {
     getDefaultDataHealth() {
         return {
@@ -33,10 +35,9 @@ export const dataDefaultsDataHealthMethods = {
     },
 
     getDataHealthSourceLabel(source = this.dataHealth?.source) {
-        if (source === 'static') return '기본 포함 데이터';
-        if (source === 'static_local') return '기본 포함 데이터 + 내 기기 보정';
-        if (source === 'local_only') return '내 기기 보정 데이터만';
-        return '데이터 없음';
+        return getLottoLoadSourceLabel(
+            LOTTO_LOAD_SOURCE_VALUES.includes(source) ? source : 'none'
+        );
     },
 
     getLocalRestoreSourceLabel(source = this.dataHealth?.source) {

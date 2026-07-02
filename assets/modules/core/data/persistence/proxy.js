@@ -1,6 +1,8 @@
 import { CONFIG } from '../../../utils/config.js';
+import { UIManager } from '../../UIManager.js';
 
 export const dataPersistenceProxyMethods = {
+    _queryProxyRejected: '',
     getCustomProxyInput() {
         return (this.state.customProxy || '').trim();
     },
@@ -95,9 +97,61 @@ export const dataPersistenceProxyMethods = {
         return null;
     },
 
+    _getQueryProxyFingerprint(queryProxy) {
+        return String(queryProxy?.input || queryProxy?.url || '').trim();
+    },
+
+    _isQueryProxySuppressed(queryProxy) {
+        const fingerprint = this._getQueryProxyFingerprint(queryProxy);
+        return Boolean(fingerprint && fingerprint === this._queryProxyRejected);
+    },
+
+    async ensureQueryProxyAcknowledged() {
+        const queryProxy = this.getQueryProxyUrl();
+        if (!queryProxy?.valid || !queryProxy?.url) return true;
+        if (this._isQueryProxySuppressed(queryProxy)) return false;
+
+        const fingerprint = this._getQueryProxyFingerprint(queryProxy);
+        try {
+            if (sessionStorage.getItem(CONFIG.KEYS.SESSION_QUERY_PROXY_ACK) === fingerprint) {
+                return true;
+            }
+        } catch (_e) {
+            // sessionStorage unavailable
+        }
+
+        if (typeof UIManager?.confirm !== 'function') return true;
+
+        const confirmed = await UIManager.confirm({
+            title: 'URL 데이터 연결 주소 확인',
+            message: [
+                '이 페이지 주소에 데이터 연결 프록시가 포함되어 있습니다.',
+                '',
+                fingerprint,
+                '',
+                '신뢰할 수 있는 주소인지 확인한 뒤 사용해 주세요. 취소하면 이번 세션에서는 URL 프록시를 무시하고 저장된 설정·기본 자동 동기화를 사용합니다.'
+            ].join('\n'),
+            confirmText: '이 주소 사용',
+            cancelText: '무시'
+        });
+
+        if (!confirmed) {
+            this._queryProxyRejected = fingerprint;
+            UIManager.toast('URL 프록시를 무시하고 기본 동기화 경로를 사용합니다.', 'info', 3500);
+            return false;
+        }
+
+        try {
+            sessionStorage.setItem(CONFIG.KEYS.SESSION_QUERY_PROXY_ACK, fingerprint);
+        } catch (_e) {
+            // ignore session write failures
+        }
+        return true;
+    },
+
     resolveProxyConfig() {
         const queryProxy = this.getQueryProxyUrl();
-        if (queryProxy) return queryProxy;
+        if (queryProxy && !this._isQueryProxySuppressed(queryProxy)) return queryProxy;
 
         const legacyProxy = this.readLegacyProxyUrl();
         if (legacyProxy) return this.buildProxyConfig('legacy settings (v1)', legacyProxy);

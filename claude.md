@@ -8,7 +8,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v30`
+- Service worker cache version: `v31`
 
 ## Current Data Baseline
 

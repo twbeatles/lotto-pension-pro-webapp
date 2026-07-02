@@ -2,10 +2,12 @@ import { appNetworkLifecycleRemoteSyncMethods } from './networkLifecycle/remoteS
 import { appNetworkLifecycleProbeMethods } from './networkLifecycle/networkProbe.js';
 import { appNetworkLifecycleAutoSyncMethods } from './networkLifecycle/autoSync.js';
 import { appNetworkLifecycleOfflineBannerMethods } from './networkLifecycle/offlineBanner.js';
+import { appNetworkLifecycleStorageFailureBannerMethods } from './networkLifecycle/storageFailureBanner.js';
 
 export const appNetworkLifecycleMethods = {
     ...appNetworkLifecycleRemoteSyncMethods,
     ...appNetworkLifecycleProbeMethods,
     ...appNetworkLifecycleAutoSyncMethods,
-    ...appNetworkLifecycleOfflineBannerMethods
+    ...appNetworkLifecycleOfflineBannerMethods,
+    ...appNetworkLifecycleStorageFailureBannerMethods
 };

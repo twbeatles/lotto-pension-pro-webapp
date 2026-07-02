@@ -11,6 +11,7 @@ export const lottoAppInitMethods = {
         UIManager.init();
         this.data.initCrossTabSync?.();
         this.data.load();
+        await this.data.ensureQueryProxyAcknowledged?.();
         this.applyTheme();
 
         this.generator = new GeneratorModule(this);
@@ -28,6 +29,7 @@ export const lottoAppInitMethods = {
         this.bindDataHealthActions();
         this.bindPersistenceEvents();
         this._bindOfflineBanner();
+        this._bindStorageFailureBanner();
         this._bindAutoSyncLifecycle();
         this._bindPwaInstallPrompt();
         this.renderSettingsPanel();

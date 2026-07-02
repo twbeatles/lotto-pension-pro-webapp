@@ -1759,6 +1759,26 @@
             "
         ></div>
 
+        <!-- 저장 실패 배너 -->
+        <div
+            id="storageFailureBanner"
+            hidden
+            aria-hidden="true"
+            style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 9998;
+                background: var(--warning, #f59e0b);
+                color: #111;
+                text-align: center;
+                padding: 8px 16px;
+                font-size: 0.875rem;
+                font-weight: 600;
+            "
+        ></div>
+
         <!-- 오프라인 배너 -->
         <div
             id="offlineBanner"
@@ -1906,9 +1926,17 @@
                                     class="settings-proxy-input"
                                 />
                                 <p id="customProxyHelp" class="subtitle settings-caption">
-                                    비워두면 기본 자동 동기화를 사용합니다. 고급 연결 형식:
-                                    https://&lt;worker&gt;.workers.dev/proxy/latest
+                                    비워두면 기본 자동 동기화를 사용합니다. 브라우저에서는 공식 API가 막힐 수 있어
+                                    corsproxy.io 등 공개 CORS 중계를 시도합니다. 안정적인 운영에는 자체 Worker 배포를
+                                    권장합니다. 형식: https://&lt;worker&gt;.workers.dev/proxy/latest (연금복권은
+                                    /proxy/pension720/list 자동 연동)
                                 </p>
+                                <p
+                                    id="queryProxyNotice"
+                                    class="settings-note settings-warning-note"
+                                    hidden
+                                    style="display: none"
+                                ></p>
                                 <p
                                     id="customProxyStatusNote"
                                     class="settings-note settings-warning-note"
@@ -1941,6 +1969,29 @@
                             </p>
                             <p id="syncDataFreshnessSummary" class="settings-note">
                                 내 데이터와 예상 최신 회차를 비교하는 중입니다.
+                            </p>
+
+                            <div class="sync-meta-grid">
+                                <div class="sync-meta-item">
+                                    <span class="sync-meta-label">연금복권 소스</span>
+                                    <strong id="pension720SyncMetaSource">-</strong>
+                                </div>
+                                <div class="sync-meta-item">
+                                    <span class="sync-meta-label">연금복권 최신 회차</span>
+                                    <strong id="pension720SyncMetaDraw">-</strong>
+                                </div>
+                                <div class="sync-meta-item">
+                                    <span class="sync-meta-label">연금 마지막 성공</span>
+                                    <strong id="pension720SyncMetaLastSuccess">-</strong>
+                                </div>
+                                <div class="sync-meta-item">
+                                    <span class="sync-meta-label">연금 마지막 반영 회차</span>
+                                    <strong id="pension720SyncMetaLastDraw">-</strong>
+                                </div>
+                            </div>
+                            <p id="pension720SyncMetaLastFailure" class="settings-note">-</p>
+                            <p id="pension720SyncMetaMessage" class="settings-note">
+                                연금복권 데이터 상태를 확인하는 중입니다.
                             </p>
 
                             <div class="button-group settings-button-group">

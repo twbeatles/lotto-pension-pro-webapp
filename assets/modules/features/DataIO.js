@@ -8,6 +8,7 @@ export class DataIOModule {
     constructor(app) {
         this.app = app;
         this.data = app.data;
+        this._importInFlight = false;
         this.bindEvents();
     }
 }

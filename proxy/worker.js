@@ -1,6 +1,9 @@
+import { extractPension720ListFromPayload } from '../assets/modules/core/data/pension720/remoteFetch.js';
+import { extractSingleDrawFromPayload } from '../assets/modules/core/data/sync/lottoPayloadCore.js';
 import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
 
 const DEFAULT_OFFICIAL_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
+const PENSION720_OFFICIAL_LIST_URL = 'https://www.dhlottery.co.kr/pt720/selectPstPt720WnList.do';
 const MAX_RANGE = 40;
 const RANGE_CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 4000;
@@ -114,29 +117,6 @@ const fetchOfficialRaw = async (drawNo) => {
     }
 };
 
-const normalizeOfficialData = (raw) => {
-    const drawNo = Number(raw?.ltEpsd);
-    if (!Number.isInteger(drawNo) || drawNo < 1) return null;
-
-    const dateRaw = String(raw?.ltRflYmd || '');
-    const date =
-        dateRaw.length === 8 ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}` : dateRaw;
-
-    const numbers = [raw.tm1WnNo, raw.tm2WnNo, raw.tm3WnNo, raw.tm4WnNo, raw.tm5WnNo, raw.tm6WnNo].map(Number);
-
-    if (numbers.some((n) => Number.isNaN(n))) return null;
-
-    return {
-        draw_no: drawNo,
-        date,
-        numbers,
-        bonus: Number(raw.bnsWnNo || 0),
-        prize_amount: Number(raw.rnk1WnAmt || 0),
-        winners_count: Number(raw.rnk1WnNope || 0),
-        total_sales: Number(raw.rlvtEpsdSumNtslAmt || 0)
-    };
-};
-
 const toLegacyDataRow = (row) => {
     const date = String(row?.date || '').replaceAll('-', '');
     const nums = Array.isArray(row?.numbers) ? row.numbers : [];
@@ -156,6 +136,32 @@ const toLegacyDataRow = (row) => {
     };
 };
 
+const fetchPension720OfficialList = async () => {
+    try {
+        const res = await fetchWithRetry(PENSION720_OFFICIAL_LIST_URL, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0',
+                Referer: 'https://www.dhlottery.co.kr/',
+                Accept: 'application/json, text/javascript, */*; q=0.01',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        const text = await res.text();
+        if (!res.ok) return null;
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch (_e) {
+            return null;
+        }
+        const list = extractPension720ListFromPayload(parsed);
+        return list.length ? list : null;
+    } catch (_e) {
+        return null;
+    }
+};
+
 const getOneDraw = async (drawNo) => {
     const { ok, text } = await fetchOfficialRaw(drawNo);
     if (!ok) return null;
@@ -165,9 +171,7 @@ const getOneDraw = async (drawNo) => {
     } catch (e) {
         return null;
     }
-    const list = parsed?.data?.list;
-    if (!Array.isArray(list) || list.length === 0) return null;
-    return normalizeOfficialData(list[0]);
+    return extractSingleDrawFromPayload(parsed);
 };
 
 async function getRange(from, to) {
@@ -296,6 +300,19 @@ export default {
                     ...legacy,
                     normalized: [row],
                     meta: { format: 'hybrid' }
+                });
+            });
+        }
+
+        if (url.pathname === '/proxy/pension720/list') {
+            const ttlSeconds = TTL_NEAR_LATEST_SECONDS;
+            return respondWithEdgeCache(request, ttlSeconds, async () => {
+                const list = await fetchPension720OfficialList();
+                if (!list) return toJsonResponse({ error: 'upstream error' }, { status: 502 });
+                return toJsonResponse({
+                    data: list,
+                    count: list.length,
+                    meta: { format: 'official_list' }
                 });
             });
         }

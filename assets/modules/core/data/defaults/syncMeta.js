@@ -1,6 +1,34 @@
 import { $ } from '../../../utils/utils.js';
 
 export const dataDefaultsSyncMetaMethods = {
+    getDefaultPension720SyncMeta() {
+        return {
+            currentSource: '',
+            lastSuccessAt: '',
+            lastSuccessDrawNo: 0,
+            lastFailureAt: '',
+            lastFailureMessage: ''
+        };
+    },
+
+    mergePension720SyncMeta(raw) {
+        const defaults = this.getDefaultPension720SyncMeta();
+        const input = raw && typeof raw === 'object' ? raw : {};
+        return {
+            currentSource:
+                typeof input.currentSource === 'string'
+                    ? input.currentSource.slice(0, 80)
+                    : defaults.currentSource,
+            lastSuccessAt: typeof input.lastSuccessAt === 'string' ? input.lastSuccessAt : defaults.lastSuccessAt,
+            lastSuccessDrawNo: Math.max(0, Math.floor(Number(input.lastSuccessDrawNo || 0))),
+            lastFailureAt: typeof input.lastFailureAt === 'string' ? input.lastFailureAt : defaults.lastFailureAt,
+            lastFailureMessage:
+                typeof input.lastFailureMessage === 'string'
+                    ? input.lastFailureMessage.slice(0, 240)
+                    : defaults.lastFailureMessage
+        };
+    },
+
     getDefaultSyncMeta() {
         return {
             mode: 'automatic_fallback',
@@ -10,7 +38,8 @@ export const dataDefaultsSyncMetaMethods = {
             lastFailureAt: '',
             lastFailureMessage: '',
             lastWarningAt: '',
-            lastWarningMessage: ''
+            lastWarningMessage: '',
+            pension720: this.getDefaultPension720SyncMeta()
         };
     },
 
@@ -35,7 +64,8 @@ export const dataDefaultsSyncMetaMethods = {
             lastWarningMessage:
                 typeof input.lastWarningMessage === 'string'
                     ? input.lastWarningMessage.slice(0, 240)
-                    : defaults.lastWarningMessage
+                    : defaults.lastWarningMessage,
+            pension720: this.mergePension720SyncMeta(input.pension720)
         };
     },
 

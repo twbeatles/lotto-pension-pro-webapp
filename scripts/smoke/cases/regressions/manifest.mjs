@@ -4,6 +4,7 @@ import { syncPlan } from './plan/sync.mjs';
 import { pension720Plan } from './plan/pension720.mjs';
 import { importRuntimePlan } from './plan/import-runtime.mjs';
 import { uiAssetDocsPlan } from './plan/ui-assets-docs.mjs';
+import { auditFixesPlan } from './plan/auditFixes.mjs';
 
 const regressionExecutionPlan = [
     ...coreStrategyPlan,
@@ -11,6 +12,7 @@ const regressionExecutionPlan = [
     ...syncPlan,
     ...pension720Plan,
     ...importRuntimePlan,
+    ...auditFixesPlan,
     ...uiAssetDocsPlan
 ];
 

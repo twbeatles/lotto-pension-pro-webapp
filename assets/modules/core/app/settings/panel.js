@@ -110,7 +110,59 @@ export const appSettingsPanelMethods = {
         const freshnessSummary = this.data.getDataFreshnessSummary?.(freshness) || '';
         const freshnessSummaryEl = $('#syncDataFreshnessSummary');
         if (freshnessSummaryEl) freshnessSummaryEl.textContent = freshnessSummary;
+
+        const queryProxy = this.data.getQueryProxyUrl?.();
+        const queryProxyNotice = $('#queryProxyNotice');
+        if (queryProxyNotice) {
+            const suppressed = this.data._isQueryProxySuppressed?.(queryProxy);
+            const showNotice = Boolean(queryProxy?.valid && queryProxy?.url);
+            queryProxyNotice.hidden = !showNotice;
+            queryProxyNotice.style.display = showNotice ? 'block' : 'none';
+            if (showNotice) {
+                queryProxyNotice.textContent = suppressed
+                    ? `URL 프록시(${queryProxy.input})를 이번 세션에서 무시하고 있습니다.`
+                    : `URL 프록시가 활성화되어 있습니다: ${queryProxy.input}`;
+            }
+        }
+
         const syncMeta = this.data.state.syncMeta || this.data.getDefaultSyncMeta?.() || {};
+        const pensionHealth = this.data.pension720DataHealth || this.data.getDefaultPension720DataHealth?.();
+        const pensionSyncMeta = this.data.mergePension720SyncMeta?.(
+            syncMeta.pension720 || this.data.getDefaultPension720SyncMeta?.()
+        ) || {};
+        const pensionSourceEl = $('#pension720SyncMetaSource');
+        if (pensionSourceEl) {
+            pensionSourceEl.textContent =
+                pensionSyncMeta.currentSource ||
+                this.data.getPension720DataHealthSourceLabel?.(pensionHealth.source) ||
+                '-';
+        }
+        const pensionDrawEl = $('#pension720SyncMetaDraw');
+        if (pensionDrawEl) {
+            pensionDrawEl.textContent = pensionHealth.latestDrawNo ? `${pensionHealth.latestDrawNo}회차` : '-';
+        }
+        const pensionSuccessEl = $('#pension720SyncMetaLastSuccess');
+        if (pensionSuccessEl) {
+            pensionSuccessEl.textContent = pensionSyncMeta.lastSuccessAt
+                ? this.formatDateTime(pensionSyncMeta.lastSuccessAt)
+                : '-';
+        }
+        const pensionLastDrawEl = $('#pension720SyncMetaLastDraw');
+        if (pensionLastDrawEl) {
+            pensionLastDrawEl.textContent = pensionSyncMeta.lastSuccessDrawNo
+                ? `${pensionSyncMeta.lastSuccessDrawNo}회차`
+                : '-';
+        }
+        const pensionFailureEl = $('#pension720SyncMetaLastFailure');
+        if (pensionFailureEl) {
+            pensionFailureEl.textContent = pensionSyncMeta.lastFailureMessage
+                ? `${this.formatDateTime(pensionSyncMeta.lastFailureAt)} · ${pensionSyncMeta.lastFailureMessage}`
+                : '-';
+        }
+        const pensionMessageEl = $('#pension720SyncMetaMessage');
+        if (pensionMessageEl) {
+            pensionMessageEl.textContent = pensionHealth.message || '연금복권 데이터 상태를 확인하는 중입니다.';
+        }
         const syncModeEl = $('#syncMetaMode');
         if (syncModeEl) syncModeEl.textContent = this.data.getSyncModeLabel(syncMeta.mode);
         const syncSourceEl = $('#syncMetaSource');
@@ -179,5 +231,6 @@ export const appSettingsPanelMethods = {
         }
 
         this.renderPwaUpdateState?.();
+        this.updateStorageFailureBanner?.();
     }
 };

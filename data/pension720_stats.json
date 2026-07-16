@@ -1,5 +1,14 @@
 [
   {
+    "draw_no": 324,
+    "date": "2026-07-16",
+    "group": 2,
+    "digits": [4, 8, 5, 2, 1, 6],
+    "number": "485216",
+    "bonus_digits": [0, 6, 1, 9, 1, 8],
+    "bonus_number": "061918"
+  },
+  {
     "draw_no": 323,
     "date": "2026-07-09",
     "group": 4,

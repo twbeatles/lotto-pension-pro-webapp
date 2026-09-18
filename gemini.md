@@ -114,6 +114,8 @@ npm run build:release:browser
 Optional:
 
 ```bash
+npm run audit:sites
+npm run sync:all
 npm run sync:sw-manifest
 npm run sync:docs-data-baseline
 npm run sync:lotto

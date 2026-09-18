@@ -51,8 +51,8 @@
 
 | 데이터 | 파일 | 문서 기준 |
 |--------|------|-----------|
-| 로또 6/45 | `data/winning_stats.json` | latest `1239`, rows `1238`, missing `[146]` |
-| 연금복권720+ | `data/pension720_stats.json` | latest `330` (`2026-08-27`, `4조 125905` / bonus `493800`) |
+| 로또 6/45 | `data/winning_stats.json` | latest `1241`, rows `1240`, missing `[146]` |
+| 연금복권720+ | `data/pension720_stats.json` | latest `333` (`2026-09-17`, `4조 008973` / bonus `050305`) |
 | SW | `sw.js` | `CACHE_VERSION = v32` |
 | Strategy worker | config | `STRATEGY_WORKER_ASSET_VERSION = v23` |
 

@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DOC_PATHS = ['README.md', 'claude.md', 'gemini.md', 'deploy_github_pages.md'];
+const DOC_PATHS = ['README.md', 'claude.md', 'gemini.md', 'deploy_github_pages.md', 'PROJECT_AUDIT.md'];
 const LOTTO_PATH = resolve('data/winning_stats.json');
 const PENSION720_PATH = resolve('data/pension720_stats.json');
 const __filename = fileURLToPath(import.meta.url);
@@ -70,6 +70,14 @@ function updateDocSource(source, baseline) {
         updatePensionSection(section, baseline)
     );
     next = replaceSection(next, '- Pension720+:', '\n\n', (section) => updatePensionSection(section, baseline));
+    next = next.replace(
+        /(\| 로또 6\/45 \| `data\/winning_stats\.json` \| latest `)\d+(`,\s*rows `)\d+(`,\s*missing `\[146\]` \|)/g,
+        `$1${baseline.lottoLatestDrawNo}$2${baseline.lottoRows}$3`
+    );
+    next = next.replace(
+        /(\| 연금복권720\+ \| `data\/pension720_stats\.json` \| latest `)\d+(` \(`)[^`]+(`,\s*`)[^`]+(` \/ bonus `)[^`]+(`\) \|)/g,
+        `$1${baseline.pensionLatestDrawNo}$2${baseline.pensionLatestDate}$3${baseline.pensionLatestPrimary}$4${baseline.pensionLatestBonus}$5`
+    );
     return next;
 }
 

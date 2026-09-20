@@ -4,7 +4,7 @@ import { relative } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { safeHtml } from '../../../../assets/modules/utils/dom.js';
 import { buildPrecacheManifest, renderManifestSource } from '../../../generate_sw_manifest.mjs';
-import { getDataBaseline, updateDocSource } from '../../../update_docs_data_baseline.mjs';
+import { DOC_PATHS, getDataBaseline, updateDocSource } from '../../../update_docs_data_baseline.mjs';
 
 function normalizeLineEndings(text = '') {
     return String(text).replace(/\r\n/g, '\n');
@@ -345,11 +345,20 @@ async function runDocsDataBaselineRegression() {
         JSON.parse(await readFile(resolve(process.cwd(), 'data/winning_stats.json'), 'utf8')),
         JSON.parse(await readFile(resolve(process.cwd(), 'data/pension720_stats.json'), 'utf8'))
     );
-    const docs = ['README.md', 'claude.md', 'gemini.md', 'deploy_github_pages.md'];
+    const docs = DOC_PATHS;
 
     for (const doc of docs) {
         const source = await readFile(resolve(process.cwd(), doc), 'utf8');
         assert.equal(updateDocSource(source, baseline), source, `${doc} must match the checked-in data baseline`);
+    }
+
+    const workflowSource = await readFile(resolve(process.cwd(), '.github/workflows/data-freshness.yml'), 'utf8');
+    const stagedLines = workflowSource.split('\n').filter((line) => line.includes('git add'));
+    for (const doc of DOC_PATHS) {
+        assert.ok(
+            stagedLines.some((line) => line.includes(doc)),
+            `data-freshness workflow must stage ${doc} so auto-refresh commits keep the docs baseline green`
+        );
     }
 }
 

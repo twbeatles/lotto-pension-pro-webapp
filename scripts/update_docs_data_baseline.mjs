@@ -127,4 +127,4 @@ if (process.argv[1] && resolve(process.argv[1]) === __filename) {
     });
 }
 
-export { getDataBaseline, updateDocSource };
+export { DOC_PATHS, getDataBaseline, updateDocSource };

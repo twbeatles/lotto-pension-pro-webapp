@@ -1,63 +1,38 @@
 import { extractPension720ListFromPayload } from '../assets/modules/core/data/pension720/remoteFetch.js';
 import { extractSingleDrawFromPayload } from '../assets/modules/core/data/sync/lottoPayloadCore.js';
 import { estimateLatestDrawKST } from '../assets/modules/utils/utils.js';
+import {
+    ALLOWED_DHLOTTERY_PATH_PREFIXES,
+    DEFAULT_CORS,
+    isAllowedDhlotteryProxyPath,
+    resolveCorsHeaders
+} from './lib/cors.js';
+import {
+    MAX_FUTURE_DRAW_SLACK,
+    TTL_NEAR_LATEST_SECONDS,
+    getMaxAllowedDrawNo,
+    isAllowedProxyDrawNo,
+    resolveLatestTtl,
+    resolveRangeTtl
+} from './lib/drawPolicy.js';
+import { fetchWithRetry } from './lib/fetchUtils.js';
+
+export {
+    ALLOWED_DHLOTTERY_PATH_PREFIXES,
+    isAllowedDhlotteryProxyPath,
+    resolveCorsHeaders,
+    MAX_FUTURE_DRAW_SLACK,
+    getMaxAllowedDrawNo,
+    isAllowedProxyDrawNo
+};
 
 const DEFAULT_OFFICIAL_API_URL = 'https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=';
 const PENSION720_OFFICIAL_LIST_URL = 'https://www.dhlottery.co.kr/pt720/selectPstPt720WnList.do';
 const MAX_RANGE = 40;
 const RANGE_CONCURRENCY = 4;
-const FETCH_TIMEOUT_MS = 4000;
-const FETCH_RETRY_COUNT = 1;
-const TTL_NEAR_LATEST_SECONDS = 60;
-const TTL_HISTORICAL_SECONDS = 6 * 60 * 60;
-const TTL_HISTORICAL_RANGE_SECONDS = 12 * 60 * 60;
-export const MAX_FUTURE_DRAW_SLACK = 1;
-
-/** Official lottery path prefixes allowed for `?url=` passthrough. */
-export const ALLOWED_DHLOTTERY_PATH_PREFIXES = ['/lt645/', '/pt720/'];
-
-const DEFAULT_CORS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-};
 
 /** Request-scoped CORS headers (set at the start of each fetch). */
 let activeCors = { ...DEFAULT_CORS };
-
-/**
- * Resolve CORS headers from optional Worker env `CORS_ALLOWED_ORIGINS`
- * (comma-separated origin list). Empty / missing keeps `*` for backward compatibility.
- */
-export function resolveCorsHeaders(request, env = {}) {
-    const configured = String(env?.CORS_ALLOWED_ORIGINS || env?.ALLOWED_ORIGINS || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    const base = {
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-    };
-    if (!configured.length || configured.includes('*')) {
-        return { ...base, 'Access-Control-Allow-Origin': '*' };
-    }
-    const origin = request?.headers?.get?.('Origin') || '';
-    if (origin && configured.includes(origin)) {
-        return { ...base, 'Access-Control-Allow-Origin': origin, Vary: 'Origin' };
-    }
-    if (!origin) {
-        return { ...base, 'Access-Control-Allow-Origin': configured[0], Vary: 'Origin' };
-    }
-    // Disallowed browser origin: omit ACAO so the browser blocks the response body.
-    return { ...base, Vary: 'Origin' };
-}
-
-export function isAllowedDhlotteryProxyPath(pathname = '') {
-    const path = String(pathname || '');
-    return ALLOWED_DHLOTTERY_PATH_PREFIXES.some((prefix) => path.startsWith(prefix) || path.includes(prefix));
-}
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toJsonResponse = (body, init = {}) => {
     const payload = typeof body === 'string' ? body : JSON.stringify(body);
@@ -99,40 +74,6 @@ async function respondWithEdgeCache(request, ttlSeconds, producer) {
     const cacheReady = withCacheMeta(fresh.clone(), ttlSeconds, 'MISS');
     await cache.put(cacheKey, cacheReady.clone());
     return withCacheMeta(fresh, ttlSeconds, 'MISS');
-}
-
-async function fetchWithTimeout(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await fetch(url, {
-            ...init,
-            signal: controller.signal
-        });
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-async function fetchWithRetry(url, init = {}, retries = FETCH_RETRY_COUNT) {
-    let lastError = null;
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-            const res = await fetchWithTimeout(url, init, FETCH_TIMEOUT_MS);
-            if (!res.ok && res.status >= 500 && attempt < retries) {
-                await sleep(120 * (attempt + 1));
-                continue;
-            }
-            return res;
-        } catch (err) {
-            lastError = err;
-            if (attempt < retries) {
-                await sleep(120 * (attempt + 1));
-                continue;
-            }
-        }
-    }
-    throw lastError || new Error('upstream fetch failed');
 }
 
 const fetchOfficialRaw = async (drawNo) => {
@@ -239,17 +180,6 @@ async function getRange(from, to) {
     return { from, to, count: data.length, missing, data };
 }
 
-const isNearLatestDraw = (drawNo) => {
-    const latestEstimate = estimateLatestDrawKST();
-    return Number(drawNo) >= Math.max(latestEstimate - 1, 1);
-};
-
-export const getMaxAllowedDrawNo = (nowKstUtc = undefined) =>
-    estimateLatestDrawKST(nowKstUtc) + MAX_FUTURE_DRAW_SLACK;
-
-export const isAllowedProxyDrawNo = (drawNo, nowKstUtc = undefined) =>
-    Number.isInteger(drawNo) && drawNo >= 1 && drawNo <= getMaxAllowedDrawNo(nowKstUtc);
-
 const futureDrawResponse = (drawNo, maxDrawNo) =>
     toJsonResponse(
         { error: 'draw_no too far in future', drawNo, maxDrawNo },
@@ -258,9 +188,6 @@ const futureDrawResponse = (drawNo, maxDrawNo) =>
             headers: { 'X-Lotto-Cache': 'BYPASS' }
         }
     );
-
-const resolveLatestTtl = (drawNo) => (isNearLatestDraw(drawNo) ? TTL_NEAR_LATEST_SECONDS : TTL_HISTORICAL_SECONDS);
-const resolveRangeTtl = (to) => (isNearLatestDraw(to) ? TTL_NEAR_LATEST_SECONDS : TTL_HISTORICAL_RANGE_SECONDS);
 
 export { estimateLatestDrawKST };
 

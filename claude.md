@@ -36,6 +36,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
     - `assets/modules/core/data/pension720.js` facade -> `assets/modules/core/data/pension720/`
     - `assets/modules/features/Pension720.js` facade -> `assets/modules/features/pension720/`
 - Data import/export UI keeps `assets/modules/features/DataIO.js`, `dataio/support.js`, and `dataio/importExport.js` as public composition points; detailed backup, preview, normalizer, status, and import flow logic lives under `assets/modules/features/dataio/`.
+- Settings panel keeps `assets/modules/core/app/settings/panel.js` as orchestrator; theme/storage/proxy/sync section renderers live under `assets/modules/core/app/settings/panel/`.
 - Smoke regressions keep the `scripts/smoke/cases/regressions.mjs` barrel and `regressions/manifest.mjs` public plan; large regression groups are split under `regressions/{data,generator,sync,ui,plan}/`.
 - Storage keys under `CONFIG.KEYS` intentionally keep existing `lotto_pro_*` names for user data compatibility.
 - Pension720+ official cache uses `lotto_pro_pension720_stats_cache_v1`.
@@ -95,7 +96,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Official Lotto JSON is `https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do?srchLtEpsd=`; Pension720+ JSON is `https://www.dhlottery.co.kr/pt720/selectPstPt720WnList.do`. The legacy `common.do?method=getLottoNumber` endpoint now returns HTML and is unused.
 - Paper QR parsing accepts `m.dhlottery.co.kr`, `www.dhlottery.co.kr`, and apex `dhlottery.co.kr`, including `/qr.do?method=winQr` payloads with `q`/`m`/`n`/`s` game markers. Lookalike subdomains are rejected.
 - Network reachability probe uses `https://www.dhlottery.co.kr/`; the Cloudflare Worker Lotto Referer uses `/lt645/intro`.
-- Cloudflare Worker (`proxy/worker.js`): optional `CORS_ALLOWED_ORIGINS`; `?url=` passthrough limited to `www.dhlottery.co.kr` paths under `/lt645/` and `/pt720/`.
+- Cloudflare Worker (`proxy/worker.js` composition root -> `proxy/lib/` for CORS, draw-policy, and fetch helpers): optional `CORS_ALLOWED_ORIGINS`; `?url=` passthrough limited to `www.dhlottery.co.kr` paths under `/lt645/` and `/pt720/`.
 - `npm run check:asset-versions` guards `CACHE_VERSION` / `STRATEGY_WORKER_ASSET_VERSION` wiring (and git-base bumps when available).
 - Audit reports: `PROJECT_AUDIT.md` (functional), `PROJECT_AUDIT_SCOPES.md` (performance/a11y/PWA/security/CI).
 

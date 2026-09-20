@@ -53,6 +53,10 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/core/app/settings/modal.js",
         "./assets/modules/core/app/settings/notifications.js",
         "./assets/modules/core/app/settings/panel.js",
+        "./assets/modules/core/app/settings/panel/proxySection.js",
+        "./assets/modules/core/app/settings/panel/storageSection.js",
+        "./assets/modules/core/app/settings/panel/syncSection.js",
+        "./assets/modules/core/app/settings/panel/themeSection.js",
         "./assets/modules/core/app/settingsPanel.js",
         "./assets/modules/core/app/targetDraw.js",
         "./assets/modules/core/app/theme.js",
@@ -329,5 +333,5 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ],
-    "version": "sha256-eafd5b832644bbfc"
+    "version": "sha256-6c002649695c0d7b"
 });

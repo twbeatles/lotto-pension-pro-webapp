@@ -14,6 +14,7 @@ Cloudflare Worker 예시가 포함되어 있습니다.
 - 앱은 `/proxy/latest`만 설정해도 연금복권 갱신용 `/proxy/pension720/list` URL을 같은 Worker에서 자동 유도합니다.
 - CI/정적 스냅샷 갱신은 `scripts/fetch_pension720_stats.mjs`가 동행복권 `pt720/selectPstPt720WnList.do`를 직접 확인합니다.
 - Lotto 6/45 공식 JSON은 `lt645/selectPstLt645Info.do?srchLtEpsd=`. Worker 업스트림 Referer는 `/lt645/intro`입니다. 옛 `common.do?method=getLottoNumber`는 HTML을 반환하므로 사용하지 않습니다.
+- `worker.js`는 라우트 조합 루트이며, CORS·회차 정책·전송 헬퍼는 `proxy/lib/`에 분리되어 있습니다. 배포 진입점(`wrangler deploy proxy/worker.js`)과 공개 export는 그대로 유지됩니다.
 
 ## 배포 (Cloudflare Workers)
 

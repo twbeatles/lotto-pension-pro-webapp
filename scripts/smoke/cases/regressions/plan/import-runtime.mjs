@@ -121,6 +121,11 @@ const importRuntimePlan = [
         awaited: true
     },
     {
+        name: 'runBootFailureSurfaceRegression',
+        label: 'boot failure surface regression',
+        awaited: true
+    },
+    {
         name: 'runLottoAppInitSequenceRegression',
         label: 'lotto app init sequence regression',
         awaited: true

@@ -448,6 +448,30 @@ async function runStrategyWorkerStatsFingerprintRegression() {
     assert.notEqual(posts[0].payload.statsKey, posts[1].payload.statsKey, 'stats fingerprint must include all rows');
 }
 
+async function runStrategyWorkerAssetPathRegression() {
+    const clientSource = await readFile(
+        resolve(process.cwd(), 'assets/modules/core/strategyWorkerClient/client.js'),
+        'utf8'
+    );
+    const match = clientSource.match(/new URL\('([^']*strategy\.worker\.js)'\s*,\s*import\.meta\.url\)/);
+    assert.ok(match, 'strategy worker client must build its worker URL relative to import.meta.url');
+    const workerPath = resolve(process.cwd(), 'assets/modules/core/strategyWorkerClient', match[1]);
+    const workerSource = await readFile(workerPath, 'utf8');
+    assert.ok(
+        workerSource.includes('GENERATE'),
+        'strategy worker URL must resolve to the real generation worker asset on disk'
+    );
+    assert.ok(
+        workerPath.replace(/\\/g, '/').endsWith('/assets/strategy.worker.js'),
+        'strategy worker URL must resolve inside the precached assets directory'
+    );
+    const manifestSource = await readFile(resolve(process.cwd(), 'assets/sw-precache-manifest.js'), 'utf8');
+    assert.ok(
+        manifestSource.includes('"./assets/strategy.worker.js"'),
+        'resolved strategy worker asset must stay in the service-worker precache manifest'
+    );
+}
+
 function runBackupSmoke(stats) {
     const state = {
         theme: 'dark',
@@ -523,6 +547,7 @@ export {
     runGenerateMultipleSetsMaxCountRegression,
     runNoSeedRuntimeEntropyRegression,
     runRecommendationRuntimePolicyRegression,
+    runStrategyWorkerAssetPathRegression,
     runStrategyWorkerFinalTimeoutTerminatesRegression,
     runStrategyWorkerStatsCacheEmptyRetryRegression,
     runStrategyWorkerStatsFingerprintRegression,

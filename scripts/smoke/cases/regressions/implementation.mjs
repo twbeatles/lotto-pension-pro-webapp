@@ -593,6 +593,33 @@ async function runLottoAppInitSequenceRegression() {
     assert.match(initBlock, /queueAutoSync/, 'init must queue auto-sync when bootstrap recovery is needed');
 }
 
+async function runBootFailureSurfaceRegression() {
+    const [indexSource, bootstrapSource] = await Promise.all([
+        readFile(resolve(process.cwd(), 'index.html'), 'utf8'),
+        readFile(resolve(process.cwd(), 'assets/modules/index.js'), 'utf8')
+    ]);
+    assert.match(
+        indexSource,
+        /<noscript>[\s\S]*자바스크립트[\s\S]*<\/noscript>/,
+        'app shell must explain JS-disabled boot failure without running scripts'
+    );
+    assert.match(
+        bootstrapSource,
+        /routeToken > 0/,
+        'boot watchdog must stay silent once the first route has bound the tabs'
+    );
+    assert.match(
+        bootstrapSource,
+        /bootNotice/,
+        'boot failure must surface a visible notice instead of a silently dead screen'
+    );
+    assert.match(
+        bootstrapSource,
+        /\.init\(\)\.then\(/,
+        'bootstrap must observe init rejection instead of leaving unhandled rejections'
+    );
+}
+
 async function runDataManagerLoadNormalizationRegression() {
     const previousStorage = globalThis.localStorage;
     const storage = makeMemoryStorage({
@@ -698,6 +725,7 @@ async function runPwaCacheHealthRegression() {
 
 export {
     runAutoSyncAvailabilityRegression,
+    runBootFailureSurfaceRegression,
     runDataManagerLoadNormalizationRegression,
     runDestructiveBackupAbortRegression,
     runDomSelectorContractRegression,

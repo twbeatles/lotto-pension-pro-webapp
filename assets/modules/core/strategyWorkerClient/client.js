@@ -19,7 +19,7 @@ export class StrategyWorkerClient {
             throw new Error('Worker API is not available in this environment.');
         }
 
-        const url = new URL('../../strategy.worker.js', import.meta.url);
+        const url = new URL('../../../strategy.worker.js', import.meta.url);
         url.searchParams.set('v', STRATEGY_WORKER_ASSET_VERSION);
         this.worker = new Worker(url, { type: 'module' });
         this.worker.onmessage = (event) => this.handleMessage(event.data || {});

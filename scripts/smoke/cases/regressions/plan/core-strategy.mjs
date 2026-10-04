@@ -20,6 +20,11 @@ const coreStrategyPlan = [
         argKey: 'stats180'
     },
     {
+        name: 'runStrategyWorkerAssetPathRegression',
+        label: 'strategy worker asset path regression',
+        awaited: true
+    },
+    {
         name: 'runStrategyWorkerFinalTimeoutTerminatesRegression',
         label: 'strategy worker final-timeout termination regression',
         awaited: true

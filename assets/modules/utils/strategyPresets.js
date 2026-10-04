@@ -67,7 +67,7 @@ export class StrategyPresetController {
         select.innerHTML = '';
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = presets.length ? '저장된 프리셋 선택' : '저장된 프리셋 없음';
+        placeholder.textContent = presets.length ? '저장한 설정 고르기' : '저장한 설정 없음';
         select.appendChild(placeholder);
 
         presets.forEach((preset) => {
@@ -92,7 +92,7 @@ export class StrategyPresetController {
         this.data.setStrategyPrefs(this.scope, preset.request);
         this.data.save(true);
         this.render(preset.id);
-        UIManager.toast(`'${preset.name}' 프리셋을 불러왔습니다.`, 'success');
+        UIManager.toast(`'${preset.name}' 설정을 적용했습니다.`, 'success');
     }
 
     async saveCurrent() {
@@ -111,7 +111,7 @@ export class StrategyPresetController {
         if (rawName == null) return;
         const name = String(rawName).trim();
         if (!name) {
-            UIManager.toast('프리셋 이름을 입력하세요.', 'warning');
+            UIManager.toast('설정 이름을 입력하세요.', 'warning');
             return;
         }
 
@@ -119,20 +119,20 @@ export class StrategyPresetController {
         if (existing) {
             const confirmed = await UIManager.confirm({
                 title: UI_STRINGS.presets.overwriteTitle(name),
-                message: `'${name}' 이름으로 저장된 프리셋이 있습니다. 현재 설정으로 덮어씁니다.`
+                message: `'${name}' 이름의 설정이 이미 있습니다. 현재 설정으로 덮어씁니다.`
             });
             if (!confirmed) return;
         }
 
         const saved = this.data.saveStrategyPreset(this.scope, name, request);
         if (!saved?.preset) {
-            UIManager.toast('프리셋 저장에 실패했습니다.', 'error');
+            UIManager.toast('설정 저장에 실패했습니다.', 'error');
             return;
         }
 
         this.render(saved.preset.id);
         UIManager.toast(
-            saved.replaced ? `'${name}' 프리셋을 덮어썼습니다.` : `'${name}' 프리셋을 저장했습니다.`,
+            saved.replaced ? `'${name}' 설정을 덮어썼습니다.` : `'${name}' 설정을 저장했습니다.`,
             'success'
         );
     }
@@ -142,15 +142,15 @@ export class StrategyPresetController {
         if (!preset) return;
         const confirmed = await UIManager.confirm({
             title: UI_STRINGS.presets.deleteTitle(preset.name),
-            message: '삭제한 프리셋은 되돌릴 수 없습니다.'
+            message: '삭제한 설정은 되돌릴 수 없습니다.'
         });
         if (!confirmed) return;
         const removed = this.data.deleteStrategyPreset(preset.id);
         if (!removed) {
-            UIManager.toast('프리셋 삭제에 실패했습니다.', 'error');
+            UIManager.toast('설정 삭제에 실패했습니다.', 'error');
             return;
         }
         this.render();
-        UIManager.toast(`'${preset.name}' 프리셋을 삭제했습니다.`, 'success');
+        UIManager.toast(`'${preset.name}' 설정을 삭제했습니다.`, 'success');
     }
 }

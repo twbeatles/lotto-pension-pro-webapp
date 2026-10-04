@@ -27,18 +27,18 @@ export const appSettingsFormatterMethods = {
     getStorageHealthMessage(summary) {
         if (summary.storageFailures?.length) {
             const latest = summary.storageFailures[0];
-            return `localStorage 저장 실패가 감지되었습니다. 마지막 실패: ${latest.key || '-'} (${latest.name || 'error'})`;
+            return `기기에 저장하지 못한 항목이 있어요 (${latest.key || '-'}). 백업한 뒤 오래된 기록을 정리해 주세요.`;
         }
         if (summary.status === 'danger') {
-            return '저장량이 커졌습니다. 백업 후 오래된 히스토리와 정산 끝난 미당첨 번호를 정리하는 것을 권장합니다.';
+            return '저장 공간이 꽤 찼어요. 백업한 뒤 오래된 생성 기록과 결과가 나온 미당첨 번호를 정리해 주세요.';
         }
         if (summary.status === 'warning') {
             if (summary.warnings.length) {
-                return `권장 관리 기준 초과: ${summary.warnings.join(', ')}. 백업하고 정리하기로 안전하게 줄일 수 있습니다.`;
+                return `저장 항목이 많아요: ${summary.warnings.join(', ')}. 「백업하고 정리하기」로 안전하게 줄일 수 있어요.`;
             }
-            return '저장량이 늘어나는 중입니다. 자동 삭제 없이 경고만 표시합니다.';
+            return '저장 항목이 늘어나고 있어요. 자동으로 지우지는 않습니다.';
         }
-        return '현재 저장 상태는 안정적입니다.';
+        return '저장 공간은 넉넉해요.';
     },
 
     getStatusBadgeClass(code) {

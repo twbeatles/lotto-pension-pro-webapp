@@ -1,4 +1,5 @@
 import { $ } from '../../../utils/utils.js';
+import { formatStrategyOptionLabel } from '../../../utils/strings.js';
 import { listPension720Strategies, resolvePension720StrategyId } from '../../../core/Pension720StrategyCatalog.js';
 import { PENSION720_ANALYSIS_PRESETS } from '../dom.js';
 
@@ -17,7 +18,7 @@ export const pension720OptionStrategySelectMethods = {
         items.forEach((item) => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            opt.textContent = formatStrategyOptionLabel(item);
             select.appendChild(opt);
         });
         const resolved = resolvePension720StrategyId(current);

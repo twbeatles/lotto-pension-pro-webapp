@@ -17,10 +17,10 @@ export const appSettingsProxySectionMethods = {
         const activeProxyConfig = this.data.resolveProxyConfig();
         if (proxyHelp) {
             proxyHelp.textContent = savedProxyValidation.empty
-                ? '비워두면 기본 자동 동기화를 사용합니다. 공식 API가 막히면 corsproxy.io 등 서드파티 CORS 프록시를 경유할 수 있습니다. 자체 Worker 배포를 권장합니다. 형식: https://<worker>.workers.dev/proxy/latest'
+                ? '비워 두면 앱이 알아서 최신 당첨 번호를 받아옵니다. 직접 만든 연결 서버(Cloudflare Worker)가 있을 때만 입력하세요. 예: https://내서버.workers.dev/proxy/latest'
                 : savedProxyValidation.valid
-                  ? '사용 가능한 데이터 연결 주소가 저장되어 있습니다.'
-                  : '지원되지 않는 연결 주소는 무시되고 기본 자동 동기화를 사용합니다.';
+                  ? '입력한 연결 주소로 최신 당첨 번호를 받아옵니다.'
+                  : '형식이 맞지 않는 주소는 무시하고 기본 연결을 사용합니다.';
         }
         if (proxyStatus) {
             let statusText = '';

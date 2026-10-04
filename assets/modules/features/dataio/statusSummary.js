@@ -57,7 +57,7 @@ export const dataIoStatusMethods = {
                     '동기화 경로',
                     this.data.resolveProxyConfig?.()?.url
                         ? '고급 연결 주소 우선'
-                        : '기본 자동 동기화(필요 시 서드파티 CORS 프록시 경유)'
+                        : '기본 자동 연결'
                 ]
             ],
             freshness.availability === 'full' ? '정상' : '확인 필요'
@@ -74,7 +74,7 @@ export const dataIoStatusMethods = {
                 ['최신 회차', pensionLatest ? `${pensionLatest.draw_no}회` : '-'],
                 ['최신 번호', pensionLatest ? `${pensionLatest.group}조 ${pensionLatest.number}` : '-'],
                 ['저장 번호', `${storageSummary.counts?.pension720Tickets || 0}개`],
-                ['캠페인', `${storageSummary.counts?.pension720Campaigns || 0}개`],
+                ['회차 묶음', `${storageSummary.counts?.pension720Campaigns || 0}개`],
                 ['마지막 확인', pensionHealth?.updatedAt ? this.app.formatDateTime(pensionHealth.updatedAt) : '-'],
                 ['메시지', pensionHealth?.message || '-']
             ],

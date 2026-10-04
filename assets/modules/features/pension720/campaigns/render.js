@@ -8,11 +8,11 @@ export const pension720CampaignRenderMethods = {
         const summary = $('#pension720CampaignSummary');
         const campaigns = this.data.state.pension720Campaigns || [];
         clearElement(list);
-        if (summary) summary.textContent = `${campaigns.length}개 캠페인`;
+        if (summary) summary.textContent = `${campaigns.length}개 회차 묶음`;
         if (!list) return;
 
         if (!campaigns.length) {
-            list.appendChild(makeEl('p', 'empty-state', '생성한 연금복권 캠페인이 없습니다.'));
+            list.appendChild(makeEl('p', 'empty-state', '생성한 연금복권 회차 묶음이 없습니다.'));
             return;
         }
 
@@ -33,8 +33,8 @@ export const pension720CampaignRenderMethods = {
             del.type = 'button';
             del.addEventListener('click', async () => {
                 const confirmed = await UIManager.confirm({
-                    title: '연금복권 캠페인 삭제',
-                    message: `'${campaign.name}' 캠페인과 연결 저장 번호 ${ticketCount}개를 삭제합니다.`,
+                    title: '연금복권 회차 묶음 삭제',
+                    message: `'${campaign.name}' 회차 묶음과 연결 저장 번호 ${ticketCount}개를 삭제합니다.`,
                     confirmText: '삭제',
                     cancelText: '취소'
                 });
@@ -42,7 +42,7 @@ export const pension720CampaignRenderMethods = {
                 const result = this.data.removePension720Campaign(campaign.id, { cascadeTickets: true });
                 if (result.removedCampaign) {
                     UIManager.toast(
-                        `연금복권 캠페인 1개, 연결 번호 ${result.removedTickets}개를 삭제했습니다.`,
+                        `연금복권 회차 묶음 1개, 연결 번호 ${result.removedTickets}개를 삭제했습니다.`,
                         'success'
                     );
                     this.renderSavedTickets();

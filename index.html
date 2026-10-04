@@ -259,7 +259,7 @@
                                     <select
                                         id="genPresetSelect"
                                         class="input-field preset-select"
-                                        aria-label="생성 전략 프리셋"
+                                        aria-label="생성 전략 저장한 설정"
                                     ></select>
                                     <div class="preset-actions">
                                         <button id="genPresetLoadBtn" class="btn ghost sm" type="button">
@@ -438,7 +438,7 @@
 
                             <div class="strategy-panel">
                                 <div class="card-header">
-                                    <h3>캠페인 생성</h3>
+                                    <h3>회차 묶음 생성</h3>
                                 </div>
                                 <div class="strategy-advanced-grid compact">
                                     <div class="input-group">
@@ -486,7 +486,7 @@
                                 </div>
                                 <div class="button-group" style="margin-top: 10px">
                                     <button id="generateCampaignBtn" class="btn ghost sm">
-                                        <i class="ph ph-calendar-plus"></i> 캠페인 생성
+                                        <i class="ph ph-calendar-plus"></i> 회차 묶음 생성
                                     </button>
                                     <button id="resetCampaignBtn" class="btn ghost sm">초기화</button>
                                 </div>
@@ -627,7 +627,7 @@
                                     <select
                                         id="aiPresetSelect"
                                         class="input-field preset-select"
-                                        aria-label="번호 추천 전략 프리셋"
+                                        aria-label="번호 추천 전략 저장한 설정"
                                     ></select>
                                     <div class="preset-actions">
                                         <button id="aiPresetLoadBtn" class="btn ghost sm" type="button">
@@ -947,7 +947,7 @@
                                     <select
                                         id="pension720PresetSelect"
                                         class="input-field preset-select"
-                                        aria-label="연금복권 전략 프리셋"
+                                        aria-label="연금복권 전략 저장한 설정"
                                     ></select>
                                     <div class="preset-actions">
                                         <button id="pension720PresetLoadBtn" class="btn ghost sm" type="button">
@@ -1108,7 +1108,7 @@
                             </div>
                             <div class="strategy-panel">
                                 <div class="card-header">
-                                    <h3>캠페인 생성</h3>
+                                    <h3>회차 묶음 생성</h3>
                                 </div>
                                 <div class="strategy-advanced-grid compact">
                                     <div class="input-group">
@@ -1146,7 +1146,7 @@
                                 </div>
                                 <div class="button-group" style="margin-top: 10px">
                                     <button id="pension720CampaignBtn" class="btn ghost sm" type="button">
-                                        <i class="ph ph-calendar-plus"></i> 캠페인 생성
+                                        <i class="ph ph-calendar-plus"></i> 회차 묶음 생성
                                     </button>
                                     <button id="pension720CampaignResetBtn" class="btn ghost sm" type="button">
                                         초기화
@@ -1184,8 +1184,8 @@
                             <div id="pension720SavedList" class="p720-saved-list"></div>
                             <div class="card-header compact">
                                 <div>
-                                    <h4>연금복권 캠페인</h4>
-                                    <p id="pension720CampaignSummary" class="subtitle">0개 캠페인</p>
+                                    <h4>연금복권 회차 묶음</h4>
+                                    <p id="pension720CampaignSummary" class="subtitle">0개 회차 묶음</p>
                                 </div>
                             </div>
                             <div id="pension720CampaignList" class="p720-saved-list"></div>
@@ -1260,7 +1260,7 @@
                                 <select
                                     id="btPresetSelect"
                                     class="input-field preset-select"
-                                    aria-label="백테스트 전략 프리셋"
+                                    aria-label="백테스트 전략 저장한 설정"
                                 ></select>
                                 <div class="preset-actions">
                                     <button id="btPresetLoadBtn" class="btn ghost sm" type="button">불러오기</button>
@@ -1506,7 +1506,7 @@
                 <section id="page-check" class="page">
                     <header class="page-header">
                         <h2>당첨 확인</h2>
-                        <p class="subtitle">저장된 번호나 히스토리를 최신 결과와 비교합니다.</p>
+                        <p class="subtitle">저장된 번호나 생성 기록을 최신 결과와 비교합니다.</p>
                     </header>
                     <div class="feature-overview" aria-label="당첨 확인 작업 구조">
                         <span class="feature-chip is-active"><i class="ph ph-list-magnifying-glass"></i> 목록</span>
@@ -1518,8 +1518,8 @@
                             <h3>비교 대상 선택</h3>
                             <div class="segment-control">
                                 <button class="seg-btn active" data-source="favorites">즐겨찾기</button>
-                                <button class="seg-btn" data-source="history">히스토리</button>
-                                <button class="seg-btn" data-source="tickets">내 번호 보관함</button>
+                                <button class="seg-btn" data-source="history">생성 기록</button>
+                                <button class="seg-btn" data-source="tickets">구매 번호</button>
                                 <button class="seg-btn" data-source="scanned">스캔 결과</button>
                             </div>
                             <button
@@ -1581,7 +1581,7 @@
                 <section id="page-data" class="page">
                     <header class="page-header">
                         <h2>데이터 관리</h2>
-                        <p class="subtitle">즐겨찾기, 내 번호 보관함, 캠페인과 백업 파일을 관리합니다.</p>
+                        <p class="subtitle">즐겨찾기, 구매 번호, 회차 묶음과 백업 파일을 관리합니다.</p>
                     </header>
                     <div class="feature-overview" aria-label="데이터 관리 화면 구성">
                         <span class="feature-chip is-active"><i class="ph ph-archive"></i> 보관함</span>
@@ -1605,7 +1605,7 @@
                         </div>
                         <div class="card glass data-card">
                             <div class="card-header">
-                                <h3>📜 생성 히스토리</h3>
+                                <h3>📜 생성 기록</h3>
                                 <button id="clearHistory" class="btn text-danger">전체 삭제</button>
                             </div>
                             <input
@@ -1622,7 +1622,7 @@
                     <div class="dashboard-grid data-hub-grid mt-4">
                         <div class="card glass data-card">
                             <div class="card-header">
-                                <h3>내 번호 보관함</h3>
+                                <h3>구매 번호</h3>
                                 <div style="display: flex; gap: 8px; align-items: center">
                                     <select id="ticketFilter" class="input-field" style="min-width: 120px">
                                         <option value="all">전체</option>
@@ -1644,7 +1644,7 @@
                         </div>
                         <div class="card glass data-card">
                             <div class="card-header">
-                                <h3>🗓️ 캠페인</h3>
+                                <h3>🗓️ 회차 묶음</h3>
                                 <button id="clearCampaigns" class="btn text-danger">전체 삭제</button>
                             </div>
                             <input

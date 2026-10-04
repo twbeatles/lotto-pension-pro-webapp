@@ -1,4 +1,5 @@
 import { $ } from '../../../utils/utils.js';
+import { formatStrategyOptionLabel } from '../../../utils/strings.js';
 import { listStrategies, resolveStrategyId } from '../../../core/StrategyCatalog.js';
 
 export const backtestStrategyFormSelectMethods = {
@@ -15,7 +16,7 @@ export const backtestStrategyFormSelectMethods = {
         strategies.forEach((item) => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            opt.textContent = formatStrategyOptionLabel(item);
             select.appendChild(opt);
         });
 

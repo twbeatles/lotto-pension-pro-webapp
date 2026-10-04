@@ -2,6 +2,13 @@ import { $ } from '../../../utils/utils.js';
 import { UIManager } from '../../../core/UIManager.js';
 import { applyAnalysisPresetToFields, syncAnalysisPresetSelect } from '../../../utils/analysisPresets.js';
 
+function markActionDone(btn, iconName) {
+    const icon = btn?.querySelector('i');
+    if (!icon) return;
+    btn.classList.add('is-done');
+    icon.className = `ph-fill ${iconName}`;
+}
+
 export const generatorFormEventMethods = {
     syncBusyButtons() {
         const anyBusy = this.isGenerating || this.isGeneratingCampaign;
@@ -36,7 +43,7 @@ export const generatorFormEventMethods = {
             btn.addEventListener('click', () => {
                 this.generate().catch((err) => {
                     console.error(err);
-                    UIManager.toast('번호 생성 중 오류가 발생했습니다.', 'error');
+                    UIManager.toast('번호를 만드는 중 문제가 생겼어요. 다시 시도해 주세요.', 'error');
                 });
             });
 
@@ -58,7 +65,7 @@ export const generatorFormEventMethods = {
             genCampaignBtn.addEventListener('click', () => {
                 this.generateCampaign().catch((err) => {
                     console.error(err);
-                    UIManager.toast('캠페인 생성 중 오류가 발생했습니다.', 'error');
+                    UIManager.toast('회차 묶음 생성 중 오류가 발생했습니다.', 'error');
                 });
             });
         const genCampaignResetBtn = $('#resetCampaignBtn');
@@ -100,7 +107,8 @@ export const generatorFormEventMethods = {
                     return;
                 }
                 if (action === 'fav') {
-                    this.app.data.addToFavorites(nums);
+                    const added = this.app.data.addToFavorites(nums);
+                    if (added !== false) markActionDone(btn, 'ph-star');
                     if (this.app.renderDataLists) this.app.renderDataLists();
                     return;
                 }
@@ -118,12 +126,13 @@ export const generatorFormEventMethods = {
                             strategyRequest: request
                         });
                     if (!result?.ticket) {
-                        UIManager.toast('내 번호 보관함 추가에 실패했습니다.', 'error');
+                        UIManager.toast('구매 번호로 저장하지 못했어요.', 'error');
                     } else {
+                        markActionDone(btn, 'ph-ticket');
                         UIManager.toast(
                             result.incremented
-                                ? `${targetDrawNo}회차 동일 티켓 수량을 x${result.quantity}로 늘렸습니다.`
-                                : `${targetDrawNo}회차 내 번호 보관함에 추가했습니다.`,
+                                ? `${targetDrawNo}회차에 같은 번호가 있어 수량을 ${result.quantity}장으로 늘렸어요.`
+                                : `${targetDrawNo}회차 구매 번호로 저장했어요. 추첨 후 「당첨 확인」에서 결과를 볼 수 있어요.`,
                             'success'
                         );
                         if (this.app.renderDataLists) this.app.renderDataLists();
@@ -135,10 +144,10 @@ export const generatorFormEventMethods = {
                     try {
                         btn.disabled = true;
                         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
-                        await UIManager.saveAsImage(itemEl, `로또_생성_${idx + 1}.png`);
+                        await UIManager.saveAsImage(itemEl, `로또_번호_${String.fromCharCode(65 + (idx % 26))}.png`);
                     } catch (err) {
                         console.error(err);
-                        UIManager.toast('이미지 저장 실패', 'error');
+                        UIManager.toast('이미지로 저장하지 못했어요.', 'error');
                     } finally {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;

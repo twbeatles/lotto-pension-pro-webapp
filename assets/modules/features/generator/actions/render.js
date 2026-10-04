@@ -23,14 +23,21 @@ export const generatorActionRenderMethods = {
         const el = document.createElement('div');
         el.className = 'result-item';
         el.dataset.idx = String(index);
+        const gameLabel = String.fromCharCode(65 + (Number(index) % 26));
+        const sum = nums.reduce((acc, n) => acc + Number(n || 0), 0);
+        const oddCount = nums.filter((n) => Number(n) % 2 === 1).length;
         el.innerHTML = `
-            <div class="result-balls ball-container">${UIManager.renderBalls(nums)}</div>
+            <span class="result-rank" aria-label="${gameLabel} 게임">${gameLabel}</span>
+            <div class="result-content">
+                <div class="result-balls ball-container">${UIManager.renderBalls(nums)}</div>
+                <div class="result-meta-inline">합계 ${sum} · 홀짝 ${oddCount}:${nums.length - oddCount}</div>
+            </div>
             <div class="result-actions">
-                <button class="icon-btn" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
-                <button class="icon-btn" data-action="qr" aria-label="큐알 코드 보기" title="큐알"><i class="ph ph-qr-code"></i></button>
-                <button class="icon-btn" data-action="ticket" aria-label="내 번호 보관함 추가" title="내 번호 보관함"><i class="ph ph-ticket"></i></button>
-                <button class="icon-btn" data-action="share" aria-label="이미지 저장" title="이미지 저장"><i class="ph ph-download-simple"></i></button>
-                <button class="icon-btn" data-action="fav" aria-label="즐겨찾기 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
+                <button class="icon-btn" type="button" data-action="fav" aria-label="즐겨찾기에 추가" title="즐겨찾기"><i class="ph ph-star"></i></button>
+                <button class="icon-btn" type="button" data-action="ticket" aria-label="구매 번호로 저장" title="구매 번호로 저장"><i class="ph ph-ticket"></i></button>
+                <button class="icon-btn" type="button" data-action="copy" aria-label="번호 복사" title="복사"><i class="ph ph-copy"></i></button>
+                <button class="icon-btn" type="button" data-action="qr" aria-label="QR 코드 보기" title="QR 코드"><i class="ph ph-qr-code"></i></button>
+                <button class="icon-btn" type="button" data-action="share" aria-label="이미지로 저장" title="이미지로 저장"><i class="ph ph-download-simple"></i></button>
             </div>
         `;
 

@@ -92,19 +92,19 @@ export const appSettingsSyncSectionMethods = {
                 syncWarningEl.textContent = `${activeProxyConfig.source} 연결 형식이 지원되지 않아 기본 자동 동기화를 사용 중입니다.`;
             } else if (freshness.isUnavailable) {
                 syncWarningEl.textContent =
-                    freshness.dataHealthMessage || '사용 가능한 당첨 데이터가 없습니다. 먼저 동기화를 시도해주세요.';
+                    freshness.dataHealthMessage || '당첨 번호 데이터가 없어요. 아래 「최신 회차 확인」을 눌러 주세요.';
             } else if (freshness.isPartial) {
                 syncWarningEl.textContent = freshness.dataHealthMessage
-                    ? `${freshness.dataHealthMessage} 통계/번호 추천/시뮬레이션은 전체 데이터 복구 후 사용할 수 있습니다.`
-                    : '일부 데이터만 사용 중입니다. 최신 일부 회차만 사용할 수 있어 통계 기반 기능이 제한됩니다.';
+                    ? `${freshness.dataHealthMessage} 통계·번호 추천·시뮬레이션은 전체 데이터를 받은 뒤 쓸 수 있어요.`
+                    : '최근 일부 회차만 가지고 있어요. 통계를 쓰는 기능은 잠시 제한됩니다.';
             } else if (freshness.isStale) {
                 syncWarningEl.textContent = freshness.canAutoSync
-                    ? `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다. 지금 동기화하면 기본 자동 경로로 최신 회차를 확인합니다.`
-                    : `현재 데이터가 예상 최신 회차 기준으로 ${freshness.behindBy}회차 뒤처져 있습니다.`;
+                    ? `최신 당첨 결과가 ${freshness.behindBy}회차 빠져 있어요. 「최신 회차 확인」을 누르면 받아옵니다.`
+                    : `최신 당첨 결과가 ${freshness.behindBy}회차 빠져 있어요.`;
             } else if (freshness.staticBehindBy > 0) {
-                syncWarningEl.textContent = `기본 포함 데이터는 예상 최신 회차 기준으로 ${freshness.staticBehindBy}회차 뒤처져 있지만 내 기기 보정 데이터가 보완하고 있습니다.`;
+                syncWarningEl.textContent = `앱에 포함된 데이터는 ${freshness.staticBehindBy}회차 전 것이지만, 이 기기에서 받은 최신 결과로 채워 두었어요.`;
             } else {
-                syncWarningEl.textContent = '현재 데이터는 예상 최신 회차 기준으로 최신 상태입니다.';
+                syncWarningEl.textContent = '최신 당첨 결과까지 모두 받아 두었어요.';
             }
         }
 
@@ -122,7 +122,7 @@ export const appSettingsSyncSectionMethods = {
                     ? { label: `${freshness.behindBy}회차 차이`, code: 'warning' }
                     : { label: '업데이트 필요', code: 'danger' };
             } else if (freshness.staticBehindBy > 0) {
-                syncState = { label: '내 기기 보완', code: 'warning' };
+                syncState = { label: '최신 (기기 보완)', code: 'success' };
             }
             syncStateBadge.textContent = syncState.label;
             syncStateBadge.className = `badge ${this.getStatusBadgeClass(syncState.code)}`;

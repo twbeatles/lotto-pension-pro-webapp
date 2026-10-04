@@ -37,12 +37,12 @@ export const aiFormDelegationMethods = {
                 targetDrawNo,
                 strategyRequest: this.lastRequest || this.buildStrategyRequest()
             });
-            if (!result?.ticket) UIManager.toast('내 번호 보관함 추가에 실패했습니다.', 'error');
+            if (!result?.ticket) UIManager.toast('구매 번호로 저장하지 못했어요.', 'error');
             else {
                 UIManager.toast(
                     result.incremented
-                        ? `${targetDrawNo}회차 동일 티켓 수량을 x${result.quantity}로 늘렸습니다.`
-                        : `${targetDrawNo}회차 내 번호 보관함에 추가했습니다.`,
+                        ? `${targetDrawNo}회차에 같은 번호가 있어 수량을 ${result.quantity}장으로 늘렸어요.`
+                        : `${targetDrawNo}회차 구매 번호로 저장했어요. 추첨 후 「당첨 확인」에서 결과를 볼 수 있어요.`,
                     'success'
                 );
                 if (this.app.renderDataLists) this.app.renderDataLists();

@@ -20,15 +20,15 @@ export const dataIoImportPreviewMethods = {
             `추가/반영: ${prepared.preview.added}건`,
             `중복: ${prepared.preview.duplicate}건`,
             `건너뜀: ${prepared.preview.skipped}건`,
-            `정리될 캠페인: ${prepared.preview.cleaned}개`,
+            `정리될 회차 묶음: ${prepared.preview.cleaned}개`,
             `예상 연금복권 저장 수: ${prepared.next.pension720Tickets?.length || 0}개`,
-            `예상 연금복권 캠페인: ${prepared.next.pension720Campaigns?.length || 0}개`,
+            `예상 연금복권 회차 묶음: ${prepared.next.pension720Campaigns?.length || 0}개`,
             `적용될 설정: ${applied}`,
             `미래 회차 제외: ${prepared.preview.futureDropped}건`,
             `예상 내 번호 수: ${prepared.preview.projectedTicketTotal}개`,
-            `예상 생성 히스토리: ${prepared.preview.projectedHistoryCount ?? prepared.next.history?.length ?? 0}개`,
+            `예상 생성 기록: ${prepared.preview.projectedHistoryCount ?? prepared.next.history?.length ?? 0}개`,
             prepared.preview.historyTrimmed
-                ? `히스토리 정리: ${prepared.preview.historyTrimmed}건이 ${CONFIG.LIMITS.MAX_HIST}개 한도로 잘립니다.`
+                ? `생성 기록 정리: ${prepared.preview.historyTrimmed}건이 ${CONFIG.LIMITS.MAX_HIST}개 한도로 잘립니다.`
                 : '',
             prepared.preview.droppedInvalidProxy
                 ? '지원되지 않는 데이터 연결 주소는 가져오지 않고 기본 자동 동기화를 사용합니다.'

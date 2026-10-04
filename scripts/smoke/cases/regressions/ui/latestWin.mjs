@@ -258,7 +258,7 @@ async function runRecommendationCopyRegression() {
     assert.match(
         aiRenderingModelGuideSource,
 
-        /const tierLabels = \{ A: '기본', B: '확장', C: '실험' \};/,
+        /const tierLabels = \{ A: '추천', B: '보조', C: '실험 중' \};/,
 
         'tier labels must use the softened wording'
     );

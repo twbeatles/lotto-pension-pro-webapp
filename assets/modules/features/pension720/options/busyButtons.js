@@ -18,7 +18,7 @@ export const pension720OptionBusyButtonMethods = {
             campaignBtn.disabled = anyBusy;
             campaignBtn.replaceChildren();
             const icon = makeEl('i', this.isGeneratingCampaign ? 'ph ph-spinner ph-spin' : 'ph ph-calendar-plus');
-            campaignBtn.append(icon, document.createTextNode(this.isGeneratingCampaign ? ' 생성 중' : ' 캠페인 생성'));
+            campaignBtn.append(icon, document.createTextNode(this.isGeneratingCampaign ? ' 생성 중' : ' 회차 묶음 생성'));
         }
         if (resetCampaignBtn) resetCampaignBtn.disabled = anyBusy;
         if (resetOptionsBtn) resetOptionsBtn.disabled = anyBusy;

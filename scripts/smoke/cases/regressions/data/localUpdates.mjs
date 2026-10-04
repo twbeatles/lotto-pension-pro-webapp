@@ -393,7 +393,7 @@ async function runHistoryActualLogRegression() {
         );
 
         assert.ok(
-            toasts.some((item) => item.includes('히스토리 저장 완료') || item.includes('합치기 가져오기')),
+            toasts.some((item) => item.includes('생성 기록에 저장') || item.includes('백업을 합쳐서 불러왔습니다')),
 
             'history regression should still emit save/import success feedback'
         );

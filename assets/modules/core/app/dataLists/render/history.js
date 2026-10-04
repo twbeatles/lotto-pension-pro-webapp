@@ -17,7 +17,7 @@ export function renderHistoryList(ctx) {
         renderEmpty(
             '#historyList',
             'ph-clock-counter-clockwise',
-            ctx.getDataListState('history').query ? '검색 결과가 없습니다.' : '생성 히스토리가 없습니다.'
+            ctx.getDataListState('history').query ? '검색 결과가 없습니다.' : '생성 기록이 없습니다.'
         );
     } else {
         $('#historyList').innerHTML = historyPage.items

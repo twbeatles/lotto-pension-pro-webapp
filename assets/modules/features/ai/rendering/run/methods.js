@@ -1,10 +1,12 @@
 import { $ } from '../../../../utils/utils.js';
 import { UIManager } from '../../../../core/UIManager.js';
+import { UI_STRINGS } from '../../../../utils/strings.js';
 import { getStrategyMeta } from '../../../../core/StrategyCatalog.js';
 import { withRuntimeSeed } from '../../../../core/strategy/runtimeEntropy.js';
 import { endMark, startMark } from '../../../../utils/perf.js';
 import { executeAiRecommendation, ensureAiExplanations } from './workerExecution.js';
 import { logAiDiagnostics } from './diagnostics.js';
+import { revealResults } from '../../../../utils/dom.js';
 
 export const aiRenderingRunMethods = {
     async run() {
@@ -14,7 +16,7 @@ export const aiRenderingRunMethods = {
         const aiContainer = $('#page-ai .ai-container');
 
         if (!this.app.data.state.winningStats.length) {
-            UIManager.toast('당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
+            UIManager.toast(UI_STRINGS.generator.dataUnavailable, 'error', 3000);
             return;
         }
         if (this.isRecommending) return;
@@ -26,7 +28,7 @@ export const aiRenderingRunMethods = {
         startMark('ai.run');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 분석 중...';
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> 번호 고르는 중...';
         }
         out.innerHTML = '';
         this.app.data.state.aiResults = [];
@@ -38,14 +40,13 @@ export const aiRenderingRunMethods = {
         const request = this.buildStrategyRequest();
         this.app.data.save();
         const targetSetCount = 5;
-        const selectedModelName = getStrategyMeta(request.strategyId).label || '선택 전략';
+        const selectedModelName = getStrategyMeta(request.strategyId).label || '선택한 방식';
 
         const logs = [
-            `선택 모델: ${selectedModelName}`,
-            '빈도, 최근성, 출현 간격 신호를 분석합니다...',
-            '전략 가중치를 반영합니다...',
-            `몬테카를로를 실행합니다(${request.params.simulationCount.toLocaleString()}회 샘플)...`,
-            '최적 후보 조합을 추출합니다...'
+            `추천 방식: ${selectedModelName}`,
+            '지난 당첨 번호에서 자주·최근·오래 쉰 번호를 살펴봅니다...',
+            `후보 조합 ${request.params.simulationCount.toLocaleString()}개를 만들어 비교합니다...`,
+            '점수가 높은 조합을 고르는 중...'
         ];
 
         try {
@@ -109,17 +110,18 @@ export const aiRenderingRunMethods = {
                 runtimeSeed: this.lastRuntimeSeed,
                 request
             });
+            revealResults(out);
         } catch (e) {
             console.error('인공지능 분석 오류:', e);
             if (e?.userFacingHandled) return;
             this.appendLog(log, `> 오류: ${e.message}`, 'var(--danger)');
-            UIManager.toast('분석 중 오류가 발생했습니다.', 'error');
+            UIManager.toast('추천 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.', 'error');
         } finally {
             if (localToken === this.runToken) {
                 this.isRecommending = false;
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="ph-bold ph-brain"></i> 다시 추천';
+                    btn.innerHTML = '<i class="ph-bold ph-sparkle"></i> 다시 추천받기';
                 }
                 out?.setAttribute('aria-busy', 'false');
                 aiContainer?.classList.remove('fx-active');

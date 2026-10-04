@@ -15,7 +15,7 @@ export const appDataListBindDataEventMethods = {
 
         $('#clearHistory')?.addEventListener('click', async () => {
             const confirmed = await UIManager.confirm({
-                title: '히스토리를 모두 삭제할까요?',
+                title: '생성 기록을 모두 삭제할까요?',
                 message: `${this.data.state.history.length}개 항목이 삭제됩니다.`
             });
             if (!confirmed) return;
@@ -32,12 +32,12 @@ export const appDataListBindDataEventMethods = {
             });
             const visibleCount = this.data.getTotalTicketCount(visibleTickets);
             const confirmed = await UIManager.confirm({
-                title: `내 번호 보관함에서 '${filterLabel}' 항목을 삭제할까요?`,
+                title: `구매 번호에서 '${filterLabel}' 항목을 삭제할까요?`,
                 message: `${visibleCount}개 티켓이 삭제됩니다.`
             });
             if (!confirmed) return;
             const result = this.data.clearTicketBook(filter);
-            const cleanupSuffix = result.prunedCampaigns > 0 ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리` : '';
+            const cleanupSuffix = result.prunedCampaigns > 0 ? `, 회차 묶음 ${result.prunedCampaigns}개 자동 정리` : '';
             UIManager.toast(
                 `${result.removedTickets}개 티켓 삭제${cleanupSuffix}`,
                 result.removedTickets > 0 ? 'success' : 'info'
@@ -48,22 +48,22 @@ export const appDataListBindDataEventMethods = {
         $('#clearCampaigns')?.addEventListener('click', async () => {
             const campaigns = this.data.state.campaigns || [];
             if (!campaigns.length) {
-                UIManager.toast('삭제할 캠페인이 없습니다.', 'info');
+                UIManager.toast('삭제할 회차 묶음이 없습니다.', 'info');
                 return;
             }
             const linkedTickets = this.data.countTicketsByCampaignIds(campaigns.map((item) => item.id));
             const detail =
                 linkedTickets > 0
-                    ? `캠페인 ${campaigns.length}개와 연결 티켓 ${linkedTickets}개가 함께 삭제됩니다.`
-                    : `캠페인 ${campaigns.length}개가 삭제됩니다.`;
+                    ? `회차 묶음 ${campaigns.length}개와 연결 티켓 ${linkedTickets}개가 함께 삭제됩니다.`
+                    : `회차 묶음 ${campaigns.length}개가 삭제됩니다.`;
             const confirmed = await UIManager.confirm({
-                title: '캠페인을 모두 삭제할까요?',
+                title: '회차 묶음을 모두 삭제할까요?',
                 message: detail
             });
             if (!confirmed) return;
             const result = this.data.clearCampaigns({ cascadeTickets: true });
             UIManager.toast(
-                `캠페인 ${result.removedCampaigns}개, 연결 티켓 ${result.removedTickets}개 삭제`,
+                `회차 묶음 ${result.removedCampaigns}개, 연결 티켓 ${result.removedTickets}개 삭제`,
                 result.removedCampaigns > 0 ? 'success' : 'info'
             );
             this.renderDataLists();
@@ -98,9 +98,9 @@ export const appDataListBindDataEventMethods = {
                 title: '백업하고 오래된 데이터를 정리할까요?',
                 message:
                     `먼저 현재 데이터를 백업 파일로 저장합니다.\n` +
-                    `그 다음 생성 히스토리는 최근 200개만 남기고, 정산 끝난 미당첨 번호만 정리합니다.\n` +
+                    `그 다음 생성 기록은 최근 200개만 남기고, 정산 끝난 미당첨 번호만 정리합니다.\n` +
                     `예정 번호, 당첨 번호, 내 기기 최신 회차 보정 데이터는 삭제하지 않습니다.\n\n` +
-                    `현재 저장: 히스토리 ${summary.counts?.history || 0}개 / 번호 ${summary.counts?.tickets || 0}개`
+                    `현재 저장: 생성 기록 ${summary.counts?.history || 0}개 / 번호 ${summary.counts?.tickets || 0}개`
             });
             if (!confirmed) return;
 
@@ -114,7 +114,7 @@ export const appDataListBindDataEventMethods = {
             this.renderDataLists();
             this.renderSettingsPanel?.();
             UIManager.toast(
-                `정리 완료: 히스토리 ${result.historyTrimmed}개, 미당첨 번호 ${result.removedTickets}개, 캠페인 ${result.removedCampaigns}개`,
+                `정리 완료: 생성 기록 ${result.historyTrimmed}개, 미당첨 번호 ${result.removedTickets}개, 회차 묶음 ${result.removedCampaigns}개`,
                 result.historyTrimmed || result.removedTickets || result.removedCampaigns ? 'success' : 'info',
                 4500
             );

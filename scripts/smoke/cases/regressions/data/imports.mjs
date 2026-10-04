@@ -589,7 +589,7 @@ async function runImportOrphanCampaignCleanupRegression() {
         );
 
         assert.ok(
-            toasts.some((item) => item.includes('정리 1개 캠페인')),
+            toasts.some((item) => item.includes('정리 1개 회차 묶음')),
 
             'merge import toast must mention orphan campaign cleanup'
         );
@@ -845,7 +845,7 @@ function runImportMergeHistoryCapRegression() {
     assert.equal(prepared.preview.historyTrimmed, 12, 'import preview must report trimmed history count');
     assert.match(
         ctx.buildImportPreviewMessage(prepared),
-        /히스토리 정리: 12건/,
+        /생성 기록 정리: 12건/,
         'import preview message must mention history trimming'
     );
 }

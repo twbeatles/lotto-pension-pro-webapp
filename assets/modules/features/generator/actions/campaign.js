@@ -47,7 +47,7 @@ export const generatorActionCampaignMethods = {
                 return;
             }
             if (weeks > CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS) {
-                UIManager.toast(`캠페인 주차 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS}주입니다.`, 'warning');
+                UIManager.toast(`회차 묶음 주차 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_WEEKS}주입니다.`, 'warning');
                 return;
             }
             if (setsPerWeek > CONFIG.LIMITS.MAX_CAMPAIGN_SETS_PER_WEEK) {
@@ -59,7 +59,7 @@ export const generatorActionCampaignMethods = {
             }
             if (requestedTotal > CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS) {
                 UIManager.toast(
-                    `캠페인 총 티켓 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`,
+                    `회차 묶음 총 티켓 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`,
                     'warning'
                 );
                 return;
@@ -92,7 +92,7 @@ export const generatorActionCampaignMethods = {
                     if (this.isWorkerTimeoutError(err)) {
                         UIManager.toast(uiStrings.workerFallbackCampaign, 'warning');
                     }
-                    console.warn('캠페인 생성 워커 실패, 메인 스레드로 대체합니다.', err);
+                    console.warn('회차 묶음 생성 워커 실패, 메인 스레드로 대체합니다.', err);
                     const runtimeRng = createRuntimeRng(runtimeRequest, workerPayload.runtimeSeed);
                     sets = this.engine.generateMultipleSets(setsPerWeek, runtimeRequest, {
                         fixed,
@@ -117,7 +117,7 @@ export const generatorActionCampaignMethods = {
                         source: 'generator',
                         campaignId,
                         strategyRequest: runtimeRequest,
-                        memo: `캠페인 ${startDraw}-${startDraw + weeks - 1}`,
+                        memo: `회차 묶음 ${startDraw}-${startDraw + weeks - 1}`,
                         createdAt: new Date().toISOString(),
                         checked: null
                     });
@@ -146,13 +146,13 @@ export const generatorActionCampaignMethods = {
             }
             if (inserted > 0) {
                 UIManager.toast(
-                    `캠페인 생성 완료: 티켓 ${inserted}개 반영${bulkResult.insertedRows !== inserted ? ` (${bulkResult.insertedRows}개 조합)` : ''}`,
+                    `회차 묶음 생성 완료: 티켓 ${inserted}개 반영${bulkResult.insertedRows !== inserted ? ` (${bulkResult.insertedRows}개 조합)` : ''}`,
                     'success'
                 );
             } else if (totalCreated > 0) {
-                UIManager.toast('생성된 티켓이 모두 중복되어 캠페인을 저장하지 않았습니다.', 'warning', 3500);
+                UIManager.toast('생성된 티켓이 모두 중복되어 회차 묶음을 저장하지 않았습니다.', 'warning', 3500);
             } else {
-                UIManager.toast('생성된 티켓이 없어 캠페인을 저장하지 않았습니다.', 'warning', 3500);
+                UIManager.toast('생성된 티켓이 없어 회차 묶음을 저장하지 않았습니다.', 'warning', 3500);
             }
             if (campaign && this.app.renderDataLists) this.app.renderDataLists();
         } finally {

@@ -6,6 +6,7 @@ import { createRuntimeRng, withRuntimeSeed } from '../../../core/strategy/runtim
 import { endMark, startMark } from '../../../utils/perf.js';
 import { UI_STRINGS } from '../../../utils/strings.js';
 import { upsertReproductionCodeBar } from '../../../utils/reproductionCode.js';
+import { revealResults } from '../../../utils/dom.js';
 
 function clampGeneratorSetCount(value, fallback = 5) {
     const number = Number(value);
@@ -36,8 +37,17 @@ export const generatorActionGenerateMethods = {
             const exclude = this.parseInput($('#excludeNums').value);
 
             if (fixed.length > CONFIG.LIMITS.MAX_FIXED) {
-                UIManager.toast(`고정수는 최대 ${CONFIG.LIMITS.MAX_FIXED}개입니다.`, 'error');
-                return;
+                UIManager.toast(`꼭 넣을 번호는 최대 ${CONFIG.LIMITS.MAX_FIXED}개까지 정할 수 있어요.`, 'error');
+                return false;
+            }
+            const overlap = fixed.filter((n) => exclude.includes(n));
+            if (overlap.length) {
+                UIManager.toast(`${overlap.join(', ')}번이 '꼭 넣을 번호'와 '뺄 번호'에 모두 들어 있어요.`, 'error', 3500);
+                return false;
+            }
+            if (45 - exclude.length < 6) {
+                UIManager.toast('뺄 번호가 너무 많아요. 최소 6개 번호는 남겨 주세요.', 'error');
+                return false;
             }
 
             const request = this.getStrategyRequestFromUI();
@@ -107,10 +117,11 @@ export const generatorActionGenerateMethods = {
                 this.renderResultItem(entry.numbers, i, listEl);
             });
             this.renderTemporaryResultNotice?.();
+            revealResults(genPanel);
             produced = sets.length;
             if (produced < requested) {
                 UIManager.toast(
-                    `필터 조건으로 ${produced}/${requested}개만 생성되었습니다. 조건을 완화해보세요.`,
+                    `조건에 맞는 조합이 ${produced}/${requested}개뿐이에요. 조건을 조금 넓혀 보세요.`,
                     'warning',
                     3500
                 );
@@ -138,7 +149,7 @@ export const generatorActionGenerateMethods = {
             .slice(0, CONFIG.LIMITS.MAX_HIST);
         this.data.markDirty?.('hist');
         this.data.save();
-        UIManager.toast(`${nextEntries.length}개 세트 히스토리 저장 완료`, 'success');
+        UIManager.toast(`${nextEntries.length}개 조합을 생성 기록에 저장했어요.`, 'success');
         if (this.app.renderDataLists) this.app.renderDataLists();
     }
 };

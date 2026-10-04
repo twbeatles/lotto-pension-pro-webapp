@@ -1,4 +1,5 @@
 import { $ } from '../../../utils/utils.js';
+import { formatStrategyOptionLabel } from '../../../utils/strings.js';
 import { listStrategies, resolveStrategyId } from '../../../core/StrategyCatalog.js';
 import { syncAnalysisPresetSelect } from '../../../utils/analysisPresets.js';
 
@@ -14,7 +15,7 @@ export const aiFormStrategyMethods = {
         strategies.forEach((item) => {
             const option = document.createElement('option');
             option.value = item.id;
-            option.textContent = `${item.label} (등급 ${item.tier})${item.experimental ? ' [실험]' : ''}`;
+            option.textContent = formatStrategyOptionLabel(item);
             select.appendChild(option);
         });
 

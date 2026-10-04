@@ -10,7 +10,7 @@ export function renderCampaignsList(ctx) {
         renderEmpty(
             '#campaignList',
             'ph-calendar-blank',
-            ctx.getDataListState('campaign').query ? '검색 결과가 없습니다.' : '등록된 캠페인이 없습니다.'
+            ctx.getDataListState('campaign').query ? '검색 결과가 없습니다.' : '등록된 회차 묶음이 없습니다.'
         );
     } else {
         $('#campaignList').innerHTML = campaignPage.items
@@ -22,7 +22,7 @@ export function renderCampaignsList(ctx) {
                         <span class="result-meta">${item.startDrawNo}회차 시작 · ${item.weeks}주 · 주당 ${item.setsPerWeek}세트</span>
                     </div>
                     <div class="result-actions">
-                        <button class="icon-btn" data-action="delete" title="삭제" aria-label="캠페인 삭제"><i class="ph ph-trash"></i></button>
+                        <button class="icon-btn" data-action="delete" title="삭제" aria-label="회차 묶음 삭제"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>
             `

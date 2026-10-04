@@ -28,15 +28,15 @@ export const dataAnalyticsTicketSettlementMethods = {
 
         const message =
             summary.wins > 0
-                ? `티켓 정산 완료: ${summary.settled}개 중 당첨 ${summary.wins}개`
-                : `티켓 정산 완료: ${summary.settled}개`;
+                ? `구매 번호 ${summary.settled}개의 결과가 나왔어요. 당첨 ${summary.wins}개!`
+                : `구매 번호 ${summary.settled}개의 결과가 나왔어요.`;
 
         if (prefs.enableInApp) {
             UIManager.toast(message, summary.wins > 0 ? 'success' : 'info', 3500);
         }
 
         if (requestSystemNotification && prefs.enableSystemNotification) {
-            this.sendSystemNotification('로또·연금복권 프로 티켓 정산', message);
+            this.sendSystemNotification('로또·연금복권 프로 당첨 결과', message);
         }
     },
 

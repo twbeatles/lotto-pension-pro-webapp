@@ -1,4 +1,5 @@
 import { $ } from '../../../utils/utils.js';
+import { formatStrategyOptionLabel } from '../../../utils/strings.js';
 import { listStrategies, resolveStrategyId } from '../../../core/StrategyCatalog.js';
 import { syncAnalysisPresetSelect } from '../../../utils/analysisPresets.js';
 
@@ -12,9 +13,8 @@ export const generatorFormStrategyMethods = {
         select.innerHTML = '';
         items.forEach((item) => {
             const opt = document.createElement('option');
-            const exp = item.experimental ? ' [실험]' : '';
             opt.value = item.id;
-            opt.textContent = `${item.label} (등급 ${item.tier})${exp}`;
+            opt.textContent = formatStrategyOptionLabel(item);
             select.appendChild(opt);
         });
         const resolved = resolveStrategyId(current);

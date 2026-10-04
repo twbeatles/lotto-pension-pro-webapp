@@ -8,7 +8,7 @@ const TARGETS = [
     },
     {
         path: 'assets/modules/utils/strings.js',
-        required: ['백업', '동기화']
+        required: ['백업', '최신 회차']
     }
 ];
 

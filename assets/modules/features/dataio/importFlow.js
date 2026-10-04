@@ -66,7 +66,7 @@ export const dataIoImportFlowMethods = {
             const prepared = this.buildImportPreview(incoming, importOptions);
             if (prepared.preview.projectedTicketTotal > CONFIG.LIMITS.MAX_IMPORT_TICKETS) {
                 UIManager.toast(
-                    `내 번호 보관함은 최대 ${CONFIG.LIMITS.MAX_IMPORT_TICKETS}개 번호까지 가져올 수 있습니다.`,
+                    `구매 번호는 최대 ${CONFIG.LIMITS.MAX_IMPORT_TICKETS}개 번호까지 가져올 수 있습니다.`,
                     'error',
                     3500
                 );
@@ -105,7 +105,7 @@ export const dataIoImportFlowMethods = {
             }
             if (prepared.preview.historyTrimmed > 0) {
                 UIManager.toast(
-                    `생성 히스토리 ${prepared.preview.historyTrimmed}건을 ${CONFIG.LIMITS.MAX_HIST}개 한도에 맞게 정리했습니다.`,
+                    `생성 기록 ${prepared.preview.historyTrimmed}건을 ${CONFIG.LIMITS.MAX_HIST}개 한도에 맞게 정리했습니다.`,
                     'info',
                     3500
                 );

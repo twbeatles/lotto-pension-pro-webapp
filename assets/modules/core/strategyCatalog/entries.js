@@ -3,135 +3,135 @@ import { BASE_PARAMS, EMPTY_FILTERS } from './defaults.js';
 export const STRATEGY_CATALOG = Object.freeze({
     random_baseline: {
         id: 'random_baseline',
-        label: '완전 랜덤',
+        label: '완전 무작위',
         tier: 'A',
         experimental: false,
-        summary: '균등 확률 비복원 추출',
+        summary: '과거 기록 없이 무작위로 뽑기',
         description:
-            '과거 데이터를 전혀 참고하지 않고 1부터 45까지의 숫자 중 6개를 균등한 확률로 추출합니다. 철저히 운에 맡기는 기본 생성 방식입니다.',
+            '과거 당첨 기록을 전혀 보지 않고 1~45 중 6개를 똑같은 확률로 뽑습니다. 순수하게 <strong>운에 맡기는 기본 방식</strong>입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     ensemble_weighted: {
         id: 'ensemble_weighted',
-        label: '앙상블 가중치',
+        label: '종합 점수',
         tier: 'A',
         experimental: false,
-        summary: '빈도/최근/공백 신호를 혼합',
+        summary: '자주·최근·오래 쉰 번호를 골고루 반영',
         description:
-            '역대 당첨 번호의 빈도, 최근 출현 여부, 그리고 출현 공백 간격을 5:3:2 비율로 종합하여 점수를 매깁니다. 가장 균형 잡힌 <strong>대표 가중치 추천 모델</strong>로 쓰기 좋은 기본 전략입니다.',
+            '많이 나온 번호, 최근에 나온 번호, 오래 쉬고 있는 번호를 5:3:2로 섞어 점수를 매깁니다. 한쪽에 치우치지 않아 <strong>처음 쓰기 좋은 기본 방식</strong>입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     consensus_portfolio: {
         id: 'consensus_portfolio',
-        label: '컨센서스 포트폴리오',
+        label: '여러 기준 합의',
         tier: 'A',
         experimental: false,
-        summary: '강한 신호의 교집합을 다시 선별',
+        summary: '여러 기준에서 모두 점수가 높은 번호',
         description:
-            '빈도, 최근성, 공백, 페어 시너지, 구간 분산 신호를 각각 독립적으로 본 뒤, 여러 관점에서 동시에 점수가 높은 후보만 다시 랭킹하는 <strong>다중 합의형 전략</strong>입니다. 단일 기준에 치우치지 않아 번호 추천의 기본형으로 쓰기 좋습니다.',
+            '출현 횟수, 최근 흐름, 쉬는 기간, 함께 나온 번호, 구간 분포를 따로 본 뒤 <strong>여러 기준에서 동시에 점수가 높은 번호</strong>만 다시 고릅니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6500 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     bayesian_smooth: {
         id: 'bayesian_smooth',
-        label: '베이지안 스무딩',
+        label: '안정형 확률',
         tier: 'A',
         experimental: false,
-        summary: '과적합을 줄인 확률형 추정',
+        summary: '튀는 번호를 눌러 안정적으로 추정',
         description:
-            '전체 출현 빈도와 최근 출현 빈도를 베이지안 방식으로 부드럽게 결합해 <strong>과하게 튀는 번호를 누르고 안정적인 확률</strong>을 추정합니다. 샘플 수가 적은 최근 구간에서도 흔들림이 적은 보수형 모델입니다.',
+            '전체 기록과 최근 기록을 부드럽게 섞어 <strong>갑자기 튀는 번호의 영향을 줄입니다</strong>. 최근 기록이 적어도 결과가 크게 흔들리지 않는 신중한 방식입니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     momentum_recent: {
         id: 'momentum_recent',
-        label: '모멘텀 추세',
+        label: '요즘 뜨는 번호',
         tier: 'B',
         experimental: false,
-        summary: '최근 상승세 번호에 가속도 부여',
+        summary: '최근 들어 자주 나오는 번호 위주',
         description:
-            '전체 평균 대비 최근 구간에서 출현 비율이 더 빨라진 번호를 찾아 <strong>상승 추세의 연장선</strong>을 노립니다. 직전 10~30회 흐름을 따라가고 싶을 때 적합한 추세형 모델입니다.',
+            '평소보다 최근에 더 자주 나오고 있는 번호를 찾아 <strong>요즘 흐름을 따라갑니다</strong>. 최근 10~30회 흐름을 중요하게 보고 싶을 때 좋습니다.',
         defaultParams: { ...BASE_PARAMS, lookbackWindow: 24 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     mean_reversion_cycle: {
         id: 'mean_reversion_cycle',
-        label: '평균회귀 사이클',
+        label: '나올 때 된 번호',
         tier: 'B',
         experimental: false,
-        summary: '예상 공백 대비 늦어진 번호를 보정',
+        summary: '평소 간격보다 오래 쉬고 있는 번호',
         description:
-            '번호별 평균 출현 간격을 계산한 뒤 현재 공백이 그 기대치보다 길어진 번호에 가중치를 더합니다. 단순 콜드 전략보다 한 단계 더 나아가 <strong>번호별 고유 리듬</strong>을 반영하는 평균회귀형 모델입니다.',
+            '번호마다 평소 몇 회마다 나오는지 계산한 뒤, <strong>평소보다 오래 쉬고 있는 번호</strong>에 점수를 더 줍니다.',
         defaultParams: { ...BASE_PARAMS, lookbackWindow: 28 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     auto_recent_top: {
         id: 'auto_recent_top',
-        label: '자동 선택(최근 상위 1개)',
+        label: '자동 선택 (최근 성적 1위)',
         tier: 'A',
         experimental: false,
         scopes: ['ai'],
-        summary: '최근 N회 기준 최상위 전략 자동 선택',
+        summary: '최근 성적이 가장 좋았던 방식을 자동으로 사용',
         description:
-            '최근 성능을 다시 비교해 가장 성적이 좋았던 전략 1개를 자동으로 골라 적용합니다. 현재 참조 회차 수를 입력받지만, 실제 자동 비교 구간은 <strong>최대 30회</strong>까지 사용합니다.',
+            '최근 회차에서 가장 성적이 좋았던 방식 1개를 자동으로 골라 씁니다. 비교는 <strong>최근 최대 30회</strong>까지 봅니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 5500, lookbackWindow: 20 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     auto_ensemble_top3: {
         id: 'auto_ensemble_top3',
-        label: '자동 앙상블(상위 3개)',
+        label: '자동 조합 (최근 성적 상위 3개)',
         tier: 'A',
         experimental: false,
         scopes: ['ai'],
-        summary: '최근 상위 3개 전략을 자동 혼합',
+        summary: '최근 성적 상위 3개 방식을 섞어서 사용',
         description:
-            '최근 성능평가에서 상위권에 오른 전략 3개를 선택한 뒤, 각 전략의 현재 가중치를 성능 비율만큼 혼합합니다. 현재 참조 회차 수를 입력받지만, 실제 자동 비교 구간은 <strong>최대 30회</strong>까지 사용합니다.',
+            '최근 성적이 좋았던 방식 3개를 골라 성적에 비례해 섞습니다. 비교는 <strong>최근 최대 30회</strong>까지 봅니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 6000, lookbackWindow: 20 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     hot_frequency: {
         id: 'hot_frequency',
-        label: '핫 빈도 추종',
+        label: '자주 나온 번호',
         tier: 'B',
         experimental: false,
-        summary: '빈출 번호 우선',
+        summary: '최근 자주 나온 번호 우선',
         description:
-            '최근들어 자주 당첨되고 있는 이른바 <strong>강세 번호</strong>들에 높은 가중치를 부여합니다. 현재 상승세를 타고 있는 번호의 추세를 따라가는 순응형 전략입니다.',
+            '최근 자주 당첨된 <strong>강세 번호</strong>에 높은 점수를 줍니다. 지금 흐름을 그대로 따라가는 방식입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     cold_frequency: {
         id: 'cold_frequency',
-        label: '콜드 반등',
+        label: '오래 안 나온 번호',
         tier: 'B',
         experimental: false,
-        summary: '저빈도/장기 미출현 보정',
+        summary: '오랫동안 안 나온 번호 우선',
         description:
-            '오랫동안 당첨되지 않아 <strong>출현 패턴상 나올 때가 된 약세 번호</strong>를 우선적으로 선택합니다. 통계적 회귀 현상을 노리는 반등형 전략입니다.',
+            '오랫동안 당첨되지 않은 <strong>쉬고 있는 번호</strong>를 먼저 고릅니다. 이제 나올 때가 됐다고 보는 방식입니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     recency_gap: {
         id: 'recency_gap',
-        label: '최근성-갭',
+        label: '최근 흐름 + 쉬는 기간',
         tier: 'A',
         experimental: false,
-        summary: '최근성과 미출현 길이를 함께 반영',
+        summary: '최근 출현과 쉬는 기간을 함께 반영',
         description:
-            '최근 발생한 출현과 직전 출현 사이의 <strong>공백 기간</strong>을 집중 분석합니다. 번호가 규칙적인 주기를 가지고 출현한다고 가정하고 그 출현 리듬의 맥락을 공략합니다.',
+            '번호가 마지막으로 나온 뒤 <strong>얼마나 쉬었는지</strong>를 집중해서 봅니다. 번호마다 나오는 주기가 있다고 보고 그 리듬을 따라갑니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     balance_oe_hl: {
         id: 'balance_oe_hl',
-        label: '홀짝/고저 밸런스',
+        label: '홀짝·크기 균형',
         tier: 'B',
         experimental: false,
-        summary: '균형형 필터 중심',
+        summary: '홀짝과 큰 수·작은 수를 고르게',
         description:
-            '홀수와 짝수, 고/저(23 기준) 비율을 3:3 또는 4:2처럼 <strong>가장 이상적인 밸런스</strong>로 맞추는 데 집중합니다. 한쪽으로 번호가 쏠리는 극단적 현상을 강력하게 방지합니다.',
+            '홀수와 짝수, 큰 수(24~45)와 작은 수(1~23)를 3:3이나 4:2처럼 <strong>고르게 맞춥니다</strong>. 한쪽으로 쏠린 조합을 피합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: {
             ...EMPTY_FILTERS,
@@ -141,12 +141,12 @@ export const STRATEGY_CATALOG = Object.freeze({
     },
     stat_ac_sum: {
         id: 'stat_ac_sum',
-        label: '정밀 통계(복잡도/합계)',
+        label: '합계·섞임 맞춤',
         tier: 'B',
         experimental: false,
-        summary: '번호 섞임 정도와 합계 구간 기반 필터',
+        summary: '당첨이 많았던 합계·섞임 범위만',
         description:
-            '역대 당첨 비율이 가장 높은 <strong>번호 섞임 정도(7~10)</strong>와 <strong>총합(100~175)</strong> 구간만을 엄격하게 필터링합니다. 번호 간 산포도를 최적화하여 뭉침을 배제합니다.',
+            '역대 당첨이 가장 많았던 <strong>번호 섞임 정도(7~10)</strong>와 <strong>6개 합계(100~175)</strong> 범위에 맞는 조합만 남깁니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 8000 },
         defaultFilters: {
             ...EMPTY_FILTERS,
@@ -156,100 +156,100 @@ export const STRATEGY_CATALOG = Object.freeze({
     },
     pair_cooccurrence: {
         id: 'pair_cooccurrence',
-        label: '공출현 페어',
+        label: '짝꿍 번호',
         tier: 'B',
         experimental: false,
-        summary: '동시 출현 페어 빈도 가중',
+        summary: '함께 자주 나온 번호끼리 묶기',
         description:
-            '과거에 <strong>함께 당첨된 적이 많은 번호쌍</strong>의 데이터를 분석하여, 특정 번호가 선택되면 그와 시너지가 좋은 번호가 함께 끌려오도록 가중치를 부여합니다.',
+            '과거에 <strong>함께 당첨된 적이 많은 번호 짝</strong>을 찾아, 한 번호가 뽑히면 그 짝꿍 번호도 함께 뽑히기 쉽게 합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     adjacency_bias: {
         id: 'adjacency_bias',
-        label: '인접수 편향',
+        label: '지난 회차 이웃 번호',
         tier: 'B',
         experimental: false,
-        summary: '직전 회차 인접 번호 가중',
+        summary: '지난 당첨 번호의 바로 옆 번호 우선',
         description:
-            '이전 회차 당첨 번호의 <strong>바로 옆 번호(이웃수)</strong>가 다음 회차에 잘 나온다는 전통적인 통계적 편향을 사용하여 인접수들의 출현 확률을 높입니다.',
+            '지난 회차 당첨 번호의 <strong>바로 옆 번호(±1)</strong>가 다음에 잘 나온다는 속설을 반영합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     zone_split_3band: {
         id: 'zone_split_3band',
-        label: '3구간 분할',
+        label: '세 구간 고르게',
         tier: 'B',
         experimental: false,
-        summary: '1-15/16-30/31-45 구간 균형',
+        summary: '1~15 / 16~30 / 31~45에서 골고루',
         description:
-            '전체 번호를 1~15, 16~30, 31~45의 <strong>세 개 구간</strong>으로 나누어 번호가 구간별로 골고루 하나 이상씩 섞여 나오도록 유도하는 안정적인 분산 투자법입니다.',
+            '번호를 1~15, 16~30, 31~45 <strong>세 구간</strong>으로 나눠 구간마다 하나 이상 섞이도록 합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     wheel_full: {
         id: 'wheel_full',
-        label: '휠링(풀)',
+        label: '후보 돌려 조합',
         tier: 'A',
         experimental: false,
-        summary: '후보군 기반 조합 확장',
+        summary: '유력 후보 안에서 여러 조합 만들기',
         description:
-            '선택된 유력 후보군(통상 10수 내외)을 기반으로, 그 안에서 점수가 높은 번호를 넓게 샘플링해 여러 조합을 탐색하는 <strong>후보군 기반 확장 전략</strong>입니다.',
+            '점수가 높은 후보 번호(보통 10개 안팎)를 먼저 고른 뒤, 그 안에서 <strong>여러 조합을 넓게</strong> 만들어 봅니다.',
         defaultParams: { ...BASE_PARAMS, wheelPoolSize: 10, wheelGuarantee: 4 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     wheel_reduced_t3: {
         id: 'wheel_reduced_t3',
-        label: '휠링(축약 3단계)',
+        label: '후보 압축 조합',
         tier: 'B',
         experimental: false,
-        summary: '소수 티켓 중심 축약 휠',
+        summary: '적은 게임 수로 후보 번호 조합',
         description:
-            '풀 휠링보다 적은 수의 조합으로 후보군을 샘플링하는 <strong>축약형 확장 전략</strong>입니다. 제한된 조합 수 안에서 후보군을 폭넓게 탐색하고 싶을 때 적합합니다.',
+            '"후보 돌려 조합"보다 <strong>적은 게임 수</strong>로 후보 번호를 골고루 섞습니다. 몇 게임만 살 때 좋습니다.',
         defaultParams: { ...BASE_PARAMS, wheelPoolSize: 9, wheelGuarantee: 3 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     skip_hit_weighted: {
         id: 'skip_hit_weighted',
-        label: '결번/출현 가중',
+        label: '쉬는 리듬 반영',
         tier: 'B',
         experimental: true,
-        summary: '결번-출현 리듬 기반',
+        summary: '나왔다 쉬었다 하는 리듬 반영',
         description:
-            '<strong>[실험 모델]</strong> 번호별로 출현과 결번이 순환하는 리듬 패턴을 수학적으로 추적하여, 다음 타이밍에 출현 쪽으로 기울 수 있는 번호를 휴리스틱하게 추정합니다.',
+            '<strong>[실험 중]</strong> 번호마다 나왔다 쉬었다 하는 리듬을 따라가, 다음에 나올 차례로 보이는 번호를 고릅니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     last_digit_balance: {
         id: 'last_digit_balance',
-        label: '끝수 균형',
+        label: '끝자리 고르게',
         tier: 'C',
         experimental: true,
-        summary: '끝수 분산 중심',
+        summary: '끝자리가 겹치지 않게',
         description:
-            '<strong>[실험 모델]</strong> 1의 자리 끝수(1~9, 0)가 최소 4종류 이상 서로 다르게 나오도록 강제합니다. 끝수가 한두 개로 몰리는 극단적인 패턴 부작용을 사전에 차단합니다.',
+            '<strong>[실험 중]</strong> 번호 끝자리(0~9)가 최소 4종류 이상 섞이도록 합니다. 끝자리가 한두 개로 몰리는 조합을 피합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS, endDigitUniqueMin: 4 }
     },
     delta_gap_pattern: {
         id: 'delta_gap_pattern',
-        label: '간격 패턴',
+        label: '번호 간격 패턴',
         tier: 'C',
         experimental: true,
-        summary: '번호 간 간격 분포 근사',
+        summary: '번호 사이 간격을 과거와 비슷하게',
         description:
-            '<strong>[실험 모델]</strong> 생성된 6개 번호들 사이의 간격 변화 값이 과거 당첨 티켓들이 보였던 간격 분포 곡선과 가장 유사한 형태를 띠도록 섀도우 매칭을 수행합니다.',
+            '<strong>[실험 중]</strong> 6개 번호 사이의 간격이 과거 당첨 번호들의 간격과 비슷한 모양이 되도록 맞춥니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     carryover_repeat_control: {
         id: 'carryover_repeat_control',
-        label: '이월 반복 제어',
+        label: '지난 번호 반복 조절',
         tier: 'C',
         experimental: true,
-        summary: '직전 회차 반복 수 조정',
+        summary: '지난 회차 번호는 최대 2개까지',
         description:
-            '<strong>[실험 모델]</strong> 직전 회차 당첨 번호가 이번 회차에 그대로 출현(이월)하는 개수를 최대 2개 이하로 엄격하게 컨트롤하여 불필요한 이월수 노이즈 비중을 차단합니다.',
+            '<strong>[실험 중]</strong> 지난 회차 당첨 번호가 이번 조합에 다시 들어가는 개수를 최대 2개로 제한합니다.',
         defaultParams: { ...BASE_PARAMS, simulationCount: 7000 },
         defaultFilters: { ...EMPTY_FILTERS, maxConsecutivePairs: 2 }
     }

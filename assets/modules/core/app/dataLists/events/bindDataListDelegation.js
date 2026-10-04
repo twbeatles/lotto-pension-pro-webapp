@@ -25,15 +25,15 @@ export const appDataListBindDelegationEventMethods = {
                             const detail =
                                 linkedTickets > 0
                                     ? `연결된 티켓 ${linkedTickets}개도 함께 삭제됩니다.`
-                                    : '이 캠페인만 삭제됩니다.';
+                                    : '이 회차 묶음만 삭제됩니다.';
                             const confirmed = await UIManager.confirm({
-                                title: `'${campaign.name}' 캠페인을 삭제할까요?`,
+                                title: `'${campaign.name}' 회차 묶음을 삭제할까요?`,
                                 message: detail
                             });
                             if (!confirmed) return;
                             const result = this.data.removeCampaign(campaign.id, { cascadeTickets: true });
                             if (result.removedCampaign) {
-                                UIManager.toast(`캠페인 1개, 연결 티켓 ${result.removedTickets}개 삭제`, 'success');
+                                UIManager.toast(`회차 묶음 1개, 연결 티켓 ${result.removedTickets}개 삭제`, 'success');
                             }
                             this.renderDataLists();
                         })();
@@ -55,7 +55,7 @@ export const appDataListBindDelegationEventMethods = {
                     const result = this.data.removeTicket(item.id);
                     if (result.removed) {
                         const cleanupSuffix =
-                            result.prunedCampaigns > 0 ? `, 캠페인 ${result.prunedCampaigns}개 자동 정리` : '';
+                            result.prunedCampaigns > 0 ? `, 회차 묶음 ${result.prunedCampaigns}개 자동 정리` : '';
                         UIManager.toast(`${result.removedTickets}개 티켓 삭제${cleanupSuffix}`, 'success');
                     }
                     this.renderDataLists();

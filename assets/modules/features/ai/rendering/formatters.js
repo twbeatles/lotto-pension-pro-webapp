@@ -11,8 +11,8 @@ export function formatAdaptiveSelection(adaptive = null) {
 }
 
 export function formatTierLabel(tier = '') {
-    const labels = { A: '기본', B: '확장', C: '실험' };
-    return `${String(tier || '-').toUpperCase()} · ${labels[tier] || '참고'}`;
+    const labels = { A: '추천', B: '보조', C: '실험 중' };
+    return labels[tier] || '참고';
 }
 
 export function normalizeSimulation(result, { executionMode = 'worker', workerTimedOut = false } = {}) {

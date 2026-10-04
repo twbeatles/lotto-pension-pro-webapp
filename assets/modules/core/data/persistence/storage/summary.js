@@ -56,11 +56,11 @@ export const dataPersistenceStorageSummaryMethods = {
 
         const warnings = [];
         const storageFailures = this.getStorageWriteFailures?.() || [];
-        if (counts.history > 300) warnings.push(`히스토리 ${counts.history}개`);
+        if (counts.history > 300) warnings.push(`생성 기록 ${counts.history}개`);
         if (counts.tickets > 200) warnings.push(`티켓 ${counts.tickets}개`);
         if (counts.pension720Tickets > 200) warnings.push(`연금복권 저장 ${counts.pension720Tickets}개`);
-        if (counts.pension720Campaigns > 60) warnings.push(`연금복권 캠페인 ${counts.pension720Campaigns}개`);
-        if (counts.campaigns > 60) warnings.push(`캠페인 ${counts.campaigns}개`);
+        if (counts.pension720Campaigns > 60) warnings.push(`연금복권 회차 묶음 ${counts.pension720Campaigns}개`);
+        if (counts.campaigns > 60) warnings.push(`회차 묶음 ${counts.campaigns}개`);
         if (counts.localUpdates > 60) warnings.push(`로컬 업데이트 ${counts.localUpdates}개`);
 
         if (storageFailures.length) warnings.push(`storage write failed ${storageFailures.length}`);

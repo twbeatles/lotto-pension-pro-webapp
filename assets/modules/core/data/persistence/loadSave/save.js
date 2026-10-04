@@ -34,6 +34,13 @@ export const dataPersistenceLoadSaveSaveMethods = {
             }
 
             this._checkStorageQuotaWarning();
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+                try {
+                    window.dispatchEvent(new CustomEvent('lotto:persistence-saved'));
+                } catch (_e) {
+                    // CustomEvent may be unavailable in non-browser test runtimes.
+                }
+            }
         };
 
         if (immediate) {
@@ -42,6 +49,7 @@ export const dataPersistenceLoadSaveSaveMethods = {
         }
 
         this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
             if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
                 window.requestIdleCallback(() => executeSave(), { timeout: 1000 });
             } else {

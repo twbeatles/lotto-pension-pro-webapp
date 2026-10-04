@@ -34,7 +34,7 @@ git diff --check
 
 Lotto official freshness와 Pension720+ freshness 검증은 공식 endpoint를 조회하므로 네트워크 또는 공식 endpoint 장애 시 실패할 수 있습니다.
 
-`npm run test:browser`의 happy path에는 Pension720+ 추천, 개별 저장, 확장 조 저장, 캠페인 생성, target-aware 확인, CSV 다운로드 검증이 포함됩니다.
+`npm run test:browser`의 happy path에는 Pension720+ 추천, 개별 저장, 확장 조 저장, 회차 묶음(campaign) 생성, target-aware 확인, CSV 다운로드 검증이 포함됩니다. 회차 묶음 버튼은 접힌 `<details>` 안에 있으므로 테스트가 해당 섹션을 먼저 펼친 뒤 클릭합니다.
 
 ## 배포 브랜치에 포함하지 않을 로컬 산출물
 

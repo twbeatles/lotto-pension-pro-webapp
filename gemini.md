@@ -30,13 +30,21 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 
 ## Feature Map
 
-- `번호 생성`: Lotto 6/45 generation, fixed/excluded numbers, campaigns, QR, save flows.
+- `번호 생성`: Lotto 6/45 generation, 꼭 넣을/뺄 번호, 회차 묶음(campaigns), QR, favorite/ticket save flows.
 - `당첨 통계`: Lotto 6/45 frequency and distribution analysis.
 - `번호 추천`: Strategy-based Lotto 6/45 recommendation with analysis presets and reproducible seed.
 - `연금복권`: Pension720+ stats, dedicated recommendation strategies, presets, group/digit filters, separate campaigns, expansion group suggestions, saved-number list, copy/CSV export, target-draw-aware check with latest-draw reference fallback.
 - `시뮬레이션`: Lotto 6/45 strategy backtest.
 - `당첨 확인`: saved Lotto 6/45 ticket comparison and official paper QR scan (`dhlottery.co.kr` / `qr.do`, `q`/`m`/`n`/`s` game markers).
-- `데이터 관리`: backup/import, saved lists, local update cleanup, storage summary.
+- `데이터 관리`: backup/import, saved lists (per-item delete and save-as-ticket for favorites/history), local update cleanup, storage summary.
+
+## UI / Copy Notes (2026-10 refresh)
+
+- User-facing copy is plain Korean without developer jargon: `구매 번호` (ticketBook), `생성 기록` (history), `회차 묶음` (campaigns), `저장한 설정` (strategy presets), `추첨 전` (pending). Strategy labels live in `strategyCatalog/entries.js` and `pension720StrategyCatalog/entries.js`; dropdowns mark only experimental entries via `formatStrategyOptionLabel()`.
+- Expert controls (strategy, presets, filters, seed, campaigns, proxy URL) sit in collapsed `<details class="advanced-settings">`. Element IDs are a stable contract for JS modules and tests.
+- Mobile bottom bar: 생성 / 추천 / 확인 / 보관함 / 더보기; more-sheet-only routes are `MORE_SHEET_ROUTES` in `assets/modules/core/app/mobileMoreSheet.js`.
+- Design tokens for both themes live in `assets/styles/tokens.css` (legacy aliases kept). Result rows use container queries.
+- `assets/modules/utils/celebrate.js` lazy-imports vendored `canvas-confetti` (ISC) for real wins and respects `prefers-reduced-motion`. `assets/vendor/**` is excluded from ESLint.
 
 ## Important Contracts
 

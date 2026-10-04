@@ -1198,3 +1198,8 @@ select.sm {
     background: transparent;
     color: var(--text-muted);
 }
+
+.ball.sm.hit {
+    outline-width: 2px;
+    outline-offset: 1px;
+}

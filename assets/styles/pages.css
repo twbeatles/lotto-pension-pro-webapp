@@ -27,9 +27,7 @@
 /* Generator                                                           */
 /* ------------------------------------------------------------------ */
 .latest-win-card {
-    background:
-        radial-gradient(500px 200px at 100% 0%, var(--gold-soft), transparent 70%),
-        var(--surface);
+    background: radial-gradient(500px 200px at 100% 0%, var(--gold-soft), transparent 70%), var(--surface);
 }
 
 .latest-win-card .card-header {

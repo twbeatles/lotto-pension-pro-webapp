@@ -53,12 +53,7 @@ export const dataIoStatusMethods = {
                 ['local update', `${localUpdates.length}건`],
                 ['마지막 성공', syncMeta.lastSuccessAt ? this.app.formatDateTime(syncMeta.lastSuccessAt) : '-'],
                 ['메시지', freshness.dataHealthMessage || syncMeta.lastFailureMessage || '-'],
-                [
-                    '동기화 경로',
-                    this.data.resolveProxyConfig?.()?.url
-                        ? '고급 연결 주소 우선'
-                        : '기본 자동 연결'
-                ]
+                ['동기화 경로', this.data.resolveProxyConfig?.()?.url ? '고급 연결 주소 우선' : '기본 자동 연결']
             ],
             freshness.availability === 'full' ? '정상' : '확인 필요'
         );

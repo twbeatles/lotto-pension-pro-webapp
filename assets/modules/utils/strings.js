@@ -85,8 +85,7 @@ export const UI_STRINGS = {
         logError(message = '') {
             return `오류: ${message}`;
         },
-        logThirdPartyHint:
-            '참고: 기본 연결은 공개 CORS 중계를 거칠 수 있어 가끔 느리거나 실패할 수 있어요.'
+        logThirdPartyHint: '참고: 기본 연결은 공개 CORS 중계를 거칠 수 있어 가끔 느리거나 실패할 수 있어요.'
     },
     moreMenu: {
         title: '더보기',
@@ -94,12 +93,15 @@ export const UI_STRINGS = {
         simulation: '시뮬레이션',
         settings: '설정',
         install: '앱 설치',
-        unavailableInstall: '이 브라우저에서는 바로 설치할 수 없어요. 브라우저 메뉴의 「홈 화면에 추가」를 이용해 주세요.'
+        unavailableInstall:
+            '이 브라우저에서는 바로 설치할 수 없어요. 브라우저 메뉴의 「홈 화면에 추가」를 이용해 주세요.'
     },
     pwa: {
         cachePending: '앱 설치가 끝나면 오프라인용 파일 준비 상태를 확인합니다.',
         cacheOk(version = '') {
-            return version ? `기본 캐시 준비 완료 · 오프라인 사용 가능 (${version})` : '기본 캐시 준비 완료 · 오프라인 사용 가능';
+            return version
+                ? `기본 캐시 준비 완료 · 오프라인 사용 가능 (${version})`
+                : '기본 캐시 준비 완료 · 오프라인 사용 가능';
         },
         cacheWarning(count = 0) {
             return `오프라인용 파일 ${count}개를 준비하지 못했어요. 앱 업데이트를 확인해 주세요.`;
@@ -125,7 +127,7 @@ export const UI_STRINGS = {
             favorites: '즐겨찾기',
             history: '생성 기록',
             tickets: '구매한 번호',
-            scanned: '스캔 결과'
+            scanned: 'QR 스캔 결과'
         },
         ticketStatus: {
             all: '전체',

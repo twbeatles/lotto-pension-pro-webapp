@@ -32,3 +32,9 @@ These files are committed intentionally so the deployed app can run without runt
 - Source: https://www.npmjs.com/package/pretendard
 - License: OFL-1.1
 - Vendored files: variable font used by the application UI
+
+## canvas-confetti 1.9.4
+
+- Source: https://www.npmjs.com/package/canvas-confetti
+- License: ISC
+- Vendored files: ES module build (`confetti.module.js`) loaded on demand for win celebrations

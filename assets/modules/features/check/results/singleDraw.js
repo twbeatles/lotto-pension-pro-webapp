@@ -1,6 +1,7 @@
 import { $ } from '../../../utils/utils.js';
 import { UIManager } from '../../../core/UIManager.js';
 import { escapeHtml } from '../../../utils/dom.js';
+import { celebrateWin } from '../../../utils/celebrate.js';
 
 export const checkResultSingleDrawMethods = {
     renderMissingTargetDraw(ticket, targetDrawNo) {
@@ -84,5 +85,6 @@ export const checkResultSingleDrawMethods = {
         </div>
       </div>
     `;
+        if (rank) void celebrateWin({ rank });
     }
 };

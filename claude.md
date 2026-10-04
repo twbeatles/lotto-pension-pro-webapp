@@ -8,7 +8,7 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App type: no-build static SPA
 - Primary entry flow: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- Service worker cache version: `v32`
+- Service worker cache version: `v33`
 
 ## Current Data Baseline
 
@@ -63,6 +63,11 @@ Current handoff note for agents working on `lotto-pension-pro-webapp`.
     - `당첨 확인`
     - `데이터 관리`
 - Avoid reviving legacy user-facing names such as older AI-prediction wording.
+- Plain-language copy (2026-10 UI refresh): user-facing text avoids developer jargon. Use `구매 번호` (ticketBook), `생성 기록` (history), `회차 묶음` (campaigns), `저장한 설정` (strategy presets), `추첨 전` (pending). Strategy labels in `strategyCatalog/entries.js` are plain Korean; dropdowns mark only experimental entries via `formatStrategyOptionLabel()`.
+- Layout: expert controls (strategy, presets, filters, seed, campaigns, proxy URL) live in collapsed `<details class="advanced-settings">` sections. Element IDs are a stable contract for the JS modules and smoke/browser tests; keep them when moving markup.
+- Mobile bottom bar: 생성 / 추천 / 확인 / 보관함 / 더보기. Routes only reachable from the more sheet are listed in `MORE_SHEET_ROUTES` (`assets/modules/core/app/mobileMoreSheet.js`).
+- Styles: `assets/styles/tokens.css` holds the design tokens for both themes; legacy token aliases (`--bg-deep`, `--bg-suface-light`, `--glass-*`) remain for older markup. Result rows use container queries (`container-name: results`).
+- Win celebration: `assets/modules/utils/celebrate.js` lazy-imports the vendored `canvas-confetti` ES module for real 1~5등 wins (lotto latest/target draw check and pension target-draw check) and respects `prefers-reduced-motion`.
 - Dated one-off review/audit files may be absent or deleted in the worktree. Do not restore them unless explicitly requested; fold durable conclusions into this handoff, `README.md`, `gemini.md`, or deployment docs.
 
 ## Current Implementation Status

@@ -99,7 +99,13 @@
                         <span class="text">준비됨</span>
                     </div>
                     <div class="sidebar-actions">
-                        <button id="themeToggle" class="icon-btn" aria-label="테마 전환" title="테마 전환" type="button">
+                        <button
+                            id="themeToggle"
+                            class="icon-btn"
+                            aria-label="테마 전환"
+                            title="테마 전환"
+                            type="button"
+                        >
                             <i class="ph ph-moon"></i>
                         </button>
                         <button id="openSettingsBtn" class="icon-btn" aria-label="설정 열기" title="설정" type="button">
@@ -143,7 +149,9 @@
                     <header class="page-header">
                         <p class="page-eyebrow">로또 6/45</p>
                         <h2 id="genTitle">번호 생성</h2>
-                        <p class="subtitle">조건을 고르고 버튼만 누르세요. 마음에 드는 번호는 저장해 두면 추첨 후 자동으로 맞춰 봐요.</p>
+                        <p class="subtitle">
+                            조건을 고르고 버튼만 누르세요. 마음에 드는 번호는 저장해 두면 추첨 후 자동으로 맞춰 봐요.
+                        </p>
                     </header>
 
                     <div class="gen-layout">
@@ -352,45 +360,127 @@
                                         <div class="input-group strategy-range">
                                             <span class="group-label">홀수 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="genOddMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="홀수 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="genOddMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="홀수 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="genOddMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="홀수 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="genOddMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="홀수 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">큰 번호(24~45) 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="genHighMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="큰 번호 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="genHighMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="큰 번호 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="genHighMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="큰 번호 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="genHighMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="큰 번호 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">6개 번호 합계</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="genSumMin" class="input-field" min="21" max="260" placeholder="최소" aria-label="합계 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="genSumMin"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최소"
+                                                    aria-label="합계 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="genSumMax" class="input-field" min="21" max="260" placeholder="최대" aria-label="합계 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="genSumMax"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최대"
+                                                    aria-label="합계 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
-                                            <span class="group-label">번호 섞임 정도 <span class="label-hint">0~10</span></span>
+                                            <span class="group-label"
+                                                >번호 섞임 정도 <span class="label-hint">0~10</span></span
+                                            >
                                             <div class="range-inputs">
-                                                <input type="number" id="genAcMin" class="input-field" min="0" max="10" placeholder="최소" aria-label="섞임 정도 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="genAcMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최소"
+                                                    aria-label="섞임 정도 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="genAcMax" class="input-field" min="0" max="10" placeholder="최대" aria-label="섞임 정도 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="genAcMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최대"
+                                                    aria-label="섞임 정도 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group">
                                             <label for="genMaxConsecutive">연속 번호 쌍 최대</label>
-                                            <input type="number" id="genMaxConsecutive" class="input-field" min="0" max="5" placeholder="예: 1" />
+                                            <input
+                                                type="number"
+                                                id="genMaxConsecutive"
+                                                class="input-field"
+                                                min="0"
+                                                max="5"
+                                                placeholder="예: 1"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="genEndDigitUnique">끝자리 종류 최소</label>
-                                            <input type="number" id="genEndDigitUnique" class="input-field" min="1" max="6" placeholder="예: 4" />
+                                            <input
+                                                type="number"
+                                                id="genEndDigitUnique"
+                                                class="input-field"
+                                                min="1"
+                                                max="6"
+                                                placeholder="예: 4"
+                                            />
                                         </div>
                                         <div class="input-group span-all">
-                                            <label for="genSeed">같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label>
+                                            <label for="genSeed"
+                                                >같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label
+                                            >
                                             <input
                                                 type="number"
                                                 id="genSeed"
@@ -399,7 +489,9 @@
                                                 autocomplete="off"
                                                 inputmode="numeric"
                                             />
-                                            <p class="field-help">결과 위에 표시되는 코드를 넣으면 같은 번호를 다시 만들 수 있어요.</p>
+                                            <p class="field-help">
+                                                결과 위에 표시되는 코드를 넣으면 같은 번호를 다시 만들 수 있어요.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -412,7 +504,8 @@
                                 </summary>
                                 <div class="advanced-body">
                                     <p class="field-help">
-                                        몇 주 동안 살 번호를 한 번에 만들어 구매 번호로 저장해요. 회차마다 결과가 자동으로 맞춰져요.
+                                        몇 주 동안 살 번호를 한 번에 만들어 구매 번호로 저장해요. 회차마다 결과가
+                                        자동으로 맞춰져요.
                                     </p>
                                     <div class="strategy-advanced-grid compact">
                                         <div class="input-group">
@@ -427,15 +520,36 @@
                                                     다음 회차로
                                                 </button>
                                             </div>
-                                            <input type="number" id="campStartDraw" class="input-field" min="1" max="99999" placeholder="예: 1245" />
+                                            <input
+                                                type="number"
+                                                id="campStartDraw"
+                                                class="input-field"
+                                                min="1"
+                                                max="99999"
+                                                placeholder="예: 1245"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="campWeeks">몇 주 동안</label>
-                                            <input type="number" id="campWeeks" class="input-field" min="1" max="52" value="4" />
+                                            <input
+                                                type="number"
+                                                id="campWeeks"
+                                                class="input-field"
+                                                min="1"
+                                                max="52"
+                                                value="4"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="campSetsPerWeek">한 주에 몇 게임</label>
-                                            <input type="number" id="campSetsPerWeek" class="input-field" min="1" max="20" value="3" />
+                                            <input
+                                                type="number"
+                                                id="campSetsPerWeek"
+                                                class="input-field"
+                                                min="1"
+                                                max="20"
+                                                value="3"
+                                            />
                                         </div>
                                     </div>
                                     <div class="button-group">
@@ -495,19 +609,27 @@
                             <div id="chartNumDist" class="chart-container"></div>
                         </div>
                         <div class="card metric-card">
-                            <div class="card-header"><h3><i class="ph ph-squares-four"></i> 번호대별 비율</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-squares-four"></i> 번호대별 비율</h3>
+                            </div>
                             <div id="chartRange" class="chart-container"></div>
                         </div>
                         <div class="card metric-card">
-                            <div class="card-header"><h3><i class="ph ph-circle-half"></i> 홀수 · 짝수 비율</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-circle-half"></i> 홀수 · 짝수 비율</h3>
+                            </div>
                             <div id="chartOddEven" class="chart-container"></div>
                         </div>
                         <div class="card full-width metric-card metric-card-wide">
-                            <div class="card-header"><h3><i class="ph ph-fire"></i> 자주 / 드물게 나온 번호</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-fire"></i> 자주 / 드물게 나온 번호</h3>
+                            </div>
                             <div id="hotColdContainer" class="hot-cold-grid"></div>
                         </div>
                         <div class="card full-width metric-card metric-card-wide">
-                            <div class="card-header"><h3><i class="ph ph-link-simple-horizontal"></i> 함께 자주 나온 번호 짝</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-link-simple-horizontal"></i> 함께 자주 나온 번호 짝</h3>
+                            </div>
                             <div id="pairContainer" class="pairs-grid"></div>
                         </div>
                     </div>
@@ -529,7 +651,9 @@
                             <div class="input-group">
                                 <label for="aiModelSelect">추천 방식</label>
                                 <select id="aiModelSelect" class="input-field select-strong"></select>
-                                <p class="field-help">아래 「추천 방식 한눈에 보기」에서 설명을 보고 눌러서 고를 수도 있어요.</p>
+                                <p class="field-help">
+                                    아래 「추천 방식 한눈에 보기」에서 설명을 보고 눌러서 고를 수도 있어요.
+                                </p>
                             </div>
                             <div class="input-group">
                                 <label for="aiAnalysisPreset">분석 강도</label>
@@ -555,11 +679,21 @@
                                     <div class="input-group">
                                         <span class="group-label">자주 쓰는 설정</span>
                                         <div class="preset-bar">
-                                            <select id="aiPresetSelect" class="input-field preset-select" aria-label="저장한 설정"></select>
+                                            <select
+                                                id="aiPresetSelect"
+                                                class="input-field preset-select"
+                                                aria-label="저장한 설정"
+                                            ></select>
                                             <div class="preset-actions">
-                                                <button id="aiPresetLoadBtn" class="btn ghost sm" type="button">적용</button>
-                                                <button id="aiPresetSaveBtn" class="btn ghost sm" type="button">지금 설정 저장</button>
-                                                <button id="aiPresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                                                <button id="aiPresetLoadBtn" class="btn ghost sm" type="button">
+                                                    적용
+                                                </button>
+                                                <button id="aiPresetSaveBtn" class="btn ghost sm" type="button">
+                                                    지금 설정 저장
+                                                </button>
+                                                <button id="aiPresetDeleteBtn" class="btn ghost sm" type="button">
+                                                    삭제
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -567,61 +701,177 @@
                                         <div class="input-group">
                                             <div class="label-row">
                                                 <label for="aiTargetDrawNo">구매할 회차</label>
-                                                <button class="text-btn sm" type="button" data-reset-target-draw data-target-draw-ids="aiTargetDrawNo">다음 회차로</button>
+                                                <button
+                                                    class="text-btn sm"
+                                                    type="button"
+                                                    data-reset-target-draw
+                                                    data-target-draw-ids="aiTargetDrawNo"
+                                                >
+                                                    다음 회차로
+                                                </button>
                                             </div>
-                                            <input type="number" id="aiTargetDrawNo" class="input-field" min="1" inputmode="numeric" placeholder="예: 1245" />
+                                            <input
+                                                type="number"
+                                                id="aiTargetDrawNo"
+                                                class="input-field"
+                                                min="1"
+                                                inputmode="numeric"
+                                                placeholder="예: 1245"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="aiSimulationCount">비교할 후보 조합 수</label>
-                                            <input type="number" id="aiSimulationCount" class="input-field" min="1000" max="20000" step="1000" value="5000" />
+                                            <input
+                                                type="number"
+                                                id="aiSimulationCount"
+                                                class="input-field"
+                                                min="1000"
+                                                max="20000"
+                                                step="1000"
+                                                value="5000"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="aiLookbackWindow">최근 몇 회차를 볼까요?</label>
-                                            <input type="number" id="aiLookbackWindow" class="input-field" min="5" max="120" value="20" />
+                                            <input
+                                                type="number"
+                                                id="aiLookbackWindow"
+                                                class="input-field"
+                                                min="5"
+                                                max="120"
+                                                value="20"
+                                            />
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">홀수 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="aiOddMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="홀수 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="aiOddMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="홀수 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="aiOddMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="홀수 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="aiOddMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="홀수 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">큰 번호(24~45) 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="aiHighMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="큰 번호 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="aiHighMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="큰 번호 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="aiHighMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="큰 번호 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="aiHighMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="큰 번호 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">6개 번호 합계</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="aiSumMin" class="input-field" min="21" max="260" placeholder="최소" aria-label="합계 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="aiSumMin"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최소"
+                                                    aria-label="합계 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="aiSumMax" class="input-field" min="21" max="260" placeholder="최대" aria-label="합계 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="aiSumMax"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최대"
+                                                    aria-label="합계 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
-                                            <span class="group-label">번호 섞임 정도 <span class="label-hint">0~10</span></span>
+                                            <span class="group-label"
+                                                >번호 섞임 정도 <span class="label-hint">0~10</span></span
+                                            >
                                             <div class="range-inputs">
-                                                <input type="number" id="aiAcMin" class="input-field" min="0" max="10" placeholder="최소" aria-label="섞임 정도 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="aiAcMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최소"
+                                                    aria-label="섞임 정도 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="aiAcMax" class="input-field" min="0" max="10" placeholder="최대" aria-label="섞임 정도 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="aiAcMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최대"
+                                                    aria-label="섞임 정도 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group">
                                             <label for="aiMaxConsecutive">연속 번호 쌍 최대</label>
-                                            <input type="number" id="aiMaxConsecutive" class="input-field" min="0" max="5" />
+                                            <input
+                                                type="number"
+                                                id="aiMaxConsecutive"
+                                                class="input-field"
+                                                min="0"
+                                                max="5"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="aiEndDigitUnique">끝자리 종류 최소</label>
-                                            <input type="number" id="aiEndDigitUnique" class="input-field" min="1" max="6" />
+                                            <input
+                                                type="number"
+                                                id="aiEndDigitUnique"
+                                                class="input-field"
+                                                min="1"
+                                                max="6"
+                                            />
                                         </div>
                                         <div class="input-group span-all">
-                                            <label for="aiSeed">같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label>
-                                            <input type="number" id="aiSeed" class="input-field" placeholder="비워 두면 누를 때마다 새 추천" autocomplete="off" inputmode="numeric" />
+                                            <label for="aiSeed"
+                                                >같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="aiSeed"
+                                                class="input-field"
+                                                placeholder="비워 두면 누를 때마다 새 추천"
+                                                autocomplete="off"
+                                                inputmode="numeric"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -697,12 +947,21 @@
                         <div class="card full-width task-card">
                             <div class="card-header">
                                 <h3><i class="ph ph-sparkle"></i> 연금복권 번호 추천</h3>
-                                <button id="pension720ResetOptionsBtn" class="text-btn" type="button">기본값으로</button>
+                                <button id="pension720ResetOptionsBtn" class="text-btn" type="button">
+                                    기본값으로
+                                </button>
                             </div>
                             <div class="options-grid p720-options">
                                 <div class="input-group">
                                     <label for="pension720RecommendCount">추천 개수</label>
-                                    <input type="number" id="pension720RecommendCount" class="input-field" min="1" max="20" value="5" />
+                                    <input
+                                        type="number"
+                                        id="pension720RecommendCount"
+                                        class="input-field"
+                                        min="1"
+                                        max="20"
+                                        value="5"
+                                    />
                                 </div>
                                 <div class="input-group">
                                     <label for="pension720StrategySelect">추천 방식</label>
@@ -733,70 +992,187 @@
                                     <div class="input-group">
                                         <span class="group-label">자주 쓰는 설정</span>
                                         <div class="preset-bar">
-                                            <select id="pension720PresetSelect" class="input-field preset-select" aria-label="저장한 설정"></select>
+                                            <select
+                                                id="pension720PresetSelect"
+                                                class="input-field preset-select"
+                                                aria-label="저장한 설정"
+                                            ></select>
                                             <div class="preset-actions">
-                                                <button id="pension720PresetLoadBtn" class="btn ghost sm" type="button">적용</button>
-                                                <button id="pension720PresetSaveBtn" class="btn ghost sm" type="button">지금 설정 저장</button>
-                                                <button id="pension720PresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                                                <button id="pension720PresetLoadBtn" class="btn ghost sm" type="button">
+                                                    적용
+                                                </button>
+                                                <button id="pension720PresetSaveBtn" class="btn ghost sm" type="button">
+                                                    지금 설정 저장
+                                                </button>
+                                                <button
+                                                    id="pension720PresetDeleteBtn"
+                                                    class="btn ghost sm"
+                                                    type="button"
+                                                >
+                                                    삭제
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="strategy-advanced-grid">
                                         <div class="input-group">
                                             <label for="pension720AllowedGroups">원하는 조</label>
-                                            <input type="text" id="pension720AllowedGroups" class="input-field" placeholder="예: 1, 3, 5" />
+                                            <input
+                                                type="text"
+                                                id="pension720AllowedGroups"
+                                                class="input-field"
+                                                placeholder="예: 1, 3, 5"
+                                            />
                                         </div>
                                         <div class="input-group">
-                                            <label for="pension720FixedDigits">자리 고정 <span class="label-hint">자리=숫자</span></label>
-                                            <input type="text" id="pension720FixedDigits" class="input-field" placeholder="예: 1=0, 4=7" />
+                                            <label for="pension720FixedDigits"
+                                                >자리 고정 <span class="label-hint">자리=숫자</span></label
+                                            >
+                                            <input
+                                                type="text"
+                                                id="pension720FixedDigits"
+                                                class="input-field"
+                                                placeholder="예: 1=0, 4=7"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720ExcludedDigits">자리별 뺄 숫자</label>
-                                            <input type="text" id="pension720ExcludedDigits" class="input-field" placeholder="예: 2=4,9; 6=0" />
+                                            <input
+                                                type="text"
+                                                id="pension720ExcludedDigits"
+                                                class="input-field"
+                                                placeholder="예: 2=4,9; 6=0"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720LookbackWindow">최근 몇 회차를 볼까요?</label>
-                                            <input type="number" id="pension720LookbackWindow" class="input-field" min="1" max="300" value="40" />
+                                            <input
+                                                type="number"
+                                                id="pension720LookbackWindow"
+                                                class="input-field"
+                                                min="1"
+                                                max="300"
+                                                value="40"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720CandidatePoolSize">비교할 후보 수</label>
-                                            <input type="number" id="pension720CandidatePoolSize" class="input-field" min="20" max="800" step="10" value="140" />
+                                            <input
+                                                type="number"
+                                                id="pension720CandidatePoolSize"
+                                                class="input-field"
+                                                min="20"
+                                                max="800"
+                                                step="10"
+                                                value="140"
+                                            />
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">6자리 숫자 합계</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="pension720DigitSumMin" class="input-field" min="0" max="54" placeholder="최소" aria-label="숫자 합계 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720DigitSumMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="54"
+                                                    placeholder="최소"
+                                                    aria-label="숫자 합계 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="pension720DigitSumMax" class="input-field" min="0" max="54" placeholder="최대" aria-label="숫자 합계 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720DigitSumMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="54"
+                                                    placeholder="최대"
+                                                    aria-label="숫자 합계 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">홀수 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="pension720OddMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="홀수 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720OddMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="홀수 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="pension720OddMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="홀수 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720OddMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="홀수 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">큰 숫자(5~9) 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="pension720HighMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="큰 숫자 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720HighMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="큰 숫자 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="pension720HighMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="큰 숫자 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="pension720HighMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="큰 숫자 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720UniqueDigitMin">서로 다른 숫자 최소</label>
-                                            <input type="number" id="pension720UniqueDigitMin" class="input-field" min="1" max="6" placeholder="예: 4" />
+                                            <input
+                                                type="number"
+                                                id="pension720UniqueDigitMin"
+                                                class="input-field"
+                                                min="1"
+                                                max="6"
+                                                placeholder="예: 4"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720MaxSameDigit">같은 숫자 최대 반복</label>
-                                            <input type="number" id="pension720MaxSameDigit" class="input-field" min="1" max="6" placeholder="예: 2" />
+                                            <input
+                                                type="number"
+                                                id="pension720MaxSameDigit"
+                                                class="input-field"
+                                                min="1"
+                                                max="6"
+                                                placeholder="예: 2"
+                                            />
                                         </div>
                                         <div class="input-group span-all">
-                                            <label for="pension720Seed">같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label>
-                                            <input type="number" id="pension720Seed" class="input-field" placeholder="비워 두면 누를 때마다 새 추천" autocomplete="off" inputmode="numeric" />
+                                            <label for="pension720Seed"
+                                                >같은 번호 다시 만들기 코드 <span class="label-hint">선택</span></label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="pension720Seed"
+                                                class="input-field"
+                                                placeholder="비워 두면 누를 때마다 새 추천"
+                                                autocomplete="off"
+                                                inputmode="numeric"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -811,22 +1187,44 @@
                                     <div class="strategy-advanced-grid compact">
                                         <div class="input-group">
                                             <label for="pension720CampaignStartDraw">시작 회차</label>
-                                            <input type="number" id="pension720CampaignStartDraw" class="input-field" min="1" placeholder="예: 336" />
+                                            <input
+                                                type="number"
+                                                id="pension720CampaignStartDraw"
+                                                class="input-field"
+                                                min="1"
+                                                placeholder="예: 336"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720CampaignWeeks">몇 회차 동안</label>
-                                            <input type="number" id="pension720CampaignWeeks" class="input-field" min="1" max="52" value="4" />
+                                            <input
+                                                type="number"
+                                                id="pension720CampaignWeeks"
+                                                class="input-field"
+                                                min="1"
+                                                max="52"
+                                                value="4"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="pension720CampaignSetsPerDraw">회차마다 몇 장</label>
-                                            <input type="number" id="pension720CampaignSetsPerDraw" class="input-field" min="1" max="20" value="3" />
+                                            <input
+                                                type="number"
+                                                id="pension720CampaignSetsPerDraw"
+                                                class="input-field"
+                                                min="1"
+                                                max="20"
+                                                value="3"
+                                            />
                                         </div>
                                     </div>
                                     <div class="button-group">
                                         <button id="pension720CampaignBtn" class="btn ghost sm" type="button">
                                             <i class="ph ph-calendar-plus"></i> 회차 묶음 만들기
                                         </button>
-                                        <button id="pension720CampaignResetBtn" class="btn ghost sm" type="button">초기화</button>
+                                        <button id="pension720CampaignResetBtn" class="btn ghost sm" type="button">
+                                            초기화
+                                        </button>
                                     </div>
                                 </div>
                             </details>
@@ -876,7 +1274,8 @@
                                 <div>
                                     <h3><i class="ph ph-medal"></i> 저장 번호 당첨 확인</h3>
                                     <p class="subtitle">
-                                        구매할 회차를 정해 둔 번호는 그 회차 결과로, 정하지 않은 번호는 최신 회차 결과로 비교해요.
+                                        구매할 회차를 정해 둔 번호는 그 회차 결과로, 정하지 않은 번호는 최신 회차 결과로
+                                        비교해요.
                                     </p>
                                 </div>
                                 <button id="pension720CheckLatestBtn" class="btn primary sm" type="button">
@@ -886,19 +1285,28 @@
                             <div id="pension720CheckOutput" class="p720-check-list">
                                 <p class="empty-state">번호를 저장한 뒤 「확인하기」를 누르세요.</p>
                             </div>
-                            <p class="result-disclaimer">앱의 확인 결과는 참고용이에요. 당첨금 수령 전에는 실물 복권이나 동행복권에서 꼭 다시 확인하세요.</p>
+                            <p class="result-disclaimer">
+                                앱의 확인 결과는 참고용이에요. 당첨금 수령 전에는 실물 복권이나 동행복권에서 꼭 다시
+                                확인하세요.
+                            </p>
                         </div>
 
                         <div class="card metric-card">
-                            <div class="card-header"><h3><i class="ph ph-users-three"></i> 조별 당첨 흐름</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-users-three"></i> 조별 당첨 흐름</h3>
+                            </div>
                             <div id="pension720GroupStats" class="p720-stat-list"></div>
                         </div>
                         <div class="card metric-card">
-                            <div class="card-header"><h3><i class="ph ph-hash"></i> 자리별 자주 나온 숫자</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-hash"></i> 자리별 자주 나온 숫자</h3>
+                            </div>
                             <div id="pension720DigitStats" class="p720-digit-grid"></div>
                         </div>
                         <div class="card full-width metric-card metric-card-wide">
-                            <div class="card-header"><h3><i class="ph ph-clock-counter-clockwise"></i> 최근 당첨 번호</h3></div>
+                            <div class="card-header">
+                                <h3><i class="ph ph-clock-counter-clockwise"></i> 최근 당첨 번호</h3>
+                            </div>
                             <div id="pension720RecentSummary" class="p720-recent-grid"></div>
                         </div>
                     </div>
@@ -919,11 +1327,25 @@
                             <div class="options-grid">
                                 <div class="input-group">
                                     <label for="btStart">시작 회차</label>
-                                    <input type="number" id="btStart" class="input-field" min="1" max="99999" value="1000" />
+                                    <input
+                                        type="number"
+                                        id="btStart"
+                                        class="input-field"
+                                        min="1"
+                                        max="99999"
+                                        value="1000"
+                                    />
                                 </div>
                                 <div class="input-group">
                                     <label for="btEnd">끝 회차</label>
-                                    <input type="number" id="btEnd" class="input-field" min="1" max="99999" value="1100" />
+                                    <input
+                                        type="number"
+                                        id="btEnd"
+                                        class="input-field"
+                                        min="1"
+                                        max="99999"
+                                        value="1100"
+                                    />
                                 </div>
                                 <div class="input-group">
                                     <label for="btQty">회차마다 몇 게임</label>
@@ -972,11 +1394,21 @@
                                     <div class="input-group">
                                         <span class="group-label">자주 쓰는 설정</span>
                                         <div class="preset-bar">
-                                            <select id="btPresetSelect" class="input-field preset-select" aria-label="저장한 설정"></select>
+                                            <select
+                                                id="btPresetSelect"
+                                                class="input-field preset-select"
+                                                aria-label="저장한 설정"
+                                            ></select>
                                             <div class="preset-actions">
-                                                <button id="btPresetLoadBtn" class="btn ghost sm" type="button">적용</button>
-                                                <button id="btPresetSaveBtn" class="btn ghost sm" type="button">지금 설정 저장</button>
-                                                <button id="btPresetDeleteBtn" class="btn ghost sm" type="button">삭제</button>
+                                                <button id="btPresetLoadBtn" class="btn ghost sm" type="button">
+                                                    적용
+                                                </button>
+                                                <button id="btPresetSaveBtn" class="btn ghost sm" type="button">
+                                                    지금 설정 저장
+                                                </button>
+                                                <button id="btPresetDeleteBtn" class="btn ghost sm" type="button">
+                                                    삭제
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -984,61 +1416,165 @@
                                         <div class="input-group span-all">
                                             <label for="btPayoutMode">당첨금 계산</label>
                                             <select id="btPayoutMode" class="input-field">
-                                                <option value="hybrid_dynamic_first" selected>1등은 실제 당첨금, 2~5등은 평균 금액</option>
+                                                <option value="hybrid_dynamic_first" selected>
+                                                    1등은 실제 당첨금, 2~5등은 평균 금액
+                                                </option>
                                                 <option value="fast_fixed">모든 등수 평균 금액 (빠름)</option>
                                             </select>
                                         </div>
                                         <div class="input-group">
                                             <label for="btSimulationCount">비교할 후보 조합 수</label>
-                                            <input type="number" id="btSimulationCount" class="input-field" min="1000" max="20000" step="1000" value="5000" />
+                                            <input
+                                                type="number"
+                                                id="btSimulationCount"
+                                                class="input-field"
+                                                min="1000"
+                                                max="20000"
+                                                step="1000"
+                                                value="5000"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="btLookbackWindow">최근 몇 회차를 볼까요?</label>
-                                            <input type="number" id="btLookbackWindow" class="input-field" min="5" max="120" value="20" />
+                                            <input
+                                                type="number"
+                                                id="btLookbackWindow"
+                                                class="input-field"
+                                                min="5"
+                                                max="120"
+                                                value="20"
+                                            />
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">홀수 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="btOddMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="홀수 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="btOddMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="홀수 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="btOddMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="홀수 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="btOddMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="홀수 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">큰 번호(24~45) 개수</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="btHighMin" class="input-field" min="0" max="6" placeholder="최소" aria-label="큰 번호 최소 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="btHighMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최소"
+                                                    aria-label="큰 번호 최소 개수"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="btHighMax" class="input-field" min="0" max="6" placeholder="최대" aria-label="큰 번호 최대 개수" />
+                                                <input
+                                                    type="number"
+                                                    id="btHighMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="6"
+                                                    placeholder="최대"
+                                                    aria-label="큰 번호 최대 개수"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
                                             <span class="group-label">6개 번호 합계</span>
                                             <div class="range-inputs">
-                                                <input type="number" id="btSumMin" class="input-field" min="21" max="260" placeholder="최소" aria-label="합계 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="btSumMin"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최소"
+                                                    aria-label="합계 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="btSumMax" class="input-field" min="21" max="260" placeholder="최대" aria-label="합계 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="btSumMax"
+                                                    class="input-field"
+                                                    min="21"
+                                                    max="260"
+                                                    placeholder="최대"
+                                                    aria-label="합계 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group strategy-range">
-                                            <span class="group-label">번호 섞임 정도 <span class="label-hint">0~10</span></span>
+                                            <span class="group-label"
+                                                >번호 섞임 정도 <span class="label-hint">0~10</span></span
+                                            >
                                             <div class="range-inputs">
-                                                <input type="number" id="btAcMin" class="input-field" min="0" max="10" placeholder="최소" aria-label="섞임 정도 최소" />
+                                                <input
+                                                    type="number"
+                                                    id="btAcMin"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최소"
+                                                    aria-label="섞임 정도 최소"
+                                                />
                                                 <span class="range-sep">~</span>
-                                                <input type="number" id="btAcMax" class="input-field" min="0" max="10" placeholder="최대" aria-label="섞임 정도 최대" />
+                                                <input
+                                                    type="number"
+                                                    id="btAcMax"
+                                                    class="input-field"
+                                                    min="0"
+                                                    max="10"
+                                                    placeholder="최대"
+                                                    aria-label="섞임 정도 최대"
+                                                />
                                             </div>
                                         </div>
                                         <div class="input-group">
                                             <label for="btMaxConsecutive">연속 번호 쌍 최대</label>
-                                            <input type="number" id="btMaxConsecutive" class="input-field" min="0" max="5" />
+                                            <input
+                                                type="number"
+                                                id="btMaxConsecutive"
+                                                class="input-field"
+                                                min="0"
+                                                max="5"
+                                            />
                                         </div>
                                         <div class="input-group">
                                             <label for="btEndDigitUnique">끝자리 종류 최소</label>
-                                            <input type="number" id="btEndDigitUnique" class="input-field" min="1" max="6" />
+                                            <input
+                                                type="number"
+                                                id="btEndDigitUnique"
+                                                class="input-field"
+                                                min="1"
+                                                max="6"
+                                            />
                                         </div>
                                         <div class="input-group span-all">
-                                            <label for="btSeed">같은 결과 다시 보기 코드 <span class="label-hint">선택</span></label>
-                                            <input type="number" id="btSeed" class="input-field" placeholder="비워 두면 실행할 때마다 새 결과" autocomplete="off" inputmode="numeric" />
+                                            <label for="btSeed"
+                                                >같은 결과 다시 보기 코드 <span class="label-hint">선택</span></label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="btSeed"
+                                                class="input-field"
+                                                placeholder="비워 두면 실행할 때마다 새 결과"
+                                                autocomplete="off"
+                                                inputmode="numeric"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1069,7 +1605,9 @@
                         </div>
                     </div>
                     <div class="card mt-4">
-                        <div class="card-header"><h3><i class="ph ph-ranking"></i> 방식별 성적 비교</h3></div>
+                        <div class="card-header">
+                            <h3><i class="ph ph-ranking"></i> 방식별 성적 비교</h3>
+                        </div>
                         <div class="table-container">
                             <table id="btCompareTable">
                                 <thead>
@@ -1088,7 +1626,9 @@
                         </div>
                     </div>
                     <div class="card mt-4">
-                        <div class="card-header"><h3><i class="ph ph-list-magnifying-glass"></i> 당첨된 회차 자세히</h3></div>
+                        <div class="card-header">
+                            <h3><i class="ph ph-list-magnifying-glass"></i> 당첨된 회차 자세히</h3>
+                        </div>
                         <div class="table-container">
                             <table id="btResultTable">
                                 <thead>
@@ -1149,18 +1689,36 @@
                                 </div>
                             </div>
                             <div class="tabs-segmented segment-control" role="group" aria-label="비교할 회차">
-                                <button class="seg-btn active" type="button" data-checkmode="latest">최신 회차와 비교</button>
-                                <button class="seg-btn" type="button" data-checkmode="all">지난 회차 전체와 비교</button>
+                                <button class="seg-btn active" type="button" data-checkmode="latest">
+                                    최신 회차와 비교
+                                </button>
+                                <button class="seg-btn" type="button" data-checkmode="all">
+                                    지난 회차 전체와 비교
+                                </button>
                             </div>
-                            <p id="checkSelectionMeta" class="subtitle check-selection-meta">확인할 번호를 골라 주세요.</p>
-                            <div id="checkTargetCards" class="check-target-list" role="listbox" aria-label="확인할 번호 목록"></div>
+                            <p id="checkSelectionMeta" class="subtitle check-selection-meta">
+                                확인할 번호를 골라 주세요.
+                            </p>
+                            <div
+                                id="checkTargetCards"
+                                class="check-target-list"
+                                role="listbox"
+                                aria-label="확인할 번호 목록"
+                            ></div>
                             <button id="doCheckBtn" class="btn primary lg full-width" type="button">
                                 <i class="ph-bold ph-check-circle"></i> 당첨 확인하기
                             </button>
                         </div>
                         <div class="card context-card">
-                            <div class="card-header"><h3><i class="ph ph-medal"></i> 확인 결과</h3></div>
-                            <div id="checkResultArea" class="check-result-placeholder" aria-live="polite" aria-busy="false">
+                            <div class="card-header">
+                                <h3><i class="ph ph-medal"></i> 확인 결과</h3>
+                            </div>
+                            <div
+                                id="checkResultArea"
+                                class="check-result-placeholder"
+                                aria-live="polite"
+                                aria-busy="false"
+                            >
                                 <i class="ph ph-magnifying-glass"></i>
                                 <p>목록에서 번호를 고르고 「당첨 확인하기」를 누르세요.</p>
                             </div>
@@ -1192,7 +1750,13 @@
                                     <button id="clearTickets" class="btn text-danger" type="button">삭제</button>
                                 </div>
                             </div>
-                            <input type="search" id="ticketSearch" class="input-field list-search" placeholder="번호, 회차, 상태로 찾기" aria-label="구매 번호 검색" />
+                            <input
+                                type="search"
+                                id="ticketSearch"
+                                class="input-field list-search"
+                                placeholder="번호, 회차, 상태로 찾기"
+                                aria-label="구매 번호 검색"
+                            />
                             <div id="ticketList" class="data-list"></div>
                             <div id="ticketPagination" class="list-pagination"></div>
                         </div>
@@ -1201,7 +1765,13 @@
                                 <h3><i class="ph ph-star"></i> 즐겨찾기</h3>
                                 <button id="clearFavorites" class="btn text-danger" type="button">전체 삭제</button>
                             </div>
-                            <input type="search" id="favSearch" class="input-field list-search" placeholder="번호나 날짜로 찾기" aria-label="즐겨찾기 검색" />
+                            <input
+                                type="search"
+                                id="favSearch"
+                                class="input-field list-search"
+                                placeholder="번호나 날짜로 찾기"
+                                aria-label="즐겨찾기 검색"
+                            />
                             <div id="favList" class="data-list"></div>
                             <div id="favPagination" class="list-pagination"></div>
                         </div>
@@ -1213,7 +1783,13 @@
                                 <h3><i class="ph ph-clock-counter-clockwise"></i> 생성 기록</h3>
                                 <button id="clearHistory" class="btn text-danger" type="button">전체 삭제</button>
                             </div>
-                            <input type="search" id="historySearch" class="input-field list-search" placeholder="번호나 날짜로 찾기" aria-label="생성 기록 검색" />
+                            <input
+                                type="search"
+                                id="historySearch"
+                                class="input-field list-search"
+                                placeholder="번호나 날짜로 찾기"
+                                aria-label="생성 기록 검색"
+                            />
                             <div id="historyList" class="data-list"></div>
                             <div id="historyPagination" class="list-pagination"></div>
                         </div>
@@ -1222,7 +1798,13 @@
                                 <h3><i class="ph ph-calendar-dots"></i> 회차 묶음</h3>
                                 <button id="clearCampaigns" class="btn text-danger" type="button">전체 삭제</button>
                             </div>
-                            <input type="search" id="campaignSearch" class="input-field list-search" placeholder="이름이나 시작 회차로 찾기" aria-label="회차 묶음 검색" />
+                            <input
+                                type="search"
+                                id="campaignSearch"
+                                class="input-field list-search"
+                                placeholder="이름이나 시작 회차로 찾기"
+                                aria-label="회차 묶음 검색"
+                            />
                             <div id="campaignList" class="data-list"></div>
                             <div id="campaignPagination" class="list-pagination"></div>
                         </div>
@@ -1232,7 +1814,10 @@
                         <div class="card-header">
                             <div>
                                 <h3><i class="ph ph-shield-check"></i> 백업 · 복원</h3>
-                                <p class="subtitle">번호는 이 브라우저에만 저장돼요. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 백업해 두세요.</p>
+                                <p class="subtitle">
+                                    번호는 이 브라우저에만 저장돼요. 기기를 바꾸거나 브라우저 데이터를 지우기 전에
+                                    백업해 두세요.
+                                </p>
                             </div>
                         </div>
                         <div id="dataStatusSummary" class="data-status-summary" aria-live="polite"></div>
@@ -1257,7 +1842,9 @@
                                 <div class="input-group">
                                     <label for="importMode">불러오는 방법</label>
                                     <select id="importMode" class="input-field">
-                                        <option value="merge" selected>합치기 · 지금 데이터는 그대로 두고 백업 내용을 더해요</option>
+                                        <option value="merge" selected>
+                                            합치기 · 지금 데이터는 그대로 두고 백업 내용을 더해요
+                                        </option>
                                         <option value="overwrite">바꾸기 · 지금 데이터를 백업 내용으로 바꿔요</option>
                                     </select>
                                 </div>
@@ -1283,7 +1870,10 @@
                                         <span>알림 설정도 가져오기</span>
                                     </label>
                                 </div>
-                                <p class="field-help">「합치기」는 설정을 그대로 두고, 「바꾸기」는 설정까지 백업 내용으로 바꾸는 게 기본이에요.</p>
+                                <p class="field-help">
+                                    「합치기」는 설정을 그대로 두고, 「바꾸기」는 설정까지 백업 내용으로 바꾸는 게
+                                    기본이에요.
+                                </p>
                             </div>
                         </details>
                         <div class="strategy-panel local-updates-panel">
@@ -1329,7 +1919,13 @@
         <div id="toast-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
         <!-- 저장 실패 배너 -->
-        <div id="storageFailureBanner" class="app-banner app-banner-warning" role="status" hidden aria-hidden="true"></div>
+        <div
+            id="storageFailureBanner"
+            class="app-banner app-banner-warning"
+            role="status"
+            hidden
+            aria-hidden="true"
+        ></div>
 
         <!-- 오프라인 배너 -->
         <div id="offlineBanner" class="app-banner app-banner-offline" role="status" hidden aria-hidden="true">
@@ -1339,7 +1935,12 @@
 
         <!-- Modals -->
         <div id="settingsModal" class="modal">
-            <div class="modal-content settings-modal-content" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+            <div
+                class="modal-content settings-modal-content"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settingsModalTitle"
+            >
                 <div class="settings-modal-header">
                     <div>
                         <p class="settings-eyebrow">설정</p>
@@ -1347,7 +1948,15 @@
                         <p class="subtitle">화면, 알림, 당첨 번호 업데이트, 저장 공간을 관리해요.</p>
                     </div>
                     <div class="settings-modal-actions">
-                        <button id="settingsInstallBtn" class="icon-btn" aria-label="앱 설치" title="앱 설치" type="button" hidden data-pwa-install="settings">
+                        <button
+                            id="settingsInstallBtn"
+                            class="icon-btn"
+                            aria-label="앱 설치"
+                            title="앱 설치"
+                            type="button"
+                            hidden
+                            data-pwa-install="settings"
+                        >
                             <i class="ph ph-device-mobile"></i>
                         </button>
                         <button id="closeSettingsBtn" class="icon-btn" aria-label="설정 닫기" type="button">
@@ -1367,10 +1976,20 @@
                                 <span id="settingsThemeBadge" class="badge status-badge">다크 모드</span>
                             </div>
                             <div class="settings-theme-switch" role="group" aria-label="테마 선택">
-                                <button id="settingsThemeLight" class="theme-choice" type="button" data-theme-choice="light">
+                                <button
+                                    id="settingsThemeLight"
+                                    class="theme-choice"
+                                    type="button"
+                                    data-theme-choice="light"
+                                >
                                     <i class="ph ph-sun"></i> 라이트
                                 </button>
-                                <button id="settingsThemeDark" class="theme-choice" type="button" data-theme-choice="dark">
+                                <button
+                                    id="settingsThemeDark"
+                                    class="theme-choice"
+                                    type="button"
+                                    data-theme-choice="dark"
+                                >
                                     <i class="ph ph-moon"></i> 다크
                                 </button>
                             </div>
@@ -1439,19 +2058,37 @@
                                     <strong id="pension720SyncMetaLastSuccess">-</strong>
                                 </div>
                             </div>
-                            <p id="syncMetaWarning" class="settings-note settings-warning-note">현재 데이터 상태를 확인하는 중입니다.</p>
-                            <p id="syncDataFreshnessSummary" class="settings-note">내 데이터와 예상 최신 회차를 비교하는 중입니다.</p>
-                            <p id="pension720SyncMetaMessage" class="settings-note">연금복권 데이터 상태를 확인하는 중입니다.</p>
+                            <p id="syncMetaWarning" class="settings-note settings-warning-note">
+                                현재 데이터 상태를 확인하는 중입니다.
+                            </p>
+                            <p id="syncDataFreshnessSummary" class="settings-note">
+                                내 데이터와 예상 최신 회차를 비교하는 중입니다.
+                            </p>
+                            <p id="pension720SyncMetaMessage" class="settings-note">
+                                연금복권 데이터 상태를 확인하는 중입니다.
+                            </p>
 
                             <div class="button-group settings-button-group">
                                 <button id="syncDataBtn" class="btn primary" type="button">
                                     <i class="ph-bold ph-arrows-clockwise"></i> 최신 회차 확인
                                 </button>
-                                <button id="cancelSyncBtn" class="btn ghost" type="button" style="display: none" disabled>
+                                <button
+                                    id="cancelSyncBtn"
+                                    class="btn ghost"
+                                    type="button"
+                                    style="display: none"
+                                    disabled
+                                >
                                     <i class="ph ph-stop-circle"></i> 취소
                                 </button>
                             </div>
-                            <div id="syncLog" class="log-content settings-sync-log" style="display: none" aria-live="polite" aria-busy="false"></div>
+                            <div
+                                id="syncLog"
+                                class="log-content settings-sync-log"
+                                style="display: none"
+                                aria-live="polite"
+                                aria-busy="false"
+                            ></div>
 
                             <details class="advanced-settings">
                                 <summary>
@@ -1460,7 +2097,9 @@
                                 </summary>
                                 <div class="advanced-body">
                                     <div class="input-group settings-field">
-                                        <label for="customProxyUrl">데이터 연결 주소 <span class="label-hint">비워 두면 자동</span></label>
+                                        <label for="customProxyUrl"
+                                            >데이터 연결 주소 <span class="label-hint">비워 두면 자동</span></label
+                                        >
                                         <input
                                             type="text"
                                             id="customProxyUrl"
@@ -1470,10 +2109,20 @@
                                             spellcheck="false"
                                         />
                                         <p id="customProxyHelp" class="subtitle settings-caption">
-                                            비워 두면 앱이 알아서 최신 당첨 번호를 받아옵니다. 직접 만든 연결 서버가 있을 때만 입력하세요.
+                                            비워 두면 앱이 알아서 최신 당첨 번호를 받아옵니다. 직접 만든 연결 서버가
+                                            있을 때만 입력하세요.
                                         </p>
-                                        <p id="queryProxyNotice" class="settings-note settings-warning-note" hidden style="display: none"></p>
-                                        <p id="customProxyStatusNote" class="settings-note settings-warning-note" style="display: none"></p>
+                                        <p
+                                            id="queryProxyNotice"
+                                            class="settings-note settings-warning-note"
+                                            hidden
+                                            style="display: none"
+                                        ></p>
+                                        <p
+                                            id="customProxyStatusNote"
+                                            class="settings-note settings-warning-note"
+                                            style="display: none"
+                                        ></p>
                                     </div>
                                     <div class="sync-meta-grid">
                                         <div class="sync-meta-item">
@@ -1543,7 +2192,9 @@
                             <p class="settings-note">
                                 오프라인 사용: <span id="pwaCacheBadge" class="badge status-badge">확인 전</span>
                             </p>
-                            <p id="pwaCacheNote" class="settings-note">앱 설치가 끝나면 오프라인용 파일 준비 상태를 확인합니다.</p>
+                            <p id="pwaCacheNote" class="settings-note">
+                                앱 설치가 끝나면 오프라인용 파일 준비 상태를 확인합니다.
+                            </p>
                         </section>
                     </div>
                 </div>
@@ -1559,7 +2210,12 @@
         </div>
 
         <div id="qrScanModal" class="modal">
-            <div class="modal-content center-content qr-scan-content" role="dialog" aria-modal="true" aria-labelledby="qrScanModalTitle">
+            <div
+                class="modal-content center-content qr-scan-content"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="qrScanModalTitle"
+            >
                 <h3 id="qrScanModalTitle">로또 용지 QR 스캔</h3>
                 <div id="qr-reader" class="qr-reader"></div>
                 <p class="subtitle">용지 오른쪽 위의 QR 코드를 카메라에 비춰 주세요.</p>
@@ -1568,7 +2224,12 @@
         </div>
 
         <div id="mobileMoreModal" class="modal" aria-hidden="true">
-            <div class="modal-content more-sheet-content" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle">
+            <div
+                class="modal-content more-sheet-content"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mobileMoreTitle"
+            >
                 <div class="more-sheet-header">
                     <div>
                         <h3 id="mobileMoreTitle">더보기</h3>
@@ -1595,7 +2256,13 @@
                         <i class="ph ph-gear-six"></i>
                         <span>설정</span>
                     </button>
-                    <button id="mobileMoreInstallBtn" class="more-sheet-action" type="button" hidden data-pwa-install="more">
+                    <button
+                        id="mobileMoreInstallBtn"
+                        class="more-sheet-action"
+                        type="button"
+                        hidden
+                        data-pwa-install="more"
+                    >
                         <i class="ph ph-device-mobile"></i>
                         <span>앱 설치</span>
                     </button>
@@ -1604,7 +2271,12 @@
         </div>
 
         <div id="dialogModal" class="modal" aria-hidden="true">
-            <div class="modal-content dialog-modal-content" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+            <div
+                class="modal-content dialog-modal-content"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="dialogTitle"
+            >
                 <div class="dialog-modal-header">
                     <h3 id="dialogTitle">확인해 주세요</h3>
                     <p id="dialogMessage" class="subtitle">이 작업을 진행할까요?</p>

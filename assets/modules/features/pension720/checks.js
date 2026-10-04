@@ -1,5 +1,6 @@
 import { $ } from '../../utils/utils.js';
 import { UIManager } from '../../core/UIManager.js';
+import { celebrateWin } from '../../utils/celebrate.js';
 import { appendDigitBalls, clearElement, formatDate, getTargetAwareCheckSortValue, makeEl } from './dom.js';
 
 export const pension720CheckMethods = {
@@ -7,9 +8,7 @@ export const pension720CheckMethods = {
         const output = $('#pension720CheckOutput');
         if (force) clearElement(output);
         if (!output || output.childElementCount) return;
-        output.appendChild(
-            makeEl('p', 'empty-state', '저장 번호가 있으면 대상 회차 우선, 대상이 없으면 최신 회차 참고로 확인합니다.')
-        );
+        output.appendChild(makeEl('p', 'empty-state', '번호를 저장한 뒤 「확인하기」를 누르세요.'));
     },
 
     async runLatestCheck() {
@@ -19,11 +18,11 @@ export const pension720CheckMethods = {
         const latest = this.data.state.pension720Stats?.[0];
         const tickets = this.data.state.pension720Tickets || [];
         if (!latest) {
-            UIManager.toast('연금복권 당첨 데이터가 없습니다. 최신 데이터 확인을 먼저 실행해주세요.', 'error');
+            UIManager.toast('연금복권 당첨 데이터가 없어요. 「최신 회차 확인」을 먼저 눌러 주세요.', 'error');
             return;
         }
         if (!tickets.length) {
-            UIManager.toast('확인할 저장 번호가 없습니다.', 'warning');
+            UIManager.toast('확인할 저장 번호가 없어요. 추천 결과에서 「이 번호 저장」을 눌러 주세요.', 'warning');
             return;
         }
         const results = tickets
@@ -39,13 +38,9 @@ export const pension720CheckMethods = {
         if (!output) return;
 
         const summary = makeEl('div', 'p720-check-summary');
-        summary.appendChild(makeEl('strong', '', `최신 데이터 ${latest.draw_no}회 · ${formatDate(latest.date)}`));
+        summary.appendChild(makeEl('strong', '', `최신 ${latest.draw_no}회 · ${formatDate(latest.date)} 추첨`));
         summary.appendChild(
-            makeEl(
-                'span',
-                '',
-                `대상 회차가 있는 번호는 해당 회차 우선 확인 · 최신 1등 ${latest.group}조 ${latest.number} / 보너스 ${latest.bonus_number}`
-            )
+            makeEl('span', '', `1등 ${latest.group}조 ${latest.number} · 보너스 ${latest.bonus_number}`)
         );
         output.appendChild(summary);
 
@@ -55,12 +50,12 @@ export const pension720CheckMethods = {
             appendDigitBalls(main, ticket.number, { group: ticket.group });
             const basis =
                 status === 'target'
-                    ? `${drawNo}회 대상 회차`
+                    ? `${drawNo}회 결과`
                     : status === 'pending'
-                      ? `${drawNo}회 대기`
+                      ? `${drawNo}회 추첨 대기`
                       : status === 'missing'
-                        ? `${drawNo}회 데이터 없음`
-                        : `${drawNo}회 최신 참고 비교`;
+                        ? `${drawNo}회 결과 없음`
+                        : `최신 ${drawNo}회와 참고 비교`;
             main.appendChild(
                 makeEl(
                     'span',
@@ -86,5 +81,10 @@ export const pension720CheckMethods = {
             row.appendChild(makeEl('span', 'p720-check-prize', result?.prizeLabel || '-'));
             output.appendChild(row);
         });
+
+        const bestWin = results
+            .filter(({ status, result }) => status === 'target' && Number(result?.rank) > 0)
+            .reduce((best, { result }) => Math.min(best, Number(result.rank)), Infinity);
+        if (Number.isFinite(bestWin)) void celebrateWin({ rank: bestWin });
     }
 };

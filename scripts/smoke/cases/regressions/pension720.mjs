@@ -489,7 +489,7 @@ async function runPension720UiContractRegression() {
     );
     assert.match(
         indexSource,
-        /당첨금 수령 전에는 실물 복권이나 동행복권에서 꼭 다시 확인하세요/,
+        /당첨금 수령 전에는 실물 복권이나 동행복권에서 꼭 다시\s+확인하세요/,
         'pension720 check disclaimer must stay visible'
     );
     assert.match(featureSource, /UIManager\.confirm/, 'pension720 clear-all must require confirmation');

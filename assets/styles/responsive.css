@@ -240,6 +240,10 @@
         margin-left: auto;
     }
 
+    .card-hint {
+        display: none;
+    }
+
     .num-dist-chart {
         gap: 2px;
         height: 180px;

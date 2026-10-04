@@ -8,7 +8,7 @@ Fast-start context for Gemini-family agents working on `lotto-pension-pro-webapp
 - Package/repository slug: `lotto-pension-pro-webapp`
 - App shell: no-build static SPA
 - Entry: `index.html` -> `assets/modules/index.js` -> `assets/modules/core/LottoApp.js`
-- PWA cache version: `v32`
+- PWA cache version: `v33`
 
 ## Current Snapshot
 

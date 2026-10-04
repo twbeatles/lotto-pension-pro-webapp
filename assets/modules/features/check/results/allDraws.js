@@ -36,7 +36,7 @@ export const checkResultAllDrawsMethods = {
             area.innerHTML = `
         <div class="check-result">
           <div class="check-head">
-            <div class="title">전체 회차 검사</div>
+            <div class="title">지난 회차 전체 비교</div>
             <div class="badge no">결과 없음</div>
           </div>
           <div class="check-actions">
@@ -55,7 +55,7 @@ export const checkResultAllDrawsMethods = {
 
         const note =
             results.length > 50
-                ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
+                ? `<div class="meta">총 ${results.length}개 회차 중 등수가 높은 50개만 보여 드려요.</div>`
                 : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 맞혔어요.</div>`;
         const quantity = this.data.getTicketQuantity(ticket);
 
@@ -90,7 +90,7 @@ export const checkResultAllDrawsMethods = {
         area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
-          <div class="title">전체 회차 검사</div>
+          <div class="title">지난 회차 전체 비교</div>
           <div class="badge ok">${limited.length}개 표시</div>
         </div>
         <div class="check-actions">

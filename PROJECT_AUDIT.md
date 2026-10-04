@@ -53,7 +53,7 @@
 |--------|------|-----------|
 | 로또 6/45 | `data/winning_stats.json` | latest `1244`, rows `1243`, missing `[146]` |
 | 연금복권720+ | `data/pension720_stats.json` | latest `335` (`2026-10-01`, `4조 259311` / bonus `799723`) |
-| SW | `sw.js` | `CACHE_VERSION = v32` |
+| SW | `sw.js` | `CACHE_VERSION = v33` |
 | Strategy worker | config | `STRATEGY_WORKER_ASSET_VERSION = v23` |
 
 감사 시점 파일 검증 (2026-07-29):

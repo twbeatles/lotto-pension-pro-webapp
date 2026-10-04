@@ -293,6 +293,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/modules/utils/backup/helpers.js",
         "./assets/modules/utils/backup/import.js",
         "./assets/modules/utils/backup/normalizers.js",
+        "./assets/modules/utils/celebrate.js",
         "./assets/modules/utils/config.js",
         "./assets/modules/utils/csv.js",
         "./assets/modules/utils/dom.js",
@@ -309,6 +310,7 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./assets/styles/pages.css",
         "./assets/styles/responsive.css",
         "./assets/styles/tokens.css",
+        "./assets/vendor/canvas-confetti/confetti.module.js",
         "./assets/vendor/html2canvas/html2canvas.min.js",
         "./assets/vendor/html5-qrcode/html5-qrcode.min.js",
         "./assets/vendor/html5-qrcode/third_party/zxing-js.umd.js",
@@ -333,5 +335,5 @@ self.__SW_PRECACHE_MANIFEST = Object.freeze({
         "./data/pension720_stats.json",
         "./data/winning_stats.json"
     ],
-    "version": "sha256-e002c3bd4606092e"
+    "version": "sha256-0d06d25be94f4255"
 });

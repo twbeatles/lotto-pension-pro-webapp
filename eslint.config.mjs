@@ -12,7 +12,7 @@ const baseJsRules = {
 
 export default [
     {
-        ignores: ['data/**', 'assets/icons/**']
+        ignores: ['data/**', 'assets/icons/**', 'assets/vendor/**']
     },
     {
         files: ['assets/modules/**/*.js'],

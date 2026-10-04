@@ -3,6 +3,13 @@ import { UIManager } from '../../../core/UIManager.js';
 import { UI_STRINGS } from '../../../utils/strings.js';
 import { escapeHtml } from '../../../utils/dom.js';
 
+const CHECK_EMPTY_HINTS = {
+    favorites: '생성 결과에서 ⭐ 버튼을 누르면 즐겨찾기에 담겨요.',
+    history: '생성 결과에서 「기록에 모두 저장」을 누르면 여기에 나와요.',
+    tickets: '생성·추천 결과에서 🎟️ 버튼으로 구매 번호를 저장해 보세요.',
+    scanned: '오른쪽 위 「용지 QR 스캔」으로 로또 용지를 읽어 보세요.'
+};
+
 export const checkListRenderMethods = {
     renderList() {
         const listEl = $('#checkTargetCards');
@@ -23,17 +30,17 @@ export const checkListRenderMethods = {
             const totalQuantity = visibleItems.reduce((sum, entry) => sum + Number(entry.quantity || 1), 0);
             metaEl.textContent = visibleItems.length
                 ? this.source === 'tickets'
-                    ? `${sourceLabel} ${totalQuantity}개 티켓 · ${visibleItems.length}개 조합`
-                    : `${sourceLabel} ${visibleItems.length}개`
-                : `${sourceLabel} 항목이 없습니다.`;
+                    ? `${sourceLabel} ${visibleItems.length}개 (총 ${totalQuantity}장) · 확인할 번호를 눌러 고르세요.`
+                    : `${sourceLabel} ${visibleItems.length}개 · 확인할 번호를 눌러 고르세요.`
+                : '';
         }
 
         if (!visibleItems.length) {
             listEl.innerHTML = `
                 <div class="empty-state check-target-empty">
                     <i class="ph ph-list-magnifying-glass"></i>
-                    <h4>${sourceLabel} 항목이 없습니다.</h4>
-                    <p>${this.searchQuery ? '검색 조건을 바꾸거나 다른 소스를 선택해보세요.' : '저장된 항목이 생기면 여기에서 바로 확인할 수 있습니다.'}</p>
+                    <h4>${this.searchQuery ? '검색 결과가 없어요.' : `${sourceLabel}에 저장된 번호가 없어요.`}</h4>
+                    <p>${this.searchQuery ? '검색어를 바꾸거나 위에서 다른 목록을 골라 보세요.' : CHECK_EMPTY_HINTS[this.source] || '번호를 저장하면 여기에서 바로 확인할 수 있어요.'}</p>
                 </div>
             `;
             return;
@@ -52,7 +59,7 @@ export const checkListRenderMethods = {
                         ? `
                     <span class="check-target-card-badges">
                         <span class="badge status-badge ${ticketStatusLabel === UI_STRINGS.check.ticketStatus.pending ? 'is-warn' : ticketStatusLabel === UI_STRINGS.check.ticketStatus.lose ? 'is-bad' : 'is-good'}">${escapedTicketStatusLabel}</span>
-                        ${quantityText > 1 ? `<span class="badge status-badge ticket-quantity-badge">x${quantityText}</span>` : ''}
+                        ${quantityText > 1 ? `<span class="badge status-badge ticket-quantity-badge">${quantityText}장</span>` : ''}
                     </span>
                 `
                         : `<span class="badge status-badge">${escapedSourceLabel}</span>`;

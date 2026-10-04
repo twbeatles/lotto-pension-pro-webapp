@@ -23,30 +23,30 @@ export const PENSION720_STRATEGY_CATALOG = Object.freeze({
     },
     trailing_match: {
         id: 'trailing_match',
-        label: '끝자리 적중형',
+        label: '끝자리 집중',
         tier: 'B',
         experimental: false,
-        summary: '하위 등수와 연결되는 끝자리 집중',
+        summary: '아래 등수와 연결되는 끝자리 위주',
         description: '연금복권 당첨 구조상 중요한 뒤쪽 자리의 흐름을 더 크게 반영합니다.',
         defaultParams: { ...BASE_PARAMS, candidatePoolSize: 170 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     group_rotation: {
         id: 'group_rotation',
-        label: '조 로테이션',
+        label: '쉬고 있는 조 우선',
         tier: 'B',
         experimental: false,
-        summary: '최근 공백이 긴 조를 보정',
+        summary: '최근 오래 안 나온 조를 우선',
         description: '조별 최근 공백과 전체 출현 흐름을 함께 보고 조 선택을 넓힙니다.',
         defaultParams: { ...BASE_PARAMS, lookbackWindow: 60 },
         defaultFilters: { ...EMPTY_FILTERS }
     },
     gap_rebound: {
         id: 'gap_rebound',
-        label: '공백 반등',
+        label: '오래 안 나온 숫자',
         tier: 'B',
         experimental: false,
-        summary: '자리별 장기 미출현 숫자 보정',
+        summary: '자리마다 오래 안 나온 숫자를 우선',
         description: '각 자리에서 오래 나오지 않은 숫자에 반등 가중치를 줍니다.',
         defaultParams: { ...BASE_PARAMS, lookbackWindow: 80, candidatePoolSize: 180 },
         defaultFilters: { ...EMPTY_FILTERS }
@@ -63,10 +63,10 @@ export const PENSION720_STRATEGY_CATALOG = Object.freeze({
     },
     random_baseline: {
         id: 'random_baseline',
-        label: '완전 랜덤',
+        label: '완전 무작위',
         tier: 'A',
         experimental: false,
-        summary: '조와 6자리 숫자를 균등 추출',
+        summary: '조와 6자리를 무작위로 뽑기',
         description: '과거 통계를 참고하지 않고 조와 여섯 자리를 균등하게 뽑습니다.',
         defaultParams: { ...BASE_PARAMS, candidatePoolSize: 80 },
         defaultFilters: { ...EMPTY_FILTERS }
@@ -77,7 +77,7 @@ export const PENSION720_STRATEGY_CATALOG = Object.freeze({
         tier: 'C',
         experimental: true,
         summary: '중복 숫자를 줄이고 분산 확보',
-        description: '[실험] 같은 숫자가 여러 번 반복되는 조합을 낮추고 다양한 숫자를 선호합니다.',
+        description: '[실험 중] 같은 숫자가 여러 번 반복되는 조합을 낮추고 다양한 숫자를 선호합니다.',
         defaultParams: { ...BASE_PARAMS, candidatePoolSize: 180 },
         defaultFilters: { ...EMPTY_FILTERS, uniqueDigitMin: 4, maxSameDigit: 2 }
     },
@@ -87,7 +87,7 @@ export const PENSION720_STRATEGY_CATALOG = Object.freeze({
         tier: 'C',
         experimental: true,
         summary: '자리 사이 인접 흐름 탐색',
-        description: '[실험] 인접한 자리의 숫자 차이가 작게 이어지는 패턴을 후보로 더 탐색합니다.',
+        description: '[실험 중] 인접한 자리의 숫자 차이가 작게 이어지는 패턴을 후보로 더 탐색합니다.',
         defaultParams: { ...BASE_PARAMS, candidatePoolSize: 180 },
         defaultFilters: { ...EMPTY_FILTERS }
     }

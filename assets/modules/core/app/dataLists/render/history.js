@@ -29,8 +29,10 @@ export function renderHistoryList(ctx) {
                         <span class="result-meta">${ctx.formatDate(item.date)}</span>
                     </div>
                     <div class="result-actions">
-                        <button class="icon-btn" data-action="copy" title="복사"><i class="ph ph-copy"></i></button>
-                        <button class="icon-btn" data-action="qr" title="QR"><i class="ph ph-qr-code"></i></button>
+                        <button class="icon-btn" type="button" data-action="ticket" title="다음 회차 구매 번호로 저장" aria-label="다음 회차 구매 번호로 저장"><i class="ph ph-ticket"></i></button>
+                        <button class="icon-btn" type="button" data-action="copy" title="복사" aria-label="번호 복사"><i class="ph ph-copy"></i></button>
+                        <button class="icon-btn" type="button" data-action="qr" title="QR 코드" aria-label="QR 코드 보기"><i class="ph ph-qr-code"></i></button>
+                        <button class="icon-btn danger" type="button" data-action="delete" title="삭제" aria-label="삭제"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>
             `

@@ -16,7 +16,7 @@ export const qrScannerParserMethods = {
         }
 
         if (!host || !allowedHosts.has(host)) {
-            throw new Error('로또 6/45 공식 큐알 코드가 아닙니다.');
+            throw new Error('로또 6/45 공식 QR 코드가 아닙니다.');
         }
 
         let vParam = '';
@@ -28,14 +28,14 @@ export const qrScannerParserMethods = {
             if (match) vParam = match[1];
         }
 
-        if (!vParam) throw new Error('큐알 코드에 로또 데이터(v 파라미터)가 없습니다.');
+        if (!vParam) throw new Error('QR 코드에서 로또 번호를 찾지 못했어요.');
 
         const payload = String(vParam).trim();
         const drawMatch = payload.match(/^(\d+)(?=[a-z])/i);
         if (!drawMatch) throw new Error('데이터 형식이 올바르지 않습니다.');
         const drawNo = Number.parseInt(drawMatch[1], 10);
         if (!Number.isInteger(drawNo) || drawNo < 1) {
-            throw new Error('큐알 코드에 유효한 회차 정보가 없습니다.');
+            throw new Error('QR 코드에 유효한 회차 정보가 없습니다.');
         }
 
         const gameChunks = payload.slice(drawMatch[1].length).split(/[a-z]+/i);
@@ -59,7 +59,7 @@ export const qrScannerParserMethods = {
             }
         }
 
-        if (games.length === 0) throw new Error('큐알 코드에서 유효한 게임을 찾을 수 없습니다.');
+        if (games.length === 0) throw new Error('QR 코드에서 유효한 게임을 찾을 수 없습니다.');
         return games;
     }
 };

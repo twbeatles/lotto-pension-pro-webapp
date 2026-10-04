@@ -29,21 +29,21 @@ export const uiQrModalMethods = {
             if (!window.QRCode?.toCanvas) {
                 await loadScriptOnce(EXTERNAL_ASSETS.qrcode);
             }
-            if (!window.QRCode?.toCanvas) throw new Error('큐알 생성 라이브러리를 불러오지 못했습니다.');
+            if (!window.QRCode?.toCanvas) throw new Error('QR 생성 라이브러리를 불러오지 못했습니다.');
             const canvas = document.createElement('canvas');
-            canvas.setAttribute('aria-label', '생성된 큐알 코드');
+            canvas.setAttribute('aria-label', '생성된 QR 코드');
             container.appendChild(canvas);
             window.QRCode.toCanvas(canvas, payload, { width: 220, margin: 1 }, (err) => {
                 if (err) {
-                    console.warn('큐알 렌더링 실패', err);
-                    this.toast('큐알 생성 실패', 'error');
+                    console.warn('QR 렌더링 실패', err);
+                    this.toast('QR 생성 실패', 'error');
                     return;
                 }
                 this.openModal(modal, { initialFocus: $('#closeQrModalBtn') });
             });
         } catch (e) {
-            console.warn('큐알 처리 오류', e);
-            this.toast('큐알 기능을 사용할 수 없습니다.', 'error', 3000);
+            console.warn('QR 처리 오류', e);
+            this.toast('QR 기능을 사용할 수 없습니다.', 'error', 3000);
         }
     },
 

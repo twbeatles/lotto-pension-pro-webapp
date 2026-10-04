@@ -29,6 +29,8 @@ export const appThemeMethods = {
         const icon = this.data.state.theme === 'light' ? 'ph-moon' : 'ph-sun';
         const btns = $$('#themeToggle i, #mobileThemeToggle i');
         btns.forEach((i) => (i.className = `ph ${icon}`));
+        const themeColor = typeof document !== 'undefined' ? document.querySelector('meta[name="theme-color"]') : null;
+        themeColor?.setAttribute('content', this.data.state.theme === 'light' ? '#f4f5fb' : '#0b0d1a');
         this.renderSettingsPanel?.();
     }
 };

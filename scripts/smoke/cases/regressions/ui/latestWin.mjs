@@ -49,7 +49,7 @@ function runLatestWinPlaceholderRegression() {
         assert.match(
             latestWinBalls.innerHTML,
 
-            /최신 당첨결과를 불러오지 못했습니다/,
+            /최신 당첨 번호를 불러오지 못했어요/,
 
             'latest win card must render offline placeholder'
         );
@@ -57,7 +57,7 @@ function runLatestWinPlaceholderRegression() {
         assert.match(
             latestWinMeta.innerHTML,
 
-            /오프라인 상태입니다/,
+            /인터넷에 연결되면/,
 
             'latest win card must explain offline placeholder'
         );

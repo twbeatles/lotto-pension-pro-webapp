@@ -23,8 +23,8 @@ export const checkListVisibilityMethods = {
                     ? `${item.targetDrawNo}회차 ${ticketStatusLabel}${quantity > 1 ? ` x${quantity}` : ''}`
                     : this.source === 'scanned'
                       ? item.targetDrawNo
-                          ? `${item.targetDrawNo}회차 큐알 스캔`
-                          : '큐알 스캔 결과'
+                          ? `${item.targetDrawNo}회차 QR 스캔`
+                          : 'QR 스캔 결과'
                       : `${sourceLabel} ${this.formatDate(item.date)}`;
 
             if (!this.matchesQuery(item, metaText)) return acc;

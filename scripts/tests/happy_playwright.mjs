@@ -215,6 +215,8 @@ async function runPension720Flow(page) {
         if (startDraw) startDraw.value = String(latestDrawNo + 1);
         if (weeks) weeks.value = '1';
         if (sets) sets.value = '1';
+        // The multi-draw campaign controls live in a collapsed <details> section.
+        document.querySelector('#pension720CampaignBtn')?.closest('details')?.setAttribute('open', '');
     });
     await page.click('#pension720CampaignBtn');
     await page.waitForFunction(() => {

@@ -484,12 +484,12 @@ async function runPension720UiContractRegression() {
     assert.match(indexSource, /pension720ExcludedDigits/, 'pension720 UI must expose excluded-digit filter');
     assert.match(
         indexSource,
-        /대상 회차가 있으면 해당 회차를 우선 확인하고, 없으면 최신 결과를 참고\s+비교합니다/,
+        /구매할 회차를 정해 둔 번호는 그 회차 결과로, 정하지 않은 번호는 최신 회차 결과로\s+비교해요/,
         'pension720 check subtitle must explain target-aware checking'
     );
     assert.match(
         indexSource,
-        /저장 번호 기준 참고 확인이며 실물\/공식 확인이 필요합니다/,
+        /당첨금 수령 전에는 실물 복권이나 동행복권에서 꼭 다시 확인하세요/,
         'pension720 check disclaimer must stay visible'
     );
     assert.match(featureSource, /UIManager\.confirm/, 'pension720 clear-all must require confirmation');

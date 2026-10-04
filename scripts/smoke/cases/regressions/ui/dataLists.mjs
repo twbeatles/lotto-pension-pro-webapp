@@ -214,12 +214,12 @@ function runDataListDomRegression() {
             'ticket data-id must be HTML-escaped'
         );
 
-        assert.match(ticketList.innerHTML, /x2/, 'ticket list must render grouped quantity badge');
+        assert.match(ticketList.innerHTML, /2장/, 'ticket list must render grouped quantity badge');
 
         assert.match(
             ticketPagination.innerHTML,
 
-            /총 2개 티켓/,
+            /총 2장/,
 
             'ticket pagination summary must use physical ticket count'
         );

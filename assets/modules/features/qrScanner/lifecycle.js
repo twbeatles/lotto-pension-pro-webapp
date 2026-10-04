@@ -44,7 +44,7 @@ export const qrScannerLifecycleMethods = {
             if (!window.Html5Qrcode) {
                 await loadScriptOnce(EXTERNAL_ASSETS.html5QrCode);
             }
-            if (!window.Html5Qrcode) throw new Error('큐알 스캐너 라이브러리를 불러오지 못했습니다.');
+            if (!window.Html5Qrcode) throw new Error('QR 스캐너 라이브러리를 불러오지 못했습니다.');
 
             this.scanner = new window.Html5Qrcode('qr-reader');
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };

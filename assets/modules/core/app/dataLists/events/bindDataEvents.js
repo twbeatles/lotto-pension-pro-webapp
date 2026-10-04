@@ -25,7 +25,7 @@ export const appDataListBindDataEventMethods = {
 
         $('#clearTickets')?.addEventListener('click', async () => {
             const filter = $('#ticketFilter')?.value || 'all';
-            const filterLabels = { all: '전체', pending: '예정', win: '당첨', lose: '미당첨' };
+            const filterLabels = { all: '전체', pending: '추첨 전', win: '당첨', lose: '미당첨' };
             const filterLabel = filterLabels[filter] || filter;
             const visibleTickets = (this.data.state.ticketBook || []).filter((item) => {
                 return filter === 'all' || this.getTicketStatusMeta(item).code === filter;

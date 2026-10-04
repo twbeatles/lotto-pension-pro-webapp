@@ -85,7 +85,7 @@ export const dataSyncOrchestratorFetchWinningStatsMethods = {
         };
 
         try {
-            updateStatus('로또 확인 중', 'var(--warning)');
+            updateStatus('최신 회차 확인 중', 'var(--warning)');
 
             const localUpdates = this.getLocalUpdates();
             let normalizedStatic = [];
@@ -157,11 +157,11 @@ export const dataSyncOrchestratorFetchWinningStatsMethods = {
 
             const freshness = this.getDataFreshness();
             if (freshness.isPartial) {
-                updateStatus('부분 복구', 'var(--warning)');
+                updateStatus('일부 데이터만 있음', 'var(--warning)');
             } else if (freshness.latestDrawNo > 0 && freshness.isStale) {
-                updateStatus(`${freshness.behindBy}회차 지연`, 'var(--warning)');
+                updateStatus(`최신 ${freshness.behindBy}회차 빠짐`, 'var(--warning)');
             } else {
-                updateStatus('최신', 'var(--success)');
+                updateStatus('당첨 번호 최신 상태', 'var(--success)');
             }
             return true;
         } catch (e) {
@@ -182,7 +182,7 @@ export const dataSyncOrchestratorFetchWinningStatsMethods = {
                 error: String(e?.message || ''),
                 updatedAt: new Date().toISOString()
             };
-            updateStatus(offline ? '오프라인' : '데이터 확인 실패', offline ? 'var(--danger)' : 'var(--warning)');
+            updateStatus(offline ? '오프라인' : '최신 회차 확인 실패', offline ? 'var(--danger)' : 'var(--warning)');
             return false;
         }
     }

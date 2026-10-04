@@ -14,8 +14,8 @@ export const appSettingsThemeSectionMethods = {
         if (themeSummary) {
             themeSummary.textContent =
                 theme === 'light'
-                    ? '밝은 배경으로 앱을 보고 있습니다. 빠른 전환 버튼과 동일한 설정입니다.'
-                    : '눈부심을 줄이는 다크 모드를 사용 중입니다. 빠른 전환 버튼과 동일한 설정입니다.';
+                    ? '밝은 화면을 사용 중이에요. 메뉴의 해·달 버튼으로도 바꿀 수 있어요.'
+                    : '어두운 화면을 사용 중이에요. 메뉴의 해·달 버튼으로도 바꿀 수 있어요.';
         }
 
         [

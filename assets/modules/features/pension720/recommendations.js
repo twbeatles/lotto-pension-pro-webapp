@@ -21,7 +21,7 @@ export const pension720RecommendationMethods = {
             await this.data.fetchPension720Stats({ remote: true, silent: true });
         }
         if (!this.data.state.pension720Stats.length) {
-            UIManager.toast('연금복권 데이터가 없습니다. 최신 데이터 확인을 먼저 실행해주세요.', 'error');
+            UIManager.toast('연금복권 당첨 데이터가 없어요. 「최신 회차 확인」을 먼저 눌러 주세요.', 'error');
             return;
         }
 
@@ -88,7 +88,7 @@ export const pension720RecommendationMethods = {
         });
 
         if (!recommendations.length) {
-            out.appendChild(makeEl('p', 'empty-state', '추천 시작을 누르면 연금복권 번호가 표시됩니다.'));
+            out.appendChild(makeEl('p', 'empty-state', '「추천 시작」을 누르면 연금복권 번호가 여기에 나와요.'));
             return;
         }
 
@@ -97,7 +97,7 @@ export const pension720RecommendationMethods = {
         recommendations.forEach((item, index) => {
             const card = makeEl('article', 'p720-card');
             const head = makeEl('div', 'p720-card-head');
-            head.appendChild(makeEl('span', 'rank-badge', `#${index + 1}`));
+            head.appendChild(makeEl('span', 'rank-badge', `${index + 1}번째 추천`));
             head.appendChild(
                 makeEl(
                     'span',
@@ -114,15 +114,15 @@ export const pension720RecommendationMethods = {
             card.appendChild(reasons);
 
             const expansion = makeEl('p', 'p720-expansion');
-            expansion.textContent = `확장 조 제안: ${item.expansionGroups.map((group) => `${group}조`).join(', ')}`;
+            expansion.textContent = `같은 6자리로 함께 사 볼 만한 조: ${item.expansionGroups.map((group) => `${group}조`).join(', ')}`;
             card.appendChild(expansion);
 
             const actions = makeEl('div', 'row-actions');
-            const saveBtn = makeEl('button', 'btn ghost sm', '저장');
+            const saveBtn = makeEl('button', 'btn primary sm', '이 번호 저장');
             saveBtn.type = 'button';
             saveBtn.dataset.p720Action = 'save';
             saveBtn.dataset.index = String(index);
-            const expansionBtn = makeEl('button', 'btn ghost sm', '확장 조 모두 저장');
+            const expansionBtn = makeEl('button', 'btn ghost sm', '다른 조까지 함께 저장');
             expansionBtn.type = 'button';
             expansionBtn.dataset.p720Action = 'save-expansion';
             expansionBtn.dataset.index = String(index);

@@ -14,17 +14,17 @@ export const checkResultSingleDrawMethods = {
         area.innerHTML = `
       <div class="check-result">
         <div class="check-head">
-          <div class="title">${targetDrawNo}회 결과 확인 불가</div>
-          <div class="badge no">미추첨/데이터 없음</div>
+          <div class="title">${targetDrawNo}회 결과 대기 중</div>
+          <div class="badge no">추첨 전</div>
         </div>
         <div class="check-actions">
           <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
         </div>
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
-          <div class="meta">${targetDrawNo}회 결과 데이터가 없습니다. 아직 추첨 전이거나 동기화되지 않았습니다.${quantity > 1 ? ` / 보유 수량: <b>x${quantity}</b>` : ''}</div>
+          <div class="meta">${targetDrawNo}회는 아직 추첨 전이거나 결과를 받아오지 못했어요.${quantity > 1 ? ` · 구매 수량: <b>${quantity}장</b>` : ''}</div>
         </div>
       </div>
     `;
@@ -55,7 +55,7 @@ export const checkResultSingleDrawMethods = {
         if (!area) return;
         area.classList.remove('check-result-placeholder');
 
-        const rankText = rank ? `${rank}등` : '낙첨';
+        const rankText = rank ? `${rank}등` : '아쉽게도 낙첨';
         const hitText = rank === 2 ? '5+보너스' : `${matchCount}`;
         const quantity = this.data.getTicketQuantity(ticket);
 
@@ -67,7 +67,7 @@ export const checkResultSingleDrawMethods = {
         </div>
         <div class="check-actions">
           <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
           <button class="btn ghost sm" data-action="save"><i class="ph ph-download-simple"></i> 저장</button>
         </div>
         <div class="check-section">
@@ -80,7 +80,7 @@ export const checkResultSingleDrawMethods = {
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, winSet)}</div>
-          <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${bonusHit ? '있음' : '없음'}</b>${quantity > 1 ? ` / 보유 수량: <b>x${quantity}</b>` : ''}</div>
+          <div class="meta">맞힌 개수: <b>${hitText}</b> · 보너스 번호: <b>${bonusHit ? '맞힘' : '안 맞음'}</b>${quantity > 1 ? ` · 구매 수량: <b>${quantity}장</b>` : ''}</div>
         </div>
       </div>
     `;

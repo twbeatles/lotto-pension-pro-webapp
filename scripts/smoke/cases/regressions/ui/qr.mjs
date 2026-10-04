@@ -47,7 +47,7 @@ function runQrValidationRegression() {
     assert.throws(
         () => parse('https://evil.example.com/?v=0861q010203040506'),
 
-        /공식 큐알 코드/,
+        /공식 QR 코드/,
 
         'non-official host must be rejected'
     );
@@ -55,7 +55,7 @@ function runQrValidationRegression() {
     assert.throws(
         () => parse('https://evil.dhlottery.co.kr/?v=0861q010203040506'),
 
-        /공식 큐알 코드/,
+        /공식 QR 코드/,
 
         'lookalike dhlottery subdomain must be rejected'
     );

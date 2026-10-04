@@ -270,7 +270,7 @@ async function runPartialWinningStatsRecoveryRegression() {
         assert.equal(
             statusText.textContent,
 
-            '부분 복구',
+            '일부 데이터만 있음',
 
             'partial recovery must surface a partial-recovery status label'
         );

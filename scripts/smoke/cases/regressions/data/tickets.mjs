@@ -404,7 +404,7 @@ function runCheckTargetDrawRegression() {
         assert.match(
             area.innerHTML,
 
-            /1210회 결과 데이터가 없습니다/,
+            /1210회는 아직 추첨 전이거나 결과를 받아오지 못했어요/,
 
             'missing target draw must show unavailable state'
         );

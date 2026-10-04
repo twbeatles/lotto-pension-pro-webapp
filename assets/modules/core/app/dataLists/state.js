@@ -52,7 +52,7 @@ export const appDataListStateMethods = {
     },
 
     getTicketStatusMeta(item) {
-        if (!item?.checked) return { code: 'pending', label: '예정' };
+        if (!item?.checked) return { code: 'pending', label: '추첨 전' };
         if (Number(item.checked.rank) > 0) return { code: 'win', label: `${item.checked.rank}등` };
         return { code: 'lose', label: '미당첨' };
     },

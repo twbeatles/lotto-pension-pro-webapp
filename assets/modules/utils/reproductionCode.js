@@ -23,8 +23,10 @@ export function upsertReproductionCodeBar({ host, barId, seed, request = null } 
     if (!bar) {
         bar = document.createElement('div');
         bar.id = barId;
-        bar.className = 'reproduction-code-bar card glass sm';
-        host.insertBefore(bar, host.firstChild);
+        bar.className = 'reproduction-code-bar';
+        // Keep card headers on top: place the bar right above the result list when the host has one.
+        const anchor = host.querySelector?.(':scope > .result-list') || host.firstChild;
+        host.insertBefore(bar, anchor);
     }
 
     bar.replaceChildren();
@@ -44,8 +46,8 @@ export function upsertReproductionCodeBar({ host, barId, seed, request = null } 
     const help = document.createElement('p');
     help.className = 'field-help';
     help.textContent = hasExplicitSeed(request)
-        ? '입력한 코드로 같은 번호를 다시 만들 수 있습니다.'
-        : '이 코드를 "같은 번호 다시 만들기" 입력란에 넣으면 같은 결과를 재현할 수 있습니다.';
+        ? '입력한 코드로 만든 결과예요.'
+        : '세부 조건의 「같은 번호 다시 만들기 코드」 칸에 넣으면 같은 결과가 나와요.';
     bar.append(label, code, copyBtn, help);
     return bar;
 }

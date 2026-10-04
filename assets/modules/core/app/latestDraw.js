@@ -33,10 +33,10 @@ export const appLatestDrawMethods = {
             const offline = Boolean(options?.offline);
             this.renderLatestWinPlaceholder({
                 badge: offline ? '오프라인' : '데이터 없음',
-                title: offline ? '최신 당첨결과를 불러오지 못했습니다.' : '표시할 최신 당첨결과가 없습니다.',
+                title: offline ? '최신 당첨 번호를 불러오지 못했어요.' : '표시할 당첨 번호가 없어요.',
                 meta: offline
-                    ? '오프라인 상태입니다. 연결 후 다시 동기화하세요.'
-                    : '당첨 데이터 파일을 확인한 뒤 다시 시도하세요.',
+                    ? '인터넷에 연결되면 새로고침 버튼을 눌러 주세요.'
+                    : '새로고침 버튼을 눌러 최신 당첨 번호를 받아오세요.',
                 icon: offline ? 'ph-cloud-slash' : 'ph-database'
             });
             return;
@@ -45,7 +45,7 @@ export const appLatestDrawMethods = {
         $('#latestDrawNo').textContent = `${latest.draw_no}회`;
         $('#latestWinBalls').innerHTML =
             UIManager.renderBalls(latest.numbers) +
-            `<span style="margin:0 8px; color:var(--text-muted); font-weight:bold; font-size:1.2em;">+</span>` +
+            `<span class="bonus-plus" aria-label="보너스">+</span>` +
             `<span class="ball ${UIManager.getBallColor(latest.bonus)}">${latest.bonus}</span>`;
 
         // Format Currency
@@ -55,17 +55,17 @@ export const appLatestDrawMethods = {
         const dataSummary =
             typeof this.data.getDataFreshnessSummary === 'function' ? this.data.getDataFreshnessSummary(freshness) : '';
         const freshnessNote = freshness.isPartial
-            ? `<span class="badge status-badge is-warn">일부 데이터만 사용 중</span><span>최신 일부 회차만 사용할 수 있습니다.</span>`
+            ? `<span class="badge status-badge is-warn">일부 데이터만 있음</span><span>설정에서 「최신 회차 확인」을 눌러 주세요.</span>`
             : freshness.isStale
-              ? `<span class="badge status-badge is-warn">${freshness.behindBy}회차 지연</span><span>최신 회차와 차이가 있을 수 있습니다.</span>`
+              ? `<span class="badge status-badge is-warn">${freshness.behindBy}회차 빠짐</span><span>새로고침 버튼을 눌러 최신 결과를 받아오세요.</span>`
               : '';
 
         $('#latestWinMeta').innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-                <span>${escapeHtml(latest.date)} 추첨</span>
-                ${latest.prize_amount ? `<span class="badge" style="font-size:0.85em; background:rgba(255,255,255,0.1)">1등 ${fmtCount(latest.winners_count)}명 (${fmtMoney(latest.prize_amount)})</span>` : ''}
-                ${dataSummary ? `<span class="latest-data-summary">${escapeHtml(dataSummary)}</span>` : ''}
-                ${freshnessNote ? `<span style="display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;">${freshnessNote}</span>` : ''}
+            <div class="win-meta-stack">
+                <span class="win-date">${escapeHtml(latest.date)} 추첨</span>
+                ${latest.prize_amount ? `<span class="win-prize">1등 ${fmtCount(latest.winners_count)}명 · 1인당 <strong>${fmtMoney(latest.prize_amount)}</strong></span>` : ''}
+                ${freshnessNote ? `<span class="win-freshness">${freshnessNote}</span>` : ''}
+                ${freshnessNote && dataSummary ? `<span class="latest-data-summary">${escapeHtml(dataSummary)}</span>` : ''}
             </div>
         `;
 

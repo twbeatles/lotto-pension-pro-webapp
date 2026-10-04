@@ -14,7 +14,7 @@ export const qrScannerScanFlowMethods = {
             const scannedGames = this.parseLottoQr(decodedText);
             if (scannedGames && scannedGames.length > 0) {
                 await this.stop();
-                UIManager.toast('큐알 스캔 성공!', 'success');
+                UIManager.toast('QR 스캔 성공!', 'success');
 
                 // Pass to CheckModule
                 // Switch to check tab
@@ -27,11 +27,11 @@ export const qrScannerScanFlowMethods = {
                 }
             } else {
                 // Valid QR but not Lotto? or parse failed
-                UIManager.toast('유효한 로또 큐알 코드가 아닙니다.', 'warning');
+                UIManager.toast('유효한 로또 QR 코드가 아닙니다.', 'warning');
             }
         } catch (e) {
             console.error(e);
-            UIManager.toast('큐알 코드 해석 실패', 'error');
+            UIManager.toast('QR 코드 해석 실패', 'error');
         } finally {
             this.isHandlingSuccess = false;
         }

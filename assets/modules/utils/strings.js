@@ -147,6 +147,5 @@ export const UI_STRINGS = {
 };
 
 export function formatStrategyOptionLabel(item = {}) {
-    if (item.experimental) return `${item.label} (실험 중)`;
-    return item.tier === 'A' ? `${item.label} · 추천` : item.label;
+    return item.experimental ? `${item.label} (실험 중)` : item.label;
 }

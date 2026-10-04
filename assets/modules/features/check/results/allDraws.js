@@ -41,12 +41,12 @@ export const checkResultAllDrawsMethods = {
           </div>
           <div class="check-actions">
             <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-            <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
+            <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
           </div>
           <div class="check-section">
             <div class="label">내 번호</div>
             <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
-            <div class="meta">3개 이상 적중한 회차가 없습니다.</div>
+            <div class="meta">3개 이상 맞힌 회차가 없어요.</div>
           </div>
         </div>
       `;
@@ -56,7 +56,7 @@ export const checkResultAllDrawsMethods = {
         const note =
             results.length > 50
                 ? `<div class="meta">표시 제한: 상위 50개만 보여줍니다. (총 ${results.length}개)</div>`
-                : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 적중했습니다.</div>`;
+                : `<div class="meta">총 ${results.length}개 회차에서 3개 이상 맞혔어요.</div>`;
         const quantity = this.data.getTicketQuantity(ticket);
 
         const cards = limited
@@ -80,7 +80,7 @@ export const checkResultAllDrawsMethods = {
           <div class="check-section">
             <div class="label">내 번호</div>
             <div class="ball-container sm">${this.renderTicketBalls(ticket.numbers, result.winSet)}</div>
-            <div class="meta">적중: <b>${hitText}</b> / 보너스: <b>${result.bonusHit ? '있음' : '없음'}</b></div>
+            <div class="meta">맞힌 개수: <b>${hitText}</b> · 보너스 번호: <b>${result.bonusHit ? '맞힘' : '안 맞음'}</b></div>
           </div>
         </div>
       `;
@@ -95,13 +95,13 @@ export const checkResultAllDrawsMethods = {
         </div>
         <div class="check-actions">
           <button class="btn ghost sm" data-action="copy"><i class="ph ph-copy"></i> 복사</button>
-          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> 큐알</button>
+          <button class="btn ghost sm" data-action="qr"><i class="ph ph-qr-code"></i> QR</button>
         </div>
         <div class="check-section">
           <div class="label">내 번호</div>
           <div class="ball-container sm">${UIManager.renderBalls(ticket.numbers, 'sm')}</div>
           ${note}
-          ${quantity > 1 ? `<div class="meta">보유 수량: <b>x${quantity}</b></div>` : ''}
+          ${quantity > 1 ? `<div class="meta">구매 수량: <b>${quantity}장</b></div>` : ''}
         </div>
         <div class="check-cards">${cards}</div>
       </div>

@@ -9,7 +9,7 @@ export const appModuleLoaderRoutingMethods = {
                 const target = e.currentTarget.dataset.target;
                 this.route(target).catch((err) => {
                     console.error('페이지 전환 실패', err);
-                    UIManager.toast('페이지 전환 중 오류가 발생했습니다.', 'error');
+                    UIManager.toast('화면을 여는 중 문제가 생겼어요. 다시 시도해 주세요.', 'error');
                 });
             });
         });
@@ -24,12 +24,21 @@ export const appModuleLoaderRoutingMethods = {
 
         try {
             if (changedRoute) {
-                this.navItems.forEach((el) => el.classList.remove('active'));
-                (this.navByTarget.get(target) || []).forEach((el) => el.classList.add('active'));
+                this.navItems.forEach((el) => {
+                    el.classList.remove('active');
+                    el.removeAttribute?.('aria-current');
+                });
+                (this.navByTarget.get(target) || []).forEach((el) => {
+                    el.classList.add('active');
+                    el.setAttribute?.('aria-current', 'page');
+                });
 
                 this.pageItems.forEach((el) => el.classList.remove('active'));
                 const page = $(`#page-${target}`);
                 if (page) page.classList.add('active');
+                const main = typeof document !== 'undefined' ? document.getElementById('main') : null;
+                if (main && typeof main.scrollTo === 'function') main.scrollTo({ top: 0 });
+                else if (main) main.scrollTop = 0;
             }
             this.syncMobileMoreButtonState?.(target);
             const isStale = () => localToken !== this.routeToken;

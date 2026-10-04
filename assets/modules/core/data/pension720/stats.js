@@ -163,24 +163,24 @@ export const dataPension720StatsMethods = {
 
         const message = (() => {
             if (!bestItems.length) {
-                return errorMessage || '연금복권 데이터를 구성하지 못했습니다.';
+                return errorMessage || '연금복권 당첨 번호를 불러오지 못했어요.';
             }
-            if (source === 'official') return '동행복권 공식 연금복권 데이터를 사용 중입니다.';
+            if (source === 'official') return '동행복권에서 최신 당첨 번호를 받아왔어요.';
             if (source === 'custom_proxy') {
                 return remoteProviderLabel
-                    ? `고급 연결 주소(${remoteProviderLabel})로 연금복권 공식 데이터를 사용 중입니다.`
-                    : '고급 연결 주소로 연금복권 공식 데이터를 사용 중입니다.';
+                    ? `직접 입력한 연결 주소(${remoteProviderLabel})로 최신 당첨 번호를 받아왔어요.`
+                    : '직접 입력한 연결 주소로 최신 당첨 번호를 받아왔어요.';
             }
             if (source === 'third_party') {
                 return remoteProviderLabel
-                    ? `${remoteProviderLabel} 경유로 연금복권 공식 데이터를 사용 중입니다.`
-                    : '공개 CORS 중계 경로로 연금복권 공식 데이터를 사용 중입니다.';
+                    ? `최신 당첨 번호를 받아왔어요 (${remoteProviderLabel} 경유).`
+                    : '최신 당첨 번호를 받아왔어요 (공개 CORS 중계 경유).';
             }
-            if (source === 'official_cache') return '동행복권 공식 연금복권 캐시 데이터를 사용 중입니다.';
+            if (source === 'official_cache') return '이전에 받아 둔 최신 당첨 번호를 보여 주고 있어요.';
             if (remoteAttempted && source === 'static') {
-                return '브라우저에서 공식 실시간 갱신에 실패해 기본 포함 연금복권 데이터를 사용 중입니다.';
+                return '앱에 포함된 당첨 번호를 보여 주고 있어요. 새 회차가 나왔다면 「최신 회차 확인」을 눌러 주세요.';
             }
-            return '기본 포함 연금복권 데이터를 사용 중입니다.';
+            return '앱에 포함된 당첨 번호를 보여 주고 있어요.';
         })();
 
         this.state.pension720Stats = bestItems;

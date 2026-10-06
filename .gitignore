@@ -4,6 +4,13 @@
 # - cladue.md (compat alias)
 /backup
 
+# Local agent and Spec Kit configuration
+/.agents/
+/.claude/
+/.grok/
+/.specify/
+/terminals/
+
 # Browser/exported local app backups
 /lotto_backup_v*.json
 /lotto_before_replace_*.json

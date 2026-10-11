@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="ko">
     <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-        <meta name="description" content="로또 6/45와 연금복권720+ 통계 기반 번호 추천을 지원하는 웹앱" />
-        <meta name="theme-color" content="#0f172a" />
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+        <meta name="description" content="로또 6/45와 연금복권720+ 통계 기반 번호 추천을 지원하는 웹앱"/>
+        <meta name="theme-color" content="#0f172a"/>
         <!--
           Progressive CSP for the static SPA.
           connect-src allows https: so advanced custom proxy workers remain usable.
@@ -15,7 +15,7 @@
             content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
         />
         <title>로또·연금복권 프로</title>
-        <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+        <link rel="icon" type="image/png" href="assets/icons/icon-192.png"/>
         <link
             rel="preload"
             href="assets/vendor/pretendard/PretendardVariable.woff2"
@@ -23,27 +23,27 @@
             type="font/woff2"
             crossorigin
         />
-        <link rel="stylesheet" href="assets/styles/tokens.css" />
-        <link rel="stylesheet" href="assets/styles/layout.css" />
-        <link rel="stylesheet" href="assets/styles/components.css" />
-        <link rel="stylesheet" href="assets/styles/pages.css" />
-        <link rel="stylesheet" href="assets/styles/modals.css" />
-        <link rel="stylesheet" href="assets/styles/responsive.css" />
-        <link rel="manifest" href="manifest.json" />
-        <link rel="stylesheet" href="./assets/vendor/phosphor/src/regular/style.css" />
-        <link rel="stylesheet" href="./assets/vendor/phosphor/src/bold/style.css" />
-        <link rel="stylesheet" href="./assets/vendor/phosphor/src/fill/style.css" />
-        <link rel="modulepreload" href="assets/modules/core/LottoApp.js" />
-        <link rel="modulepreload" href="assets/modules/core/DataManager.js" />
-        <link rel="modulepreload" href="assets/modules/core/UIManager.js" />
-        <link rel="modulepreload" href="assets/modules/core/StrategyWorkerClient.js" />
-        <link rel="modulepreload" href="assets/modules/features/Generator.js" />
+        <link rel="stylesheet" href="assets/styles/tokens.css"/>
+        <link rel="stylesheet" href="assets/styles/layout.css"/>
+        <link rel="stylesheet" href="assets/styles/components.css"/>
+        <link rel="stylesheet" href="assets/styles/pages.css"/>
+        <link rel="stylesheet" href="assets/styles/modals.css"/>
+        <link rel="stylesheet" href="assets/styles/responsive.css"/>
+        <link rel="manifest" href="manifest.json"/>
+        <link rel="stylesheet" href="./assets/vendor/phosphor/src/regular/style.css"/>
+        <link rel="stylesheet" href="./assets/vendor/phosphor/src/bold/style.css"/>
+        <link rel="stylesheet" href="./assets/vendor/phosphor/src/fill/style.css"/>
+        <link rel="modulepreload" href="assets/modules/core/LottoApp.js"/>
+        <link rel="modulepreload" href="assets/modules/core/DataManager.js"/>
+        <link rel="modulepreload" href="assets/modules/core/UIManager.js"/>
+        <link rel="modulepreload" href="assets/modules/core/StrategyWorkerClient.js"/>
+        <link rel="modulepreload" href="assets/modules/features/Generator.js"/>
 
         <!-- SEO & Social Tags -->
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="로또·연금복권 프로" />
-        <meta property="og:description" content="참고용 로또 6/45·연금복권720+ 번호 추천과 저장 관리" />
-        <meta property="og:image" content="assets/icons/icon-512.png" />
+        <meta property="og:type" content="website"/>
+        <meta property="og:title" content="로또·연금복권 프로"/>
+        <meta property="og:description" content="참고용 로또 6/45·연금복권720+ 번호 추천과 저장 관리"/>
+        <meta property="og:image" content="assets/icons/icon-512.png"/>
     </head>
 
     <body data-theme="dark">
@@ -204,7 +204,7 @@
                                         >
                                             <i class="ph-bold ph-minus"></i>
                                         </button>
-                                        <input type="number" id="setCount" value="5" min="1" max="20" readonly />
+                                        <input type="number" id="setCount" value="5" min="1" max="20" readonly/>
                                         <button
                                             class="step-btn"
                                             type="button"
@@ -271,22 +271,22 @@
                                         <small>11, 12, 13처럼 이어진 번호가 많이 나오지 않게 해요.</small>
                                     </label>
                                     <label class="switch">
-                                        <input type="checkbox" id="limitConsecutive" checked />
+                                        <input type="checkbox" id="limitConsecutive" checked/>
                                         <span class="slider"></span>
                                     </label>
                                 </div>
                                 <label class="check-box">
-                                    <input type="checkbox" id="smartMode" checked />
+                                    <input type="checkbox" id="smartMode" checked/>
                                     <span class="checkmark"></span>
                                     <span>당첨이 많았던 모양의 조합 위주 <small>(번호 합계·비율 고려)</small></span>
                                 </label>
                                 <label class="check-box">
-                                    <input type="checkbox" id="preferHot" checked />
+                                    <input type="checkbox" id="preferHot" checked/>
                                     <span class="checkmark"></span>
                                     <span>자주 나온 번호 우선</span>
                                 </label>
                                 <label class="check-box">
-                                    <input type="checkbox" id="balanceMode" checked />
+                                    <input type="checkbox" id="balanceMode" checked/>
                                     <span class="checkmark"></span>
                                     <span>홀짝·큰 수/작은 수 고르게</span>
                                 </label>
@@ -303,7 +303,7 @@
                                         <select id="genStrategySelect" class="input-field"></select>
                                     </div>
                                     <label class="check-box">
-                                        <input type="checkbox" id="genShowExperimental" />
+                                        <input type="checkbox" id="genShowExperimental"/>
                                         <span class="checkmark"></span>
                                         <span>실험 중인 방식도 보기</span>
                                     </label>
@@ -678,7 +678,7 @@
                                 </summary>
                                 <div class="advanced-body">
                                     <label class="check-box">
-                                        <input type="checkbox" id="aiShowExperimental" />
+                                        <input type="checkbox" id="aiShowExperimental"/>
                                         <span class="checkmark"></span>
                                         <span>실험 중인 방식도 보기</span>
                                     </label>
@@ -991,7 +991,7 @@
                                 </summary>
                                 <div class="advanced-body">
                                     <label class="check-box">
-                                        <input type="checkbox" id="pension720ShowExperimental" />
+                                        <input type="checkbox" id="pension720ShowExperimental"/>
                                         <span class="checkmark"></span>
                                         <span>실험 중인 방식도 보기</span>
                                     </label>
@@ -1355,7 +1355,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="btQty">회차마다 몇 게임</label>
-                                    <input type="number" id="btQty" class="input-field" min="1" max="1000" value="5" />
+                                    <input type="number" id="btQty" class="input-field" min="1" max="1000" value="5"/>
                                 </div>
                                 <div class="input-group">
                                     <label for="btStrategy">번호 고르는 방식</label>
@@ -1366,12 +1366,12 @@
                             </div>
                             <div class="toggles compact">
                                 <label class="check-box">
-                                    <input type="checkbox" id="btCompareMode" />
+                                    <input type="checkbox" id="btCompareMode"/>
                                     <span class="checkmark"></span>
                                     <span>여러 방식 한꺼번에 비교하기 <small>(최대 5개)</small></span>
                                 </label>
                                 <label class="check-box">
-                                    <input type="checkbox" id="btShowExperimental" />
+                                    <input type="checkbox" id="btShowExperimental"/>
                                     <span class="checkmark"></span>
                                     <span>실험 중인 방식도 보기</span>
                                 </label>
@@ -1837,7 +1837,7 @@
                             <button id="backupAndCleanupBtn" class="btn ghost" type="button">
                                 <i class="ph ph-broom"></i> 백업하고 정리하기
                             </button>
-                            <input type="file" id="importInput" hidden accept=".json,application/json" />
+                            <input type="file" id="importInput" hidden accept=".json,application/json"/>
                         </div>
                         <details class="advanced-settings">
                             <summary>
@@ -1856,22 +1856,22 @@
                                 </div>
                                 <div class="toggles compact">
                                     <label class="check-box">
-                                        <input type="checkbox" id="importApplyTheme" />
+                                        <input type="checkbox" id="importApplyTheme"/>
                                         <span class="checkmark"></span>
                                         <span>화면 테마도 가져오기</span>
                                     </label>
                                     <label class="check-box">
-                                        <input type="checkbox" id="importApplyProxy" />
+                                        <input type="checkbox" id="importApplyProxy"/>
                                         <span class="checkmark"></span>
                                         <span>데이터 연결 주소도 가져오기</span>
                                     </label>
                                     <label class="check-box">
-                                        <input type="checkbox" id="importApplyStrategyPrefs" />
+                                        <input type="checkbox" id="importApplyStrategyPrefs"/>
                                         <span class="checkmark"></span>
                                         <span>추천 방식 설정도 가져오기</span>
                                     </label>
                                     <label class="check-box">
-                                        <input type="checkbox" id="importApplyAlerts" />
+                                        <input type="checkbox" id="importApplyAlerts"/>
                                         <span class="checkmark"></span>
                                         <span>알림 설정도 가져오기</span>
                                     </label>
@@ -2012,17 +2012,17 @@
                             </div>
                             <div class="toggles compact">
                                 <label class="check-box">
-                                    <input type="checkbox" id="alertEnableInApp" checked />
+                                    <input type="checkbox" id="alertEnableInApp" checked/>
                                     <span class="checkmark"></span>
                                     <span>앱 화면 안에서 알림</span>
                                 </label>
                                 <label class="check-box">
-                                    <input type="checkbox" id="alertEnableSystem" />
+                                    <input type="checkbox" id="alertEnableSystem"/>
                                     <span class="checkmark"></span>
                                     <span>휴대폰·PC 알림</span>
                                 </label>
                                 <label class="check-box">
-                                    <input type="checkbox" id="alertNotifyOnResult" checked />
+                                    <input type="checkbox" id="alertNotifyOnResult" checked/>
                                     <span class="checkmark"></span>
                                     <span>새 당첨 결과가 나오면 알림</span>
                                 </label>
@@ -2289,7 +2289,7 @@
                 </div>
                 <div id="dialogInputWrap" class="input-group dialog-input-wrap" hidden>
                     <label for="dialogInput">입력</label>
-                    <input id="dialogInput" class="input-field" type="text" autocomplete="off" />
+                    <input id="dialogInput" class="input-field" type="text" autocomplete="off"/>
                 </div>
                 <div class="dialog-modal-actions">
                     <button id="dialogCancelBtn" class="btn ghost" type="button">취소</button>

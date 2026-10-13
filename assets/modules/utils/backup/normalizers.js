@@ -157,9 +157,4 @@ function dedupePension720Campaigns(items = []) {
     return Array.from(map.values()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
-export {
-    dedupeDrawUpdates,
-    dedupePresets,
-    dedupePension720Tickets,
-    dedupePension720Campaigns
-};
+export { dedupeDrawUpdates, dedupePresets, dedupePension720Tickets, dedupePension720Campaigns };

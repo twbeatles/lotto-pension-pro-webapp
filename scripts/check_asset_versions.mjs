@@ -67,17 +67,19 @@ if (!workerClient.includes('STRATEGY_WORKER_ASSET_VERSION')) {
 }
 
 const issues = [];
-const base = baseRef
-    ? baseRef.startsWith('origin/')
-        ? baseRef
-        : `origin/${baseRef}`
-    : '';
+const base = baseRef ? (baseRef.startsWith('origin/') ? baseRef : `origin/${baseRef}`) : '';
 
 if (base) {
     const changed = gitDiffNames(base);
     if (Array.isArray(changed)) {
         if (changed.includes('assets/strategy.worker.js') || changed.includes('assets\\strategy.worker.js')) {
-            if (!gitDiffContains(base, 'assets/modules/core/strategyWorkerClient/config.js', /STRATEGY_WORKER_ASSET_VERSION/)) {
+            if (
+                !gitDiffContains(
+                    base,
+                    'assets/modules/core/strategyWorkerClient/config.js',
+                    /STRATEGY_WORKER_ASSET_VERSION/
+                )
+            ) {
                 issues.push(
                     'assets/strategy.worker.js changed but STRATEGY_WORKER_ASSET_VERSION was not bumped in strategyWorkerClient/config.js'
                 );

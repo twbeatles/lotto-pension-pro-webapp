@@ -206,11 +206,7 @@ async function runProxyWorkerDrawScheduleAndFutureCapRegression() {
 
     const maxAtBoundary = getMaxAllowedDrawNo(afterPublishGrace);
     assert.equal(isAllowedProxyDrawNo(maxAtBoundary, afterPublishGrace), true, 'latest+1 draw must be accepted');
-    assert.equal(
-        isAllowedProxyDrawNo(maxAtBoundary + 1, afterPublishGrace),
-        false,
-        'latest+2 draw must be rejected'
-    );
+    assert.equal(isAllowedProxyDrawNo(maxAtBoundary + 1, afterPublishGrace), false, 'latest+2 draw must be rejected');
 
     const currentMax = getMaxAllowedDrawNo();
     const single = await proxyWorker.fetch(

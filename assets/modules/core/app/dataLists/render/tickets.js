@@ -20,7 +20,9 @@ export function renderTicketsList(ctx) {
         renderEmpty(
             '#ticketList',
             'ph-ticket',
-            ctx.getDataListState('ticket').query ? '검색 결과가 없습니다.' : '저장한 구매 번호가 없어요. 생성·추천 결과에서 🎟️ 버튼을 눌러 저장하세요.'
+            ctx.getDataListState('ticket').query
+                ? '검색 결과가 없습니다.'
+                : '저장한 구매 번호가 없어요. 생성·추천 결과에서 🎟️ 버튼을 눌러 저장하세요.'
         );
     } else {
         $('#ticketList').innerHTML = ticketPage.items

@@ -40,10 +40,7 @@ export function getLottoLoadSourceLabel(source = LOTTO_LOAD_SOURCE.NONE) {
 export function resolveRemoteDataSourceFromFetch({ providerLabel = '', proxyConfig = null } = {}) {
     const label = String(providerLabel || '').trim();
     if (label === '공식 API') return REMOTE_DATA_SOURCE.OFFICIAL;
-    if (
-        label === '고급 연결 주소' ||
-        (proxyConfig?.source && label === proxyConfig.source)
-    ) {
+    if (label === '고급 연결 주소' || (proxyConfig?.source && label === proxyConfig.source)) {
         return REMOTE_DATA_SOURCE.CUSTOM_PROXY;
     }
     if (label === 'corsproxy.io' || label === 'CodeTabs') {

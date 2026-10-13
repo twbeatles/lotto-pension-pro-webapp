@@ -5,15 +5,9 @@ const TTL_HISTORICAL_SECONDS = 6 * 60 * 60;
 const TTL_HISTORICAL_RANGE_SECONDS = 12 * 60 * 60;
 const MAX_FUTURE_DRAW_SLACK = 1;
 
-export {
-    TTL_NEAR_LATEST_SECONDS,
-    TTL_HISTORICAL_SECONDS,
-    TTL_HISTORICAL_RANGE_SECONDS,
-    MAX_FUTURE_DRAW_SLACK
-};
+export { TTL_NEAR_LATEST_SECONDS, TTL_HISTORICAL_SECONDS, TTL_HISTORICAL_RANGE_SECONDS, MAX_FUTURE_DRAW_SLACK };
 
-export const getMaxAllowedDrawNo = (nowKstUtc = undefined) =>
-    estimateLatestDrawKST(nowKstUtc) + MAX_FUTURE_DRAW_SLACK;
+export const getMaxAllowedDrawNo = (nowKstUtc = undefined) => estimateLatestDrawKST(nowKstUtc) + MAX_FUTURE_DRAW_SLACK;
 
 export const isAllowedProxyDrawNo = (drawNo, nowKstUtc = undefined) =>
     Number.isInteger(drawNo) && drawNo >= 1 && drawNo <= getMaxAllowedDrawNo(nowKstUtc);

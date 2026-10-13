@@ -3,10 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 
-import {
-    estimateLatestDrawKST,
-    estimateLatestPension720DrawKST
-} from '../assets/modules/utils/utils.js';
+import { estimateLatestDrawKST, estimateLatestPension720DrawKST } from '../assets/modules/utils/utils.js';
 import { getDataBaseline } from './update_docs_data_baseline.mjs';
 
 const execFileAsync = promisify(execFile);

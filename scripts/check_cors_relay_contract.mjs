@@ -2,10 +2,7 @@ import { appendFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildBuiltinCorsFetchUrls } from '../assets/modules/core/data/sync/builtinProviders.js';
 import { extractSingleDrawFromPayload, parseSyncPayload } from '../assets/modules/core/data/sync/lottoPayloadCore.js';
-import {
-    classifyCorsRelayFailure,
-    inspectCorsproxyCandidate
-} from './lib/corsRelayContract.mjs';
+import { classifyCorsRelayFailure, inspectCorsproxyCandidate } from './lib/corsRelayContract.mjs';
 
 const DATA_PATH = resolve('data/winning_stats.json');
 const PROVIDER_SOURCE_PATH = resolve('assets/modules/core/data/sync/builtinProviders.js');
@@ -32,9 +29,7 @@ async function setGithubOutput(name, value) {
 async function inspectBuiltInSource() {
     const source = await readFile(PROVIDER_SOURCE_PATH, 'utf8');
     if (!source.includes('https://corsproxy.io/?url=')) {
-        throw new Error(
-            'assets/modules/core/data/sync/builtinProviders.js must keep the corsproxy.io ?url= API'
-        );
+        throw new Error('assets/modules/core/data/sync/builtinProviders.js must keep the corsproxy.io ?url= API');
     }
     if (/corsproxy\.io\/\?\$\{encodeURIComponent/.test(source)) {
         throw new Error(

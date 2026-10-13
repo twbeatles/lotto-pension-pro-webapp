@@ -15,7 +15,11 @@ export function logAiDiagnostics(ctx, { log, request, targetSetCount, results, r
             `> 완료! 조건에 맞는 조합 ${results.length}/${targetSetCount}개를 찾았어요.`,
             'var(--warning)'
         );
-        UIManager.toast(`세부 조건에 맞는 조합이 ${results.length}/${targetSetCount}개뿐이에요. 조건을 조금 넓혀 보세요.`, 'warning', 3500);
+        UIManager.toast(
+            `세부 조건에 맞는 조합이 ${results.length}/${targetSetCount}개뿐이에요. 조건을 조금 넓혀 보세요.`,
+            'warning',
+            3500
+        );
     } else {
         ctx.appendLog(log, `> 완료! 추천 조합 ${results.length}개를 만들었어요.`, 'var(--success)');
     }

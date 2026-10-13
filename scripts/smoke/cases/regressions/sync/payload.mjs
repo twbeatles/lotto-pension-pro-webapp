@@ -272,11 +272,7 @@ function runBuiltInSyncProviderRegression() {
     assert.equal(timeoutErr.name, 'TimeoutError', 'sync timeout errors must use TimeoutError name');
     assert.equal(timeoutErr.code, 'SYNC_FETCH_TIMEOUT', 'sync timeout errors must carry SYNC_FETCH_TIMEOUT');
     assert.equal(dm.isTimeoutError(timeoutErr), true, 'createTimeoutError must be recognized as a timeout');
-    assert.equal(
-        dm.isAbortError(timeoutErr),
-        false,
-        'request timeouts must not be misclassified as user sync aborts'
-    );
+    assert.equal(dm.isAbortError(timeoutErr), false, 'request timeouts must not be misclassified as user sync aborts');
 }
 
 function runCorsRelayContractRegression() {
@@ -309,7 +305,9 @@ function runCorsRelayContractRegression() {
 
     const serverSide = classifyCorsRelayFailure({
         status: 403,
-        body: JSON.stringify({ error: 'Server-side requests are not allowed on your plan. Upgrade at https://corsproxy.io/pricing/' }),
+        body: JSON.stringify({
+            error: 'Server-side requests are not allowed on your plan. Upgrade at https://corsproxy.io/pricing/'
+        }),
         url: current
     });
     assert.equal(
@@ -416,12 +414,8 @@ async function runSyncFetchTimeoutAbortClassificationRegression() {
             }
         );
 
-        dm.buildCustomSingleFetchUrls = () => [
-            { label: 'hang-proxy', url: 'https://proxy.example/hang?draw=1215' }
-        ];
-        dm.buildBuiltInSingleFetchUrls = () => [
-            { label: 'fallback', url: 'https://proxy.example/fallback?draw=1215' }
-        ];
+        dm.buildCustomSingleFetchUrls = () => [{ label: 'hang-proxy', url: 'https://proxy.example/hang?draw=1215' }];
+        dm.buildBuiltInSingleFetchUrls = () => [{ label: 'fallback', url: 'https://proxy.example/fallback?draw=1215' }];
         dm.SYNC_FETCH_TIMEOUT_MS = 40;
 
         fetchCalls = 0;

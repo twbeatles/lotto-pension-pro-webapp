@@ -720,7 +720,11 @@ async function runPwaCacheHealthRegression() {
         /flushPendingLocalPersistence|flushAppPersistenceBestEffort/,
         'PWA update apply path must flush pending persistence before reload'
     );
-    assert.match(pwaBootstrap, /hasPendingAppPersistence|hasPendingLocalPersistence/, 'PWA update path must inspect dirty state');
+    assert.match(
+        pwaBootstrap,
+        /hasPendingAppPersistence|hasPendingLocalPersistence/,
+        'PWA update path must inspect dirty state'
+    );
 }
 
 export {

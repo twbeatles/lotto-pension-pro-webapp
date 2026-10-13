@@ -304,10 +304,9 @@ function runPension720OfficialFetchWrappedErrorRegression() {
 
     const abortCause = new Error('This operation was aborted');
     abortCause.name = 'AbortError';
-    const wrappedAbort = new Error(
-        'official pension720 fetch failed after 3 attempt(s): This operation was aborted',
-        { cause: abortCause }
-    );
+    const wrappedAbort = new Error('official pension720 fetch failed after 3 attempt(s): This operation was aborted', {
+        cause: abortCause
+    });
 
     const timeoutError = new Error('The operation was aborted due to timeout');
     timeoutError.name = 'TimeoutError';
@@ -522,7 +521,11 @@ async function runPension720RuntimeSeedSurfaceRegression() {
     ]);
 
     assert.match(recommendationsSource, /createRuntimeSeed/, 'pension720 recommendation must allocate runtime seeds');
-    assert.match(recommendationsSource, /upsertReproductionCodeBar/, 'pension720 results must surface reproduction code');
+    assert.match(
+        recommendationsSource,
+        /upsertReproductionCodeBar/,
+        'pension720 results must surface reproduction code'
+    );
     assert.match(reproductionSource, /재현 코드/, 'reproduction helper must expose Korean reproduction label');
 }
 
@@ -551,9 +554,8 @@ async function runPension720RuntimeSeedDeterminismRegression() {
 }
 
 async function runPension720DomEncodingRegression() {
-    const { formatTicket, getAnalysisPresetLabelFromRequest, PENSION720_ANALYSIS_PRESETS } = await import(
-        '../../../../assets/modules/features/pension720/dom.js'
-    );
+    const { formatTicket, getAnalysisPresetLabelFromRequest, PENSION720_ANALYSIS_PRESETS } =
+        await import('../../../../assets/modules/features/pension720/dom.js');
 
     assert.equal(formatTicket({ group: 5, number: '123456' }), '5조 123456', 'formatTicket must keep 조 suffix');
     assert.equal(PENSION720_ANALYSIS_PRESETS.fast.label, '빠름', 'fast preset label must stay UTF-8');

@@ -32,7 +32,9 @@ function runPension720RemoteFetchCandidateRegression() {
         candidates[0]?.url?.includes('/proxy/pension720/list'),
         'custom proxy must be the first pension720 remote candidate'
     );
-    const corsproxy = candidates.find((item) => item.label === 'corsproxy.io' || String(item.url || '').includes('corsproxy.io'));
+    const corsproxy = candidates.find(
+        (item) => item.label === 'corsproxy.io' || String(item.url || '').includes('corsproxy.io')
+    );
     assert.ok(corsproxy, 'builtin cors fallback must remain available for pension720');
     assert.match(
         corsproxy?.url || '',
@@ -61,7 +63,11 @@ function runPension720RemoteFetchCandidateRegression() {
     }
 
     const payload = parsePension720RemotePayload(
-        JSON.stringify({ data: { result: [{ psltEpsd: 10, wnBndNo: 2, wnRnkVl: '123456', bnsRnkVl: '654321', psltRflYmd: '20260601' }] } })
+        JSON.stringify({
+            data: {
+                result: [{ psltEpsd: 10, wnBndNo: 2, wnRnkVl: '123456', bnsRnkVl: '654321', psltRflYmd: '20260601' }]
+            }
+        })
     );
     const list = extractPension720ListFromPayload(payload);
     assert.equal(list.length, 1, 'remote pension720 payload parser must extract official list');
@@ -104,8 +110,7 @@ async function runQueryProxyConfirmFailClosedRegression() {
 
     try {
         const dm = new DataManager();
-        dm.getQueryProxyUrl = () =>
-            dm.buildProxyConfig('URL 쿼리(proxyUrl)', 'https://worker.example/proxy/latest');
+        dm.getQueryProxyUrl = () => dm.buildProxyConfig('URL 쿼리(proxyUrl)', 'https://worker.example/proxy/latest');
 
         assert.equal(typeof UIManager.confirm, 'undefined', 'test setup must clear UIManager.confirm');
         const acknowledged = await dm.ensureQueryProxyAcknowledged();
@@ -253,7 +258,10 @@ function runMaliciousProxyTamperedDrawRegression() {
 }
 
 async function runLocalStoragePartialFailureUiRegression() {
-    const networkSource = await readFile(resolve('assets/modules/core/app/networkLifecycle/storageFailureBanner.js'), 'utf8');
+    const networkSource = await readFile(
+        resolve('assets/modules/core/app/networkLifecycle/storageFailureBanner.js'),
+        'utf8'
+    );
     const indexSource = await readFile(resolve('index.html'), 'utf8');
     assert.match(networkSource, /storageFailureBanner/, 'storage failure banner wiring must exist');
     assert.match(networkSource, /getStorageWriteFailures/, 'banner must react to tracked storage failures');

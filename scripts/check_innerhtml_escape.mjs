@@ -2,8 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
 import { INNERHTML_ALLOWLIST } from './lib/innerhtml_allowlist.mjs';
 
-const RISKY_INTERPOLATION =
-    /\.innerHTML\s*=\s*`[^`]*\$\{(?!.*\b(escapeHtml|safeHtml)\b)/;
+const RISKY_INTERPOLATION = /\.innerHTML\s*=\s*`[^`]*\$\{(?!.*\b(escapeHtml|safeHtml)\b)/;
 
 async function collectJsFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -73,9 +72,7 @@ for (const [relativePath] of Object.entries(actual)) {
         if (line.includes("innerHTML = ''") || line.includes('innerHTML = ""')) return;
         if (line.includes('escapeHtml') || line.includes('safeHtml')) return;
         if (RISKY_INTERPOLATION.test(line)) {
-            console.error(
-                `[innerhtml-escape] unescaped template interpolation at ${relativePath}:${index + 1}`
-            );
+            console.error(`[innerhtml-escape] unescaped template interpolation at ${relativePath}:${index + 1}`);
             failed = true;
         }
     });

@@ -16,9 +16,7 @@ export const dataDefaultsSyncMetaMethods = {
         const input = raw && typeof raw === 'object' ? raw : {};
         return {
             currentSource:
-                typeof input.currentSource === 'string'
-                    ? input.currentSource.slice(0, 80)
-                    : defaults.currentSource,
+                typeof input.currentSource === 'string' ? input.currentSource.slice(0, 80) : defaults.currentSource,
             lastSuccessAt: typeof input.lastSuccessAt === 'string' ? input.lastSuccessAt : defaults.lastSuccessAt,
             lastSuccessDrawNo: Math.max(0, Math.floor(Number(input.lastSuccessDrawNo || 0))),
             lastFailureAt: typeof input.lastFailureAt === 'string' ? input.lastFailureAt : defaults.lastFailureAt,

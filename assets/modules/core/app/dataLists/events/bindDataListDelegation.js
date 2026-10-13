@@ -33,7 +33,10 @@ export const appDataListBindDelegationEventMethods = {
                             if (!confirmed) return;
                             const result = this.data.removeCampaign(campaign.id, { cascadeTickets: true });
                             if (result.removedCampaign) {
-                                UIManager.toast(`회차 묶음과 구매 번호 ${result.removedTickets}개를 삭제했어요.`, 'success');
+                                UIManager.toast(
+                                    `회차 묶음과 구매 번호 ${result.removedTickets}개를 삭제했어요.`,
+                                    'success'
+                                );
                             }
                             this.renderDataLists();
                         })();
@@ -83,7 +86,10 @@ export const appDataListBindDelegationEventMethods = {
                     if (result.removed) {
                         const cleanupSuffix =
                             result.prunedCampaigns > 0 ? `, 회차 묶음 ${result.prunedCampaigns}개 자동 정리` : '';
-                        UIManager.toast(`구매 번호 ${result.removedTickets}개를 삭제했어요${cleanupSuffix}.`, 'success');
+                        UIManager.toast(
+                            `구매 번호 ${result.removedTickets}개를 삭제했어요${cleanupSuffix}.`,
+                            'success'
+                        );
                     }
                     this.renderDataLists();
                 }

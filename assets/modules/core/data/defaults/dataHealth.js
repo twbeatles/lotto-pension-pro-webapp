@@ -35,9 +35,7 @@ export const dataDefaultsDataHealthMethods = {
     },
 
     getDataHealthSourceLabel(source = this.dataHealth?.source) {
-        return getLottoLoadSourceLabel(
-            LOTTO_LOAD_SOURCE_VALUES.includes(source) ? source : 'none'
-        );
+        return getLottoLoadSourceLabel(LOTTO_LOAD_SOURCE_VALUES.includes(source) ? source : 'none');
     },
 
     getLocalRestoreSourceLabel(source = this.dataHealth?.source) {

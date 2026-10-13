@@ -24,9 +24,9 @@ export const appSettingsSyncSectionMethods = {
 
         const syncMeta = this.data.state.syncMeta || this.data.getDefaultSyncMeta?.() || {};
         const pensionHealth = this.data.pension720DataHealth || this.data.getDefaultPension720DataHealth?.();
-        const pensionSyncMeta = this.data.mergePension720SyncMeta?.(
-            syncMeta.pension720 || this.data.getDefaultPension720SyncMeta?.()
-        ) || {};
+        const pensionSyncMeta =
+            this.data.mergePension720SyncMeta?.(syncMeta.pension720 || this.data.getDefaultPension720SyncMeta?.()) ||
+            {};
         const pensionSourceEl = $('#pension720SyncMetaSource');
         if (pensionSourceEl) {
             pensionSourceEl.textContent =

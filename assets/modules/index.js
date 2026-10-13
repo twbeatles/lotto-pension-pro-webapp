@@ -41,9 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bootWatchdogId = window.setTimeout(() => {
         // A started first route binds the tabs; only warn when routing never ran.
         if (window.app?.routeToken > 0) return;
-        showBootNotice(
-            '앱 시작이 지연되고 있습니다. 광고 차단·스크립트 차단 확장을 끈 뒤 새로고침해 보세요.'
-        );
+        showBootNotice('앱 시작이 지연되고 있습니다. 광고 차단·스크립트 차단 확장을 끈 뒤 새로고침해 보세요.');
     }, BOOT_WATCHDOG_MS);
     window.app.init().then(
         () => {

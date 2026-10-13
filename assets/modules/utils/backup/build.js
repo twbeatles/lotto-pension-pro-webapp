@@ -1,10 +1,5 @@
 import { toArray, toObject } from './helpers.js';
-import {
-    dedupeDrawUpdates,
-    dedupePresets,
-    dedupePension720Tickets,
-    dedupePension720Campaigns
-} from './normalizers.js';
+import { dedupeDrawUpdates, dedupePresets, dedupePension720Tickets, dedupePension720Campaigns } from './normalizers.js';
 
 const BACKUP_VERSION = 5;
 

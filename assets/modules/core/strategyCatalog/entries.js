@@ -171,8 +171,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '지난 당첨 번호의 바로 옆 번호 우선',
-        description:
-            '지난 회차 당첨 번호의 <strong>바로 옆 번호(±1)</strong>가 다음에 잘 나온다는 속설을 반영합니다.',
+        description: '지난 회차 당첨 번호의 <strong>바로 옆 번호(±1)</strong>가 다음에 잘 나온다는 속설을 반영합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },
@@ -182,8 +181,7 @@ export const STRATEGY_CATALOG = Object.freeze({
         tier: 'B',
         experimental: false,
         summary: '1~15 / 16~30 / 31~45에서 골고루',
-        description:
-            '번호를 1~15, 16~30, 31~45 <strong>세 구간</strong>으로 나눠 구간마다 하나 이상 섞이도록 합니다.',
+        description: '번호를 1~15, 16~30, 31~45 <strong>세 구간</strong>으로 나눠 구간마다 하나 이상 섞이도록 합니다.',
         defaultParams: { ...BASE_PARAMS },
         defaultFilters: { ...EMPTY_FILTERS }
     },

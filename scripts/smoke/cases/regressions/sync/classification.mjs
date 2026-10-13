@@ -459,7 +459,11 @@ async function runWinningStatsPreserveExistingWithLocalUpdatesRegression() {
 
         assert.equal(dm.dataHealth.availability, 'full', 'merged preserved data should keep full availability');
 
-        assert.equal(dm.dataHealth.source, 'static_local', 'merged preserved data must expose static plus local source');
+        assert.equal(
+            dm.dataHealth.source,
+            'static_local',
+            'merged preserved data must expose static plus local source'
+        );
 
         assert.match(
             dm.dataHealth.message,

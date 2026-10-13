@@ -263,7 +263,11 @@ async function runContentSecurityPolicyMetaRegression() {
     );
     assert.match(indexSource, /default-src 'self'/, 'CSP must default to self');
     assert.match(indexSource, /script-src 'self'/, 'CSP must restrict scripts to self');
-    assert.match(indexSource, /connect-src 'self' https:/, 'CSP must allow https connect for custom proxies and CORS relays');
+    assert.match(
+        indexSource,
+        /connect-src 'self' https:/,
+        'CSP must allow https connect for custom proxies and CORS relays'
+    );
 }
 
 async function runWebManifestInstallabilityRegression() {

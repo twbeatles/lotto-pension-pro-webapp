@@ -41,9 +41,7 @@ export function buildBuiltinCorsFetchUrls(targetUrl, options = {}) {
     if (!url) return [];
 
     const includeDirectOfficial =
-        typeof options.includeDirectOfficial === 'boolean'
-            ? options.includeDirectOfficial
-            : true;
+        typeof options.includeDirectOfficial === 'boolean' ? options.includeDirectOfficial : true;
 
     return BUILTIN_CORS_PROVIDERS.filter((provider) => {
         if (provider.label === '공식 API' && !includeDirectOfficial) return false;

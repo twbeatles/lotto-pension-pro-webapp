@@ -29,7 +29,11 @@ export const generatorActionGenerateMethods = {
         this.syncBusyButtons?.();
         try {
             if (!Array.isArray(this.data.state.winningStats) || !this.data.state.winningStats.length) {
-                UIManager.toast(uiStrings.dataUnavailable || '당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.', 'error', 3000);
+                UIManager.toast(
+                    uiStrings.dataUnavailable || '당첨 데이터가 없습니다. 데이터 파일을 확인해주세요.',
+                    'error',
+                    3000
+                );
                 return false;
             }
 
@@ -42,7 +46,11 @@ export const generatorActionGenerateMethods = {
             }
             const overlap = fixed.filter((n) => exclude.includes(n));
             if (overlap.length) {
-                UIManager.toast(`${overlap.join(', ')}번이 '꼭 넣을 번호'와 '뺄 번호'에 모두 들어 있어요.`, 'error', 3500);
+                UIManager.toast(
+                    `${overlap.join(', ')}번이 '꼭 넣을 번호'와 '뺄 번호'에 모두 들어 있어요.`,
+                    'error',
+                    3500
+                );
                 return false;
             }
             if (45 - exclude.length < 6) {

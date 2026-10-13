@@ -20,7 +20,11 @@ export const ANALYSIS_PRESETS = {
 export function isConstrainedClient() {
     if (typeof window === 'undefined') return false;
     try {
-        if (typeof navigator !== 'undefined' && Number(navigator.hardwareConcurrency) > 0 && navigator.hardwareConcurrency <= 4) {
+        if (
+            typeof navigator !== 'undefined' &&
+            Number(navigator.hardwareConcurrency) > 0 &&
+            navigator.hardwareConcurrency <= 4
+        ) {
             if (window.matchMedia?.('(max-width: 900px)')?.matches) return true;
         }
         if (window.matchMedia?.('(pointer: coarse)')?.matches) return true;

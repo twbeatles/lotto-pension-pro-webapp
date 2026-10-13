@@ -41,7 +41,9 @@ export const qrScannerParserMethods = {
         const gameChunks = payload.slice(drawMatch[1].length).split(/[a-z]+/i);
         const games = [];
         for (const gameStr of gameChunks) {
-            const numsStr = String(gameStr || '').trim().slice(0, 12);
+            const numsStr = String(gameStr || '')
+                .trim()
+                .slice(0, 12);
             if (!/^\d{12}$/.test(numsStr)) continue;
 
             const nums = [];

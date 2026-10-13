@@ -12,11 +12,7 @@ const TARGETS = [
     }
 ];
 
-const CORRUPTION_PATTERNS = [
-    /label:\s*'\?\?'/,
-    /String\(options\.group\)\s*\+\s*'\?'/,
-    /\}\?\s\$\{String\(ticket/
-];
+const CORRUPTION_PATTERNS = [/label:\s*'\?\?'/, /String\(options\.group\)\s*\+\s*'\?'/, /\}\?\s\$\{String\(ticket/];
 
 let failed = false;
 

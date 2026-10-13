@@ -1,4 +1,7 @@
-import { createDefaultPension720StrategyRequest, resolvePension720StrategyId } from '../../Pension720StrategyCatalog.js';
+import {
+    createDefaultPension720StrategyRequest,
+    resolvePension720StrategyId
+} from '../../Pension720StrategyCatalog.js';
 import { clampInt } from './primitives.js';
 import { normalizeFilters } from './filters.js';
 

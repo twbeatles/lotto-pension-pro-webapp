@@ -43,7 +43,10 @@ export const pension720CampaignGenerationMethods = {
             return false;
         }
         if (totalRequested > CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS) {
-            UIManager.toast(`회차 묶음 총 번호 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`, 'warning');
+            UIManager.toast(
+                `회차 묶음 총 번호 수는 최대 ${CONFIG.LIMITS.MAX_CAMPAIGN_TOTAL_TICKETS}개입니다.`,
+                'warning'
+            );
             return false;
         }
 
@@ -107,7 +110,11 @@ export const pension720CampaignGenerationMethods = {
             if (campaign && result.inserted > 0) {
                 UIManager.toast(`연금복권 회차 묶음 생성 완료: 저장 번호 ${result.inserted}개 반영`, 'success');
             } else if (totalCreated > 0) {
-                UIManager.toast('생성된 연금복권 번호가 모두 중복되어 회차 묶음을 저장하지 않았습니다.', 'warning', 3500);
+                UIManager.toast(
+                    '생성된 연금복권 번호가 모두 중복되어 회차 묶음을 저장하지 않았습니다.',
+                    'warning',
+                    3500
+                );
             } else {
                 UIManager.toast('생성된 연금복권 번호가 없어 회차 묶음을 저장하지 않았습니다.', 'warning', 3500);
             }

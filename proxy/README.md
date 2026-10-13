@@ -30,12 +30,12 @@ wrangler deploy proxy/worker.js
 
 ### 보안·남용 방지 (권장)
 
-| 항목 | 권장 |
-|------|------|
-| CORS | 기본은 `*`(호환). 운영 시 `CORS_ALLOWED_ORIGINS=https://twbeatles.github.io` 처럼 앱 오리진만 허용 |
-| Rate limit | Cloudflare Rate limiting으로 `/proxy/*` 분당 요청 상한 설정 |
-| `?url=` 패스스루 | `www.dhlottery.co.kr` 호스트만 허용, 경로는 `/lt645/`, `/pt720/` 접두만 허용 |
-| 미래 회차 | 예상 최신 `+1` 초과 요청은 upstream 호출 없이 `400` |
+| 항목             | 권장                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| CORS             | 기본은 `*`(호환). 운영 시 `CORS_ALLOWED_ORIGINS=https://twbeatles.github.io` 처럼 앱 오리진만 허용 |
+| Rate limit       | Cloudflare Rate limiting으로 `/proxy/*` 분당 요청 상한 설정                                        |
+| `?url=` 패스스루 | `www.dhlottery.co.kr` 호스트만 허용, 경로는 `/lt645/`, `/pt720/` 접두만 허용                       |
+| 미래 회차        | 예상 최신 `+1` 초과 요청은 upstream 호출 없이 `400`                                                |
 
 `wrangler.toml` 예시:
 

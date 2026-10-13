@@ -20,9 +20,4 @@ export class QrScannerModule {
     }
 }
 
-Object.assign(
-    QrScannerModule.prototype,
-    qrScannerLifecycleMethods,
-    qrScannerParserMethods,
-    qrScannerScanFlowMethods
-);
+Object.assign(QrScannerModule.prototype, qrScannerLifecycleMethods, qrScannerParserMethods, qrScannerScanFlowMethods);

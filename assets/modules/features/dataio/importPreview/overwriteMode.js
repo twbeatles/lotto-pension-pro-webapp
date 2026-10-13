@@ -6,7 +6,10 @@ export function buildOverwriteImportPreview(ctx, incoming, importOptions) {
     const incomingTicketTotal = ctx.data.getTotalTicketCount(incoming.tickets);
     const appliedSettings = ctx.describeAppliedSettings(importOptions);
 
-    const campaignCleanup = ctx.pruneCampaignsWithoutTickets(safeClone(incoming.campaigns), safeClone(incoming.tickets));
+    const campaignCleanup = ctx.pruneCampaignsWithoutTickets(
+        safeClone(incoming.campaigns),
+        safeClone(incoming.tickets)
+    );
     const pension720CampaignCleanup = ctx.prunePension720CampaignsWithoutTickets(
         safeClone(incoming.pension720Campaigns),
         safeClone(incoming.pension720Tickets)

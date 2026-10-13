@@ -78,3 +78,8 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# AI Agent & Spec Kit (local only)
+AGENTS.md
+specs/
+

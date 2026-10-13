@@ -202,12 +202,7 @@ export default {
                 .split(',')
                 .map((item) => item.trim())
                 .filter(Boolean);
-            if (
-                configured.length &&
-                !configured.includes('*') &&
-                origin &&
-                !configured.includes(origin)
-            ) {
+            if (configured.length && !configured.includes('*') && origin && !configured.includes(origin)) {
                 return toJsonResponse(
                     { error: 'Origin not allowed' },
                     { status: 403, headers: { 'X-Lotto-Cache': 'BYPASS' } }

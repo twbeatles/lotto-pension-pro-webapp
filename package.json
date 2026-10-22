@@ -4,6 +4,9 @@
   "type": "module",
   "version": "1.0.0",
   "description": "로또 6/45와 연금복권720+ 통계 기반 번호 추천 웹앱",
+  "engines": {
+    "node": ">=26.0.0"
+  },
   "scripts": {
     "build": "npm run lint && npm run check:utf8-korean && npm run check:innerhtml-escape && npm run check:asset-versions && npm run check:data-freshness && npm run check:pension720 && npm run check:pension720:freshness && node scripts/smoke/smoke.mjs",
     "build:release": "npm run build && npm run check:data-freshness:strict && npm run check:lotto:official",
